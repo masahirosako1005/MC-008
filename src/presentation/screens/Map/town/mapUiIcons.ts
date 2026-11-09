@@ -60,11 +60,11 @@ const BITMAPS: Readonly<Record<MapUiIcon, PixelBitmap>> = {
   },
   flag: {
     rows: ['KFFFFF..', 'KFFWFFF.', 'KFFFFFF.', 'KFFFFF..', 'K.......', 'K.......', 'K.......', 'KK......'],
-    palette: { K: INK, F: '#ff6a3d', W: '#ffd2c4' },
+    palette: { K: INK, F: '#1e6bff', W: '#cfe0ff' },
   },
   pin: {
     rows: ['..RRRR..', '.RRRRRR.', 'RRRWWRRR', 'RRRWWRRR', '.RRRRRR.', '..RRRR..', '...RR...', '...RR...'],
-    palette: { R: '#ff5a36', W: '#ffffff' },
+    palette: { R: '#1e6bff', W: '#ffffff' },
   },
   walk: {
     rows: ['....SS..', '....SS..', '...BBB..', '..B.BB.B', '....BB..', '...B..B.', '..B....B', '.B......'],

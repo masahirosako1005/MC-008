@@ -100,7 +100,7 @@ function statTilesOf(dto: RankStatusDto): StatTile[] {
   return log.exit([
     { icon: 'footprints', value: dto.totalVisits, label: '通った', tone: 'brand', unit: '回' },
     { icon: 'pin', value: dto.visitedSpots, label: 'スポット', tone: 'sea' },
-    { icon: 'crown', value: dto.lordDistricts.length, label: '地区の主', tone: 'gold' },
+    { icon: 'crown', value: dto.lordDistricts.length, label: '領主', tone: 'gold' },
     { icon: 'card', value: dto.silverCards, label: '銀カード', tone: 'silver', unit: '枚' },
     { icon: 'card', value: dto.goldCards, label: '金カード', tone: 'gold', unit: '枚' },
     { icon: 'calendar', value: dto.travelDays ?? 0, label: '旅の日数', tone: 'leaf', unit: dto.travelDays === undefined ? '日' : '日目' },
@@ -179,7 +179,7 @@ function createRuleTokens(dto: RankStatusDto): HTMLElement {
   return log.exit(
     h(
       'ul',
-      { class: 'rank-rules', attrs: { 'aria-label': `名所${rules.landmarkPoints}pt、お店${rules.shopPoints}pt、色あせた地区に戻るとその日${rules.welcomeBackMultiplier}倍` } },
+      { class: 'rank-rules', attrs: { 'aria-label': `名所${rules.landmarkPoints}EXP、お店${rules.shopPoints}EXP、色あせた地区に戻るとその日${rules.welcomeBackMultiplier}倍` } },
       tokens.map(([icon, value, label], i) =>
         h('li', { class: 'rank-rule', style: { '--i': String(i) }, attrs: { 'aria-hidden': 'true' } }, [h('span', { class: 'rank-rule__icon' }, [createIcon(icon)]), h('strong', { class: 'rank-rule__value', text: value }), h('span', { class: 'rank-rule__label', text: label })]),
       ),
@@ -202,8 +202,8 @@ function createPoints(dto: RankStatusDto): HTMLElement {
       h('strong', { class: 'rank-log__points', text: `+${entry.points}` }),
     ]),
   );
-  const list = rows.length === 0 ? h('p', { class: 'rank-log__empty' }, [createIcon('footprints'), 'まだ0pt。歩いて訪れよう']) : h('ol', { class: 'rank-log', attrs: { 'aria-label': '最近のポイント' } }, rows);
-  return log.exit(h('section', { class: ['rank-card', 'rank-reveal'], attrs: { 'data-testid': 'rank-points-log' } }, [sectionHead('coin', 'ポイント'), createRuleTokens(dto), list]));
+  const list = rows.length === 0 ? h('p', { class: 'rank-log__empty' }, [createIcon('footprints'), 'まだ0EXP。街へ出よう']) : h('ol', { class: 'rank-log', attrs: { 'aria-label': '最近のEXP' } }, rows);
+  return log.exit(h('section', { class: ['rank-card', 'rank-reveal'], attrs: { 'data-testid': 'rank-points-log' } }, [sectionHead('coin', 'EXP'), createRuleTokens(dto), list]));
 }
 
 /**

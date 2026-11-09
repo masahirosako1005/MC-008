@@ -1,6 +1,7 @@
 /**
  * @file Vite / Vitest 設定（ビルド境界）
  * - `--mode demo` でデモビルド（isDemoBuild=true）。既定はプロダクション。
+ * - `--mode cms` で店舗CMS だけの本番ビルド（cms.html だけ。連携サーバーにつなぐ＝VITE_CMS_BACKEND=server を強制。docs/09 §7.1 の別オリジン用）。
  * - preview サーバにセキュリティヘッダを付与（docs/05 SEC-04, SEC-29）。sourcemap は出さない（SEC-06）。
  */
 import { defineConfig } from 'vitest/config';
@@ -17,13 +18,18 @@ const SECURITY_HEADERS: Record<string, string> = {
 };
 
 /**
- * ビルドに含める HTML を返す。店舗CMS（cms.html）はデモビルドだけに入れ、本番ビルドには含めない（docs/09 §7.2、MUST-8、SEC-02）。
- * @param mode Vite のモード（'demo' / 'production' など）
+ * ビルドに含める HTML を返す。
+ * - production：利用者アプリ（index.html）だけ。店舗CMS は含めない（docs/09 §7.1、MUST-8、SEC-02）
+ * - demo：利用者アプリと店舗CMS（cms.html）を同じオリジンに
+ * - cms：店舗CMS だけ（本番で別オリジンに置く）
+ * @param mode Vite のモード（'demo' / 'production' / 'cms' など）
  * @returns 入力名 → HTML の絶対パス
  */
 function buildInputs(mode: string): Record<string, string> {
+  const cms = fileURLToPath(new URL('./cms.html', import.meta.url));
+  if (mode === 'cms') return { cms };
   const inputs: Record<string, string> = { main: fileURLToPath(new URL('./index.html', import.meta.url)) };
-  if (mode === 'demo') inputs['cms'] = fileURLToPath(new URL('./cms.html', import.meta.url));
+  if (mode === 'demo') inputs['cms'] = cms;
   return inputs;
 }
 
@@ -40,7 +46,10 @@ const LIVE_RELOAD = process.env['VITE_LIVE_RELOAD'] === '1';
  */
 const CMS_API_PROXY = process.env['CMS_API_PROXY'];
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  // 店舗CMS だけのビルドは、連携サーバーにつなぐ版しかあり得ない（ブラウザだけの CMS はデモだけ）
+  if (mode === 'cms') process.env['VITE_CMS_BACKEND'] = 'server';
+  return {
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   build: { sourcemap: false, target: 'es2022', rollupOptions: { input: buildInputs(mode) } },
   server: {
@@ -55,4 +64,5 @@ export default defineConfig(({ mode }) => ({
     include: ['src/**/*.test.ts', 'scripts/**/*.test.mjs'],
     environment: 'node',
   },
-}));
+  };
+});

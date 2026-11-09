@@ -56,7 +56,7 @@ export function createTravelerSwitchPanel(deps: DemoPanelDeps, current: AppStatu
   });
   return log.exit(
     h('section', { class: 'demo-panel', attrs: { 'data-testid': 'demo-panel-traveler' } }, [
-      h('h2', { class: 'sheet-section-title', text: '旅人切替' }),
+      h('h2', { class: 'sheet-section-title', text: '冒険者切替' }),
       h('div', { class: ['demo-row', 'demo-row--even'] }, buttons),
       h('p', { class: 'hint', text: '初回の人＝まだ何も見つけていない／通い慣れた人＝Lv・カードあり' }),
     ]),

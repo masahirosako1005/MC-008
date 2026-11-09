@@ -186,4 +186,25 @@ ${rows(categories)}
 });
 `;
 fs.writeFileSync(path.join(ROOT, 'src/presentation/shared/spotPhotoData.ts'), out);
+
+// 写真のクレジット一覧（同梱した写真の作者・ライセンス・出典。アプリ内では拡大プレビューとスポット詳細に出す）
+const line = (key, v) => `| ${key} | ${v.file} | ${v.artist} | ${v.license} | ${v.sourceUrl} |`;
+const credits = `# 写真のクレジット
+
+図鑑とスポット詳細の写真は Wikimedia Commons から取得し、縮小・再圧縮して同梱しています（scripts/photos/fetch-photos.mjs・compress-photos.mjs）。
+名所は実在の場所の写真、店舗は店名が架空のためカテゴリの「イメージ写真」です（その店の写真ではありません）。
+
+## 名所
+
+| スポット | ファイル | 作者 | ライセンス | 出典 |
+|---|---|---|---|---|
+${Object.entries(landmarks).map(([k, v]) => line(k, v)).join('\n')}
+
+## 店舗（カテゴリのイメージ写真）
+
+| カテゴリ | ファイル | 作者 | ライセンス | 出典 |
+|---|---|---|---|---|
+${Object.entries(categories).map(([k, v]) => line(k, v)).join('\n')}
+`;
+fs.writeFileSync(path.join(ROOT, 'public/photos/CREDITS.md'), credits);
 console.log('書き出し', Object.keys(landmarks).length, Object.keys(categories).length);

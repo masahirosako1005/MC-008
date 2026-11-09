@@ -73,7 +73,7 @@ describe('EnsureTravelerUseCase', () => {
     expect(calls()).toBe(1);
     const id = must(parseTravelerId(output.travelerId));
     const traveler = must(await tw.travelers.findById(id));
-    expect([traveler?.nickname, traveler?.visits.length, traveler?.version]).toEqual(['旅人', 0, 1]);
+    expect([traveler?.nickname, traveler?.visits.length, traveler?.version]).toEqual(['冒険者', 0, 1]);
     expect(tw.session.current.activeTravelerId).toBe(id);
     expect(tw.ledgers.saveCount).toBe(0);
   });

@@ -4,6 +4,7 @@ import { jstInstantOf, parseLocalDate } from '@/Common/utils/date';
 import type { VisitRecord } from '@/domain/exploration/VisitRecord';
 import { AVATAR_CATALOG, AVATAR_SLOTS, DEFAULT_PART_IDS, MAX_OBJECTS, avatarPartOf } from '@/domain/avatar/AvatarCatalog';
 import { avatarProgressOf, normalizeOutfit, ownedPartIdsOf, partProgressOf } from '@/domain/avatar/AvatarUnlockPolicy';
+import { AVATAR_SETS } from '@/domain/avatar/AvatarSets';
 
 /** テスト用: 検証済みの値を取り出す */
 function must<T>(r: { ok: true; value: T } | { ok: false; error: unknown }): T {
@@ -109,5 +110,36 @@ describe('normalizeOutfit', () => {
     const all = ownedPartIdsOf(avatarProgressOf({ visits: Array.from({ length: 40 }, (_, i) => visit(`s_tm0${(i % 5) + 1}`, 'd_tenma', `2026-09-${String((i % 28) + 1).padStart(2, '0')}`)), silverCards: 5, goldCards: 5, itemIds: [] }));
     const outfit = normalizeOutfit(['object.bench', 'object.bench', 'object.plant', 'object.postbox', 'object.bicycle'], all);
     expect(outfit.filter((id) => id.startsWith('object.'))).toEqual(['object.bench', 'object.plant', 'object.postbox']);
+  });
+});
+
+describe('季節の手に入れ方・コレクション', () => {
+  it('季節（と地区）ごとに通った回数を数え、その季節の部品が手に入る', () => {
+    const p = avatarProgressOf({
+      visits: [visit('l_ok01', 'd_okawa', '2026-04-03'), visit('s_tm01', 'd_tenma', '2026-10-01'), visit('s_tm01', 'd_tenma', '2026-10-02')],
+      silverCards: 0, goldCards: 0, itemIds: [],
+    });
+    expect(p.seasonVisits.get('spring')).toBe(1);
+    expect(p.seasonVisits.get('spring:d_okawa')).toBe(1);
+    expect(p.seasonVisits.get('autumn:d_tenma')).toBe(2);
+    const owned = ownedPartIdsOf(p);
+    expect(owned.has('hat.sakuraKanzashi')).toBe(true);
+    expect(owned.has('held.dango')).toBe(true);
+    expect(owned.has('pet.uso')).toBe(false);
+  });
+
+  it('セットの部品はすべて一覧にあり、1枠1つ。ご当地は地区、季節は季節を持つ', () => {
+    for (const set of AVATAR_SETS) {
+      const slots = set.partIds.map((id) => avatarPartOf(id)?.slot);
+      expect(slots.every((s) => s !== undefined)).toBe(true);
+      expect(new Set(slots).size).toBe(slots.length);
+      expect(set.kind === 'region' ? set.districtId !== undefined : set.season !== undefined).toBe(true);
+    }
+  });
+
+  it('性別は必須の枠で、既定は「指定しない」', () => {
+    const outfit = normalizeOutfit(['body.girl'], ownedPartIdsOf(NONE));
+    expect(outfit).toContain('body.girl');
+    expect(normalizeOutfit([], ownedPartIdsOf(NONE))).toContain('body.neutral');
   });
 });

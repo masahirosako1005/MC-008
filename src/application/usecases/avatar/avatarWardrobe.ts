@@ -5,6 +5,7 @@
  * - 手に入れ方の文言を作る（しきい値は domain/avatar/AvatarCatalog の（仮）の値をそのまま使い、文言と判定がずれないようにする）
  */
 import { createLogger } from '@/Common/logging/logger';
+import type { Season } from '@/Common/utils/date';
 import type { AvatarState } from '@/application/ports/AvatarRepository';
 import { lockedItemHintOf } from '@/application/usecases/town/itemHints';
 import { DEFAULT_PART_IDS } from '@/domain/avatar/AvatarCatalog';
@@ -59,9 +60,12 @@ export function outfitOfState(state: AvatarState, owned: ReadonlySet<string>): r
   return log.exit(normalizeOutfit(legacy === undefined ? DEFAULT_PART_IDS : [...DEFAULT_PART_IDS, legacy], owned));
 }
 
+/** 季節の名前 */
+export const SEASON_NAME: Readonly<Record<Season, string>> = { spring: '春', summer: '夏', autumn: '秋', winter: '冬' };
+
 /** 手に入れ方 → 進み具合の単位 */
 const UNIT_OF: Readonly<Record<AvatarUnlock['kind'], string>> = {
-  free: '', totalVisits: '回', visitDays: '日', districtVisits: '回', districts: '地区', shops: '軒', landmarks: 'か所', silverCards: '枚', goldCards: '枚', item: '',
+  free: '', seasonVisits: '回', totalVisits: '回', visitDays: '日', districtVisits: '回', districts: '地区', shops: '軒', landmarks: 'か所', silverCards: '枚', goldCards: '枚', item: '',
 };
 
 /**
@@ -91,6 +95,10 @@ export function unlockHintOf(unlock: AvatarUnlock, districtName: (id: string) =>
     case 'landmarks': return log.exit(`ちがう名所を${unlock.count}か所訪れる`);
     case 'silverCards': return log.exit(`銀カードを${unlock.count}枚あつめる`);
     case 'goldCards': return log.exit(`金カードを${unlock.count}枚あつめる`);
+    case 'seasonVisits': {
+      const where = unlock.districtId === undefined ? '' : `${districtName(unlock.districtId)}に`;
+      return log.exit(`${SEASON_NAME[unlock.season]}に${where}${unlock.count}回${unlock.districtId === undefined ? '通う' : '訪れる'}`);
+    }
     case 'item': {
       const key = ITEM_DEFINITIONS.find((d) => d.rawId === unlock.itemId)?.key;
       return log.exit(key === undefined ? '訪問で手に入るアイテム' : lockedItemHintOf(key));

@@ -6,13 +6,15 @@
 import { createLogger } from '@/Common/logging/logger';
 import { normalizeDpr } from '@/Common/ui/canvas/CanvasBase';
 import { h, setStyle } from '@/Common/ui/dom';
+import { PALETTE } from '@/Common/ui/theme/palette';
 
 const logger = createLogger('presentation/screens/Avatar/avatarIcons');
 
 /** アイコンの名前 */
 export type AvatarIconName =
   | 'pickup' | 'hair' | 'face' | 'top' | 'bottom' | 'shoes' | 'hat' | 'accessory' | 'held' | 'pet' | 'background' | 'object' | 'title' | 'coord'
-  | 'undo' | 'random' | 'bag' | 'lock' | 'key' | 'party' | 'none' | 'check' | 'tag';
+  | 'aura' | 'emote' | 'collection' | 'spring' | 'summer' | 'autumn' | 'winter'
+  | 'undo' | 'random' | 'photo' | 'bag' | 'lock' | 'key' | 'party' | 'none' | 'check' | 'tag';
 
 /** 色 */
 const C = {
@@ -170,6 +172,43 @@ const PAINTERS: Readonly<Record<AvatarIconName, Painter>> = {
     poly(ctx, [5.8, 6.4, 8.6, 8.8, 6.2, 10.4], C.pink); poly(ctx, [18.2, 6.4, 15.4, 8.8, 17.8, 10.4], C.pink);
     dot(ctx, 9, 13.5, 1.2, C.ink); dot(ctx, 15, 13.5, 1.2, C.ink); poly(ctx, [11, 15.6, 13, 15.6, 12, 16.8], C.pinkDeep);
   },
+  /** コレクション: 台に立つマネキンと星 */
+  collection: (ctx) => {
+    dot(ctx, 12, 6, 3.2, C.skin); poly(ctx, [7, 9.5, 17, 9.5, 18.5, 16, 5.5, 16], C.pink); box(ctx, [11.2, 15.5, 1.6, 4, 0.6], C.gray);
+    ctx.fillStyle = C.gold; ctx.beginPath(); ctx.ellipse(12, 20.5, 7, 1.8, 0, 0, Math.PI * 2); ctx.fill(); sparkle(ctx, 19.5, 5, 2.8, C.gold); sparkle(ctx, 4.5, 8, 1.8, '#9adfff');
+  },
+  /** 春: 桜の花 */
+  spring: (ctx) => {
+    for (let i = 0; i < 5; i += 1) { const a = -Math.PI / 2 + (i * Math.PI * 2) / 5; ctx.fillStyle = '#ffb6d9'; ctx.beginPath(); ctx.ellipse(12 + Math.cos(a) * 5, 12 + Math.sin(a) * 5, 4.4, 3.4, a, 0, Math.PI * 2); ctx.fill(); }
+    dot(ctx, 12, 12, 2.6, '#ffe58a'); dot(ctx, 12, 12, 1.2, '#ff8fb8');
+  },
+  /** 夏: ひまわり */
+  summer: (ctx) => {
+    for (let i = 0; i < 10; i += 1) { const a = (i * Math.PI * 2) / 10; ctx.fillStyle = '#ffc94d'; ctx.beginPath(); ctx.ellipse(12 + Math.cos(a) * 6.4, 12 + Math.sin(a) * 6.4, 3.2, 1.7, a, 0, Math.PI * 2); ctx.fill(); }
+    dot(ctx, 12, 12, 4.4, '#a0673f'); dot(ctx, 11, 11, 1.2, '#c98a5a');
+  },
+  /** 秋: もみじ */
+  autumn: (ctx) => {
+    ctx.fillStyle = '#f97316'; ctx.beginPath();
+    for (let i = 0; i <= 10; i += 1) { const a = -Math.PI / 2 + (i * Math.PI * 2) / 10 - Math.PI / 10; const r = i % 2 === 0 ? 9.5 : 4; ctx.lineTo(12 + Math.cos(a) * r, 11 + Math.sin(a) * r); }
+    ctx.closePath(); ctx.fill(); line(ctx, [12, 12, 12, 21.5], '#b45309', 1.4);
+  },
+  /** 冬: 雪の結晶 */
+  winter: (ctx) => {
+    for (let k = 0; k < 6; k += 1) { const a = (k * Math.PI) / 3; line(ctx, [12, 12, 12 + Math.cos(a) * 9, 12 + Math.sin(a) * 9], '#7dd3fc', 1.8); line(ctx, [12 + Math.cos(a) * 5.5, 12 + Math.sin(a) * 5.5, 12 + Math.cos(a + 0.5) * 7.5, 12 + Math.sin(a + 0.5) * 7.5], '#7dd3fc', 1.2); }
+    dot(ctx, 12, 12, 2, '#bae6fd');
+  },
+  /** オーラ: 光の輪ときらめき */
+  aura: (ctx) => {
+    ctx.strokeStyle = C.pink; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.ellipse(12, 15, 9, 3.6, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#c9a2ff'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.ellipse(12, 9.5, 7, 2.8, 0, 0, Math.PI * 2); ctx.stroke();
+    sparkle(ctx, 12, 12, 4, C.gold); sparkle(ctx, 4.5, 6, 2.2, '#9adfff'); sparkle(ctx, 19.5, 5, 2.6, C.pink);
+  },
+  /** エモート: ハートの入った吹き出し */
+  emote: (ctx) => {
+    poly(ctx, [6, 17, 4, 22, 10, 18.5], '#ffb3d6'); dot(ctx, 12, 11, 9, '#ffb3d6'); dot(ctx, 12, 11, 7.6, C.white);
+    ctx.fillStyle = '#ff5fa2'; ctx.beginPath(); ctx.moveTo(12, 15.2); ctx.bezierCurveTo(6.5, 11.5, 8.5, 6.4, 12, 9.2); ctx.bezierCurveTo(15.5, 6.4, 17.5, 11.5, 12, 15.2); ctx.fill();
+  },
   /** 背景: 空と丘と太陽の額 */
   background: (ctx) => {
     box(ctx, [2.5, 4, 19, 16, 3], C.sky); dot(ctx, 16.5, 8.8, 2.4, C.gold);
@@ -202,6 +241,11 @@ const PAINTERS: Readonly<Record<AvatarIconName, Painter>> = {
     for (const [x, y] of [[-3.8, -3.8], [3.8, -3.8], [0, 0], [-3.8, 3.8], [3.8, 3.8]] as const) dot(ctx, x, y, 1.5, C.white);
     ctx.restore();
   },
+  /** 撮影: フラッシュの光るカメラ */
+  photo: (ctx) => {
+    box(ctx, [2.5, 8, 19, 12.5, 3], PALETTE.brand); box(ctx, [7, 5.5, 6, 3.5, 1.2], PALETTE.brand); dot(ctx, 12, 14.2, 4.6, C.white);
+    dot(ctx, 12, 14.2, 3.2, PALETTE.brandLight); dot(ctx, 11, 13.2, 1, C.white); sparkle(ctx, 19, 4.5, 3.2, C.gold);
+  },
   /** 持っている数: 紙袋 */
   bag: (ctx) => {
     line(ctx, [8.5, 9, 8.5, 6, 12, 3.5, 15.5, 6, 15.5, 9], C.coralDeep, 1.6); poly(ctx, [4.5, 8, 19.5, 8, 21, 21, 3, 21], C.coral);
@@ -226,7 +270,7 @@ const PAINTERS: Readonly<Record<AvatarIconName, Painter>> = {
   none: (ctx) => { ctx.strokeStyle = C.gray; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(12, 12, 7.5, 0, Math.PI * 2); ctx.stroke(); line(ctx, [6.8, 17.2, 17.2, 6.8], C.gray, 2); },
   /** 身につけている: 黒丸に白いチェック */
   check: (ctx) => {
-    const g = ctx.createLinearGradient(0, 2, 0, 22); g.addColorStop(0, '#D81B72'); g.addColorStop(1, '#B0125A');
+    const g = ctx.createLinearGradient(0, 2, 0, 22); g.addColorStop(0, PALETTE.brand); g.addColorStop(1, PALETTE.brandInk);
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(12, 12, 10, 0, Math.PI * 2); ctx.fill(); line(ctx, [7, 12.4, 10.6, 16, 17.2, 8.6], C.white, 2.6);
   },
   /** 称号の札（ピックアップ） */

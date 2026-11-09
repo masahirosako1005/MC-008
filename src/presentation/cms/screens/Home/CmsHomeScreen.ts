@@ -2,7 +2,7 @@
  * @file 店舗CMS のホーム（presentation/cms/screens/Home。docs/09 C02）
  * 左：お店のページの見え方（自動では動かさない）／右：はじめにやること（3つ済んだら消す）、クーポン・イベント、直近30日の数字。
  * 見出し（h1「ホーム」）は見せない（店名は上部のお店の切り替えと見え方に出ているため）。デモのリセットは上部の「デモ」のメニューにある。
- * 説明文は置かない。
+ * 説明文は置かない。クーポン・イベントの行は一覧と同じ部品（eventRowButton）、数字は来店データと同じ部品（kpiItem）で作る。
  */
 import type { CmsShopInfoDto } from '@/application/dto/CmsDto';
 import { createLogger } from '@/Common/logging/logger';
@@ -10,9 +10,9 @@ import { h } from '@/Common/ui/dom';
 import { SHOP_EVENT_MAX_OPEN_PER_SPOT } from '@/domain/revisit/constants';
 import { createPreviewColumn, liveEventsOf } from '@/presentation/cms/cmsPhonePreview';
 import type { CmsPage } from '@/presentation/cms/cmsRoute';
-import { badge, eventBadge, formSection, icon, mdDate, pageTitle, slotLimit, twoColumn } from '@/presentation/cms/cmsUi';
+import { badge, eventRowButton, formSection, icon, pageTitle, slotLimit, twoColumn } from '@/presentation/cms/cmsUi';
 import type { CmsContext } from '@/presentation/cms/cmsUi';
-import { countText } from '@/presentation/cms/screens/Data/CmsDataScreen';
+import { kpiItem } from '@/presentation/cms/screens/Data/CmsDataScreen';
 import { openEventForm } from '@/presentation/cms/screens/Events/CmsEventsScreen';
 
 const logger = createLogger('presentation/cms/screens/Home/CmsHomeScreen');
@@ -74,11 +74,7 @@ function renderSetup(ctx: CmsContext): HTMLElement | undefined {
 function renderLive(ctx: CmsContext): HTMLElement {
   const log = logger.fn('renderLive');
   const live = ctx.info.events.filter((e) => e.status === 'active' || e.status === 'scheduled');
-  const rows = live.slice(0, SHOP_EVENT_MAX_OPEN_PER_SPOT).map((e) => h('li', {}, [h('button', { class: 'cms-row cms-row--event', attrs: { type: 'button', 'data-testid': 'cms-home-event' }, on: { click: () => ctx.go('events') } }, [
-    eventBadge(e),
-    h('span', { class: 'cms-item__main' }, [h('span', { class: 'cms-item__title', text: e.title }), h('span', { class: 'cms-muted', text: `${mdDate(e.start)}〜${mdDate(e.end)}` })]),
-    icon('chevronRight', 'cms-row__chevron'),
-  ])]));
+  const rows = live.slice(0, SHOP_EVENT_MAX_OPEN_PER_SPOT).map((e) => h('li', {}, [eventRowButton(e, () => ctx.go('events'), 'cms-home-event')]));
   const full = ctx.info.remainingSlots <= 0;
   const create = ctx.info.partner
     ? h('button', { class: 'cms-btn cms-btn--secondary', attrs: { type: 'button', 'data-testid': 'cms-home-new', disabled: full }, text: '新規作成', on: { click: () => openEventForm(ctx) } })
@@ -88,17 +84,16 @@ function renderLive(ctx: CmsContext): HTMLElement {
 }
 
 /**
- * 直近30日の数字の区切りを作る（読み込みが終わったら数字を入れる）。
+ * 直近30日の数字の区切りを作る（読み込み中は空のまま高さだけ取り、届いたら来店データと同じ形で数字を入れる）。
  * @param ctx 文脈
  * @returns 区切り
  */
 function renderNumbers(ctx: CmsContext): HTMLElement {
   const log = logger.fn('renderNumbers');
-  const strip = h('div', { class: 'cms-kpis cms-kpis--inline' }, [h('span', { class: 'cms-muted', text: '…' })]);
+  const strip = h('div', { class: 'cms-kpis cms-kpis--inline' });
   void ctx.services.visitStats.execute({ spotId: ctx.info.id }).then((stats) => {
     if (!stats.ok) return strip.replaceChildren(h('span', { class: 'cms-muted', text: '読み込めませんでした' }));
-    const items: readonly [string, string][] = [['来店数', countText(stats.value.visits30d, '回')], ['来店者', countText(stats.value.visitors30d, '人')], ['再訪率', `${stats.value.revisitRatePct}%`]];
-    return strip.replaceChildren(...items.map(([label, value]) => h('div', { class: 'cms-kpi' }, [h('span', { class: 'cms-kpi__label', text: label }), h('span', { class: 'cms-kpi__value', text: value })])));
+    return strip.replaceChildren(kpiItem('来店数', stats.value.visits30d, '回'), kpiItem('来店者', stats.value.visitors30d, '人'), kpiItem('再訪率', stats.value.revisitRatePct, '%'));
   });
   const more = h('button', { class: 'cms-textbtn', attrs: { type: 'button', 'data-testid': 'cms-home-data' }, on: { click: () => ctx.go('data') } }, ['来店データ', icon('chevronRight')]);
   return log.exit(formSection('直近30日', [strip], { aside: more }));

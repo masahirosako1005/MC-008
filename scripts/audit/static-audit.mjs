@@ -47,6 +47,45 @@ function listFiles(dir) {
   return out;
 }
 
+/**
+ * CSS ファイルを再帰列挙（色の直書きの検査 color-literal 用）。
+ * @param {string} dir 起点
+ * @returns {string[]} CSS ファイルのパス
+ */
+function listCssFiles(dir) {
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    if (['node_modules', 'dist', '.git', 'coverage'].includes(name)) continue;
+    const full = join(dir, name);
+    const st = statSync(full);
+    if (st.isDirectory()) out.push(...listCssFiles(full));
+    else if (/\.css$/.test(name)) out.push(full);
+  }
+  return out;
+}
+
+/** 色の値を置いてよい CSS（docs/10_color_system.md §3）: トークン本体と、トークンより先に読む起動スプラッシュ */
+const COLOR_SOURCE_FILES = ['src/Common/ui/styles/tokens.css', 'src/presentation/screens/Launch/splash.css'];
+/** CSS で直書きしてよい色: 白・黒・--ink（17,24,39）とその透過 */
+const ALLOWED_COLOR = /^(#fff|#ffffff|#000|#000000|rgba?\((255,255,255|0,0,0|17,24,39)(,[0-9.]+)?\))$/i;
+
+/**
+ * CSS の色の直書きを検査する（color-literal。docs/10_color_system.md）。トークン（var(--…)）以外の色を warn で知らせる。
+ * 行に「audit-ignore: color-literal 理由」があれば対象外。
+ * @param {string} file CSS ファイル
+ * @sideEffect findings に追加する
+ */
+function auditCss(file) {
+  const rel = relative(ROOT, file).split(sep).join('/');
+  if (COLOR_SOURCE_FILES.includes(rel)) return;
+  readFileSync(file, 'utf8').split(/\r?\n/).forEach((line, i) => {
+    if (/audit-ignore:\s*color-literal\s+\S/.test(line)) return;
+    if (/\{\s*$/.test(line.trim()) && !line.includes(':')) return;
+    const found = (line.match(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)/g) ?? []).map((c) => c.replace(/\s+/g, '')).filter((c) => !ALLOWED_COLOR.test(c));
+    if (found.length > 0) report('color-literal', 'warn', file, i + 1, `色の直書き ${[...new Set(found)].slice(0, 3).join(' ')}。tokens.css の名前を使う（docs/10）`);
+  });
+}
+
 /** 行に該当チェックの audit-ignore があるか（理由必須） */
 function ignored(line, check) {
   const m = line.match(/\/\/\s*audit-ignore:\s*([\w-]+)\s+(\S.*)$/);
@@ -208,8 +247,9 @@ for (const t of targets) {
     console.error(`対象が存在しません: ${t}`);
     continue;
   }
-  const files = st.isDirectory() ? listFiles(full) : [full];
+  const files = st.isDirectory() ? listFiles(full) : /\.css$/.test(full) ? [] : [full];
   files.forEach(auditFile);
+  (st.isDirectory() ? listCssFiles(full) : /\.css$/.test(full) ? [full] : []).forEach(auditCss);
 }
 
 const errors = findings.filter((f) => f.level === 'error');

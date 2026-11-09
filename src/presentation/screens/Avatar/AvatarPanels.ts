@@ -8,6 +8,7 @@ import type { AvatarCoordDto, AvatarPartDto } from '@/application/dto/Dto';
 import { createLogger, setCorrelationId } from '@/Common/logging/logger';
 import { h } from '@/Common/ui/dom';
 import { createAvatarIcon, iconText } from '@/presentation/screens/Avatar/avatarIcons';
+import type { AvatarIconName } from '@/presentation/screens/Avatar/avatarIcons';
 import { REMOVABLE_SLOTS, remainingTextOf } from '@/presentation/screens/Avatar/avatarScreenModel';
 import { createOutfitThumb, createPartThumb } from '@/presentation/screens/Avatar/partThumb';
 import { HAIR_COLORS, SKIN_COLORS, TOP_COLORS, splitPartId } from '@/presentation/shared/avatar/avatarLook';
@@ -58,6 +59,37 @@ export function createRarityTag(rarity: string): HTMLElement {
   return h('span', { class: ['avatar-rarity', `avatar-rarity--${rarity.toLowerCase()}`], attrs: { 'aria-label': RARITY_LABEL[rarity] ?? rarity } }, [h('span', { class: 'avatar-rarity__text', text: rarity })]);
 }
 
+/** 季節 → アイコン */
+const SEASON_ICON: Readonly<Record<string, AvatarIconName>> = { spring: 'spring', summer: 'summer', autumn: 'autumn', winter: 'winter' };
+/** 季節 → 名前 */
+export const SEASON_LABEL: Readonly<Record<string, string>> = { spring: '春', summer: '夏', autumn: '秋', winter: '冬' };
+
+/**
+ * 季節のアイコンを作る。
+ * @param season 季節
+ * @param size 一辺（CSS px）
+ * @returns canvas（知らない季節なら undefined）
+ */
+export function createSeasonIcon(season: string, size: number): HTMLCanvasElement | undefined { // audit-ignore: fnlog-missing 札ごとに呼ぶ小さな分岐（作るときは createAvatarIcon がログを出す）
+  const icon = SEASON_ICON[season];
+  return icon === undefined ? undefined : createAvatarIcon(icon, size);
+}
+
+/**
+ * ご当地（地区の色の札）・季節（季節の絵の札）の札を作る。
+ * @param part 部品
+ * @returns 要素（どちらでもなければ undefined）
+ */
+export function createPlaceTag(part: Pick<AvatarPartDto, 'region' | 'season' | 'districtId'>): HTMLElement | undefined {
+  const log = logger.fn('createPlaceTag', { region: part.region, season: part.season });
+  if (part.season !== undefined) {
+    const label = SEASON_LABEL[part.season] ?? '';
+    return log.exit(h('span', { class: ['avatar-place', 'avatar-place--season'], attrs: { 'aria-label': label + 'の部品' } }, [createSeasonIcon(part.season, 12), h('span', { text: label })]));
+  }
+  if (part.region === undefined) return log.exit(undefined);
+  return log.exit(h('span', { class: ['avatar-place', 'avatar-place--region'], attrs: { 'data-district-id': part.districtId }, text: part.region }));
+}
+
 /**
  * 部品の格子の1マスを作る。
  * @param part 部品
@@ -76,8 +108,9 @@ function createPartCell(part: AvatarPartDto, input: PartListInput, index = 0): H
     attrs: { type: 'button', 'aria-pressed': equipped ? 'true' : 'false', 'aria-label': `${part.name}（${RARITY_LABEL[part.rarity] ?? part.rarity}）${state}`, 'data-testid': `avatar-part-${part.id}` },
     style: { '--i': String(index % 12) },
   }, [
-    h('span', { class: 'avatar-item__art' }, [createPartThumb(part.id, input.preview, THUMB_PX)]),
+    h('span', { class: 'avatar-item__art' }, [createPartThumb(part.id, input.preview, THUMB_PX), createPlaceTag(part)]),
     h('span', { class: 'avatar-item__name', text: part.name }),
+    part.owned ? undefined : h('span', { class: 'avatar-item__how', text: part.hint }),
     createRarityTag(part.rarity),
     part.isNew ? h('span', { class: 'avatar-badge avatar-badge--new', text: 'NEW' }) : undefined,
     equipped ? createAvatarIcon('check', 20, 'avatar-badge--on') : undefined,
@@ -217,6 +250,8 @@ export function createTitleList(input: PartListInput, onClear: () => void): HTML
 
 /** ピックアップの入力 */
 export interface PickupInput extends PartListInput {
+  /** いまの季節（'autumn' など） */
+  readonly season: string;
   /** もうすぐ手に入る部品 */
   readonly nearly: readonly AvatarPartDto[];
   readonly onGoMap: (districtId?: string) => void;
@@ -252,11 +287,15 @@ export function createPickup(input: PickupInput): HTMLElement {
   const log = logger.fn('createPickup', { nearly: input.nearly.length });
   const fresh = input.parts.filter((p) => p.isNew && p.slot !== 'title');
   const freshGrid = h('div', { class: 'avatar-grid' }, fresh.map((p, i) => createPartCell(p, input, i)));
+  const seasonal = input.parts.filter((p) => !p.owned && p.season === input.season);
+  const seasonTitle = 'いまの季節だけ（' + (SEASON_LABEL[input.season] ?? '') + '）';
   return log.exit(h('div', { class: 'avatar-pickup', attrs: { 'data-testid': 'avatar-pickup' } }, [
     fresh.length > 0 ? h('h3', { class: 'avatar-sub' }, [iconText('party', `手に入れたばかり（${fresh.length}）`, 20)]) : undefined,
     fresh.length > 0 ? freshGrid : undefined,
+    seasonal.length > 0 ? h('h3', { class: 'avatar-sub' }, [iconText(SEASON_ICON[input.season] ?? 'key', seasonTitle, 20)]) : undefined,
+    seasonal.length > 0 ? h('ul', { class: 'avatar-nearly-list' }, seasonal.map((p) => createNearlyRow(p, input))) : undefined,
     h('h3', { class: 'avatar-sub' }, [iconText('key', 'もうすぐ手に入る', 20)]),
-    h('ul', { class: 'avatar-nearly-list' }, input.nearly.map((p) => createNearlyRow(p, input))),
+    h('ul', { class: 'avatar-nearly-list' }, input.nearly.filter((p) => p.season !== input.season).map((p) => createNearlyRow(p, input))),
   ]));
 }
 

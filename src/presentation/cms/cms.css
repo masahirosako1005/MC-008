@@ -1,17 +1,20 @@
 /*
- * @file 店舗CMS（cms.html）のスタイル。デザイン仕様（2026-11-09、第1回の協議で改訂）：
+ * @file 店舗CMS（cms.html）のスタイル。デザイン仕様（2026-11-09、第2回の協議で改訂）：
  * - 上部バー 56px（タブ入り）。本文は「左：見え方 397px（枠の中は実機と同じ 375px を等倍）／ 右：フォーム」。来店データだけ1列
  * - 右は白い面1枚。区切りは線。角丸 8px 以下。影はモーダル・トースト・シート・メニュー（浮いて重なるもの）だけ
- * - 朱（--brand-ink）は主ボタンと選択中タブの下線だけ。選んだ状態は「紺の塗り」か「紺の枠＋塗ったチェック」の2通り
- * - 壊す操作（破棄して移動・取り下げる・消す）は朱にせず、白地に誤りの色の文字
- * - 959px 以下はスマホの配置（見え方はシートで開く。押せる所は高さ 44px 以上、入力欄の文字は 16px）
+ * - ブランド色は主ボタンと選択中タブの下線だけ。選んだ状態・注記の破線・フォーカスの輪は紺墨（--ink）
+ * - 壊す操作（破棄して移動・取り下げる・消す・削除）はブランド色にせず、白地に誤りの色の文字
+ * - 文字を入れる欄（入力欄・select）の枠は白地と 3:1 以上（--cms-control-line）。チップ・定休日・切り替えの枠は --g3 のまま
+ * - 959px 以下はスマホの配置（見え方は全画面のシートで開く。上の段は画面の外へ逃がし、タブは上に残す。押せる所は高さ 44px 以上、入力欄の文字は 16px）
+ * - 色は tokens.css の名前を使う（tokens.css に無い2色だけは、理由を書いて .cms-app の変数に置く）
  */
 .cms-app {
   --cms-line: var(--line);
   --cms-radius: 8px;
-  --cms-ok-ink: #047857;
-  --cms-ok-soft: #ecfdf5;
-  --cms-dot: #d97706;
+  --cms-ok-ink: var(--success-ink);
+  --cms-ok-soft: var(--success-soft);
+  --cms-dot: #d97706; /* audit-ignore: color-literal 未保存の点（白地と 3.2:1）。tokens.css は別担当のため、名前を足すまで CMS の中だけで持つ */
+  --cms-control-line: #8b919c; /* audit-ignore: color-literal 文字を入れる欄の枠（白地と約 3.2:1）。tokens.css は別担当のため、名前を足すまで CMS の中だけで持つ */
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--paper);
@@ -22,7 +25,8 @@
 }
 /* hidden 属性は、display を持つクラス（.btn など）より必ず勝たせる */
 .cms-app [hidden] { display: none !important; }
-.cms-app :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+/* フォーカスは紺の線1本（base.css の --focus-ring の輪＝ブランド色の影を打ち消す）。入力欄・select は下の「枠を紺＋薄い輪」 */
+.cms-app :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; box-shadow: none; }
 .cms-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .cms-skip { position: absolute; left: 8px; top: -48px; z-index: 50; padding: 8px 12px; border: 0; border-radius: var(--cms-radius); background: var(--ink); color: #fff; font: inherit; }
 .cms-skip:focus { top: 8px; }
@@ -61,7 +65,7 @@
   max-width: 240px;
   height: 36px;
   padding: 0 32px 0 12px;
-  border: 1px solid var(--g3);
+  border: 1px solid var(--cms-control-line);
   border-radius: 8px;
   background: var(--surface);
   font-size: 14px;
@@ -105,7 +109,7 @@
 .cms-badge--muted { background: var(--g1); color: var(--g5); }
 .cms-badge--brand { background: var(--g1); color: var(--ink); }
 /* 一覧・ホームの行の札は幅をそろえる */
-.cms-item .cms-badge, .cms-row .cms-badge { min-width: 56px; justify-content: center; }
+.cms-row .cms-badge { min-width: 56px; justify-content: center; }
 
 /* ---- 本文の配置 ---- */
 .cms-main { outline: none; }
@@ -148,7 +152,8 @@
 .cms-phone__sheet { position: absolute; left: 0; right: 0; bottom: 0; padding: 20px 12px 24px; border-radius: 16px 16px 0 0; background: var(--surface); box-shadow: var(--shadow-3); pointer-events: none; }
 .cms-phone__sheet::before { content: ""; position: absolute; top: 8px; left: 50%; width: 36px; height: 4px; border-radius: 2px; background: var(--g2); transform: translateX(-50%); }
 .cms-phone__empty { text-align: center; font-size: 13px; color: var(--g4); }
-.cms-hl { outline: 2px dashed var(--brand-ink); outline-offset: 4px; border-radius: 4px; }
+/* 注記の破線は紺（アプリの中身にもブランド色の札・印があるので、見分けられるように） */
+.cms-hl { outline: 2px dashed var(--ink); outline-offset: 4px; border-radius: 4px; }
 .cms-placeholder .spot-event__title, .cms-placeholder .spot-event__desc { color: var(--g3); }
 
 /* 切り替え（1つだけ選ぶ。枠つきの2連ボタン。選んだ方は紺の塗り） */
@@ -162,13 +167,12 @@
 .cms-panel > * { padding-left: 24px; padding-right: 24px; }
 .cms-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 20px; padding-bottom: 4px; }
 .cms-title__text { font-size: 18px; font-weight: 700; line-height: 1.3; outline: none; }
-.cms-title__aside { display: flex; align-items: center; gap: 12px; }
+.cms-title__aside { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .cms-section { display: flex; flex-direction: column; gap: 20px; padding-top: 24px; padding-bottom: 24px; }
 .cms-section + .cms-section { border-top: 1px solid var(--cms-line); }
 .cms-section__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .cms-section__title { font-size: 15px; font-weight: 700; line-height: 1.3; }
 .cms-section__aside { display: flex; align-items: center; gap: 12px; }
-.cms-footnote { padding-bottom: 20px; font-size: 12px; color: var(--g4); }
 
 .cms-field { display: flex; flex-direction: column; gap: 8px; }
 .cms-field__head { display: flex; justify-content: space-between; align-items: baseline; }
@@ -179,7 +183,7 @@
 .cms-input, .cms-select {
   height: 40px;
   padding: 0 12px;
-  border: 1px solid var(--g3);
+  border: 1px solid var(--cms-control-line);
   border-radius: var(--cms-radius);
   background: var(--surface);
   color: var(--ink);
@@ -189,14 +193,15 @@
 textarea.cms-input { height: auto; min-height: 88px; padding: 8px 12px; line-height: 1.6; resize: vertical; }
 .cms-input:focus, .cms-select:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08); }
 .cms-input[aria-invalid="true"], .cms-select[aria-invalid="true"] { border-color: var(--deadline); }
-.cms-select--time { width: 112px; }
+/* 営業時間は OS の矢印を消し、お店の切り替えと同じ包み（.cms-selectwrap）の印にする */
+.cms-select--time { -webkit-appearance: none; appearance: none; width: 112px; padding: 0 32px 0 12px; cursor: pointer; }
 .cms-input--date { width: 160px; }
 .cms-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
 /* 定休日（いくつも選ぶ。選んだ日は紺の塗り） */
 .cms-days { display: flex; flex-wrap: wrap; gap: 4px; }
 .cms-day { width: 44px; height: 40px; border: 1px solid var(--g3); border-radius: var(--cms-radius); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; }
-.cms-day[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: #fff; font-weight: 700; }
+.cms-day[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: #fff; font-weight: 500; }
 
 /* 便利情報（2列のチェック。選んだものは紺の枠＋塗ったチェック） */
 .cms-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -250,7 +255,15 @@ textarea.cms-input { height: auto; min-height: 88px; padding: 8px 12px; line-hei
 .cms-rows { list-style: none; margin: 0; padding: 0; }
 .cms-rows > li + li { border-top: 1px solid var(--cms-line); }
 .cms-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+/* 押せる行（行全体を押すと開く）は、ホバーの面を左右に 8px はみ出させる。押せない li.cms-row には付けない */
+button.cms-row { margin: 0 -8px; width: calc(100% + 16px); padding-left: 8px; padding-right: 8px; border-radius: 6px; }
+button.cms-row:hover { background: var(--g1); }
+div.cms-row { cursor: default; }
+/* クーポン・イベントの行（ホームと一覧で同じ）：札｜題名 15px/500 の1行＋期間 13px の1行｜印 */
 .cms-row--event { min-height: 56px; padding: 8px 0; }
+.cms-row__main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.cms-row__title { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cms-row__sub { font-size: 13px; color: var(--g4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cms-row__chevron { margin-left: auto; color: var(--g4); }
 .cms-step__label { flex: 1; }
 .cms-step__circle { width: 16px; height: 16px; border: 1.5px solid var(--g3); border-radius: 50%; }
@@ -262,20 +275,18 @@ textarea.cms-input { height: auto; min-height: 88px; padding: 8px 12px; line-hei
 .cms-kpis.cms-kpis--inline { display: flex; gap: 0; border: 0; border-radius: 0; background: none; }
 .cms-kpis--inline .cms-kpi { flex: 1; padding: 0 16px; border-left: 1px solid var(--cms-line); }
 .cms-kpis--inline .cms-kpi:first-child { padding-left: 0; border-left: 0; }
+/* 数字が届く前も、届いた後と同じ高さを取っておく（読み込み中の文字は出さない） */
+.cms-kpis--inline:empty { min-height: 47px; }
 
-/* ---- クーポン・イベントの一覧 ---- */
-.cms-items { list-style: none; margin: 0; padding: 0; }
-.cms-item { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 8px 0; }
-.cms-items > .cms-item + .cms-item { border-top: 1px solid var(--cms-line); }
-.cms-item--flash { animation: cms-flash 2s ease forwards; }
-@keyframes cms-flash { from { background: var(--brand-soft); } to { background: transparent; } }
-.cms-item__main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.cms-item__title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cms-item__actions { display: flex; gap: 4px; }
+/* ---- クーポン・イベントの一覧（行は .cms-rows と同じ。掲載・保存した直後の行だけ 2 秒光らせる） ---- */
+.cms-item--flash > .cms-row { animation: cms-flash 2s ease; }
+@keyframes cms-flash { from { background: var(--g2); } to { background: transparent; } }
 
 /* ---- 来店データ ---- */
 .cms-onecol .cms-badge--muted { background: var(--surface); border: 1px solid var(--g3); color: var(--g5); }
 .cms-data { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+/* 読み込み中は空のまま高さだけ取る（「…」などの文字は出さない） */
+.cms-onecol [aria-busy="true"] { min-height: 600px; }
 .cms-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--cms-line); border-radius: var(--cms-radius); background: var(--surface); }
 .cms-kpi { display: flex; flex-direction: column; gap: 2px; padding: 16px 20px; }
 .cms-kpis:not(.cms-kpis--inline) .cms-kpi + .cms-kpi { border-left: 1px solid var(--cms-line); }
@@ -291,10 +302,12 @@ textarea.cms-input { height: auto; min-height: 88px; padding: 8px 12px; line-hei
 .cms-cols { display: flex; align-items: stretch; gap: 8px; height: 200px; margin-bottom: 22px; padding-top: 20px; border-bottom: 1px solid var(--g3); }
 .cms-cols--short { height: 150px; }
 .cms-col { flex: 1; min-width: 0; display: flex; justify-content: center; position: relative; }
-.cms-col__value { font-size: 12px; color: var(--g5); }
+.cms-col__value { font-size: 12px; line-height: 16px; color: var(--g5); }
 .cms-col__value--muted { color: var(--g4); }
-.cms-col__track { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; width: 100%; height: 100%; }
-.cms-col__bar { display: block; width: min(28px, 70%); border-radius: 3px 3px 0 0; background: var(--g3); }
+/* 棒の高さの％は track（数字を含まない）に対して付ける。いちばん高い棒が track の 100%、その上の 20px（.cms-cols の padding-top）に数字が入る */
+.cms-col__track { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 100%; height: 100%; }
+.cms-col__bar { position: relative; display: block; width: min(28px, 70%); border-radius: 3px 3px 0 0; background: var(--g3); }
+.cms-col__bar > .cms-col__value { position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%); white-space: nowrap; }
 /* 強調する棒（いちばん多い・直近）は紺墨。朱は主ボタンとタブの下線だけ */
 .cms-col__bar--top, .cms-col__bar--latest { background: var(--ink); }
 .cms-col__label { position: absolute; bottom: -22px; font-size: 12px; color: var(--g5); white-space: nowrap; }
@@ -314,24 +327,33 @@ textarea.cms-input { height: auto; min-height: 88px; padding: 8px 12px; line-hei
   .cms-only-narrow { display: inline-flex !important; }
   .cms-demo__menu .cms-demo__item.cms-only-narrow { display: flex !important; }
   .cms-skip { min-height: 44px; }
-  .cms-topbar { flex-wrap: wrap; height: auto; gap: 0; padding: 0; position: static; }
+  /* 下へ動かすと上の段（デモ＋お店の切り替え 52px）だけが画面の外へ出て、タブの段は上に残る */
+  .cms-topbar { flex-wrap: wrap; height: auto; gap: 0; padding: 0; position: sticky; top: -52px; }
   .cms-topbar__brand { order: 1; height: 52px; padding-left: 12px; }
   .cms-topbar__logo { display: none; }
   .cms-topbar__tools { order: 2; flex: 1; gap: 8px; height: 52px; padding-right: 16px; margin-left: 4px; }
   .cms-topbar__app { display: none; }
   .cms-demo { height: 44px; }
   .cms-demo__item { height: 44px; }
-  .cms-selectwrap { flex: 1; min-width: 0; }
+  .cms-topbar .cms-selectwrap { flex: 1; min-width: 0; }
   .cms-topbar .cms-topbar__shop { width: 100%; min-width: 0; max-width: none; height: 44px; font-size: 16px; }
   .cms-tab__long { display: none; }
   .cms-tab__short { display: inline; }
-  .cms-tabs { order: 3; position: sticky; top: 0; width: 100%; height: 44px; gap: 0; border-top: 1px solid var(--cms-line); background: var(--surface); }
+  .cms-tabs { order: 3; width: 100%; height: 45px; gap: 0; border-top: 1px solid var(--cms-line); background: var(--surface); }
   .cms-tab { flex: 1; justify-content: center; padding: 0; font-size: 13px; }
+  /* 地を白にして、保存のバーの下や短いページの下に灰色の帯を出さない */
+  .cms-app { background: var(--surface); }
   .cms-layout, .cms-onecol { display: block; padding: 0 0 24px; }
-  .cms-layout__preview { position: fixed; inset: 56px 0 0 0; z-index: 40; display: none; padding: 0 16px 24px; overflow-y: auto; border-radius: 16px 16px 0 0; background: var(--surface); box-shadow: var(--shadow-3); }
+  .cms-layout { padding-bottom: 0; }
+  /* 右の列は画面の残り（上部バー 98px を除く）を埋め、保存のバーを画面の下端にそろえる（短いページでも） */
+  .cms-layout__form { display: flex; flex-direction: column; min-height: calc(100vh - 98px); min-height: calc(100dvh - 98px); }
+  .cms-layout__form > .cms-panel { display: flex; flex: 1; flex-direction: column; }
+  .cms-panel > .cms-actionbar { margin-top: auto; }
+  /* 見え方は全画面のシート（dialog）。見出しの行「見え方 ×」は上に貼りつける */
+  .cms-layout__preview { position: fixed; inset: 0; z-index: 45; display: none; padding: 0 16px 24px; overflow-y: auto; overscroll-behavior: contain; border-radius: 0; background: var(--surface); box-shadow: none; }
   .cms-app--preview-open .cms-layout__preview { display: block; }
   .cms-preview-col { position: static; }
-  .cms-preview-col__sheethead { display: flex; align-items: center; justify-content: space-between; align-self: stretch; height: 48px; font-weight: 700; }
+  .cms-preview-col__sheethead { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; align-self: stretch; height: 56px; margin: 0 -16px; padding: 0 4px 0 16px; background: var(--surface); border-bottom: 1px solid var(--cms-line); font-size: 15px; font-weight: 700; }
   .cms-preview-col__head { padding: 0; }
   .cms-preview-col__head--plain { display: none; }
   .cms-preview-col__label { display: none; }
@@ -359,6 +381,10 @@ textarea.cms-input { height: auto; min-height: 88px; padding: 8px 12px; line-hei
   .cms-keypoint .cms-btn { width: auto; }
   .cms-charts { grid-template-columns: minmax(0, 1fr); }
   .cms-kpis--inline .cms-kpi { padding: 0 8px; }
+}
+@media (max-width: 959px) {
+  /* シートを開いている間は後ろのページを動かさない */
+  html.cms-scroll-lock { overflow: hidden; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cms-app * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }

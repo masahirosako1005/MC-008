@@ -154,7 +154,7 @@ function repeatEl(tag: 'i' | 'span', n: number, className?: string): HTMLElement
 }
 
 /**
- * スプラッシュと同じ1枚（コーラルの地・回る光・きらめき・ロゴ・地名・アプリ名・ひとこと・NOW LOADING のゲージ）を作る。index.html と同じ構造。
+ * スプラッシュと同じ1枚（青い地・回る光・きらめき・ロゴ・地名・アプリ名・ひとこと・NOW LOADING のゲージ）を作る。index.html と同じ構造。
  * @returns ステージとロゴ
  */
 function buildStage(): { readonly stage: HTMLElement; readonly logo: SVGSVGElement } {
@@ -167,7 +167,7 @@ function buildStage(): { readonly stage: HTMLElement; readonly logo: SVGSVGEleme
     emblem,
     h('p', { class: 'splash__place', text: '南森町' }),
     h('p', { class: 'splash__name' }, [...APP_NAME].map((c) => h('span', { text: c }))),
-    h('p', { class: 'splash__tagline', text: '街に通うほど、自分だけの街が育つ。' }),
+    h('p', { class: 'splash__tagline', text: 'この街が、クエストになる。' }),
     h('div', { class: 'splash__gauge' }, [
       h('span', { class: 'splash__gauge-label', text: 'NOW LOADING' }),
       h('span', { class: 'splash__gauge-pct' }),
@@ -231,7 +231,7 @@ function buildCard(model: LaunchModel): HTMLElement {
   const log = logger.fn('buildCard', { isFirst: model.isFirst, chips: model.chips.length, hasReason: model.reason !== undefined });
   const top = h('div', { class: 'launch__card-top' }, [
     h('span', { class: 'launch__eyebrow', text: model.eyebrow }),
-    model.lordCount > 0 ? h('span', { class: 'launch__lord', attrs: { 'aria-label': `地区の主 ${model.lordCount}` } }, [createIcon('crown'), h('span', { text: `×${model.lordCount}` })]) : undefined,
+    model.lordCount > 0 ? h('span', { class: 'launch__lord', attrs: { 'aria-label': `地区の領主 ${model.lordCount}` } }, [createIcon('crown'), h('span', { text: `×${model.lordCount}` })]) : undefined,
   ]);
   const chips = model.chips.length === 0 ? undefined : h('ul', { class: 'launch__chips' }, model.chips.map(buildChip));
   const reason = model.reason === undefined ? undefined : h('div', { class: 'launch__reason', dataset: { kind: model.reason.kind } }, [

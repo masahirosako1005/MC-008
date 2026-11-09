@@ -42,9 +42,9 @@ const FADING: FadeState = { kind: 'fading', daysSinceVisit: 40, progress: 1 / 6,
 const SOON: FadeState = { kind: 'soon', daysSinceVisit: 25, daysUntilFade: 5, fadeStartDate: START };
 
 describe('nextGoalText（地区カードの「次の目標」）の優先順', () => {
-  it('1. 主を奪われ中なら、色あせ中・カードの目標があっても「取り返しまで」を出す', () => {
+  it('1. 主を奪われ中なら、色あせ中・カードの目標があっても「奪還まで」を出す', () => {
     const text = nextGoalText({ status: status({ fade: FADING }), standing: LOST, nextCard: { rank: 'gold', remainingVisits: 1 } });
-    expect(text).toBe('取り返しまで：あと3回（直近30日）');
+    expect(text).toBe('奪還まで：あと3回（直近30日）');
   });
 
   it('2. 色あせ中なら「再訪で復活＋おかえりボーナス」（自分が主でも）', () => {
@@ -55,9 +55,9 @@ describe('nextGoalText（地区カードの「次の目標」）の優先順', (
     expect(nextGoalText({ status: status({ fade: SOON }), standing: standing(), nextCard: { rank: 'silver', remainingVisits: 1 } })).toBe('あと5日で色あせ');
   });
 
-  it('4. 未訪問なら「まず1か所を訪問しよう」', () => {
+  it('4. 未訪問なら「まずクエストを1つ達成しよう」', () => {
     const never = status({ visitCount: 0, distinctSpots: 0, score: 0, level: 0, buildings: 0, fade: { kind: 'never' }, nextGoal: { nextLevel: 1, remainingScore: 1 } });
-    expect(nextGoalText({ status: never, standing: standing({ isMe: false, lordName: undefined }), nextCard: { rank: 'silver', remainingVisits: 3 } })).toBe('まず1か所を訪問しよう');
+    expect(nextGoalText({ status: never, standing: standing({ isMe: false, lordName: undefined }), nextCard: { rank: 'silver', remainingVisits: 3 } })).toBe('まずクエストを1つ達成しよう');
   });
 
   it('5. 次のカードがあれば「あと{k}回で{銀|金}カード」', () => {
@@ -124,10 +124,10 @@ describe('districtViewsOf → toDistrictCardDto / toDistrictMapDto', () => {
 
     const yunosato = cards.get(testDistrictId('d_yunosato'));
     expect(yunosato).toMatchObject({ lordName: '花見は毎日派', isLordMe: false, lordLost: true });
-    expect(yunosato?.nextGoalText).toMatch(/^取り返しまで：あと\d+回（直近30日）$/);
+    expect(yunosato?.nextGoalText).toMatch(/^奪還まで：あと\d+回（直近30日）$/);
 
     const satoyama = cards.get(testDistrictId('d_satoyama'));
-    expect(satoyama).toMatchObject({ visitCount: 0, level: 0, isLordMe: false, lordLost: false, nextGoalText: 'まず1か所を訪問しよう' });
+    expect(satoyama).toMatchObject({ visitCount: 0, level: 0, isLordMe: false, lordLost: false, nextGoalText: 'まずクエストを1つ達成しよう' });
     expect(satoyama?.lordName).toBeUndefined();
     expect(satoyama?.fade).toEqual({ kind: 'never' });
   });

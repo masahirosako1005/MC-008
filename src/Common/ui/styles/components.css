@@ -29,7 +29,7 @@
   transition: background var(--motion-fast), box-shadow var(--motion-fast), opacity var(--motion-fast), transform var(--motion-fast);
 }
 .btn:active:not(:disabled) { background: var(--g1); transform: scale(0.98); }
-.btn--primary { background: var(--brand-ink); color: var(--on-accent); box-shadow: 0 1px 2px rgba(214, 61, 31, 0.24); }
+.btn--primary { background: var(--brand-ink); color: var(--on-accent); box-shadow: 0 1px 2px color-mix(in srgb, var(--brand-ink) 24%, transparent); }
 .btn--primary:active:not(:disabled) { background: color-mix(in srgb, var(--brand-ink) 86%, #000000); }
 .btn--ghost { box-shadow: none; background: transparent; color: var(--brand-ink); }
 .btn--ghost:active:not(:disabled) { background: var(--brand-soft); }
@@ -96,11 +96,11 @@
 .tag--district[data-district-id] { background: var(--district-soft); color: var(--district-ink); }
 .tag--accent { background: var(--brand-soft); color: var(--brand-ink); }
 .tag--level { background: var(--district-ink, var(--ink)); color: #ffffff; font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
-.tag--lord { background: #fef3c7; color: var(--gold-ink); font-weight: var(--fw-bold); }
+.tag--lord { background: color-mix(in srgb, var(--metal-gold-light) 50%, #fff); color: var(--gold-ink); font-weight: var(--fw-bold); }
 .tag--fade { background: var(--sepia-soft); color: var(--sepia-ink); box-shadow: inset 0 0 0 1px var(--g2); }
 .tag--fade[data-fade="fading"] { box-shadow: none; outline: 1px dashed var(--sepia); outline-offset: -1px; }
-.tag--gold { background: #fef3c7; color: var(--gold-ink); }
-.tag--deadline { background: var(--deadline-soft); color: #be123c; }
+.tag--gold { background: color-mix(in srgb, var(--metal-gold-light) 50%, #fff); color: var(--gold-ink); }
+.tag--deadline { background: var(--deadline-soft); color: var(--danger-ink); }
 
 /* ---- カード共通（白い面＋角丸 16px＋小さな影。区切り線ではなく余白で区切る） ---- */
 .card {
@@ -135,11 +135,11 @@ button.card:active,
 .card-chevron .icon { width: 1.125rem; height: 1.125rem; stroke-width: 2.2; color: var(--g4); }
 
 /* ---- 再訪理由（線アイコン＋短いラベル。種別ごとの色は台座とラベルだけ） ---- */
-:is(.reason-chip, .reason-icon, .reason-card)[data-kind="deadline"] { --reason: var(--deadline); --reason-ink: #be123c; --reason-soft: var(--deadline-soft); }
+:is(.reason-chip, .reason-icon, .reason-card)[data-kind="deadline"] { --reason: var(--deadline); --reason-ink: var(--danger-ink); --reason-soft: var(--deadline-soft); }
 :is(.reason-chip, .reason-icon, .reason-card)[data-kind="reclaim"] { --reason: #ffffff; --reason-ink: var(--ink); --reason-soft: var(--ink); }
 :is(.reason-chip, .reason-icon, .reason-card)[data-kind="fade"] { --reason: var(--sepia-ink); --reason-ink: var(--sepia-ink); --reason-soft: var(--sepia-soft); }
 :is(.reason-chip, .reason-icon, .reason-card)[data-kind="unvisited"] { --reason: var(--brand); --reason-ink: var(--brand-ink); --reason-soft: var(--brand-soft); }
-:is(.reason-chip, .reason-icon, .reason-card)[data-kind="new"] { --reason: #d97706; --reason-ink: #b45309; --reason-soft: #fef3c7; }
+:is(.reason-chip, .reason-icon, .reason-card)[data-kind="new"] { --reason: color-mix(in srgb, var(--warning) 50%, var(--warning-ink)); --reason-ink: var(--warning-ink); --reason-soft: var(--warning-soft); }
 
 /* チップ（アイコン＋ラベル） */
 .reason-chip {
@@ -227,7 +227,7 @@ button.card:active,
 .district-card__name { font-size: var(--fs-m); font-weight: var(--fw-bold); line-height: 1.4; margin-right: 0.125rem; }
 .district-card__sub { font-size: var(--fs-xs); color: var(--g4); line-height: 1.5; }
 .district-card__action { flex: none; display: flex; align-items: center; padding-right: 0.75rem; }
-.district-card[data-fade="fading"] { background: #fafbfc; }
+.district-card[data-fade="fading"] { background: color-mix(in srgb, var(--sepia-soft) 50%, var(--surface)); }
 .district-card[data-fade="fading"] .district-card__name { color: var(--g5); }
 .district-card[data-fade="fading"] .tag--level { filter: saturate(0.35); }
 
@@ -372,8 +372,8 @@ button.card:active,
 .toast--error { box-shadow: var(--shadow-3), inset 0 0 0 1.5px var(--deadline); }
 .toast__icon { display: inline-flex; }
 .toast__icon .icon { width: 1.125rem; height: 1.125rem; stroke-width: 2.1; }
-.toast--success .toast__icon { color: #6ee7b7; }
-.toast--error .toast__icon { color: #fda4af; }
+.toast--success .toast__icon { color: color-mix(in srgb, var(--success) 60%, #fff); }
+.toast--error .toast__icon { color: color-mix(in srgb, var(--danger) 45%, #fff); }
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(-0.5rem) scale(0.98); }
   to { opacity: 1; transform: none; }
@@ -464,6 +464,6 @@ button.card.spot-card, div.card.spot-card { padding: 0.5rem 0.75rem; gap: 0.75re
 
 /* ---- 育成リング（このアプリのシグネチャー。3分割の弧＋中央の数字。満ちた弧は地区色） ---- */
 .growth-ring { width: 1.75rem; height: 1.75rem; flex: none; vertical-align: middle; overflow: visible; }
-.growth-ring__arc { fill: none; stroke: #e5e7eb; stroke-width: 3.2; stroke-linecap: round; }
+.growth-ring__arc { fill: none; stroke: var(--g2); stroke-width: 3.2; stroke-linecap: round; }
 .growth-ring__arc--on { stroke: var(--district, currentColor); }
 .growth-ring__num { font-family: var(--font); font-size: 10px; font-weight: 700; text-anchor: middle; dominant-baseline: central; fill: var(--ink); }

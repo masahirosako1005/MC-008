@@ -81,9 +81,9 @@ export interface LaunchInput {
 /** 再訪理由の種別の名前（CLAUDE.md 4.5 の表と同じ） */
 export const REASON_KIND_LABELS: Readonly<Record<RevisitReasonKindDto, string>> = {
   deadline: '期限',
-  reclaim: '取り返し',
+  reclaim: '奪還',
   fade: '色あせ',
-  unvisited: '未訪問',
+  unvisited: '未達成',
   new: '新着',
 };
 
@@ -94,7 +94,7 @@ const FALLBACK_COLORS: readonly string[] = ['#6366f1', '#f59e0b', '#10b981', '#e
 export const MAX_LAUNCH_DISTRICTS = 5;
 
 /** ニックネームが無いときの呼び名 */
-const DEFAULT_NICKNAME = '旅人';
+const DEFAULT_NICKNAME = '冒険者';
 
 /**
  * 'H:MM' の時刻表示から時（0〜23）を取り出す。
@@ -166,7 +166,7 @@ function chipsOf(rank: RankStatusDto): readonly LaunchChip[] {
   return log.exit([
     { icon: 'rank', label: 'ランク', value: rank.rank.name },
     { icon: 'footprints', label: '通った回数', value: `${rank.totalVisits}回`, count: rank.totalVisits, unit: '回' },
-    { icon: 'coin', label: 'ポイント', value: `${rank.points}pt`, count: rank.points, unit: 'pt' },
+    { icon: 'coin', label: 'EXP', value: `${rank.points}EXP`, count: rank.points, unit: 'EXP' },
   ]);
 }
 
@@ -189,7 +189,7 @@ export function buildLaunchModel(input: LaunchInput): LaunchModel {
     chips: isFirst || rank === undefined ? [] : chipsOf(rank),
     reason: top === undefined ? undefined : { kind: top.kind, label: REASON_KIND_LABELS[top.kind], title: top.title },
     lordCount: districts.filter((d) => d.isLordMe).length,
-    cta: isFirst ? 'はじめる' : '出かける',
+    cta: isFirst ? '冒険に出る' : 'クエストへ',
     districts,
   });
 }

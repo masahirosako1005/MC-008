@@ -7,8 +7,8 @@ import { createLogger } from '@/Common/logging/logger';
 
 const logger = createLogger('presentation/cms/cmsInsights');
 
-/** 時間帯の名前から、要点の行に出す範囲への表（括弧書きをなくす。表に無い名前はそのまま出す） */
-const BAND_RANGES: Readonly<Record<string, string>> = {
+/** 時間帯の名前から、要点の行とグラフの軸に出す範囲への表（括弧書きをなくす。表に無い名前はそのまま出す） */
+export const BAND_RANGES: Readonly<Record<string, string>> = {
   '朝（〜11時）': '11時まで', '昼（11〜14時）': '11〜14時', '午後（14〜17時）': '14〜17時', '夕方（17〜20時）': '17〜20時', '夜（20時〜）': '20時以降',
 };
 

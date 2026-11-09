@@ -1,9 +1,8 @@
 /**
- * @file 店舗CMS（cms.html）の DI コンテナ（infrastructure/di 層。docs/09 §7.2 フェーズ1）
- * デモビルドだけで使う（MUST-8, SEC-02）。demo 以外では DEMO_DISABLED を返し、何も作らない。
- * 利用者アプリと同じオリジン・同じ保存先（nnishi.demo.*）を使う。
- * - 時計は DemoClock（利用者アプリのデモ日付進行と同じ「今日」になる）
- * - スポットはマスタそのもの（上書き前）。登録内容は LocalStorageCmsOverlayRepository から読む
+ * @file 店舗CMS（cms.html）の DI コンテナ（infrastructure/di 層。docs/09 §7.2・§7.3）
+ * - 'local'（フェーズ1）：デモビルドだけ（MUST-8, SEC-02）。ユースケースをこのブラウザで動かし、利用者アプリと同じ保存先（nnishi.demo.*）に保存する。
+ *   時計は DemoClock（利用者アプリのデモ日付進行と同じ「今日」になる）。demo 以外では DEMO_DISABLED を返し、何も作らない
+ * - 'server'：連携サーバーの API を呼ぶ。本番の版でも使え、ログイン・アカウント（auth）がつく。デモの版では DemoClock のずらし日数をヘッダーで伝え、デモのログインも使える
  */
 import { CMS_BACKEND } from '@/Common/constants/env';
 import type { CmsBackend } from '@/Common/constants/env';
@@ -30,7 +29,7 @@ const DEMO_PREFIX = 'nnishi.demo.';
 
 /** CMS コンテナの設定 */
 export interface CmsContainerOptions {
-  /** demo のときだけ作る */
+  /** demo: デモの日付・デモのログインあり／production: 連携サーバーにつなぐときだけ使える */
   readonly mode: 'demo' | 'production';
   /** 保存先（省略時は localStorage。テストでメモリを渡す） */
   readonly store?: KeyValueStore;
@@ -46,20 +45,23 @@ export interface CmsContainerOptions {
 
 /**
  * 店舗CMS のサービス一覧を作る。
- * - 'local'：ユースケースをこのブラウザで動かし、localStorage に保存する（フェーズ1）
- * - 'server'：連携サーバーのユースケースを HTTP で呼ぶ。デモの日付のずらし日数（DemoClock）はヘッダーで伝える
  * @param opts 設定
- * @returns 成功: CmsServices。失敗: DEMO_DISABLED（デモ以外）/ マスタの検証エラー
+ * @returns 成功: CmsServices（'server' なら auth つき）。失敗: DEMO_DISABLED（'local' をデモ以外で）/ マスタの検証エラー
  */
 export async function createCmsContainer(opts: CmsContainerOptions): Promise<Result<CmsServices>> {
-  const log = logger.fn('createCmsContainer', { mode: opts.mode, backend: opts.backend ?? CMS_BACKEND });
-  if (opts.mode !== 'demo') {
-    log.warn('デモ以外で店舗CMS を開こうとしました');
+  const backend = opts.backend ?? CMS_BACKEND;
+  const log = logger.fn('createCmsContainer', { mode: opts.mode, backend });
+  const demo = opts.mode === 'demo';
+  if (backend === 'server') {
+    const clock = demo ? new DemoClock({ store: opts.store ?? new LocalStorageKeyValueStore(), nowMs: opts.nowMs }) : undefined;
+    return log.exit(ok(createHttpCmsServices({ ...opts.api, ...(clock === undefined ? {} : { demoOffsetDays: () => clock.offsetDays() }), auth: { demo } })));
+  }
+  if (!demo) {
+    log.warn('デモ以外で、ブラウザだけの店舗CMS を開こうとしました');
     return log.fail(fail(AppError.of('DEMO_DISABLED', '店舗CMS はデモ版だけで使えます')));
   }
   const store = opts.store ?? new LocalStorageKeyValueStore();
   const clock = new DemoClock({ store, nowMs: opts.nowMs });
-  if ((opts.backend ?? CMS_BACKEND) === 'server') return log.exit(ok(createHttpCmsServices({ ...opts.api, demoOffsetDays: () => clock.offsetDays() })));
   const master = await MasterDataLoader.load(opts.fetchText ?? browserFetchText);
   if (!master.ok) return log.fail(master);
   const cmsOverlay = new LocalStorageCmsOverlayRepository({ store, prefix: DEMO_PREFIX });

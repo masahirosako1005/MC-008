@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { ZukanDistrictDto, ZukanTileDto } from '@/application/dto/Dto';
+import type { ZukanTileDto } from '@/application/dto/Dto';
 import {
   familiarityStars,
   filterTiles,
   groupTiles,
-  levelDescription,
   seasonMarks,
-  shortLastVisit,
   tileAriaLabel,
   tileCaption,
   tileName,
@@ -20,14 +18,6 @@ const visited: ZukanTileDto = {
 const regular: ZukanTileDto = { ...visited, visitCount: 6, familiarity: 3, familiarityLabel: '常連', nextFamiliarityText: undefined };
 const discovered: ZukanTileDto = { id: 's_jo02', name: '丸岡和菓子店', kind: 'shop', districtId: 'd_joka', category: '和菓子', status: 'discovered', visitCount: 0 };
 const unknown: ZukanTileDto = { id: 's_mi01', name: '港の食堂', kind: 'shop', districtId: 'd_minato', category: '食堂', status: 'unknown', visitCount: 0 };
-
-/** 見出しのテスト用地区 */
-function district(over: Partial<ZukanDistrictDto> = {}): ZukanDistrictDto {
-  return {
-    id: 'd_joka', name: '城下地区', theme: '歴史', color: '#7a5ea8', level: 2, visitCount: 12,
-    lastVisitLabel: '2026/11/02（月）', fade: { kind: 'fresh' }, nextGoalText: 'あと1回で銀カード', ...over,
-  };
-}
 
 describe('zukanModel', () => {
   it('タイルの名前・補足は状態ごとに変わり、未発見も名前を出す（名前が無いときだけ「？？？」）', () => {
@@ -68,12 +58,6 @@ describe('zukanModel', () => {
   it('読み上げ名は色に頼らず、なじみ度・回数・季節を言葉で伝える', () => {
     expect(tileAriaLabel(visited)).toBe('N西城跡（名所）なじみ、通った 3回、訪れた季節 秋・冬、あと2回で常連');
     expect(tileAriaLabel(discovered)).toBe('丸岡和菓子店（店舗）発見済み、まだ行っていない');
-  });
-
-  it('見出しの日付は年を省き、未訪問は「—」。成長段階の説明を返す', () => {
-    expect(shortLastVisit(district())).toBe('11/02（月）');
-    expect(shortLastVisit(district({ lastVisitLabel: undefined }))).toBe('—');
-    expect(levelDescription(2)).toBe('建物が増える');
   });
 
   it('タイルは名所→店舗の区分に分け、空の区分は出さない', () => {

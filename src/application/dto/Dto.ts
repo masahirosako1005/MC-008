@@ -384,6 +384,24 @@ export interface AvatarPartDto {
   readonly unit: string;
   /** 「この地区に通う」条件なら地区ID（地図で向かう） */
   readonly districtId?: string;
+  /** ご当地の部品なら地区の短い名前（札に出す） */
+  readonly region?: string;
+  /** 季節の部品なら季節（'spring' など） */
+  readonly season?: string;
+}
+
+/** コレクション（ご当地・季節のセット）1つ */
+export interface AvatarSetDto {
+  readonly id: string;
+  readonly name: string;
+  readonly kind: 'region' | 'season';
+  /** 札に出す文字（地区の短い名前・季節の名前） */
+  readonly label: string;
+  readonly districtId?: string;
+  readonly season?: string;
+  readonly partIds: readonly string[];
+  /** 持っている部品の数 */
+  readonly owned: number;
 }
 
 /** マイコーデ1枠 */
@@ -405,6 +423,10 @@ export interface AvatarClosetDto {
   readonly parts: readonly AvatarPartDto[];
   /** 見た部品をまだ保存していない（はじめて開いた）。いま持っている部品を「見た」として保存し、以降に手に入れたものだけを NEW にする */
   readonly needsSeenBaseline: boolean;
+  /** いまの季節（'spring' など。デモの時計の今日から） */
+  readonly season: string;
+  /** コレクション（ご当地・季節のセット） */
+  readonly sets: readonly AvatarSetDto[];
 }
 
 /** 着せ替えの保存の入力（どれも省略できる） */
@@ -442,24 +464,6 @@ export interface ZukanDistrictTabDto {
   readonly color: string;
   /** 色あせ状態の種類（選択肢に ◌ を出す） */
   readonly fadeKind: FadeKindDto;
-}
-
-/** 図鑑の地区の見出し（地区で絞り込んだときに出す。通った回数と最近いつ） */
-export interface ZukanDistrictDto {
-  readonly id: string;
-  readonly name: string;
-  readonly theme: string;
-  /** 地区の色 '#rrggbb' */
-  readonly color: string;
-  /** 成長段階 0..3（下がらない） */
-  readonly level: number;
-  /** 地区に通った回数 */
-  readonly visitCount: number;
-  /** 最終訪問日（表示用 '2026/11/02（月）'）。未訪問なら undefined */
-  readonly lastVisitLabel?: string;
-  readonly fade: FadeDto;
-  /** 「次の目標」文言（地区カードと同じ） */
-  readonly nextGoalText: string;
 }
 
 /** 季節（訪問した季節の印に使う） */
@@ -513,8 +517,6 @@ export type RarityDto = 1 | 2 | 3 | 4;
 export interface ZukanDto {
   /** 地区の一覧（表示順） */
   readonly districts: readonly ZukanDistrictTabDto[];
-  /** 地区ごとの見出し（表示順。地区で絞り込んだときに出す） */
-  readonly headers: readonly ZukanDistrictDto[];
   /** 入力で指定された地区（最初の絞り込み）。省略時は undefined＝すべての地区 */
   readonly selectedDistrictId?: string;
   /** すべての地区のタイル（名所→店舗、同種は訪問済み→発見済み→未発見、同じ状態は地区の表示順→ID 順） */

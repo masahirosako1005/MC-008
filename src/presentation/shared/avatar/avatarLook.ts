@@ -13,29 +13,52 @@ export type HairStyle = 'short' | 'bob' | 'long' | 'ponytail' | 'bun' | 'twintai
 /** 目 */
 export type EyeStyle = 'smile' | 'round' | 'calm' | 'sharp' | 'sleepy' | 'wink' | 'sparkle' | 'star';
 /** トップス */
-export type TopStyle = 'tee' | 'hoodie' | 'shirt' | 'border' | 'knit' | 'cardigan' | 'sailor' | 'happi' | 'yukata' | 'jacket' | 'stadium' | 'apron' | 'kimono';
+export type TopStyle = 'tee' | 'hoodie' | 'shirt' | 'border' | 'knit' | 'cardigan' | 'sailor' | 'happi' | 'yukata' | 'jacket' | 'stadium' | 'apron' | 'kimono'
+  | 'umeKimono' | 'edoKimono' | 'retroOnepiece' | 'haoriSakura' | 'tenjinYukata' | 'momijiPoncho' | 'downcoat';
 /** ボトムス */
 export type BottomStyle = 'denim' | 'shorts' | 'skirt' | 'longskirt' | 'cargo' | 'check' | 'hakama' | 'overall';
 /** くつ */
 export type ShoeStyle = 'sneaker' | 'loafer' | 'boots' | 'sandal' | 'geta' | 'rain' | 'highcut';
 /** 帽子（beret・straw・crown は旧来の値） */
-export type AvatarHat = 'beret' | 'straw' | 'crown' | 'cap' | 'knit' | 'hachimaki' | 'flower' | 'catEars' | 'bucket' | 'silk' | 'halo' | 'tiara';
+export type AvatarHat = 'beret' | 'straw' | 'crown' | 'cap' | 'knit' | 'hachimaki' | 'flower' | 'catEars' | 'bucket' | 'silk' | 'halo' | 'tiara'
+  | 'umeKanzashi' | 'sugegasa' | 'sakuraKanzashi' | 'kitsuneMask' | 'momijiBeret';
 /** アクセサリー */
-export type AccessoryStyle = 'glasses' | 'sunglasses' | 'scarf' | 'headphones' | 'ribbon' | 'muffler' | 'bandaid' | 'pochette' | 'medal' | 'wings' | 'heartglasses';
+export type AccessoryStyle = 'glasses' | 'sunglasses' | 'scarf' | 'headphones' | 'ribbon' | 'muffler' | 'bandaid' | 'pochette' | 'medal' | 'wings' | 'heartglasses' | 'earmuffs';
 /** 手に持つもの（camera・chochin・nobori・matsu は旧来の値） */
 export type AvatarHeld =
   | 'camera' | 'chochin' | 'nobori' | 'matsu' | 'map' | 'guidebook' | 'softcream' | 'takoyaki'
-  | 'balloon' | 'umbrella' | 'bouquet' | 'fishing' | 'uchiwa' | 'croquette' | 'sparkler' | 'wand';
+  | 'balloon' | 'umbrella' | 'bouquet' | 'fishing' | 'uchiwa' | 'croquette' | 'sparkler' | 'wand'
+  | 'omamori' | 'kushikatsu' | 'kamifusen' | 'filmcamera' | 'dango' | 'kingyo' | 'yakiimo' | 'yukidaruma';
 /** 相棒 */
-export type PetStyle = 'cat' | 'shiba' | 'rabbit' | 'hiyoko' | 'tanuki' | 'penguin' | 'pigeon' | 'dragon' | 'fox' | 'unicorn';
+export type PetStyle = 'cat' | 'shiba' | 'rabbit' | 'hiyoko' | 'tanuki' | 'penguin' | 'pigeon' | 'dragon' | 'fox' | 'unicorn' | 'uso' | 'mejiro' | 'tsukimiUsagi';
 /** ステージの背景 */
-export type BackgroundStyle = 'plain' | 'room' | 'minamimori' | 'tenma' | 'tenroku' | 'ogimachi' | 'okawa' | 'sunset' | 'night' | 'starry' | 'dreamy' | 'idol';
+export type BackgroundStyle = 'plain' | 'room' | 'minamimori' | 'tenma' | 'tenroku' | 'ogimachi' | 'okawa' | 'sunset' | 'night' | 'starry' | 'dreamy' | 'idol'
+  | 'aquarium' | 'yozakura' | 'snowlight' | 'candy' | 'beach' | 'castle' | 'cafe' | 'galaxy'
+  | 'edo' | 'nakazaki' | 'tenjinMatsuri' | 'momiji';
 /** ステージに置くもの */
 export type ObjectStyle =
   | 'bench' | 'plant' | 'bicycle' | 'vending' | 'lamp' | 'signboard' | 'stall' | 'torii' | 'sakura'
   | 'lantern' | 'postbox' | 'maneki' | 'tanuki' | 'fountain' | 'gacha' | 'fireworks' | 'trophy' | 'heartballoon' | 'dresser';
-/** ポーズ */
-export type AvatarPose = 'stand' | 'wave' | 'jump' | 'peace';
+/**
+ * ポーズ。stand〜peace は基本のポーズ、それ以外はエモートの動き（表情も変わる）。
+ * love＝両手をほおに当ててうっとり／dance＝左右に揺れて踊る／laugh＝口を開けて笑いながら弾む／surprise＝両手を上げて目を丸くする
+ * tilt＝首をかしげる／sleepy＝目を閉じてうとうと／cry＝目をうるませて手で目元をおさえる／angry＝眉をつり上げ両こぶしを握る
+ * cheer＝両手を上げて応援しながら跳ねる／spin＝くるりと回る（左右反転を繰り返す）／bow＝おじぎする
+ */
+export type AvatarPose =
+  | 'stand' | 'wave' | 'jump' | 'peace'
+  | 'love' | 'dance' | 'laugh' | 'surprise' | 'tilt' | 'sleepy' | 'cry' | 'angry' | 'cheer' | 'spin' | 'bow';
+
+/** エモート（動き＋吹き出し＋粒。エモートのカテゴリで再生し、決めポーズとして身につけられる） */
+export type EmoteStyle =
+  | 'love' | 'note' | 'question' | 'laugh' | 'surprise' | 'sleepy' | 'cry' | 'angry' | 'bow'
+  | 'cheer' | 'spin' | 'star' | 'idol';
+
+/** オーラ（アバターのまわりにまとう演出） */
+export type AuraStyle = 'hearts' | 'stars' | 'sakura' | 'bubbles' | 'notes' | 'snow' | 'butterfly' | 'moon' | 'rainbow' | 'gold';
+
+/** 性別（顔立ちと体つきだけが変わる。服・髪型などの部品は性別に関係なくすべて選べる。neutral は指定しない＝これまでの姿） */
+export type BodyType = 'girl' | 'boy' | 'neutral';
 
 /** アバターの装い。旧来の4項目は必須、それ以外は省略すると既定で描く */
 export interface AvatarLook {
@@ -56,6 +79,8 @@ export interface AvatarLook {
   readonly shoes?: ShoeStyle;
   readonly accessory?: AccessoryStyle;
   readonly pet?: PetStyle;
+  /** 性別（省略時 neutral） */
+  readonly body?: BodyType;
 }
 
 /** ステージ全体の装い（アバター＋背景・置くもの・称号） */
@@ -66,6 +91,10 @@ export interface StageLook {
   readonly objects: readonly ObjectStyle[];
   /** 称号の部品ID（無ければ undefined） */
   readonly titleId?: string;
+  /** オーラ */
+  readonly aura?: AuraStyle;
+  /** 決めポーズ（ステージを押したとき・開いたときに出すエモート） */
+  readonly emote?: EmoteStyle;
 }
 
 /** 動き（ステージで使う。地図など止まった絵では省略） */
@@ -138,6 +167,7 @@ function applyPart(look: MutableLook, slot: string, style: string): void { // au
     case 'accessory': look.accessory = style as AccessoryStyle; break;
     case 'held': look.held = style as AvatarHeld; break;
     case 'pet': look.pet = style as PetStyle; break;
+    case 'body': look.body = style as BodyType; break;
     default: break;
   }
 }
@@ -153,15 +183,19 @@ export function stageLookOf(partIds: readonly string[]): StageLook {
   let background: BackgroundStyle = 'dreamy';
   const objects: ObjectStyle[] = [];
   let titleId: string | undefined;
+  let aura: AuraStyle | undefined;
+  let emote: EmoteStyle | undefined;
   for (const id of partIds) {
     const part = splitPartId(id);
     if (part === undefined) continue;
     if (part.slot === 'background') background = part.style as BackgroundStyle;
     else if (part.slot === 'object') objects.push(part.style as ObjectStyle);
     else if (part.slot === 'title') titleId = id;
+    else if (part.slot === 'aura') aura = part.style as AuraStyle;
+    else if (part.slot === 'emote') emote = part.style as EmoteStyle;
     else applyPart(look, part.slot, part.style);
   }
-  const stage: StageLook = { avatar: Object.freeze(look), background, objects: Object.freeze(objects.slice(0, 3)), titleId };
+  const stage: StageLook = { avatar: Object.freeze(look), background, objects: Object.freeze(objects.slice(0, 3)), titleId, aura, emote };
   return log.exit(Object.freeze(stage));
 }
 

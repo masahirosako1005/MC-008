@@ -31,14 +31,21 @@ export const API_RESPONSE_HEADERS: Readonly<Record<string, string>> = Object.fre
 /** 失敗コード → HTTP ステータス（ここに無いものは 422＝規則に合わない） */
 const STATUS_BY_CODE: Readonly<Record<string, number>> = Object.freeze({
   INVALID_INPUT: 400,
+  UNAUTHENTICATED: 401,
+  AUTH_FAILED: 401,
+  FORBIDDEN: 403,
+  FORBIDDEN_SHOP: 403,
   FORBIDDEN_ORIGIN: 403,
   FORBIDDEN_HOST: 403,
   NOT_FOUND: 404,
   SPOT_NOT_FOUND: 404,
+  ACCOUNT_NOT_FOUND: 404,
   METHOD_NOT_ALLOWED: 405,
   CONFLICT: 409,
+  LOGIN_ID_TAKEN: 409,
   PAYLOAD_TOO_LARGE: 413,
   UNSUPPORTED_MEDIA_TYPE: 415,
+  ACCOUNT_LOCKED: 423,
   RATE_LIMITED: 429,
   INTERNAL: 500,
   STORAGE_FAILED: 503,
@@ -176,19 +183,30 @@ export async function readJsonBody(req: IncomingMessage, limit = MAX_BODY_BYTES)
 }
 
 /**
- * Host ヘッダーが、DNS リバインディングに使えない名前か確かめる（'localhost' か IP アドレスだけを許す）。
+ * Host ヘッダーからホスト名（ポートを除いた部分）を取り出す。
+ * @param req 要求
+ * @returns 小文字のホスト名（無ければ undefined）
+ */
+export function hostNameOf(req: IncomingMessage): string | undefined { // audit-ignore: fnlog-missing 要求ごとに呼ぶ文字列の切り出し（呼び出し元が記録する）
+  const host = req.headers.host;
+  if (host === undefined) return undefined;
+  const bracketed = /^\[([0-9A-Fa-f:.]+)\](?::\d{1,5})?$/.exec(host);
+  return (bracketed?.[1] ?? host.replace(/:\d{1,5}$/, '')).toLowerCase();
+}
+
+/**
+ * Host ヘッダーが、DNS リバインディングに使えない名前か確かめる（'localhost'・IP アドレス・運用で決めたホスト名だけを許す）。
  * 攻撃者のドメイン名を 127.0.0.1 や LAN の IP に向け直すと、Origin と Host がどちらも攻撃者の名前でそろい、
  * isSameOrigin だけでは見分けられない。名前でつながる要求を断ることで防ぐ（SEC-28）。
  * @param req 要求
+ * @param allowedHosts 本番で使うホスト名（--allowed-hosts。小文字で比べる）
  * @returns 許すなら true
  */
-export function isAllowedHost(req: IncomingMessage): boolean {
-  const log = logger.fn('isAllowedHost');
-  const host = req.headers.host;
-  if (host === undefined) return log.exit(false, 'noHost');
-  const bracketed = /^\[([0-9A-Fa-f:.]+)\](?::\d{1,5})?$/.exec(host);
-  const name = bracketed?.[1] ?? host.replace(/:\d{1,5}$/, '');
-  return log.exit(name.toLowerCase() === 'localhost' || isIP(name) !== 0);
+export function isAllowedHost(req: IncomingMessage, allowedHosts: readonly string[] = []): boolean {
+  const log = logger.fn('isAllowedHost', { allowed: allowedHosts.length });
+  const name = hostNameOf(req);
+  if (name === undefined) return log.exit(false, 'noHost');
+  return log.exit(name === 'localhost' || isIP(name) !== 0 || allowedHosts.some((h) => h.toLowerCase() === name));
 }
 
 /**

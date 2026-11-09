@@ -19,7 +19,7 @@ export interface UpdateTextScaleInput {
 
 /** 書き出したデータ（画面がこのままファイルとして保存する） */
 export interface ExportDataDto {
-  /** 保存するファイル名（'kayoimachi-data-2026-11-09.json' など） */
+  /** 保存するファイル名（'machiquest-data-2026-11-09.json' など） */
   readonly filename: string;
   /** ファイルの中身（JSON 文字列） */
   readonly content: string;

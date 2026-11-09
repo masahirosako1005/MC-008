@@ -55,7 +55,7 @@ export interface World {
  * @returns TRAVELER_NOT_FOUND の失敗 Result
  */
 function travelerNotFound(): Result<never, AppError<'TRAVELER_NOT_FOUND'>> {
-  return fail(AppError.of('TRAVELER_NOT_FOUND', '旅人のデータが見つかりません。アプリを再読み込みしてください'));
+  return fail(AppError.of('TRAVELER_NOT_FOUND', '冒険者のデータが見つかりません。アプリを再読み込みしてください'));
 }
 
 /**

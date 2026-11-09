@@ -82,5 +82,5 @@ export function visitAvailabilityOf(input: VisitAvailabilityInput): VisitAvailab
   if (block !== 'outOfRange') return log.exit(Object.freeze({ canVisit: false, block, reason: BLOCK_MESSAGES[block] }));
   // 範囲外は meters があるときだけ判定される（visitBlockOf）。半径ちょうど＋1m 未満の丸め差でも「あと1m」以上を示す
   const metersToVisit = Math.max(1, roundToInt(input.meters ?? 0) - VISIT_RADIUS_M);
-  return log.exit(Object.freeze({ canVisit: false, block, reason: `あと${metersToVisit}m近づくと訪問できます`, metersToVisit }));
+  return log.exit(Object.freeze({ canVisit: false, block, reason: `あと${metersToVisit}m近づくと達成できます`, metersToVisit }));
 }

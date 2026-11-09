@@ -451,7 +451,7 @@ DTO はプリミティブと配列のみ（Instant/LocalDate は string とし�
   `GetSettingsUseCase`・`UpdateTextScaleUseCase`・`SettingsRepository`／`LocalStorageSettingsRepository`。
 - データの書き出し・削除（2026-11-09、DI-21・PRV-05・DI-22）: 設定画面の「データ」（`screens/Settings/DataPanel.ts`）。
   範囲は接頭辞 P の利用者のデータすべて（除外: 店舗CMS の `P+'cms.*'`、本番から見た `nnishi.demo.*`、`nnishi.debug`）。`DataPort`／`LocalStorageDataPort`。
-  書き出しは JSON（`format: 'kayoimachi-user-data'`, `formatVersion: 1`）。削除は確認ダイアログ（既定のフォーカスは「やめる」）→ 物理削除 → `AppRouter.restart('#/map')` で読み込み直し、起動時の EnsureTraveler が旅人を作り直す（デモは最初のデモの状態）。
+  書き出しは JSON（`format: 'kayoimachi-user-data'`（形式名は互換のため据え置き。ファイル名は machiquest-*）, `formatVersion: 1`）。削除は確認ダイアログ（既定のフォーカスは「やめる」）→ 物理削除 → `AppRouter.restart('#/map')` で読み込み直し、起動時の EnsureTraveler が旅人を作り直す（デモは最初のデモの状態）。
   `ExportDataUseCase`・`DeleteAllDataUseCase`。読み込み（インポート）は未着手。
 
 ---
@@ -520,7 +520,7 @@ DTO はプリミティブと配列のみ（Instant/LocalDate は string とし�
 ### 10.1 原則
 - 清潔・軽い・情報が読みやすい。装飾は最小限、余白と階層で見せる。テクスチャ（紙の繊維・しみ・破れた縁）・セピア・筆文字風は使わない。
 - 地図は Apple マップ／Google マップ風の淡いベースマップ。ゲーム要素（地区の色づき・建物・ピン）はその上に「重ねる情報レイヤー」として描く。
-- アクセントは **コーラル #FF5A36 の1色**（現在地・主要ボタン・選択中タブ）。地区色5色は地区の識別だけに使う。
+- アクセントは **ロイヤルブルー #1E6BFF の1色**（現在地・主要ボタン・選択中タブ。2026-11-09 ユーザー指示でコーラル #FF5A36 から変更。地図の陣地は 自分＝青・ライバル＝赤 #FF5A3D）。地区色5色は地区の識別だけに使う。
 - 色だけに頼らない（色あせ＝彩度低下＋透明度＋破線＋◌アイコン＋「色あせ」チップ。再訪理由＝アイコン＋短いラベル）。
 
 ### 10.2 トークン（CSS: src/Common/ui/styles/tokens.css、Canvas: src/Common/ui/theme/palette.ts。名前は既存を保ち値を差し替える）

@@ -18,7 +18,7 @@ import type { ZukanArtModel } from '@/presentation/screens/Zukan/ZukanCardArt';
 import { createShinyLayer } from '@/presentation/screens/Zukan/ShinyLayer';
 import { createImageBadge } from '@/presentation/screens/Spot/SpotPhotoView';
 import { spotPhotoOf } from '@/presentation/shared/spotPhotos';
-import { familiarityStars, groupTiles, seasonMarks, tileAriaLabel, tileCaption, tileName, UNKNOWN_TILE_HINT } from '@/presentation/screens/Zukan/zukanModel';
+import { familiarityStars, groupTiles, seasonMarks, tileAriaLabel, tileCaption, tileName } from '@/presentation/screens/Zukan/zukanModel';
 
 const logger = createLogger('presentation/screens/Zukan/SpotGrid');
 
@@ -195,11 +195,9 @@ export function createSpotGrid(opts: SpotGridOptions): SpotGridHandle {
     });
     return h('section', { class: 'zukan-section' }, [h('h3', { class: 'zukan-section__title', text: group.title }), h('div', { class: 'zukan-grid' }, cards)]);
   });
-  // 未発見カードの見つけ方は、カードごとに繰り返さず格子の上に1回だけ出す
-  const unknownHint = opts.tiles.some((t) => t.status === 'unknown')
-    ? h('p', { class: ['hint', 'zukan-unknown-hint'], attrs: { 'data-testid': 'zukan-unknown-hint' }, text: `未発見のカードは、${UNKNOWN_TILE_HINT}` })
-    : undefined;
-  const element = h('div', { class: 'zukan-sections', attrs: { 'data-testid': 'zukan-grid' } }, [unknownHint, ...sections]);
+  // 未発見カードの見つけ方は格子の上に出さない（開いてすぐ写真が見えるように。2026-11-09）。
+  // 見つけ方はカードの拡大プレビューの「取得方法」と、読み上げ名（tileAriaLabel）で伝える
+  const element = h('div', { class: 'zukan-sections', attrs: { 'data-testid': 'zukan-grid' } }, sections);
   return log.exit({ element, mountArts: (): (() => void) => mountPendingArts(pending) });
 }
 

@@ -14,7 +14,7 @@
 import { mixColors, parseHexColor } from '@/Common/ui/canvas/colorUtils';
 import { DEFAULT_HAIR_COLOR, DEFAULT_OUTFIT_COLOR, DEFAULT_SKIN } from '@/presentation/shared/avatar/avatarLook';
 import type {
-  AccessoryStyle, AvatarHat, AvatarHeld, AvatarLook, AvatarMotion, AvatarPose, BottomStyle, EyeStyle, HairStyle, PetStyle, ShoeStyle, TopStyle,
+  AccessoryStyle, AvatarHat, AvatarHeld, AvatarLook, AvatarMotion, AvatarPose, BodyType, BottomStyle, EyeStyle, HairStyle, PetStyle, ShoeStyle, TopStyle,
 } from '@/presentation/shared/avatar/avatarLook';
 import { paintGear } from '@/presentation/shared/shopIcons';
 
@@ -70,10 +70,12 @@ interface Wear {
   readonly hat?: AvatarHat;
   readonly accessory?: AccessoryStyle;
   readonly pet?: PetStyle;
+  /** 性別（顔立ちと体つきだけが変わる） */
+  readonly body: BodyType;
 }
 
-/** 1コマの動きと描き込みの細かさ */
-interface Frame {
+/** 1コマの動きと描き込みの細かさ（骨組みを決める前） */
+interface FrameBase {
   readonly pose: AvatarPose;
   readonly t: number;
   /** 動きあり（ステージ）。false なら止まった絵 */
@@ -92,6 +94,52 @@ interface Frame {
   readonly hairOl: number;
   /** 顔の輪郭の太さ */
   readonly faceOl: number;
+}
+
+/** 1コマの動き＋骨組み */
+interface Frame extends FrameBase {
+  readonly rig: Rig;
+  /** 性別（まつげ・眉・唇の描き分けに使う） */
+  readonly body: BodyType;
+}
+
+/** 点（アバター座標） */
+type P = readonly [number, number];
+/** 手の形 */
+type HandKind = 'open' | 'wave' | 'peace' | 'fist' | 'finger';
+/** 表情の目（look＝装いの目のまま） */
+type FaceEyes = 'look' | 'wink' | 'happy' | 'closed' | 'wide' | 'teary' | 'angry';
+/** 表情のかざり（ハートが浮かぶ・涙・ふくれっつら） */
+type FaceExtra = 'hearts' | 'tears' | 'puff';
+/** エモートのポーズ（基本の stand・wave・jump・peace 以外） */
+type EmotePose = Exclude<AvatarPose, 'stand' | 'wave' | 'jump' | 'peace'>;
+
+/** 1コマの骨組み（体の位置・回転・左右反転・頭の傾き・おじぎ・手の位置・表情） */
+interface Rig {
+  /** 体全体のずれ（上が負） */
+  readonly dx: number;
+  readonly dy: number;
+  /** 跳んでいる高さ（影と脚の曲げに使う） */
+  readonly lift: number;
+  /** 足元を中心にした体の回転（ラジアン） */
+  readonly rot: number;
+  /** 左右の縮み（くるりと回る。負なら反転） */
+  readonly scaleX: number;
+  /** 首を中心にした頭の傾き（ラジアン）と下がり */
+  readonly headRot: number;
+  readonly headDrop: number;
+  /** おじぎの深さ 0..1 */
+  readonly bow: number;
+  readonly left: P;
+  readonly right: P;
+  readonly leftHand: HandKind;
+  readonly rightHand: HandKind;
+  /** 持ち物を持つ（手を上げるエモートでは隠す） */
+  readonly showHeld: boolean;
+  readonly eyes: FaceEyes;
+  /** 口（look＝目の種類に合わせる） */
+  readonly mouth: MouthKind | 'look';
+  readonly extra?: FaceExtra;
 }
 
 /** 色（黒は使わない。線は濃いプラム系か、塗り色を暗くした色） */
@@ -121,10 +169,15 @@ const SHADE_SOFT = 'rgba(74, 35, 80, 0.12)';
 /** つやの向き（CSS の 160deg） */
 const SHEEN_ANGLE = (160 * Math.PI) / 180;
 
-/** 頭（中心と半径） */
+/** 頭（中心と半径。性別で少し変える＝女の子は小さめで丸く、男の子は少し横に広く） */
 const HEAD_Y = -46;
-const HEAD_RX = 15.5;
-const HEAD_RY = 14.6;
+const HEAD_R: Readonly<Record<BodyType, readonly [number, number]>> = { neutral: [15.5, 14.6], girl: [15, 14.5], boy: [15.7, 14.4] };
+/** 耳の横位置（性別ごと） */
+const EAR_X: Readonly<Record<BodyType, number>> = { neutral: 15, girl: 14.6, boy: 15.3 };
+/** 胴と肩の幅の倍率（女の子は少し細く、男の子は少し広く） */
+const BODY_WIDTH: Readonly<Record<BodyType, number>> = { neutral: 1, girl: 0.94, boy: 1.07 };
+/** 女の子の唇の色 */
+const GIRL_LIP = '#FF5C93';
 /** 頭のまとまり（顔・髪・帽子）の拡大の中心と倍率 */
 const HEAD_PIVOT_Y = -31.5;
 const HEAD_SCALE = 1.04;
@@ -146,6 +199,17 @@ const TOP_LIMIT = -76;
 const HAT_LIMIT = HEAD_PIVOT_Y + (TOP_LIMIT - HEAD_PIVOT_Y) / HEAD_SCALE;
 /** これ未満の拡大率では細かい飾りを省く */
 const DETAIL_MIN_SCALE = 0.6;
+/** 腰の高さ（おじぎの回転の中心） */
+const HIP_Y = -15;
+/** おじぎ（約25°）で上半身が縦に縮む割合と、頭が下がる量 */
+const BOW_SQUASH = 0.094;
+const BOW_HEAD_DROP = 4;
+/** エモートで体を持ち上げるときに、上の端から残す余白（輪郭・回転の分） */
+const HEADROOM_MARGIN = 0.8;
+/** 手を上げているとみなす高さ（これより上の手は顔より手前に描く） */
+const RAISED_HAND_Y = -38;
+/** 休めの左手 */
+const REST_L: P = [-12.8, -17.5];
 
 // ---------------------------------------------------------------------------
 // 基本の図形
@@ -596,15 +660,33 @@ function rr(r: R5): PathBuilder {
 }
 
 /**
- * 頭のまとまり（顔・髪・帽子）を (0, -31.5) 中心に 1.04 倍して描く。
+ * 頭のまとまり（顔・髪・帽子）を (0, -31.5) 中心に 1.04 倍し、骨組みの傾き・下がり（おじぎ込み）を当てて描く。
  * @param ctx 描画先
+ * @param f 動き（骨組み）
  * @param paint 描く処理
  */
-function withHeadScale(ctx: Ctx, paint: () => void): void { // audit-ignore: fnlog-missing 毎フレーム描画
+function withHeadScale(ctx: Ctx, f: Frame, paint: () => void): void { // audit-ignore: fnlog-missing 毎フレーム描画
   ctx.save();
-  ctx.translate(0, HEAD_PIVOT_Y);
+  ctx.translate(0, HEAD_PIVOT_Y + f.rig.headDrop + f.rig.bow * BOW_HEAD_DROP);
+  ctx.rotate(f.rig.headRot);
   ctx.scale(HEAD_SCALE, HEAD_SCALE);
   ctx.translate(0, -HEAD_PIVOT_Y);
+  paint();
+  ctx.restore();
+}
+
+/**
+ * 上半身（腰より上）をおじぎの深さに合わせて縦に縮めて描く（正面から見た前かがみ）。
+ * @param ctx 描画先
+ * @param f 動き（骨組み）
+ * @param paint 描く処理
+ */
+function withUpper(ctx: Ctx, f: Frame, paint: () => void): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  if (f.rig.bow <= 0) { paint(); return; }
+  ctx.save();
+  ctx.translate(0, HIP_Y);
+  ctx.scale(1, 1 - f.rig.bow * BOW_SQUASH);
+  ctx.translate(0, -HIP_Y);
   paint();
   ctx.restore();
 }
@@ -856,27 +938,51 @@ const STAR_EYE: EyeSpec = { rx: 2.9, ry: 3.6, iris: '#B7791F', starPupil: true }
  * @param y 目じりの Y
  * @param side 左 -1 ／右 1
  */
-function lashFlick(ctx: Ctx, x: number, y: number, side: -1 | 1): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  const a = (35 * Math.PI) / 180;
-  line(ctx, [x, y, x + side * Math.cos(a) * 1.6, y - Math.sin(a) * 1.6], LASH, 0.9);
+function lashFlick(ctx: Ctx, x: number, y: number, side: -1 | 1, len = 1.6, deg = 35): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const a = (deg * Math.PI) / 180;
+  line(ctx, [x, y, x + side * Math.cos(a) * len, y - Math.sin(a) * len], LASH, 0.9);
 }
 
 /**
- * 上まつげ（楕円の弧）と目じりの跳ね・下の点を描く。
+ * 目じりのまつげを描く（女の子＝長くカールした2本＋下まつげ、男の子＝なし、どちらでもない＝1本）。
+ * 縮小時は女の子の1本だけ残す（見分けの手がかり）。
+ * @param ctx 描画先
+ * @param corner 目じりの位置
+ * @param side 左 -1 ／右 1
+ * @param f 描き込みの細かさと性別
+ */
+function cornerLashes(ctx: Ctx, corner: P, side: -1 | 1, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [x, y] = corner;
+  if (f.body === 'boy') return;
+  if (f.body === 'girl') {
+    lashFlick(ctx, x, y, side, 2.1, 30);
+    if (!f.fine) return;
+    lashFlick(ctx, x - side * 0.9, y - 0.9, side, 1.5, 62);
+    return;
+  }
+  if (f.fine) lashFlick(ctx, x, y, side);
+}
+
+/**
+ * 上まつげ（楕円の弧）と目じりのまつげ・下まつげを描く（太さとまつげは性別で変える）。
  * @param ctx 描画先
  * @param x 目の X
  * @param side 左 -1 ／右 1
  * @param e 目の形
- * @param f 描き込みの細かさ
+ * @param f 描き込みの細かさと性別
  */
 function upperLash(ctx: Ctx, x: number, side: -1 | 1, e: EyeSpec, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
   const rx = e.rx + 0.25;
   const ry = e.ry + 0.25;
-  ctx.strokeStyle = LASH; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+  ctx.strokeStyle = LASH; ctx.lineWidth = f.body === 'girl' ? 1.7 : f.body === 'boy' ? 1.1 : 1.4; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.ellipse(x, EYE_Y, rx, ry, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
   const a = side < 0 ? Math.PI * 1.05 : Math.PI * 1.95;
-  if (f.fine) lashFlick(ctx, x + Math.cos(a) * rx, EYE_Y + Math.sin(a) * ry, side);
+  cornerLashes(ctx, [x + Math.cos(a) * rx, EYE_Y + Math.sin(a) * ry], side, f);
+  if (f.body === 'boy') return;
   dot(ctx, x + side * e.rx * 0.95, EYE_Y + e.ry * 0.45, 0.5, LASH);
+  if (f.body === 'girl' && f.fine) {
+    for (const k of [0.55, 0.8]) line(ctx, [x + side * e.rx * k, EYE_Y + e.ry * 0.92, x + side * e.rx * (k + 0.12), EYE_Y + e.ry * 1.22], LASH, 0.6);
+  }
 }
 
 /**
@@ -916,10 +1022,10 @@ function closedEye(ctx: Ctx, x: number, side: -1 | 1, up: boolean, f: Frame): vo
   const r = up ? 2.9 : 2.8;
   const a0 = up ? Math.PI * 1.15 : Math.PI * 0.15;
   const a1 = up ? Math.PI * 1.85 : Math.PI * 0.85;
-  ctx.strokeStyle = LASH; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+  ctx.strokeStyle = LASH; ctx.lineWidth = f.body === 'girl' ? 1.7 : 1.5; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.arc(x, cy, r, a0, a1); ctx.stroke();
   const outer = (side < 0) === up ? a0 : a1;
-  if (f.fine) lashFlick(ctx, x + Math.cos(outer) * r, cy + Math.sin(outer) * r, side);
+  cornerLashes(ctx, [x + Math.cos(outer) * r, cy + Math.sin(outer) * r], side, f);
 }
 
 /** 目の種類ごとの描き方 */
@@ -950,8 +1056,65 @@ const EYES: Readonly<Record<EyeStyle, EyePainter>> = {
   star: (ctx, x, side, f) => kiraEye(ctx, x, side, STAR_EYE, f),
 };
 
+/** 目の形（エモートの目） */
+const WIDE_EYE: EyeSpec = { rx: 3.1, ry: 3.9, iris: '#6B3F2A' };
+const TEAR = 'rgba(154, 223, 255, 0.85)';
+
+/**
+ * 目を丸くした目（白目＋小さな黒目＋まつげ）を描く。
+ * @param ctx 描画先
+ * @param x 目の X
+ * @param side 左 -1 ／右 1
+ * @param f 描き込みの細かさ
+ */
+function wideEye(ctx: Ctx, x: number, side: -1 | 1, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  oval(ctx, [x, EYE_Y, WIDE_EYE.rx, WIDE_EYE.ry], WHITE);
+  edge(ctx, tint(LASH, 0.35), 0.7);
+  const g = ctx.createLinearGradient(0, EYE_Y - 1.6, 0, EYE_Y + 1.6);
+  g.addColorStop(0, shade(WIDE_EYE.iris, 0.5));
+  g.addColorStop(1, tint(WIDE_EYE.iris, 0.4));
+  dot(ctx, x, EYE_Y + 0.3, 1.5, g);
+  dot(ctx, x + 0.5, EYE_Y - 0.3, 0.55, WHITE);
+  upperLash(ctx, x, side, WIDE_EYE, f);
+}
+
+/**
+ * うるんだ目（キラキラの目＋下にたまった涙＋光を足す）を描く。
+ * @param ctx 描画先
+ * @param x 目の X
+ * @param side 左 -1 ／右 1
+ * @param f 描き込みの細かさ
+ */
+function tearyEye(ctx: Ctx, x: number, side: -1 | 1, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  kiraEye(ctx, x, side, ROUND_EYE, f);
+  clipped(ctx, ell([x, EYE_Y, ROUND_EYE.rx, ROUND_EYE.ry]), () => oval(ctx, [x, EYE_Y + 2.8, 3.4, 1.7], 'rgba(154, 223, 255, 0.75)'));
+  dot(ctx, x + 1.3, EYE_Y + 1.2, 0.6, WHITE);
+  line(ctx, [x - 2.6, EYE_Y + 3.2, x + 2.6, EYE_Y + 3.2], TEAR, 0.8);
+}
+
+/**
+ * 怒った目（鋭いキラキラの目）を描く。眉は前髪より手前に paintBrows で描く。
+ * @param ctx 描画先
+ * @param x 目の X
+ * @param side 左 -1 ／右 1
+ * @param f 描き込みの細かさ
+ */
+function angryEye(ctx: Ctx, x: number, side: -1 | 1, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  kiraEye(ctx, x, side, SHARP_EYE, f);
+  line(ctx, [x - side * 3, EYE_Y - 2.2, x + side * 3.1, EYE_Y - 3.8], LASH, 1.3);
+}
+
+/** エモートの目の描き方 */
+const EMOTE_EYES: Readonly<Record<Exclude<FaceEyes, 'look' | 'wink'>, EyePainter>> = {
+  happy: (ctx, x, side, f) => closedEye(ctx, x, side, true, f),
+  closed: (ctx, x, side, f) => closedEye(ctx, x, side, false, f),
+  wide: wideEye,
+  teary: tearyEye,
+  angry: angryEye,
+};
+
 /** 口の種類 */
-type MouthKind = 'small' | 'open' | 'smirk' | 'o';
+type MouthKind = 'small' | 'open' | 'smirk' | 'o' | 'laugh' | 'puzzled' | 'wavy' | 'pout';
 
 /** 目の種類ごとの口 */
 const MOUTH_OF: Readonly<Record<EyeStyle, MouthKind>> = {
@@ -959,27 +1122,50 @@ const MOUTH_OF: Readonly<Record<EyeStyle, MouthKind>> = {
 };
 
 /**
- * 口を描く（開いた口は濃いピンク＋舌、線の口はローズ）。
+ * 線の口を引く（ローズ）。
  * @param ctx 描画先
- * @param kind 口の種類
+ * @param build パスを作る関数
  */
-function paintMouth(ctx: Ctx, kind: MouthKind): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  if (kind === 'open') {
+function mouthLine(ctx: Ctx, build: PathBuilder, lip: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  build(ctx);
+  ctx.strokeStyle = lip;
+  ctx.lineWidth = lip === GIRL_LIP ? 1.25 : 1;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+}
+
+/** 口の種類ごとの描き方（開いた口は濃いピンク＋舌、線の口は唇の色） */
+const MOUTHS: Readonly<Record<MouthKind, (ctx: Ctx, lip: string) => void>> = {
+  open: (ctx) => {
     ctx.beginPath(); ctx.arc(0, -39.2, 2.4, 0, Math.PI); ctx.closePath(); fillWith(ctx, MOUTH_OPEN);
     dot(ctx, 0, -37.7, 1.05, TONGUE);
-    return;
-  }
-  if (kind === 'o') {
-    oval(ctx, [0, -38.4, 1.1, 1.3], MOUTH_OPEN);
-    return;
-  }
-  ctx.strokeStyle = MOUTH_LINE;
-  ctx.lineWidth = 1;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  if (kind === 'smirk') { ctx.moveTo(-1.8, -38.6); ctx.quadraticCurveTo(0.6, -37.6, 2.2, -39.4); }
-  else ctx.arc(0, -39.8, 1.8, Math.PI * 0.2, Math.PI * 0.8);
-  ctx.stroke();
+  },
+  laugh: (ctx) => {
+    ctx.beginPath(); ctx.arc(0, -39.8, 3.4, 0, Math.PI); ctx.closePath(); fillWith(ctx, MOUTH_OPEN);
+    oval(ctx, [0, -37.3, 1.9, 1], TONGUE);
+    box(ctx, [-2.2, -39.8, 4.4, 0.8, 0.4], WHITE);
+  },
+  o: (ctx) => oval(ctx, [0, -38.4, 1.1, 1.3], MOUTH_OPEN),
+  small: (ctx, lip) => mouthLine(ctx, (c) => { c.beginPath(); c.arc(0, -39.8, 1.8, Math.PI * 0.2, Math.PI * 0.8); }, lip),
+  smirk: (ctx, lip) => mouthLine(ctx, (c) => { c.beginPath(); c.moveTo(-1.8, -38.6); c.quadraticCurveTo(0.6, -37.6, 2.2, -39.4); }, lip),
+  puzzled: (ctx, lip) => mouthLine(ctx, (c) => { c.beginPath(); c.moveTo(-1.8, -38.8); c.quadraticCurveTo(-0.6, -39.8, 0.4, -38.9); c.quadraticCurveTo(1.2, -38.2, 2, -39); }, lip),
+  wavy: (ctx, lip) => mouthLine(ctx, (c) => { c.beginPath(); tracePoints(c, [-2.6, -38.6, -1.3, -39.4, 0, -38.6, 1.3, -39.4, 2.6, -38.6]); }, lip),
+  pout: (ctx, lip) => mouthLine(ctx, (c) => { c.beginPath(); tracePoints(c, [-1.6, -38.2, 0, -39.4, 1.6, -38.2]); }, lip),
+};
+
+/**
+ * 口を描く（女の子は唇をつやのあるピンクにし、光の点を足す）。
+ * @param ctx 描画先
+ * @param kind 口の種類
+ * @param f 描き込みの細かさと性別
+ */
+function paintMouth(ctx: Ctx, kind: MouthKind, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const girl = f.body === 'girl';
+  MOUTHS[kind](ctx, girl ? GIRL_LIP : MOUTH_LINE);
+  if (!girl) return;
+  if (kind === 'small' || kind === 'smirk') oval(ctx, [0, -38.5, 1.3, 0.6], 'rgba(255, 92, 147, 0.35)');
+  if (f.fine) dot(ctx, 0.7, kind === 'open' || kind === 'laugh' ? -37.9 : -38.6, 0.35, WHITE);
 }
 
 /**
@@ -1001,35 +1187,139 @@ function paintCheek(ctx: Ctx, x: number, f: Frame): void { // audit-ignore: fnlo
   for (let i = 0; i < 3; i++) line(ctx, [x - 1.4 + i * 1.1, -38.9, x - 0.8 + i * 1.1, -39.95], CHEEK_SLASH, 0.45);
 }
 
-/** 顔の形（耳と頭） */
-const EAR_L = circ(-15, -44.6, 2.8);
-const EAR_R = circ(15, -44.6, 2.8);
-const HEAD_SHAPE = ell([0, HEAD_Y, HEAD_RX, HEAD_RY]);
+/**
+ * 頭の形（性別で少し変える）のパスを作る関数を返す。
+ * @param body 性別
+ * @returns パスを作る関数
+ */
+function headShapeOf(body: BodyType): PathBuilder {
+  return ell([0, HEAD_Y, HEAD_R[body][0], HEAD_R[body][1]]);
+}
 
 /**
- * 顔（耳・頭・前髪の下の影・頬・目・口）を描く。まばたき中は目を閉じる。ピースのポーズでは片目をつむる。
+ * 目を描く（エモート中は表情の目、ふだんは装いの目。まばたき中は閉じる）。
  * @param ctx 描画先
  * @param w 装い
+ * @param f 動き（骨組みの表情）
+ */
+function paintEyes(ctx: Ctx, w: Wear, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const face = f.rig.eyes;
+  for (const side of [-1, 1] as const) {
+    const x = side * EYE_X;
+    if (face === 'look' || face === 'wink') {
+      const eyes: EyeStyle = face === 'wink' ? 'wink' : w.eyes;
+      if (f.blink && eyes !== 'smile') closedEye(ctx, x, side, false, f);
+      else EYES[eyes](ctx, x, side, f);
+    } else if (f.blink && face !== 'happy' && face !== 'closed') {
+      closedEye(ctx, x, side, false, f);
+    } else {
+      EMOTE_EYES[face](ctx, x, side, f);
+    }
+  }
+}
+
+/**
+ * 口の種類を決める（エモートの口、なければ目の種類に合わせる）。
+ * @param w 装い
+ * @param rig 骨組み
+ * @returns 口の種類
+ */
+function mouthOf(w: Wear, rig: Rig): MouthKind {
+  return rig.mouth !== 'look' ? rig.mouth : MOUTH_OF[rig.eyes === 'wink' ? 'wink' : w.eyes];
+}
+
+/**
+ * うっとりのハート（頭の左右に浮かんで消える）と濃いめの頬を描く。
+ * @param ctx 描画先
  * @param f 動き
  */
+function paintHearts(ctx: Ctx, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  for (const x of [-10.4, 10.4]) oval(ctx, [x, -39.4, 3.4, 2], 'rgba(255, 110, 150, 0.3)');
+  for (const [i, x] of [[0, 13.2], [1, -12.6]] as const) {
+    const p = f.animated ? (f.t / 1.6 + i * 0.5) % 1 : 0.4;
+    ctx.save();
+    ctx.globalAlpha = 1 - p * 0.8;
+    heartPath(ctx, x + Math.sin(p * 6) * 0.8, -55 - p * 9, 1.6 + p * 0.6);
+    fillWith(ctx, i === 0 ? PINK : '#FF8FC8');
+    ctx.restore();
+  }
+}
+
+/**
+ * 涙（目から頬へ流れる筋と、落ちていくしずく）を描く。
+ * @param ctx 描画先
+ * @param f 動き
+ */
+function paintTears(ctx: Ctx, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  for (const s of [-1, 1]) {
+    const x = s * EYE_X;
+    line(ctx, [x - 1.2, EYE_Y + 3.2, x - 1.8, -38.6, x - 1.1, -35.8], TEAR, 1.6);
+    const p = f.animated ? (f.t * 1.3 + (s > 0 ? 0.5 : 0)) % 1 : 0.5;
+    oval(ctx, [x - 1.3, -40.4 + p * 6, 0.9, 1.2], TEAR);
+    dot(ctx, x - 1.5, -40.8 + p * 6, 0.3, WHITE);
+  }
+}
+
+/**
+ * ふくれっつら（ふくらんだ頬）と怒りのマークを描く。
+ * @param ctx 描画先
+ * @param f 描き込みの細かさ
+ */
+function paintPuff(ctx: Ctx, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  for (const x of [-10.6, 10.6]) {
+    oval(ctx, [x, -39.6, 3.8, 2.6], 'rgba(255, 140, 170, 0.5)');
+    edge(ctx, 'rgba(255, 95, 162, 0.5)', f.fine ? 0.6 : 0);
+  }
+  const cx = 12.4;
+  const cy = -57.6;
+  ctx.strokeStyle = PINK; ctx.lineWidth = 1; ctx.lineCap = 'round';
+  for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+    ctx.beginPath(); ctx.moveTo(cx + sx * 0.6, cy + sy * 2.2); ctx.quadraticCurveTo(cx + sx * 0.6, cy + sy * 0.6, cx + sx * 2.2, cy + sy * 0.6); ctx.stroke();
+  }
+}
+
+/** 表情のかざりの描き方 */
+const FACE_EXTRAS: Readonly<Record<FaceExtra, (ctx: Ctx, f: Frame) => void>> = { hearts: paintHearts, tears: paintTears, puff: paintPuff };
+
+/**
+ * 眉を前髪より手前に描く（怒った顔＝外が上・内が下、男の子＝少し太いまっすぐの眉）。
+ * @param ctx 描画先
+ * @param w 装い（男の子の眉は髪の色）
+ * @param f 動き（表情と性別）
+ */
+function paintBrows(ctx: Ctx, w: Wear, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const angry = f.rig.eyes === 'angry';
+  if (!angry && f.body !== 'boy') return;
+  for (const side of [-1, 1] as const) {
+    const x = side * EYE_X;
+    if (angry) line(ctx, [x + side * 3.4, EYE_Y - 5.4, x - side * 2.6, EYE_Y - 3.9], LASH, 1.3);
+    else line(ctx, [x - 2.7, EYE_Y - 5.7, x + 2.7, EYE_Y - 5.9], mixColors(shade(w.hairColor, 0.2), LASH, 0.35), f.fine ? 1.4 : 1.7);
+  }
+}
+
+/**
+ * 顔（耳・頭・前髪の下の影・頬・目・口・表情のかざり）を描く。
+ * @param ctx 描画先
+ * @param w 装い
+ * @param f 動き（骨組みの表情）
+ */
 function paintFace(ctx: Ctx, w: Wear, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  paintPieces(ctx, [EAR_L, EAR_R, HEAD_SHAPE], w.skin, FACE_LINE, f.faceOl);
-  dot(ctx, -15.3, -44.6, 1.2, shade(w.skin, 0.08));
-  dot(ctx, 15.3, -44.6, 1.2, shade(w.skin, 0.08));
-  clipped(ctx, HEAD_SHAPE, () => {
+  const head = headShapeOf(w.body);
+  const ear = EAR_X[w.body];
+  paintPieces(ctx, [circ(-ear, -44.6, 2.8), circ(ear, -44.6, 2.8), head], w.skin, FACE_LINE, f.faceOl);
+  dot(ctx, -ear - 0.3, -44.6, 1.2, shade(w.skin, 0.08));
+  dot(ctx, ear + 0.3, -44.6, 1.2, shade(w.skin, 0.08));
+  clipped(ctx, head, () => {
     ctx.globalAlpha = 0.6;
     box(ctx, [-16, -55, 32, 4, 0], shade(w.skin, 0.08));
     ctx.globalAlpha = 1;
-    oval(ctx, [0, -33.6, 6, 1.6], shade(w.skin, 0.06));
+    oval(ctx, [0, -33.6, w.body === 'girl' ? 5 : 6, 1.6], shade(w.skin, w.body === 'girl' ? 0.04 : 0.06));
   });
   paintCheek(ctx, -10.4, f);
   paintCheek(ctx, 10.4, f);
-  const eyes: EyeStyle = f.pose === 'peace' ? 'wink' : w.eyes;
-  for (const side of [-1, 1] as const) {
-    if (f.blink && eyes !== 'smile') closedEye(ctx, side * EYE_X, side, false, f);
-    else EYES[eyes](ctx, side * EYE_X, side, f);
-  }
-  paintMouth(ctx, MOUTH_OF[eyes]);
+  paintEyes(ctx, w, f);
+  paintMouth(ctx, mouthOf(w, f.rig), f);
+  if (f.rig.extra !== undefined) FACE_EXTRAS[f.rig.extra](ctx, f);
 }
 
 // ---------------------------------------------------------------------------
@@ -1071,9 +1361,61 @@ function clipTorso(ctx: Ctx, paint: () => void): void {
  * @param f 描き込みの細かさ
  */
 function finishTorso(ctx: Ctx, w: Wear, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  clipTorso(ctx, () => sheenIn(ctx, [-9.6, -33.5, 19.2, 21], f));
-  torsoPath(ctx);
-  edge(ctx, shade(w.outfit, 0.4), f.ol);
+  const shape = TOP_SHAPE[w.top];
+  const path = shape === undefined ? torsoPath : rr(shape);
+  clipped(ctx, path, () => sheenIn(ctx, shape === undefined ? [-9.6, -33.5, 19.2, 21] : [shape[0], shape[1], shape[2], shape[3]], f));
+  path(ctx);
+  edge(ctx, shade(TOP_BASE[w.top] ?? w.outfit, 0.4), f.ol);
+}
+
+/**
+ * 胴まわり（トップス・胸当て・首まわり）を、性別の肩幅に合わせて横に縮めて／広げて描く。
+ * @param ctx 描画先
+ * @param w 装い
+ * @param paint 描く処理
+ */
+function withTorsoWidth(ctx: Ctx, w: Wear, paint: () => void): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  ctx.save();
+  ctx.scale(BODY_WIDTH[w.body], 1);
+  paint();
+  ctx.restore();
+}
+
+/**
+ * 桜の花（細長い花びら5枚＋芯）を描く。
+ * @param ctx 描画先
+ * @param x 中心 X
+ * @param y 中心 Y
+ * @param r 大きさ
+ * @param petal 花びらの色
+ */
+function sakura(ctx: Ctx, x: number, y: number, r: number, petal: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI * 2) / 5;
+    oval(ctx, [x + Math.cos(a) * r * 0.8, y + Math.sin(a) * r * 0.8, r * 0.75, r * 0.45], petal, a);
+  }
+  dot(ctx, x, y, r * 0.35, '#FF7FA8');
+}
+
+/**
+ * もみじの葉（5つの角の葉＋軸）を描く。
+ * @param ctx 描画先
+ * @param x 中心 X
+ * @param y 中心 Y
+ * @param r 大きさ
+ * @param fill 色
+ */
+function maple(ctx: Ctx, x: number, y: number, r: number, fill: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  ctx.beginPath();
+  for (let i = 0; i < 14; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI * 2) / 14;
+    const rr2 = i % 2 === 0 ? r : r * (i % 4 === 0 ? 0.42 : 0.62);
+    if (i === 0) ctx.moveTo(x + Math.cos(a) * rr2, y + Math.sin(a) * rr2);
+    else ctx.lineTo(x + Math.cos(a) * rr2, y + Math.sin(a) * rr2);
+  }
+  ctx.closePath();
+  fillWith(ctx, fill);
+  line(ctx, [x, y, x + r * 0.2, y + r * 1.1], shade(fill, 0.25), r * 0.18);
 }
 
 /**
@@ -1106,6 +1448,48 @@ const APRON = '#4a6a9a';
 const YUKATA_DOTS = [-6, -29, -1, -26, 5, -28, -4, -20, 2, -18, 7, -22, -7, -15.5, 4.6, -15];
 /** 晴れ着の花の位置 */
 const KIMONO_FLOWERS = [-5.6, -27, 5.2, -19.6, -3.6, -16.6, 6, -29.6];
+/** 土地・季節のトップスの色（服の色の選択に関係なく決まった柄） */
+const UME = '#FFB3C8';
+const UME_RED = '#E8456B';
+const EDO = '#3F5AA8';
+const RETRO = '#D98C9A';
+const HAORI = '#FBE3EC';
+const TENJIN = '#22346B';
+const MOMIJI = '#F08A3C';
+/** 梅の着物の花の位置 */
+const UME_FLOWERS = [-5.8, -28.4, 4.8, -30, -2.4, -16.4, 6.4, -17.6, 1, -27];
+/** レトロワンピースの水玉の位置（胴とスカート） */
+const RETRO_DOTS = [-5, -27, 4, -24, -1, -19, 6, -30, -6.6, -16.4, -8.6, -9.4, -3.2, -8.4, 2.6, -10.6, 8, -8.8, 5.8, -13.6];
+/** 羽織の花びらの位置 */
+const HAORI_PETALS = [-7.6, -28, -5, -20, -8, -15, 7.2, -26, 5.2, -17.6, 8, -21];
+/** もみじの位置 */
+const MOMIJI_LEAVES = [-5.4, -27.4, 4.8, -29, -1, -20.6, 6.2, -17.6, -6.6, -16.6];
+/** 形が胴と違うトップス（ダウンのふくらみ）の外形 */
+const TOP_SHAPE: Readonly<Partial<Record<TopStyle, R5>>> = { downcoat: [-10.6, -34, 21.2, 22.4, 7] };
+/** 縁の色の元になる地の色（決まった柄のトップス） */
+const TOP_BASE: Readonly<Partial<Record<TopStyle, string>>> = { umeKimono: UME, edoKimono: EDO, retroOnepiece: RETRO, tenjinYukata: TENJIN, momijiPoncho: MOMIJI };
+
+/**
+ * 着物の合わせ（白い襟と、V の肌）を描く。
+ * @param ctx 描画先
+ * @param w 装い
+ * @param inner 内側の襟の色
+ */
+function kimonoCollar(ctx: Ctx, w: Wear, inner: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  neckV(ctx, w.skin, 6.4);
+  line(ctx, [-4.6, -33.6, 1.4, -23.6], OFF_WHITE, 2.2);
+  line(ctx, [-3.4, -33.6, 1.6, -25.2], inner, 0.8);
+  line(ctx, [4.6, -33.6, -0.4, -27.6], OFF_WHITE, 2.2);
+}
+
+/**
+ * 点の並びの位置ごとに描く。
+ * @param pts 点の並び（x0, y0, x1, y1, …）
+ * @param paint 1点を描く処理（位置と番号）
+ */
+function eachPoint(pts: readonly number[], paint: (x: number, y: number, i: number) => void): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  for (let i = 0; i + 1 < pts.length; i += 2) paint(pts[i] ?? 0, pts[i + 1] ?? 0, i / 2);
+}
 
 /** トップスの種類ごとの描き方 */
 const TOPS: Readonly<Record<TopStyle, TopPainter>> = {
@@ -1216,6 +1600,77 @@ const TOPS: Readonly<Record<TopStyle, TopPainter>> = {
     line(ctx, [-9.4, -20.6, 9.4, -20.6], '#d9465f', 0.9);
     dot(ctx, 3, -20.6, 1.1, '#d9465f');
   },
+  umeKimono: (ctx, w, f) => {
+    torso(ctx, UME);
+    clipTorso(ctx, () => eachPoint(UME_FLOWERS, (x, y, i) => flower(ctx, x, y, 1.2, i % 2 === 0 ? WHITE : UME_RED)));
+    kimonoCollar(ctx, w, UME_RED);
+    boxO(ctx, [-9.7, -23.6, 19.4, 6, 1], '#B83A6B', f);
+    line(ctx, [-9.4, -20.6, 9.4, -20.6], GOLD, 0.9);
+    flower(ctx, 3.4, -20.6, 1, WHITE);
+  },
+  edoKimono: (ctx, w, f) => {
+    torso(ctx, EDO);
+    clipTorso(ctx, () => {
+      for (let k = 0; k < 42; k++) if ((k % 6 + Math.floor(k / 6)) % 2 === 0) box(ctx, [-9.6 + (k % 6) * 3.2, -33.5 + Math.floor(k / 6) * 3.2, 3.2, 3.2, 0], '#EFE6CF');
+    });
+    kimonoCollar(ctx, w, '#D9465F');
+    boxO(ctx, [-9.7, -24.6, 19.4, 4, 0.8], '#F2B53A', f);
+    boxO(ctx, [-6.4, -20.6, 12.8, 8.2, 1.6], '#D9465F', f);
+    line(ctx, [-5.6, -19.4, 5.6, -19.4], tint('#D9465F', 0.5), 0.6);
+  },
+  retroOnepiece: (ctx, w, f) => {
+    const skirt = [-9.2, -15.8, 9.2, -15.8, 12.4, -6.2, -12.4, -6.2];
+    polyO(ctx, skirt, RETRO, f);
+    sheenPoly(ctx, skirt, [-12.6, -16, 25.2, 10], f);
+    torso(ctx, RETRO);
+    eachPoint(RETRO_DOTS, (x, y) => dot(ctx, x, y, 0.85, WHITE));
+    neckNotch(ctx, w.skin);
+    oval(ctx, [-2.9, -32.4, 3, 1.8], WHITE, 0.3);
+    oval(ctx, [2.9, -32.4, 3, 1.8], WHITE, -0.3);
+    poly(ctx, [0, -31.2, -2, -32.4, -2, -30, 0, -31.2, 2, -32.4, 2, -30], '#D9465F');
+    line(ctx, [-9.2, -15.6, 9.2, -15.6], shade(RETRO, 0.2), 0.8);
+  },
+  haoriSakura: (ctx, w) => {
+    torso(ctx, w.outfit);
+    neckV(ctx, w.skin, 5.6);
+    clipTorso(ctx, () => {
+      poly(ctx, [-10, -34, -3.4, -34, -2, -12, -10, -12], HAORI);
+      poly(ctx, [10, -34, 3.4, -34, 2, -12, 10, -12], HAORI);
+      eachPoint(HAORI_PETALS, (x, y, i) => oval(ctx, [x, y, 1.1, 0.6], i % 2 === 0 ? '#FF9EC0' : '#FFC4D8', i * 0.9));
+    });
+    sakura(ctx, -6.4, -23.4, 1.3, '#FFB6D0');
+    line(ctx, [-2.8, -24.4, 2.8, -24.4], WHITE, 0.9);
+    dot(ctx, 0, -24.4, 0.9, '#FF9EC0');
+  },
+  tenjinYukata: (ctx, w, f) => {
+    torso(ctx, TENJIN);
+    clipTorso(ctx, () => {
+      ctx.strokeStyle = WHITE; ctx.lineWidth = 0.6;
+      for (const y of [-27.6, -15.4]) for (let x = -9; x < 10; x += 3) { ctx.beginPath(); ctx.arc(x, y, 1.5, Math.PI, 0); ctx.stroke(); }
+      poly(ctx, [-7, -19.6, -2.6, -19.6, -3.4, -18.2, -6.2, -18.2], WHITE);
+      line(ctx, [-4.8, -19.6, -4.8, -22.8], WHITE, 0.5);
+      poly(ctx, [3.4, -31.6, 7.6, -31.6, 6.8, -30.2, 4.2, -30.2], WHITE);
+    });
+    kimonoCollar(ctx, w, '#9ADFFF');
+    boxO(ctx, [-9.7, -23.4, 19.4, 5, 1], '#D9344A', f);
+    line(ctx, [-9.4, -20.9, 9.4, -20.9], '#FFE08A', 0.7);
+  },
+  momijiPoncho: (ctx, w) => {
+    torso(ctx, MOMIJI);
+    clipTorso(ctx, () => eachPoint(MOMIJI_LEAVES, (x, y, i) => maple(ctx, x, y, 1.9, i % 2 === 0 ? '#D9463A' : '#FFC94D')));
+    ctx.strokeStyle = CREAM; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.arc(0, -33.5, 4.2, 0, Math.PI); ctx.stroke();
+    neckNotch(ctx, w.skin);
+    for (let x = -8.4; x <= 8.4; x += 1.4) line(ctx, [x, -13, x, -11.4], shade(MOMIJI, 0.15), 0.5);
+  },
+  downcoat: (ctx, w) => {
+    box(ctx, [-10.6, -34, 21.2, 22.4, 7], w.outfit);
+    for (const y of [-28.4, -23.4, -18.4]) {
+      ctx.strokeStyle = shade(w.outfit, 0.22); ctx.lineWidth = 0.7;
+      ctx.beginPath(); ctx.moveTo(-10, y); ctx.quadraticCurveTo(0, y + 1.2, 10, y); ctx.stroke();
+    }
+    line(ctx, [0, -31, 0, -12.4], shade(w.outfit, 0.3), 0.7);
+    for (let k = 0; k < 7; k++) dot(ctx, (k - 3) * 2.6, -34 + Math.abs(k - 3) * 0.5, 1.8, '#FFF6EA');
+  },
 };
 
 /** 袖（腕に対する長さの割合・幅広か・色） */
@@ -1230,6 +1685,9 @@ const SLEEVES: Readonly<Record<TopStyle, Sleeve>> = {
   tee: { len: 0.42 }, hoodie: { len: 0.9 }, shirt: { len: 0.9 }, border: { len: 0.9, color: OFF_WHITE }, knit: { len: 0.92 },
   cardigan: { len: 0.92 }, sailor: { len: 0.5, color: '#fbfbfd' }, happi: { len: 0.55, wide: true }, yukata: { len: 0.78, wide: true },
   jacket: { len: 0.92 }, stadium: { len: 0.92, color: CREAM }, apron: { len: 0.9 }, kimono: { len: 0.82, wide: true },
+  umeKimono: { len: 0.82, wide: true, color: UME }, edoKimono: { len: 0.8, wide: true, color: EDO }, retroOnepiece: { len: 0.34, wide: true, color: RETRO },
+  haoriSakura: { len: 0.82, wide: true, color: HAORI }, tenjinYukata: { len: 0.78, wide: true, color: TENJIN }, momijiPoncho: { len: 0.62, wide: true, color: MOMIJI },
+  downcoat: { len: 0.95, wide: true },
 };
 
 // ---------------------------------------------------------------------------
@@ -1417,20 +1875,20 @@ function paintLegs(ctx: Ctx, w: Wear, footY: number, f: Frame): void { // audit-
  * @param f 動き
  * @returns 手の位置
  */
-function leftHandOf(f: Frame): readonly [number, number] { // audit-ignore: fnlog-missing 毎フレーム描画
+function leftHandOf(f: FrameBase): P { // audit-ignore: fnlog-missing 毎フレーム描画
   if (f.pose === 'wave') return [-15.6 - Math.sin(f.t * 9) * 2.6, -44];
   if (f.pose === 'peace') return [-11, -39];
   if (f.pose === 'jump') return [-16.6, -37];
-  return [-12.8, -17.5 + f.bob * 0.4];
+  return [REST_L[0], REST_L[1] + f.bob * 0.4];
 }
 
 /**
- * 左手を上げるポーズか（上げた手は顔より手前に描く）。
- * @param pose ポーズ
- * @returns 上げるなら true
+ * 手を上げているか（上げた手は顔より手前に描く）。
+ * @param hand 手の位置
+ * @returns 上げていれば true
  */
-function raisesLeftArm(pose: AvatarPose): boolean {
-  return pose === 'wave' || pose === 'peace';
+function isRaised(hand: P): boolean {
+  return hand[1] < RAISED_HAND_Y;
 }
 
 /**
@@ -1453,36 +1911,56 @@ function paintArm(ctx: Ctx, w: Wear, f: Frame, arm: readonly [readonly [number, 
 }
 
 /**
- * 左腕と左手（ポーズ・ピースの指）を描く。
+ * 手（開いた手・手を振る・ピース・こぶし・ほおに当てた人さし指）を描く。
  * @param ctx 描画先
  * @param w 装い
- * @param f 動き
+ * @param f 描き込みの細かさ
+ * @param hand 手の位置と形
  */
-function paintLeftArm(ctx: Ctx, w: Wear, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  const hand = leftHandOf(f);
-  paintArm(ctx, w, f, [SHOULDER_L, hand]);
-  if (f.pose === 'peace') {
-    lineO(ctx, [hand[0] - 0.6, hand[1] - 1, hand[0] - 1.8, hand[1] - 5.4], w.skin, 1.5, f, FACE_LINE);
-    lineO(ctx, [hand[0] + 0.6, hand[1] - 1, hand[0] + 1.4, hand[1] - 5.6], w.skin, 1.5, f, FACE_LINE);
+function paintHand(ctx: Ctx, w: Wear, f: Frame, hand: readonly [P, HandKind]): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [[x, y], kind] = hand;
+  if (kind === 'peace') {
+    lineO(ctx, [x - 0.6, y - 1, x - 1.8, y - 5.4], w.skin, 1.5, f, FACE_LINE);
+    lineO(ctx, [x + 0.6, y - 1, x + 1.4, y - 5.6], w.skin, 1.5, f, FACE_LINE);
   }
-  dot(ctx, hand[0], hand[1], f.pose === 'wave' ? 3.1 : 2.8, w.skin);
+  if (kind === 'finger') lineO(ctx, [x + 0.4, y - 1.2, x + 1.6, y - 4.6], w.skin, 1.5, f, FACE_LINE);
+  const r = kind === 'wave' ? 3.1 : kind === 'fist' ? 3.2 : 2.8;
+  dot(ctx, x, y, r, w.skin);
   edge(ctx, FACE_LINE, f.ol);
+  if (kind === 'fist') line(ctx, [x - 1.6, y - 0.8, x + 1.6, y - 0.8], shade(w.skin, 0.25), 0.6);
 }
 
 /**
- * 右腕・持ち物・右手を描く（持ち物は手の位置を原点に描く）。
+ * 片方の腕・手（右手は持ち物も。持ち物は手の位置を原点に描く）を描く。
  * @param ctx 描画先
  * @param w 装い
- * @param f 動き
+ * @param f 動き（骨組み）
+ * @param side 左 'L' ／右 'R'
  */
-function paintRightArm(ctx: Ctx, w: Wear, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  paintArm(ctx, w, f, [SHOULDER_R, HAND_R]);
-  ctx.save();
-  ctx.translate(HAND_R[0], HAND_R[1]);
-  HELD[w.held](ctx, f);
-  ctx.restore();
-  dot(ctx, HAND_R[0], HAND_R[1], 2.8, w.skin);
-  edge(ctx, FACE_LINE, f.ol);
+function paintSideArm(ctx: Ctx, w: Wear, f: Frame, side: 'L' | 'R'): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const rig = f.rig;
+  const hand = side === 'L' ? rig.left : rig.right;
+  const shoulder = side === 'L' ? SHOULDER_L : SHOULDER_R;
+  paintArm(ctx, w, f, [[shoulder[0] * BODY_WIDTH[w.body], shoulder[1]], hand]);
+  if (side === 'R' && rig.showHeld) {
+    ctx.save();
+    ctx.translate(hand[0], hand[1]);
+    HELD[w.held](ctx, f);
+    ctx.restore();
+  }
+  paintHand(ctx, w, f, [hand, side === 'L' ? rig.leftHand : rig.rightHand]);
+}
+
+/**
+ * 腕を描く（front が false なら下ろした腕、true なら顔より手前に上げた腕）。
+ * @param ctx 描画先
+ * @param w 装い
+ * @param f 動き（骨組み）
+ * @param front 上げた腕を描くとき true
+ */
+function paintArms(ctx: Ctx, w: Wear, f: Frame, front: boolean): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  if (isRaised(f.rig.left) === front) paintSideArm(ctx, w, f, 'L');
+  if (isRaised(f.rig.right) === front) paintSideArm(ctx, w, f, 'R');
 }
 
 /** 持ち物を描く関数（手の位置が原点） */
@@ -1533,7 +2011,7 @@ const HELD: Readonly<Record<AvatarHeld, HeldPainter>> = {
     line(ctx, [9.6, -7.6, 12.6, -13.6], '#e8d4a8', 0.6);
   },
   balloon: (ctx, f) => {
-    const sway = f.animated ? Math.sin(f.t * 1.6) * 0.8 : 0;
+    const sway = f.animated ? Math.sin(f.t * 1.6) * 0.5 : 0;
     ctx.strokeStyle = '#c4b5d6'; ctx.lineWidth = 0.6;
     ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(14, -14, 11 + sway, -31.6); ctx.stroke();
     ovalO(ctx, [11 + sway, -38.6, 5.6, 6.8], '#ff7fb0', f);
@@ -1587,6 +2065,77 @@ const HELD: Readonly<Record<AvatarHeld, HeldPainter>> = {
     edge(ctx, GOLD_DEEP, f.ol);
     star(ctx, 7.2, -18.4, 2, WHITE);
     WAND_SPARKS.forEach(([x, y, r], i) => sparkle4(ctx, x, y, r * twinkle(f, i * 2), GLITTER[(i + 1) % GLITTER.length] ?? WHITE));
+  },
+  omamori: (ctx, f) => {
+    ctx.strokeStyle = GOLD; ctx.lineWidth = 0.7;
+    ctx.beginPath(); ctx.arc(3, -11, 1.5, Math.PI, 0); ctx.stroke();
+    boxO(ctx, [-1, -10.4, 8, 11.4, 2.2], '#D9465F', f);
+    box(ctx, [-1, -8.4, 8, 1.2, 0], GOLD);
+    sparkle4(ctx, 3, -3.6, 2.2, GOLD);
+    dot(ctx, 3, -10.6, 1.1, GOLD);
+  },
+  kushikatsu: (ctx, f) => {
+    for (const d of [0, 3.4]) {
+      lineO(ctx, [d, 2 + d * 0.35, d + 6, -20 + d * 0.35], '#E9D2A6', 0.8, f);
+      for (const k of [0, 1, 2]) ovalO(ctx, [d + 2.2 + k * 1.2, -6 - k * 4.4 + d * 0.35, 2.3, 2.1], '#D99A3E', f, -0.25);
+      for (const k of [0, 1, 2]) dot(ctx, d + 1.6 + k * 1.2, -6.6 - k * 4.4 + d * 0.35, 0.45, '#B8742A');
+    }
+  },
+  kamifusen: (ctx, f) => {
+    const cols = ['#FF7FA8', LEMON, '#7CE38B', SKY];
+    clipped(ctx, circ(6.4, -8.6, 5.2), () => cols.forEach((c, i) => box(ctx, [1.2 + i * 2.6, -13.8, 2.6, 10.4, 0], c)));
+    circlePath(ctx, 6.4, -8.6, 5.2);
+    edge(ctx, '#C9A2FF', Math.max(f.ol, 0.5));
+    oval(ctx, [4.6, -11, 1.4, 0.9], 'rgba(255, 255, 255, 0.7)', -0.5);
+    dot(ctx, 6.4, -13.8, 0.7, WHITE);
+  },
+  filmcamera: (ctx, f) => {
+    ctx.strokeStyle = '#B0708F'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(-2, -6); ctx.quadraticCurveTo(-6, 4, 0, 6); ctx.stroke();
+    boxO(ctx, [-3, -10, 15.4, 9.4, 1.8], '#D5DAE2', f);
+    box(ctx, [-3, -6.2, 15.4, 5.6, 1.6], '#3B3550');
+    dotO(ctx, [5, -5.4, 3.4], '#5d5180', f);
+    dot(ctx, 5, -5.4, 2.2, SKY);
+    dot(ctx, 5.8, -6.2, 0.7, WHITE);
+    box(ctx, [8.6, -9.2, 2.6, 1.6, 0.4], '#3B3550');
+    dot(ctx, 0, -10.6, 0.9, PINK);
+  },
+  dango: (ctx, f) => {
+    lineO(ctx, [0, 2, 6, -20], '#E9D2A6', 0.8, f);
+    ['#A7E3A0', WHITE, '#FFB6D9'].forEach((c, k) => {
+      dotO(ctx, [1.7 + k * 1.45, -4.8 - k * 5.3, 2.7], c, f);
+      dot(ctx, 1 + k * 1.45, -5.8 - k * 5.3, 0.7, 'rgba(255, 255, 255, 0.8)');
+    });
+  },
+  kingyo: (ctx, f) => {
+    line(ctx, [0, 0, 1.4, 3], '#D9465F', 0.5);
+    ovalO(ctx, [1.4, 9.6, 5.2, 5.6], 'rgba(189, 235, 255, 0.55)', f);
+    poly(ctx, [0, 3, 2.8, 3, 1.4, 4.6], '#D9465F');
+    line(ctx, [-3.4, 7, 6.2, 7], 'rgba(255, 255, 255, 0.7)', 0.6);
+    const swim = f.animated ? Math.sin(f.t * 3) * 0.6 : 0;
+    oval(ctx, [2.2 + swim, 10.4, 2, 1.2], '#FF7A3C', 0.2);
+    poly(ctx, [0.4 + swim, 10, -1.2 + swim, 8.8, -1.2 + swim, 11.4], '#FF9F6A');
+    dot(ctx, 3.4 + swim, 10, 0.3, LASH);
+    dot(ctx, 4.4, 8, 0.4, WHITE);
+  },
+  yakiimo: (ctx, f) => {
+    ovalO(ctx, [4, -8.6, 4.6, 2.6], '#9B4F96', f, -0.4);
+    oval(ctx, [6.8, -10.2, 1.9, 1.5], '#FFD66B', -0.4);
+    polyO(ctx, [-1.4, -6, 9.4, -6, 8.4, 3, -0.4, 3], '#D9B98A', f);
+    const rise = f.animated ? (f.t * 0.8) % 1 : 0.5;
+    ctx.save(); ctx.globalAlpha = 0.7 * (1 - rise);
+    line(ctx, [3, -12 - rise * 3, 2.2, -14 - rise * 3, 3.2, -16 - rise * 3], WHITE, 0.6);
+    ctx.restore();
+  },
+  yukidaruma: (ctx, f) => {
+    dotO(ctx, [5, -5, 4.2], WHITE, f);
+    dotO(ctx, [5, -11.4, 3], WHITE, f);
+    box(ctx, [2.2, -9.2, 5.6, 1.4, 0.6], '#FF5F7E');
+    dot(ctx, 4, -11.8, 0.45, LASH);
+    dot(ctx, 6, -11.8, 0.45, LASH);
+    poly(ctx, [5, -11, 7.6, -10.6, 5, -10.2], '#FF9F43');
+    box(ctx, [3.2, -15.8, 3.6, 2.4, 0.6], '#9B6BD0');
+    sparkle4(ctx, 9.8, -14.2, 1.1 * twinkle(f, 1.5), SKY);
   },
 };
 
@@ -1651,13 +2200,7 @@ function beretDome(ctx: Ctx): void { // audit-ignore: fnlog-missing 毎フレー
 
 /** 帽子の種類ごとの描き方（頭頂 -63.5 にかぶせる） */
 const HATS: Readonly<Record<AvatarHat, HatPainter>> = {
-  beret: (ctx, w, f) => {
-    ctx.save(); ctx.translate(2, -60.6); ctx.rotate(-0.14);
-    paintPieces(ctx, [beretDome, ell([0, -0.6, 15, 2.6])], BERET, shade(BERET, 0.4), f.ol);
-    box(ctx, [-13.6, 0.4, 27.2, 2.6, 1.3], shade(BERET, 0.18));
-    dot(ctx, 0, -7.4, 1.3, shade(BERET, 0.18));
-    ctx.restore();
-  },
+  beret: (ctx, w, f) => paintBeret(ctx, BERET, f),
   straw: (ctx, w, f) => {
     ovalO(ctx, [0, -57.6, 21, 4.4], STRAW, f);
     paintPieces(ctx, [dome(10.6, -58, 10.6, -69)], tint(STRAW, 0.12), shade(STRAW, 0.4), f.ol);
@@ -1720,7 +2263,7 @@ const HATS: Readonly<Record<AvatarHat, HatPainter>> = {
     line(ctx, [-6.6, -71.6, -6.6, -64], 'rgba(255, 255, 255, 0.25)', 1.2);
   },
   halo: (ctx, w, f) => {
-    const y = -70.6 + (f.animated ? Math.sin(f.t * 2.4) * 0.7 : 0);
+    const y = -70.6 + (f.animated ? (1 + Math.sin(f.t * 2.4)) * 0.35 : 0);
     ctx.strokeStyle = 'rgba(255, 229, 138, 0.5)'; ctx.lineWidth = 3.6;
     ctx.beginPath(); ctx.ellipse(0, y, 10.4, 2.6, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = GOLD; ctx.lineWidth = 1.8;
@@ -1738,11 +2281,80 @@ const HATS: Readonly<Record<AvatarHat, HatPainter>> = {
     dot(ctx, 0, -69.4, 1, WHITE);
     sparkle4(ctx, 6.4, -68.4, 1.5 * twinkle(f, 0.5), WHITE);
   },
+  umeKanzashi: (ctx, w, f) => {
+    line(ctx, [4, -59.4, 14.6, -55.6], GOLD, 0.9);
+    paintDangles(ctx, f, [12.6, -56.8], UME_RED);
+    flower(ctx, 12.4, -58.8, 1.7, '#FF8FB1');
+    flower(ctx, 9.4, -61.2, 1.3, WHITE);
+    flower(ctx, 14.8, -61.2, 1.2, UME_RED);
+  },
+  sugegasa: (ctx, w, f) => {
+    const hat = '#D8B86A';
+    ctx.beginPath(); ctx.moveTo(-22, -56.4); ctx.quadraticCurveTo(0, -58.8, 22, -56.4); ctx.lineTo(0, -73.4); ctx.closePath();
+    fillWith(ctx, hat);
+    edge(ctx, shade(hat, 0.4), f.ol);
+    for (const x of [-15, -8, 0, 8, 15]) line(ctx, [0, -72.6, x, -57.4 - Math.abs(x) * 0.02], shade(hat, 0.2), 0.5);
+    line(ctx, [-21, -57, 0, -59.2, 21, -57], tint(hat, 0.3), 0.8);
+    dot(ctx, 0, -73, 1, '#D9465F');
+  },
+  sakuraKanzashi: (ctx, w, f) => {
+    line(ctx, [-4, -59.4, -14.6, -55.6], '#F4A6C8', 0.9);
+    paintDangles(ctx, f, [-12.6, -56.8], WHITE);
+    sakura(ctx, -12.4, -58.8, 1.9, '#FFC4D8');
+    sakura(ctx, -9.2, -61.4, 1.4, '#FFE3EC');
+    sparkle4(ctx, -15.6, -62, 1 * twinkle(f, 2), WHITE);
+  },
+  kitsuneMask: (ctx, w, f) => {
+    ctx.save(); ctx.translate(11.4, -58.4); ctx.rotate(0.45);
+    paintPieces(ctx, [pg([-4.4, -3, -3.8, -9.4, -0.8, -4.8]), pg([4.4, -3, 3.8, -9.4, 0.8, -4.8]), ell([0, 0, 5.4, 6])], WHITE, '#D9C8FF', Math.max(f.ol, 0.5));
+    poly(ctx, [-3.4, -4.4, -3.4, -7.6, -1.6, -5], '#FF8FB1');
+    poly(ctx, [3.4, -4.4, 3.4, -7.6, 1.6, -5], '#FF8FB1');
+    for (const s of [-1, 1]) line(ctx, [s * 1.2, -0.6, s * 3.4, -1.6], RED, 0.9);
+    dot(ctx, 0, -3.6, 0.9, GOLD);
+    line(ctx, [-1.4, 3, 0, 3.8, 1.4, 3], RED, 0.7);
+    ctx.restore();
+  },
+  momijiBeret: (ctx, w, f) => {
+    paintBeret(ctx, '#C8553D', f);
+    maple(ctx, -4, -66.2, 2.8, '#FFB347');
+    maple(ctx, -0.6, -67.4, 1.8, '#FFD66B');
+  },
 };
+
+/**
+ * ベレー帽（傾けた山＋つば＋てっぺんの軸）を描く。
+ * @param ctx 描画先
+ * @param color 色
+ * @param f 描き込みの細かさ
+ */
+function paintBeret(ctx: Ctx, color: string, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  ctx.save(); ctx.translate(2, -60.6); ctx.rotate(-0.14);
+  paintPieces(ctx, [beretDome, ell([0, -0.6, 15, 2.6])], color, shade(color, 0.4), f.ol);
+  box(ctx, [-13.6, 0.4, 27.2, 2.6, 1.3], shade(color, 0.18));
+  dot(ctx, 0, -7.4, 1.3, shade(color, 0.18));
+  ctx.restore();
+}
+
+/**
+ * かんざしの下がり飾り（揺れる糸と玉3つ）を描く。
+ * @param ctx 描画先
+ * @param f 動き
+ * @param top 吊り元
+ * @param bead 玉の色
+ */
+function paintDangles(ctx: Ctx, f: Frame, top: P, bead: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const sway = f.animated ? Math.sin(f.t * 2.2) * 0.6 : 0;
+  for (const [i, dx] of [[0, -1.2], [1, 0.4], [2, 1.8]] as const) {
+    const end: P = [top[0] + dx + sway, top[1] + 5 + i * 1.2];
+    line(ctx, [top[0], top[1], end[0], end[1]], tint(GOLD, 0.3), 0.4);
+    dot(ctx, end[0], end[1], 0.8, i === 1 ? WHITE : bead);
+  }
+}
 
 /** 帽子のいちばん上の高さ（頭のまとまりの中＝拡大前・持ち上げ無し） */
 const HAT_TOP: Readonly<Record<AvatarHat, number>> = {
   beret: -69.3, straw: -67, crown: -73.2, cap: -66, knit: -71.4, hachimaki: -61, flower: -66, catEars: -71, bucket: -67, silk: -76, halo: -75.9, tiara: -70.6,
+  umeKanzashi: -63.6, sugegasa: -73.6, sakuraKanzashi: -63.6, kitsuneMask: -68.8, momijiBeret: -69.8,
 };
 
 /** 髪型ごとの帽子の持ち上げ（盛った髪の上にかぶせる） */
@@ -1758,11 +2370,20 @@ const HAIR_LIFT: Readonly<Record<HairStyle, number>> = {
  */
 function paintHat(ctx: Ctx, w: Wear, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
   if (w.hat === undefined) return;
-  const lift = Math.max(HAIR_LIFT[w.hair], HAT_LIMIT - HAT_TOP[w.hat]);
   ctx.save();
-  ctx.translate(0, lift);
+  ctx.translate(0, hatLiftOf(w.hair, w.hat));
   HATS[w.hat](ctx, w, f);
   ctx.restore();
+}
+
+/**
+ * 帽子の上下のずれ（髪型で持ち上げ、拡大後の上限を超える帽子は下げる。上が負）。
+ * @param hair 髪型
+ * @param hat 帽子
+ * @returns ずれ
+ */
+function hatLiftOf(hair: HairStyle, hat: AvatarHat): number {
+  return Math.max(HAIR_LIFT[hair], HAT_LIMIT - HAT_TOP[hat]);
 }
 
 // ---------------------------------------------------------------------------
@@ -1864,6 +2485,16 @@ const ACCESSORIES: Readonly<Record<AccessoryStyle, AccessoryDef>> = {
     line(ctx, [-2.6, EYE_Y - 1.2, 2.6, EYE_Y - 1.2], PINK, 1);
     line(ctx, [-10.6, EYE_Y - 1.4, -14.6, EYE_Y - 1.8], PINK, 0.9);
     line(ctx, [10.6, EYE_Y - 1.4, 14.6, EYE_Y - 1.8], PINK, 0.9);
+  } },
+  earmuffs: { layer: 'hair', paint: (ctx, w, f) => {
+    ctx.strokeStyle = '#FFD6EC'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, -46, 17.2, Math.PI * 1.06, Math.PI * 1.94); ctx.stroke();
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < 8; i++) dot(ctx, s * 15.8 + Math.cos((i * Math.PI) / 4) * 3.6, -45.4 + Math.sin((i * Math.PI) / 4) * 3.6, 1.6, '#FFF6FA');
+      dotO(ctx, [s * 15.8, -45.4, 3.8], WHITE, f);
+      dot(ctx, s * 15.8, -45.4, 2.2, '#FFD6EC');
+      dot(ctx, s * 15.8 - 0.8, -46.4, 0.6, WHITE);
+    }
   } },
 };
 
@@ -2049,6 +2680,46 @@ const PETS: Readonly<Record<PetStyle, PetPainter>> = {
     oval(ctx, [4.6, -0.8, 1.8, 1], LAVENDER);
     sparkle4(ctx, 8.6, -22, 1.2 * twinkle(f, 3), LEMON);
   },
+  uso: (ctx, wag, f) => {
+    const wood = '#E9C9A0';
+    ovalO(ctx, [0, -0.9, 6, 1.3], shade(wood, 0.15), f);
+    paintPieces(ctx, [ell([0, -8, 5.2, 7.6]), ell([2.6, -16.4, 3.8, 3.4])], wood, shade(wood, 0.4), f.ol);
+    ctx.strokeStyle = shade(wood, 0.35); ctx.lineWidth = 0.6;
+    for (const y of [-11.6, -7.6, -3.6]) { ctx.beginPath(); ctx.arc(-1, y, 2.4, Math.PI * 0.1, Math.PI * 0.9); ctx.stroke(); }
+    oval(ctx, [-2.6, -8.6, 2.2, 4.2], '#3FA57C', -0.2 + wag * 0.3);
+    oval(ctx, [3.8, -12.8, 1.6, 1.2], '#D9465F');
+    poly(ctx, [6, -16.8, 8, -16, 6, -15.2], '#7a5134');
+    dot(ctx, 3.8, -17.2, 0.65, LASH);
+    line(ctx, [0, -19.6, -1.6, -18.6, -2.6, -16.6], shade(wood, 0.35), 0.6);
+    if (f.fine) sparkle4(ctx, -4.8, -17.6, 0.9 * twinkle(f, 1), LEMON);
+  },
+  mejiro: (ctx, wag, f) => {
+    const bob = f.animated ? Math.abs(Math.sin(f.t * 2.6)) * 0.8 : 0;
+    line(ctx, [-8, -1.6, 8, -2.6], '#8a5a3c', 1.2);
+    flower(ctx, -6, -2.8, 1, '#FFB3C8');
+    poly(ctx, [-4.6, -6, -9, -4 + wag * 2, -8.4, -6.8 + wag * 2], '#7E9E36');
+    ovalO(ctx, [0, -6.6 - bob, 5.4, 4.4], '#A3C84C', f, -0.2);
+    oval(ctx, [0.8, -5.4 - bob, 3.2, 2.6], '#F2F0DC');
+    dotO(ctx, [3.6, -10.4 - bob, 3], '#A3C84C', f);
+    oval(ctx, [4.6, -8.4 - bob, 1.6, 1.1], '#F2E36B');
+    dot(ctx, 4.4, -11 - bob, 1.15, WHITE);
+    dot(ctx, 4.5, -11 - bob, 0.55, LASH);
+    poly(ctx, [6.4, -10.8 - bob, 8, -10.4 - bob, 6.4, -9.8 - bob], '#6b6380');
+  },
+  tsukimiUsagi: (ctx, wag, f) => {
+    ctx.beginPath(); ctx.arc(-5.6, -20.6, 4.2, Math.PI * 0.4, Math.PI * 1.6); ctx.arc(-3.6, -20.6, 3.4, Math.PI * 1.45, Math.PI * 0.55, true); ctx.closePath();
+    fillWith(ctx, LEMON);
+    if (f.fine) sparkle4(ctx, -1.8, -25, 0.9 * twinkle(f, 0), WHITE);
+    ovalO(ctx, [1.4, -21, 1.8, 5.6], WHITE, f, -0.15 + wag * 0.3);
+    ovalO(ctx, [4.8, -21.4, 1.8, 5.6], WHITE, f, 0.2);
+    oval(ctx, [1.4, -21, 0.8, 4], '#f6b8c6', -0.15 + wag * 0.3);
+    oval(ctx, [4.8, -21.4, 0.8, 4], '#f6b8c6', 0.2);
+    paintPieces(ctx, [ell([0, -5.6, 6.6, 5.8]), circ(-6, -4, 2.2), ell([3, -12.6, 5, 4.6])], WHITE, '#D9C8FF', f.ol);
+    petEye(ctx, 5, -13.2, 1);
+    dot(ctx, 4.4, -10.8, 1, 'rgba(255, 110, 150, 0.35)');
+    box(ctx, [5.6, -1.8, 4.4, 1.8, 0.4], '#E9C9A0');
+    for (const [x, y] of [[6.6, -3.2], [8.8, -3.2], [7.7, -5.1]] as const) dotO(ctx, [x, y, 1.15], WHITE, f);
+  },
 };
 
 /**
@@ -2100,6 +2771,7 @@ function wearOf(look: AvatarLook): Wear { // audit-ignore: fnlog-missing 毎フ�
     hat: look.hat,
     accessory: look.accessory,
     pet: look.pet ?? (look.hasCat ? 'cat' : undefined),
+    body: look.body ?? 'neutral',
   };
 }
 
@@ -2109,7 +2781,7 @@ function wearOf(look: AvatarLook): Wear { // audit-ignore: fnlog-missing 毎フ�
  * @param scale 拡大率（0.6 未満は細かい飾りを省く）
  * @returns 1コマの状態
  */
-function frameOf(motion: AvatarMotion | undefined, scale: number): Frame { // audit-ignore: fnlog-missing 毎フレーム描画
+function frameOf(motion: AvatarMotion | undefined, scale: number): FrameBase { // audit-ignore: fnlog-missing 毎フレーム描画
   const fine = scale >= DETAIL_MIN_SCALE;
   const lines = { fine, ol: fine ? 0.8 : 0, hairOl: fine ? 0.9 : 1.2, faceOl: fine ? 0.8 : 1.2 };
   if (motion === undefined) return { pose: 'stand', t: 0, animated: false, bob: 0, lift: 0, blink: false, ...lines };
@@ -2132,44 +2804,182 @@ function frameOf(motion: AvatarMotion | undefined, scale: number): Frame { // au
  * @param f 動き
  */
 function paintShadow(ctx: Ctx, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  const k = 1 - f.lift / 14;
+  const k = 1 - f.rig.lift / 14;
   oval(ctx, [0, 0, 14 * k, 3.2 * k], 'rgba(74, 35, 80, 0.12)');
 }
 
+// ---------------------------------------------------------------------------
+// 骨組み（基本のポーズとエモート）
+// ---------------------------------------------------------------------------
+
+/** 上げた手（踊る） */
+const UP_L: P = [-15.6, -44];
+const UP_R: P = [15.6, -44];
+/** 髪型ごとのいちばん上（頭のまとまりの中＝拡大前） */
+const HAIR_TOP: Readonly<Record<HairStyle, number>> = {
+  short: -63.6, bob: -63.6, long: -63.6, ponytail: -63.6, bun: -70.8, twintail: -63.6, curly: -67.8, spiky: -70.5, sidepart: -63.6, wolf: -63.6, braid: -63.6, afro: -74.2,
+};
+/** 髪かざり（リボン・ヘッドホン）のいちばん上（拡大前） */
+const ACCESSORY_TOP = -64.6;
+/** 頭より高くなる持ち物のいちばん上（拡大なし・休めの右手で持ったとき） */
+const HELD_TOP: Readonly<Partial<Record<AvatarHeld, number>>> = { umbrella: -75.9, fishing: -66.5, balloon: -63.6 };
+/** 体の回転で上の端が持ち上がる量の目安（1ラジアンあたり） */
+const ROT_RISE = 12;
+
 /**
- * 体（背中のもの・後ろ髪・脚・トップス・首まわり・腕と持ち物）を描く。
+ * 頭のまとまりの中の高さを、拡大後の高さにする。
+ * @param y 拡大前の高さ
+ * @returns 拡大後の高さ
+ */
+function postHeadY(y: number): number {
+  return HEAD_PIVOT_Y + (y - HEAD_PIVOT_Y) * HEAD_SCALE;
+}
+
+/**
+ * 止まった絵のいちばん上（髪・帽子・髪かざり・頭より高い持ち物）を求める。
+ * @param w 装い
+ * @param showHeld 持ち物を持っているか
+ * @returns いちばん上の Y
+ */
+function figureTopOf(w: Wear, showHeld: boolean): number { // audit-ignore: fnlog-missing 毎フレーム描画
+  let top = postHeadY(HAIR_TOP[w.hair]);
+  if (w.hat !== undefined) top = Math.min(top, postHeadY(HAT_TOP[w.hat] + hatLiftOf(w.hair, w.hat)));
+  if (w.accessory === 'ribbon' || w.accessory === 'headphones' || w.accessory === 'earmuffs') top = Math.min(top, postHeadY(ACCESSORY_TOP));
+  const held = showHeld ? HELD_TOP[w.held] : undefined;
+  return held === undefined ? top : Math.min(top, held);
+}
+
+/**
+ * 2点の間の点。
+ * @param a 始め
+ * @param b 終わり
+ * @param k 割合 0..1
+ * @returns 点
+ */
+function mix(a: P, b: P, k: number): P {
+  return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+}
+
+/**
+ * 休めの骨組み（エモートの土台。呼吸だけ）。
+ * @param f 動き
+ * @returns 骨組み
+ */
+function restRig(f: FrameBase): Rig { // audit-ignore: fnlog-missing 毎フレーム描画
+  return {
+    dx: 0, dy: f.bob, lift: 0, rot: 0, scaleX: 1, headRot: 0, headDrop: 0, bow: 0,
+    left: [REST_L[0], REST_L[1] + f.bob * 0.4], right: HAND_R, leftHand: 'open', rightHand: 'open',
+    showHeld: true, eyes: 'look', mouth: 'look',
+  };
+}
+
+/**
+ * 基本のポーズ（立つ・手を振る・ジャンプ・ピース）の骨組み。
+ * @param f 動き
+ * @returns 骨組み
+ */
+function basicRig(f: FrameBase): Rig { // audit-ignore: fnlog-missing 毎フレーム描画
+  const hand: HandKind = f.pose === 'peace' ? 'peace' : f.pose === 'wave' ? 'wave' : 'open';
+  return { ...restRig(f), dy: f.bob - f.lift, lift: f.lift, left: leftHandOf(f), leftHand: hand, eyes: f.pose === 'peace' ? 'wink' : 'look' };
+}
+
+/** エモートごとの骨組み（休めの骨組みから作る。表情もここで決める） */
+const EMOTE_RIGS: Readonly<Record<EmotePose, (f: FrameBase, r: Rig) => Rig>> = {
+  love: (f, r) => ({ ...r, rot: Math.sin(f.t * 2.2) * 0.04, left: [-10.6, -39.6], right: [10.6, -39.6], showHeld: false, eyes: 'happy', mouth: 'small', extra: 'hearts' }),
+  dance: (f, r) => {
+    const s = Math.sin(f.t * Math.PI * 2);
+    const hop = Math.abs(s) * 2.2;
+    return { ...r, dx: s * 1.4, dy: -hop, lift: hop, rot: s * 0.05, left: mix(REST_L, UP_L, (1 + s) / 2), right: mix(HAND_R, UP_R, (1 - s) / 2), showHeld: false, mouth: 'open' };
+  },
+  laugh: (f, r) => {
+    const b = Math.abs(Math.sin(f.t * Math.PI * 3.4)) * 2.2;
+    return { ...r, dy: -b, lift: b * 0.5, left: [-4.6, -21.4], eyes: 'happy', mouth: 'laugh' };
+  },
+  surprise: (f, r) => {
+    const p = f.t % 1.8;
+    const hop = p < 0.36 ? Math.sin((Math.PI * p) / 0.36) * 3 : 0;
+    const shake = Math.sin(f.t * 30) * 0.3;
+    return { ...r, dy: -hop, lift: hop, left: [-14.8 + shake, -48], right: [14.8 - shake, -48], showHeld: false, eyes: 'wide', mouth: 'o' };
+  },
+  tilt: (f, r) => ({ ...r, headRot: -0.21 + Math.sin(f.t * 1.5) * 0.03, headDrop: 2.4, left: [-10.2, -38.6], leftHand: 'finger', mouth: 'puzzled' }),
+  sleepy: (f, r) => ({ ...r, dx: Math.sin(f.t * 0.9) * 0.4, headDrop: 1.4 + (1 - Math.cos(f.t * 1.3)) * 1.2, headRot: Math.sin(f.t * 0.65) * 0.06, eyes: 'closed', mouth: 'small' }),
+  cry: (f, r) => ({ ...r, dy: r.dy - Math.abs(Math.sin(f.t * 6)) * 0.4, left: [-7.8 + Math.sin(f.t * 9) * 0.8, -42.4], eyes: 'teary', mouth: 'wavy', extra: 'tears' }),
+  angry: (f, r) => ({ ...r, dx: Math.sin(f.t * 38) * 0.6, left: [-13.4, -19.6], right: [13.4, -19.6], leftHand: 'fist', rightHand: 'fist', showHeld: false, eyes: 'angry', mouth: 'pout', extra: 'puff' }),
+  cheer: (f, r) => {
+    const p = Math.abs(Math.sin((f.t * Math.PI) / 0.45));
+    const jump = Math.abs(Math.sin((f.t * Math.PI) / 0.9)) * 7;
+    return { ...r, dy: -jump, lift: jump, left: [-14 - p, -45 - p * 4], right: [14 + p, -45 - p * 4], showHeld: false, eyes: 'happy', mouth: 'open' };
+  },
+  spin: (f, r) => ({ ...r, scaleX: Math.cos((f.t * Math.PI * 2) / 0.9), mouth: 'open' }),
+  bow: (f, r) => ({ ...r, bow: 0.5 - 0.5 * Math.cos((f.t * Math.PI * 2) / 2.4), left: [-3.8, -19.4], right: [3.8, -19.4], showHeld: false, eyes: 'closed', mouth: 'small' }),
+};
+
+/**
+ * 基本のポーズか。
+ * @param pose ポーズ
+ * @returns 基本のポーズなら true
+ */
+function isBasicPose(pose: AvatarPose): pose is 'stand' | 'wave' | 'jump' | 'peace' {
+  return pose === 'stand' || pose === 'wave' || pose === 'jump' || pose === 'peace';
+}
+
+/**
+ * 1コマの骨組みを決める。ジャンプ以外は、持ち上げても上の端（-76）を超えない高さまでに抑える（回転で持ち上がる分も見込む）。
+ * @param f 動き
+ * @param w 装い（上の端を求める）
+ * @returns 骨組み
+ */
+function rigOf(f: FrameBase, w: Wear): Rig { // audit-ignore: fnlog-missing 毎フレーム描画
+  const pose = f.pose;
+  if (pose === 'jump') return basicRig(f);
+  const rig = isBasicPose(pose) ? basicRig(f) : EMOTE_RIGS[pose](f, restRig(f));
+  const room = Math.max(0, figureTopOf(w, rig.showHeld) - TOP_LIMIT - HEADROOM_MARGIN) - Math.abs(rig.rot) * ROT_RISE;
+  if (rig.dy >= -room) return rig;
+  return { ...rig, dy: -room, lift: Math.max(0, Math.min(rig.lift, room)) };
+}
+
+/**
+ * 体（背中のもの・後ろ髪・脚・トップス・首まわり・下ろした腕と持ち物）を描く。上半身はおじぎで縮める。
  * @param ctx 描画先
  * @param w 装い
  * @param f 動き
  */
 function paintBody(ctx: Ctx, w: Wear, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  paintAccessory(ctx, w, f, 'back');
-  withHeadScale(ctx, () => paintBackHair(ctx, w, f));
-  paintLegs(ctx, w, -(f.lift / 7) * 3.2, f);
-  TOPS[w.top](ctx, w, f);
-  finishTorso(ctx, w, f);
-  if (w.bottom === 'overall') paintOverallBib(ctx, f);
-  paintAccessory(ctx, w, f, 'neck');
-  if (!raisesLeftArm(f.pose)) paintLeftArm(ctx, w, f);
-  paintRightArm(ctx, w, f);
+  withUpper(ctx, f, () => {
+    paintAccessory(ctx, w, f, 'back');
+    withHeadScale(ctx, f, () => paintBackHair(ctx, w, f));
+  });
+  paintLegs(ctx, w, -(f.rig.lift / 7) * 3.2, f);
+  withUpper(ctx, f, () => {
+    withTorsoWidth(ctx, w, () => {
+      TOPS[w.top](ctx, w, f);
+      finishTorso(ctx, w, f);
+      if (w.bottom === 'overall') paintOverallBib(ctx, f);
+      paintAccessory(ctx, w, f, 'neck');
+    });
+    paintArms(ctx, w, f, false);
+  });
 }
 
 /**
- * 頭（顔・顔のアクセサリー・前髪・髪かざり・帽子を 1.04 倍で）と、傘・上げた手を描く。
+ * 頭（顔・顔のアクセサリー・前髪・眉・髪かざり・帽子を 1.04 倍で）と、傘・上げた腕を描く。
  * @param ctx 描画先
  * @param w 装い
  * @param f 動き
  */
 function paintHead(ctx: Ctx, w: Wear, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  withHeadScale(ctx, () => {
-    paintFace(ctx, w, f);
-    paintAccessory(ctx, w, f, 'face');
-    paintFrontHair(ctx, w, f);
-    paintAccessory(ctx, w, f, 'hair');
-    paintHat(ctx, w, f);
+  withUpper(ctx, f, () => {
+    withHeadScale(ctx, f, () => {
+      paintFace(ctx, w, f);
+      paintAccessory(ctx, w, f, 'face');
+      paintFrontHair(ctx, w, f);
+      paintBrows(ctx, w, f);
+      paintAccessory(ctx, w, f, 'hair');
+      paintHat(ctx, w, f);
+    });
+    if (w.held === 'umbrella' && f.rig.showHeld) paintUmbrellaTop(ctx, f);
+    paintArms(ctx, w, f, true);
   });
-  if (w.held === 'umbrella') paintUmbrellaTop(ctx, f);
-  if (raisesLeftArm(f.pose)) paintLeftArm(ctx, w, f);
 }
 
 /**
@@ -2182,14 +2992,17 @@ function paintHead(ctx: Ctx, w: Wear, f: Frame): void { // audit-ignore: fnlog-m
  */
 export function drawAvatar(ctx: Ctx, look: AvatarLook, at: AvatarPlacement, motion?: AvatarMotion): void { // audit-ignore: fnlog-missing 毎フレーム描画
   const w = wearOf(look);
-  const f = frameOf(motion, at.scale);
+  const base = frameOf(motion, at.scale);
+  const f: Frame = { ...base, body: w.body, rig: rigOf(base, w) };
   ctx.save();
   ctx.translate(at.x, at.y);
   ctx.scale(at.scale, at.scale);
   ctx.setLineDash([]);
   paintShadow(ctx, f);
   if (w.pet !== undefined) paintPet(ctx, w.pet, f);
-  ctx.translate(0, f.bob - f.lift);
+  ctx.translate(f.rig.dx, f.rig.dy);
+  ctx.rotate(f.rig.rot);
+  ctx.scale(f.rig.scaleX, 1);
   paintBody(ctx, w, f);
   paintHead(ctx, w, f);
   ctx.restore();

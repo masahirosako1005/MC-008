@@ -121,11 +121,11 @@ export function nextGoalText(input: NextGoalInput): string {
   const { status, standing, nextCard } = input;
   const { fade } = status;
   if (standing !== undefined && standing.lostByTraveler && !standing.isMe) {
-    return log.exit(`取り返しまで：あと${standing.needed}回（直近${LORD_WINDOW_DAYS}日）`);
+    return log.exit(`奪還まで：あと${standing.needed}回（直近${LORD_WINDOW_DAYS}日）`);
   }
   if (fade.kind === 'fading') return log.exit('再訪で復活＋おかえりボーナス');
   if (fade.kind === 'soon') return log.exit(`あと${fade.daysUntilFade}日で色あせ`);
-  if (status.visitCount === 0) return log.exit('まず1か所を訪問しよう');
+  if (status.visitCount === 0) return log.exit('まずクエストを1つ達成しよう');
   if (nextCard !== undefined) return log.exit(`あと${nextCard.remainingVisits}回で${CARD_RANK_LABEL[nextCard.rank]}カード`);
   if (status.nextGoal !== undefined) return log.exit(`Lv${status.nextGoal.nextLevel}まであと${status.nextGoal.remainingScore}`);
   return log.exit('通い続けて街を彩ろう');

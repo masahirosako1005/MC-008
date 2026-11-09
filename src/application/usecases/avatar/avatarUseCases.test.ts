@@ -104,3 +104,19 @@ describe('SaveAvatarUseCase', () => {
     }
   });
 });
+
+describe('GetAvatarClosetUseCase（ご当地・季節）', () => {
+  it('いまの季節とコレクションを返し、季節の部品には季節、ご当地の部品には地区の札が付く', async () => {
+    const { tw, get } = setup();
+    await seedTraveler(tw, { visits: VISITS });
+    const closet = must(await get.execute());
+    expect(['spring', 'summer', 'autumn', 'winter']).toContain(closet.season);
+    expect(closet.sets.length).toBeGreaterThanOrEqual(9);
+    expect(closet.sets.find((s) => s.id === 'set.winter')).toMatchObject({ kind: 'season', label: '冬' });
+    const uso = closet.parts.find((p) => p.id === 'pet.uso');
+    expect(uso).toMatchObject({ season: 'winter', districtId: 'd_minamimori' });
+    expect(uso?.hint).toMatch(/^冬に.+に1回訪れる$/);
+    expect(closet.parts.find((p) => p.id === 'held.dango')?.hint).toBe('春に1回通う');
+    expect(closet.parts.find((p) => p.id === 'body.girl')?.owned).toBe(true);
+  });
+});

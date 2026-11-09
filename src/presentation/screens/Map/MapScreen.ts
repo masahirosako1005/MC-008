@@ -25,8 +25,6 @@ import type { AppContext } from '@/presentation/App/AppContext';
 import type { Screen } from '@/presentation/App/Screen';
 import { boundsOf, buildMapViewModel, distanceMeters, districtAt, findDistrict, fitBounds, project, unproject, usableHeight } from '@/presentation/screens/Map/MapViewModel';
 import type { Camera, GeoBounds, LatLng, MapViewModel, Viewport } from '@/presentation/screens/Map/MapViewModel';
-import { MAP_SHEET_PEEK_REM, createMapSheet } from '@/presentation/screens/Map/Sheet/MapSheet';
-import type { MapSheetHandle } from '@/presentation/screens/Map/Sheet/MapSheet';
 import { createWalker, discoverNearby } from '@/presentation/screens/Map/Walker';
 import type { Walker } from '@/presentation/screens/Map/Walker';
 import { createZoomToggle, middleDistrictOf } from '@/presentation/screens/Map/ZoomToggle';
@@ -34,12 +32,24 @@ import type { ZoomToggleHandle } from '@/presentation/screens/Map/ZoomToggle';
 import { AVATAR_DOT_PX, SELF_AVATAR_SCALE, drawPeople, hitTestPerson, personMessageOf, placeTravelers, walkPhaseOf } from '@/presentation/screens/Map/mapPeople';
 import type { PlacedPerson } from '@/presentation/screens/Map/mapPeople';
 import { createMapFilterBar } from '@/presentation/screens/Map/town/MapFilterBar';
+import { createNearbyPanel } from '@/presentation/screens/Map/town/NearbyPanel';
+import type { NearbyPanelHandle } from '@/presentation/screens/Map/town/NearbyPanel';
 import type { MapFilterBarHandle } from '@/presentation/screens/Map/town/MapFilterBar';
 import { openMapPrefsPanel } from '@/presentation/screens/Map/town/MapPrefsPanel';
 import { createSpotCard } from '@/presentation/screens/Map/town/SpotCard';
 import type { SpotCardHandle, SpotCardPhase } from '@/presentation/screens/Map/town/SpotCard';
 import { MapCameraController } from '@/presentation/screens/Map/town/mapCamera';
 import { MapEffects } from '@/presentation/screens/Map/town/mapEffects';
+import { CheckInShow, IMPACT_MS } from '@/presentation/screens/Map/town/checkinShow';
+import { buzz, playCoin, playFanfare, playGrow, playPress, playStamp, unlockSound } from '@/presentation/screens/Map/town/mapSound';
+import { openQrScan } from '@/presentation/screens/Map/town/QrScanSheet';
+import type { QrScanKind } from '@/presentation/screens/Map/town/QrScanSheet';
+import { addPurchase, loadPurchases } from '@/presentation/screens/Map/town/purchaseLog';
+import { createSideShopList } from '@/presentation/screens/Map/town/SideShopList';
+import type { SideShopItem, SideShopListHandle } from '@/presentation/screens/Map/town/SideShopList';
+import { ShopVoices } from '@/presentation/screens/Map/town/shopVoices';
+import { drawDistrictBlocks, drawRisingBuildings, drawSelfBeacon, riseDuration, risingBuildingsOf } from '@/presentation/screens/Map/town/townSceneExtras';
+import type { RiseAnimation } from '@/presentation/screens/Map/town/townSceneExtras';
 import { loadMapPrefs, saveMapPrefs, toggleWant } from '@/presentation/screens/Map/town/mapPrefs';
 import type { MapFilterId, MapPrefs } from '@/presentation/screens/Map/town/mapPrefs';
 import { DETAIL_MPP, buildSceneSpots, cardModelOf, filterCounts, filterMatcher, highlightColorOf, paintStateOf, tierOf } from '@/presentation/screens/Map/town/mapSceneModel';
@@ -73,12 +83,8 @@ const logger = createLogger('presentation/screens/Map/MapScreen');
 
 /** 広域の上部バーの見出し（舞台＝南森町周辺。docs/08 §9） */
 export const MAP_TITLE = '南森町周辺';
-/** 下シートのつまみの高さ（rem） */
-export const SHEET_PEEK_REM = MAP_SHEET_PEEK_REM;
 /** 本番（GPS）で現在地と発見判定を取り直す間隔（ミリ秒） */
 export const POSITION_POLL_MS = 5000;
-/** ルートのフォントサイズが取れないときの既定（px） */
-const DEFAULT_ROOT_FONT_PX = 16;
 /** 発見の輪の時間（ミリ秒） */
 const DISCOVERY_RING_MS = 700;
 /** 歩き出すときに寄る縮尺の範囲（1 CSS px あたりのメートル） */
@@ -91,6 +97,47 @@ const LOCATE_MAX_MPP = 1.5;
 const LOCATE_MPP = 0.9;
 /** チェックインのスタンプを見せてから全画面の演出へ移るまでの時間（ミリ秒） */
 const CHECKIN_STAMP_HOLD_MS = 900;
+/** チェックインのとき、カメラを寄せる倍率（縮尺に掛ける） */
+const PUNCH_ZOOM = 0.86;
+/** ボタンの波紋を見せてから読み取り画面を開くまで（ミリ秒） */
+const QR_OPEN_DELAY_MS = 140;
+/** コイン（mapEffects の coins と合わせる）: 飛び始め・飛ぶ時間・1枚ごとの間・枚数（ミリ秒・枚） */
+const COIN_START_MS = 120;
+const COIN_FLIGHT_MS = 700;
+const COIN_GAP_MS = 72;
+const COIN_COUNT = 7;
+
+/**
+ * カードの補足の行（便利施設の場所の説明、またはお店のお買い物スタンプの数）。
+ * @param amenityNote 便利施設の補足
+ * @param purchases お買い物スタンプの数
+ * @returns note を含むオブジェクト（無ければ空）
+ */
+function noteField(amenityNote: string | undefined, purchases: number | undefined): { note?: string } {
+  const log = logger.fn('noteField', { purchases });
+  if (amenityNote !== undefined) return log.exit({ note: amenityNote });
+  return log.exit(purchases !== undefined && purchases > 0 ? { note: `お買い物スタンプ ${purchases}個` } : {});
+}
+
+/** 日付ごとの、この端末で地図からチェックインした数（「今日 n 軒目！」用。メモリのみ） */
+const comboByDate = new Map<string, number>();
+
+/**
+ * 今日のチェックインの数を1つ増やして返す。
+ * @param today 今日（YYYY-MM-DD）
+ * @returns 増やした後の数
+ * @sideEffect 数を覚える
+ */
+function bumpCombo(today: string): number {
+  const log = logger.fn('bumpCombo', { today });
+  const next = (comboByDate.get(today) ?? 0) + 1;
+  comboByDate.set(today, next);
+  return log.exit(next);
+}
+/** 自分のアバターを標準より大きく描く倍率（街に埋もれないように） */
+const SELF_AVATAR_BOOST = 1.35;
+/** 右の列を作り直す間隔（フレーム） */
+const SIDE_LIST_EVERY_FRAMES = 20;
 /** 着いたとみなす距離（メートル。これより近ければ歩かない） */
 const ALREADY_THERE_M = 8;
 /** 読み上げ用の一覧を作り直す間隔（フレーム） */
@@ -155,16 +202,6 @@ export function createMapScreen(ctx: AppContext, params: Readonly<Record<string,
   return log.exit(new MapScreenController(ctx, params.districtId));
 }
 
-/**
- * 下シートのつまみで隠れる高さ（CSS px）を返す。
- * @returns 高さ（CSS px）
- */
-function sheetPeekPx(): number {
-  const log = logger.fn('sheetPeekPx');
-  const raw = typeof getComputedStyle === 'function' ? Number.parseFloat(getComputedStyle(document.documentElement).fontSize) : Number.NaN;
-  return log.exit((Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_ROOT_FONT_PX) * SHEET_PEEK_REM);
-}
-
 /** お店カードで見ているスポット */
 interface CardTarget {
   readonly spotId: string;
@@ -181,7 +218,8 @@ class MapScreenController implements Screen {
   private surface: CanvasSurface | undefined;
   private size: CanvasSize | undefined;
   private bottomInset = 0;
-  private sheet: MapSheetHandle | undefined;
+  /** 近くのリスト（上部の「近く」ボタンで開く。2026-11-09 に下シートから置き換え） */
+  private nearby: NearbyPanelHandle | undefined;
   private zoomToggle: ZoomToggleHandle | undefined;
   private filterBar: MapFilterBarHandle | undefined;
   private locateButton: HTMLButtonElement | undefined;
@@ -211,6 +249,20 @@ class MapScreenController implements Screen {
   private claim: ClaimAnimation | undefined;
   /** 地図の上の演出（チェックイン・発見・到着・成長・土ぼこり） */
   private readonly fx = new MapEffects();
+  /** 気持ちいいチェックインの演出（ピンの弾み・光・星・ごほうびの帯） */
+  private readonly show = new CheckInShow();
+  /** 地図の領域（QR の読み取り画面を重ねる先） */
+  private area: HTMLElement | undefined;
+  /** 開いている QR の読み取り画面を閉じる関数 */
+  private qrClose: (() => void) | undefined;
+  /** 読み上げ用の知らせ（ごほうびの帯の内容を伝える） */
+  private announcer: HTMLElement | undefined;
+  /** お店の声（吹き出し） */
+  private readonly voices = new ShopVoices();
+  /** 領地が広がった所で建物が建ち上がる演出 */
+  private rise: RiseAnimation | undefined;
+  /** 中間の表示で右側に出す「映っているお店」の列 */
+  private sideList: SideShopListHandle | undefined;
   private rafId: number | undefined;
   private pollTimer: number | undefined;
   private polling = false;
@@ -266,10 +318,10 @@ class MapScreenController implements Screen {
     this.rafId = undefined;
     if (this.pollTimer !== undefined) window.clearInterval(this.pollTimer);
     this.pollTimer = undefined;
+    this.qrClose?.();
     this.walker?.destroy();
     this.cameraCtl?.destroy();
     for (const off of this.unsubscribers.splice(0)) off();
-    this.sheet?.destroy();
     this.surface?.destroy();
     this.surface = undefined;
     this.renderer?.dispose();
@@ -288,21 +340,30 @@ class MapScreenController implements Screen {
   private buildDom(root: HTMLElement): void {
     const log = logger.fn('buildDom');
     const area = h('div', { class: 'map-area', attrs: { 'data-testid': 'map-area' } });
+    this.area = area;
+    this.announcer = h('p', { class: 'sr-only', attrs: { role: 'status', 'aria-live': 'polite' } });
+    area.append(this.announcer);
     this.topBar = createTopBar({ title: MAP_TITLE });
     this.srList = h('ul', { class: 'sr-only map-sr-list', attrs: { 'aria-label': '地図に表示中のスポット', 'data-testid': 'map-spot-list' } });
     this.message = h('p', { class: 'map-area__message', attrs: { 'data-testid': 'map-message', role: 'status' }, text: '街を描いています…' });
-    this.sheet = createMapSheet(this.ctx, {
+    this.nearby = createNearbyPanel(this.ctx, {
       onSpot: (spotId): void => this.selectSpotById(spotId),
       onDistrict: (districtId): void => this.flyToDistrict(districtId),
     });
-    root.append(this.topBar, area, this.sheet.element);
-    this.bottomInset = sheetPeekPx();
+    root.append(this.topBar, area);
+    // 下シートは置かない（地図の下側は隠れない）
+    this.bottomInset = 0;
     this.surface = createCanvasSurface(area, { onResize: (size): void => this.handleResize(size), testId: 'map-canvas', ariaLabel: '南森町周辺のドット絵の地図', className: 'map-canvas' });
     if (this.surface !== undefined) setStyle(this.surface.canvas, 'cursor', 'grab');
     this.zoomToggle = createZoomToggle({ onWide: (): void => this.showWide(), onMiddle: (): void => this.showMiddle(), onDetail: (): void => this.showDetail() });
     this.filterBar = createMapFilterBar({ onChange: (active): void => this.handleFilters(active), onOpenPrefs: (): void => this.openPrefs() });
+    // 上部のチップ列の先頭に「近く」ボタンを置く
+    const track = this.filterBar.element.querySelector('.map-filter-bar__track');
+    if (track !== null) track.prepend(this.nearby.button);
+    else this.filterBar.element.prepend(this.nearby.button);
     this.card = createSpotCard({
-      onCheckIn: (id): void => void this.checkIn(id),
+      onCheckIn: (id): void => this.startQr('checkin', id),
+      onPurchase: (id): void => this.startQr('purchase', id),
       onDetail: (id): void => this.ctx.router.navigate(`#/spot/${id}`),
       onToggleWant: (id): void => this.toggleWant(id),
       onClose: (): void => this.closeCard(),
@@ -312,7 +373,8 @@ class MapScreenController implements Screen {
       attrs: { type: 'button', 'aria-label': '現在地', 'data-testid': 'map-locate' },
       on: { click: userAction('map-locate', () => void this.locateMe()) },
     }, [createIcon('navigate')]);
-    area.append(this.srList, this.message, this.filterBar.element, this.zoomToggle.element, this.locateButton, this.createHud(), this.card.element);
+    this.sideList = createSideShopList((id): void => this.selectSpotById(id));
+    area.append(this.srList, this.message, this.filterBar.element, this.sideList.element, this.zoomToggle.element, this.locateButton, this.createHud(), this.card.element, this.nearby.element);
     if (this.surface === undefined) this.showMessage('この端末では地図を描けませんでした。');
     log.exit(undefined);
   }
@@ -327,7 +389,7 @@ class MapScreenController implements Screen {
     const delta = h('span', { class: 'map-territory-hud__delta', text: '' });
     const root = h('div', { class: 'map-territory-hud', attrs: { 'data-testid': 'map-territory', role: 'status', 'aria-live': 'polite' } }, [
       createMapUiIcon('flag', 16, 'map-territory-hud__icon'),
-      h('span', { class: 'map-territory-hud__label', text: 'あなたの陣地' }),
+      h('span', { class: 'map-territory-hud__label', text: 'あなたの領地' }),
       count,
       delta,
     ]);
@@ -454,7 +516,7 @@ class MapScreenController implements Screen {
     if (position.ok && this.walker?.isWalking() !== true) this.position = { lat: position.value.lat, lng: position.value.lng };
     this.travelers = travelers?.ok === true ? travelers.value : [];
     this.applyData(map.value);
-    void this.sheet?.refresh();
+    this.nearby?.refresh();
     return log.exit(true);
   }
 
@@ -603,6 +665,10 @@ class MapScreenController implements Screen {
     const camera = this.cameraCtl?.current(performance.now());
     const vp = this.viewport();
     if (vm === undefined || camera === undefined || vp === undefined) return log.exit(undefined, '準備中');
+    if (this.nearby?.isOpen() === true) {
+      this.nearby.close();
+      return log.exit(undefined, '近くのリストを閉じた');
+    }
     const spot = hitTestScene(this.placed, tap);
     if (spot !== undefined) {
       this.selectSpot(spot);
@@ -764,7 +830,7 @@ class MapScreenController implements Screen {
       truePosition: raw ?? amenity ?? spot.ll,
       ...(districtName === undefined ? {} : { districtName }),
       ...(target.detail === undefined ? {} : { detail: target.detail }),
-      ...(amenity === undefined ? {} : { note: amenity.note }),
+      ...noteField(amenity?.note, loadPurchases()[spot.id]),
       ...(raw?.category === undefined ? {} : { category: raw.category }),
     });
     this.card.show(model);
@@ -813,12 +879,22 @@ class MapScreenController implements Screen {
       const before = this.territory?.cells;
       const effects = this.ctx.effects;
       effects.beginCapture();
-      const result = await this.ctx.services.visit.execute({ operationId: newOperationId(), spotId });
       const at = this.spots.find((s) => s.id === spotId)?.ll;
-      // まず地図の上でスタンプを押す演出を見せてから、全画面の演出（カード獲得・復活など）を流す
+      const pressedAt = performance.now();
+      // ため: ピンが縮み、カメラがお店へぐっと寄る（記録の応答を待たずに始める）
+      if (at !== undefined) {
+        this.show.start(spotId, at, pressedAt);
+        this.punchCamera();
+      }
+      this.requestDraw();
+      const result = await this.ctx.services.visit.execute({ operationId: newOperationId(), spotId });
+      // 衝撃: スタンプ・白い光・揺れ・星・紙吹雪・「ドン」・振動。見せてから全画面の演出（カード獲得・復活など）へ
       if (result.ok && !result.value.duplicate && at !== undefined) {
-        this.fx.add('checkin', at);
-        this.requestDraw();
+        this.fx.add('checkin', at, { startAt: pressedAt });
+        window.setTimeout(() => {
+          playStamp();
+          buzz([18, 40, 30]);
+        }, Math.max(0, IMPACT_MS - (performance.now() - pressedAt)));
         await wait(CHECKIN_STAMP_HOLD_MS);
       }
       const summary = await effects.flush();
@@ -826,24 +902,130 @@ class MapScreenController implements Screen {
         this.ctx.toast.show(result.error.message, { kind: 'error' });
         return log.fail(undefined, result.error.code);
       }
-      this.ctx.toast.show(result.value.duplicate ? 'このチェックインはすでに記録されています' : visitToastMessage(summary), { kind: result.value.duplicate ? 'info' : 'success' });
       if (result.value.duplicate) {
+        this.ctx.toast.show('このクエストはすでに達成済みです', { kind: 'info' });
         await this.refreshCardDetail();
         return log.exit(undefined, '記録済み');
       }
-      // カードを閉じて、陣地が広がるところ・コインが札へ飛ぶところを見せる
-      this.closeCard();
-      if (await this.loadData()) this.playClaim(spotId, before);
-      if (at !== undefined) this.playReward(at, summary.points + summary.bonusPoints);
-      await this.announceGrowth(summary.grownDistrictIds);
+      await this.rewardCheckIn(spotId, at, before, summary);
       log.exit(undefined);
     } catch (error) {
       log.error('チェックインで想定外の例外が起きました', { error });
-      this.ctx.toast.show('チェックインできませんでした。もう一度お試しください', { kind: 'error' });
+      this.ctx.toast.show('クエストを達成できませんでした。もう一度お試しください', { kind: 'error' });
     } finally {
       this.checkingIn = false;
       this.card?.setBusy(false);
     }
+  }
+
+  /**
+   * ごほうび: カードを閉じ、上から帯（EXP・領地・連続・成長）、領地が広がって建物が建ち、コインが「チャリン」と札へ入って数字が回る。
+   * @param spotId チェックインしたお店
+   * @param at お店の位置
+   * @param before チェックイン前の領地
+   * @param summary 演出のまとめ（ポイント・育った地区）
+   * @sideEffect 地図を読み直し、演出・音・読み上げを出す
+   */
+  private async rewardCheckIn(spotId: string, at: LatLng | undefined, before: Uint8Array | undefined, summary: { readonly points: number; readonly bonusPoints: number; readonly grownDistrictIds: readonly string[] }): Promise<void> {
+    const log = logger.fn('rewardCheckIn', { spotId });
+    const fromCount = this.territory?.mineCount ?? 0;
+    this.closeCard();
+    const gained = (await this.loadData()) ? this.playClaim(spotId, before) : 0;
+    const exp = summary.points + summary.bonusPoints;
+    const combo = bumpCombo(this.dto?.today ?? '');
+    const grown = summary.grownDistrictIds.map((id) => (this.vm === undefined ? undefined : findDistrict(this.vm, id))).find((d) => d !== undefined);
+    const levelUp = grown === undefined ? undefined : `${grown.shortName} Lv${grown.level}`;
+    this.show.showBanner({ exp, gained, combo, ...(levelUp === undefined ? {} : { levelUp }) }, performance.now());
+    playFanfare(levelUp !== undefined);
+    if (this.announcer !== undefined) this.announcer.textContent = `クエスト達成。+${exp} EXP${gained > 0 ? `、領地 +${gained}マス` : ''}${levelUp === undefined ? '' : `、${levelUp} に成長`}`;
+    if (gained > 0) window.setTimeout(() => playGrow(6), 320);
+    if (at !== undefined) this.playReward(at, fromCount);
+    this.announceGrowth(summary.grownDistrictIds);
+    log.exit(undefined, `+${exp}EXP・+${gained}マス・${combo}軒目`);
+  }
+
+  /**
+   * カメラをお店へぐっと寄せ、少ししてから元の寄り具合へ戻す（押した手ごたえ）。
+   * @sideEffect カメラを飛ばす
+   */
+  private punchCamera(): void {
+    const log = logger.fn('punchCamera');
+    const ctl = this.cameraCtl;
+    const camera = ctl?.current(performance.now());
+    if (ctl === undefined || camera === undefined) return log.exit(undefined);
+    ctl.flyTo({ ...camera, metersPerPx: camera.metersPerPx * PUNCH_ZOOM }, 200);
+    window.setTimeout(() => {
+      const now = ctl.current(performance.now());
+      ctl.flyTo({ ...now, metersPerPx: camera.metersPerPx }, 650);
+    }, 1250);
+    log.exit(undefined);
+  }
+
+  /**
+   * QR の読み取り画面を開く（押した瞬間の「ポン」と波紋。読み取れたらチェックイン・購入へ）。
+   * @param kind チェックインか購入か
+   * @param spotId お店
+   * @sideEffect 音を鳴らし、読み取り画面を開く
+   */
+  private startQr(kind: QrScanKind, spotId: string): void {
+    const log = logger.fn('startQr', { kind, spotId });
+    const area = this.area;
+    if (area === undefined || this.qrClose !== undefined || this.checkingIn) return log.exit(undefined, '開けない');
+    unlockSound();
+    playPress();
+    buzz(8);
+    const button = this.card?.element.querySelector<HTMLElement>(kind === 'checkin' ? '[data-testid="spot-card-checkin"]' : '[data-testid="spot-card-purchase"]');
+    if (button !== null && button !== undefined) {
+      delete button.dataset.fx;
+      void button.offsetWidth;
+      button.dataset.fx = '1';
+    }
+    const name = this.spots.find((s) => s.id === spotId)?.name ?? '';
+    window.setTimeout(() => {
+      this.qrClose = openQrScan(area, {
+        kind,
+        spotId,
+        spotName: name,
+        demo: this.ctx.services.isDemo,
+        onScanned: (): void => {
+          this.qrClose = undefined;
+          if (kind === 'checkin') void this.checkIn(spotId);
+          else this.purchase(spotId);
+        },
+        onCancel: (): void => {
+          this.qrClose = undefined;
+        },
+      });
+    }, QR_OPEN_DELAY_MS);
+    log.exit(undefined);
+  }
+
+  /**
+   * 購入（レジの QR を読み取った後）: 「お買い上げ！」のスタンプ・帯・音。お買い物スタンプを端末に記録する（EXP は増やさない）。
+   * @param spotId お店
+   * @sideEffect お買い物スタンプを保存し、演出・音を出し、カードを描き直す
+   */
+  private purchase(spotId: string): void {
+    const log = logger.fn('purchase', { spotId });
+    const at = this.spots.find((s) => s.id === spotId)?.ll;
+    const now = performance.now();
+    const count = addPurchase(spotId);
+    if (at !== undefined) {
+      this.show.start(spotId, at, now);
+      this.fx.add('checkin', at, { startAt: now, text: 'お買い|上げ！' });
+    }
+    window.setTimeout(() => {
+      playStamp();
+      buzz([14, 30, 20]);
+    }, IMPACT_MS);
+    window.setTimeout(() => {
+      this.show.showBanner({ title: 'お買い物ありがとう！', note: `お買い物スタンプ ${count}個目`, exp: 0, gained: 0, combo: 0 }, performance.now());
+      playFanfare(false);
+      if (this.announcer !== undefined) this.announcer.textContent = `お買い物を記録しました。お買い物スタンプ ${count}個目`;
+      this.renderCard();
+    }, CHECKIN_STAMP_HOLD_MS);
+    this.requestDraw();
+    log.exit(undefined, `${count}個目`);
   }
 
   /**
@@ -852,12 +1034,63 @@ class MapScreenController implements Screen {
    * @param points 獲得ポイント（おかえりボーナスを含む）
    * @sideEffect 演出を登録する
    */
-  private playReward(at: LatLng, points: number): void {
-    const log = logger.fn('playReward', { points });
-    if (points > 0) this.fx.add('points', at, { text: `+${points}pt` });
+  private playReward(at: LatLng, fromCount: number): void {
+    const log = logger.fn('playReward', { fromCount });
     const target = this.hudPoint();
-    if (target !== undefined) this.fx.add('coins', at, { target, startAt: performance.now() + 120 });
+    const start = performance.now() + COIN_START_MS;
+    if (target !== undefined) this.fx.add('coins', at, { target, startAt: start });
+    const toCount = this.territory?.mineCount ?? fromCount;
+    // コインが札に入るたびに「チャリン」と札が弾み、領地のマス数が回って増える
+    for (let i = 0; i < COIN_COUNT; i++) {
+      window.setTimeout(() => {
+        playCoin(i);
+        this.bumpHud();
+      }, COIN_START_MS + COIN_FLIGHT_MS + i * COIN_GAP_MS);
+    }
+    this.rollHud(fromCount, toCount, COIN_START_MS + COIN_FLIGHT_MS, COIN_GAP_MS * COIN_COUNT + 300);
     this.requestDraw();
+    log.exit(undefined);
+  }
+
+  /**
+   * 領地の札を弾ませる（コインが入ったとき）。
+   * @sideEffect 札の data-bump を付け直す
+   */
+  private bumpHud(): void { // audit-ignore: fnlog-missing コインごとに呼ぶ小さな DOM 操作
+    const root = this.hud?.root;
+    if (root === undefined) return;
+    delete root.dataset.bump;
+    void root.offsetWidth;
+    root.dataset.bump = '1';
+  }
+
+  /**
+   * 領地のマス数を、from から to へ回して増やす（スロットのように数え上げる）。
+   * @param from 前のマス数
+   * @param to 後のマス数
+   * @param delayMs 回し始めるまで（ミリ秒）
+   * @param durationMs 回す時間（ミリ秒）
+   * @sideEffect 札の文字を毎フレーム書き換える
+   */
+  private rollHud(from: number, to: number, delayMs: number, durationMs: number): void {
+    const log = logger.fn('rollHud', { from, to });
+    const hud = this.hud;
+    if (hud === undefined || to === from) return log.exit(undefined);
+    hud.count.textContent = `${from.toLocaleString('ja-JP')}マス`;
+    hud.delta.textContent = `+${to - from}`;
+    const start = performance.now() + delayMs;
+    /**
+     * 1フレーム分だけ数字を進める。
+     * @sideEffect 札の文字を書き換え、続きを予約する
+     */
+    const step = (): void => { // audit-ignore: fnlog-missing 数え上げの毎フレーム処理
+      if (this.destroyed) return;
+      const k = Math.min(1, Math.max(0, (performance.now() - start) / durationMs));
+      const value = Math.round(from + (to - from) * (1 - (1 - k) ** 3));
+      hud.count.textContent = `${value.toLocaleString('ja-JP')}マス`;
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
     log.exit(undefined);
   }
 
@@ -882,18 +1115,21 @@ class MapScreenController implements Screen {
    * @param before チェックイン前の陣地
    * @sideEffect 演出を始め、陣地の札を光らせる
    */
-  private playClaim(spotId: string, before: Uint8Array | undefined): void {
+  private playClaim(spotId: string, before: Uint8Array | undefined): number {
     const log = logger.fn('playClaim', { spotId });
     const grid = this.grid;
     const territory = this.territory;
     const anchor = grid?.anchors.get(spotId);
-    if (grid === undefined || territory === undefined || anchor === undefined) return log.exit(undefined, '準備中');
+    if (grid === undefined || territory === undefined || anchor === undefined) return log.exit(0, '準備中');
     const added = newlyClaimed(grid, before, territory.cells, anchor);
-    this.updateHud(added.cells.length);
-    if (added.cells.length === 0) return log.exit(undefined, '増えていない');
-    this.claim = { cells: added.cells, maxDist: added.maxDist, center: anchor, startedAt: performance.now(), gained: added.cells.length };
+    if (added.cells.length === 0) return log.exit(0, '増えていない');
+    // マス数はごほうびの帯が数え上げるので、地図の上には出さない（gained: 0）
+    this.claim = { cells: added.cells, maxDist: added.maxDist, center: anchor, startedAt: performance.now(), gained: 0 };
+    // 街が育つ: 新しく領地になった所の建物が、近い順に建ち上がる
+    const buildings = risingBuildingsOf(grid, added.cells, anchor);
+    if (buildings.length > 0) this.rise = { buildings, startedAt: performance.now() + 250 };
     this.requestDraw();
-    log.exit(undefined, `+${added.cells.length} マス`);
+    return log.exit(added.cells.length, `+${added.cells.length} マス`);
   }
 
   /**
@@ -901,16 +1137,13 @@ class MapScreenController implements Screen {
    * @param districtIds 成長した地区ID
    * @sideEffect services.town を呼び、トーストを出す
    */
-  private async announceGrowth(districtIds: readonly string[]): Promise<void> {
+  private announceGrowth(districtIds: readonly string[]): void {
     const log = logger.fn('announceGrowth', { districtIds });
     if (districtIds.length === 0) return log.exit(undefined);
-    const town = await this.ctx.services.town.execute();
-    const districts = town.ok ? town.value.districts : [];
+    // 「育ちました」は帯に出すので、トーストは出さない。地区の上に花火と Lv の札
     for (const id of districtIds) {
-      const d = districts.find((x) => x.id === id);
-      this.ctx.toast.show(growthToastMessage(d?.name, d?.level), { kind: 'success' });
-      const center = this.vm === undefined ? undefined : findDistrict(this.vm, id)?.center;
-      if (center !== undefined) this.fx.add('levelup', center, { text: d?.level === undefined ? '' : `Lv${d.level}`, startAt: performance.now() + 400 });
+      const d = this.vm === undefined ? undefined : findDistrict(this.vm, id);
+      if (d !== undefined) this.fx.add('levelup', d.center, { text: `Lv${d.level}`, startAt: performance.now() + 900 });
     }
     this.requestDraw();
     log.exit(undefined);
@@ -1267,29 +1500,42 @@ class MapScreenController implements Screen {
     const tier = tierOf(camera.metersPerPx);
     const textScale = textScaleFactor();
     const tr = gridTransform(grid, camera, vp);
-    // 引いて見るときは陣地を色の面で、寄ったときは境界線で見せる
-    this.renderer?.drawTerritoryWash(ctx, camera, vp, tier === 'wide' ? 0.55 : tier === 'district' ? 0.22 : 0);
-    if (tier !== 'wide') drawTerritoryEdges(ctx, territory, tr, vp, t);
+    // 広域は地区を大きなブロックで見せる（タップすると中間へ）。中間は領地を薄い面＋境界線、詳細は境界線
+    if (tier === 'wide') drawDistrictBlocks(ctx, vm.districts, camera, vp, territory, textScale);
+    else {
+      this.renderer?.drawTerritoryWash(ctx, camera, vp, tier === 'district' ? 0.16 : 0);
+      drawTerritoryEdges(ctx, territory, tr, vp, t);
+    }
+    if (this.rise !== undefined && (!drawRisingBuildings(ctx, this.rise, tr, vp, t) || t - this.rise.startedAt > riseDuration(this.rise))) this.rise = undefined;
     const self = this.position === undefined ? undefined : project(camera, vp, this.position);
-    if (self !== undefined) drawCheckInCircle(ctx, self, VISIT_RADIUS_M / camera.metersPerPx, tier === 'near' ? `チェックイン ${VISIT_RADIUS_M}m` : undefined, textScale, t);
+    if (self !== undefined) drawCheckInCircle(ctx, self, VISIT_RADIUS_M / camera.metersPerPx, tier === 'near' ? `達成エリア ${VISIT_RADIUS_M}m` : undefined, textScale, t);
     const route = this.walker?.remainingRoute(t) ?? [];
     if (route.length > 1) drawRoute(ctx, route.map((p) => project(camera, vp, p)), t);
     const input = this.sceneInput(camera, vp, tier, t, textScale);
     this.fx.drawUnder(ctx, (ll) => project(camera, vp, ll), t);
-    this.placed = placeSpots(this.spots, input);
+    // 広域は地区のブロックが主役なので、お店・名所は描かない
+    this.placed = tier === 'wide' ? [] : placeSpots(this.spots, input);
     drawSpots(ctx, this.placed, input);
     this.drawRings(ctx, camera, vp, t);
+    if (tier !== 'wide') {
+      this.voices.update(this.placed, t, this.dto?.today ?? '');
+      this.voices.draw(ctx, this.placed, t, textScale);
+    }
     if (this.claim !== undefined && !drawClaimAnimation(ctx, this.claim, grid.cols, tr, t, textScale)) this.claim = undefined;
     // 地区の札はスポットの上に重ねる（広域・中間で地区名が隠れないように）
-    drawDistrictLabels(ctx, vm.districts, camera, vp, tier, territory.mineByDistrict, textScale);
+    if (tier !== 'wide') drawDistrictLabels(ctx, vm.districts, camera, vp, tier, territory.mineByDistrict, textScale);
     const attribution = this.dto?.backdrop.attribution;
     if (attribution !== undefined) drawAttribution(ctx, `トイレ位置 ${attribution}`, vp, textScale);
-    const avatar = this.avatarLook === undefined ? undefined : avatarSpriteFor(this.avatarLook, { scale: SELF_AVATAR_SCALE[tier], dotPx: AVATAR_DOT_PX, dpr });
+    // 自分は街に埋もれないよう、足もとに光る目印を置き、アバターも少し大きく描く
+    if (self !== undefined) drawSelfBeacon(ctx, self, t, tier);
+    const avatar = this.avatarLook === undefined ? undefined : avatarSpriteFor(this.avatarLook, { scale: SELF_AVATAR_SCALE[tier] * SELF_AVATAR_BOOST, dotPx: AVATAR_DOT_PX, dpr });
     const heading = this.walker?.heading();
     if (heading !== undefined && heading !== 0) this.facingLeft = heading < 0;
     this.placedPeople = placeTravelers(tier === 'wide' ? [] : this.travelers, vm, { camera, viewport: vp, zoom: tier, self });
     drawPeople(ctx, { people: this.placedPeople, self, zoom: tier, textScale, walkPhase: this.walker?.isWalking() === true ? walkPhaseOf(t) : undefined, avatar, facingLeft: this.facingLeft, dpr });
+    this.show.drawOnMap(ctx, (ll) => project(camera, vp, ll), t);
     this.fx.drawOver(ctx, (ll) => project(camera, vp, ll), t, textScale);
+    this.show.drawOnScreen(ctx, vp, t, textScale);
   }
 
   /**
@@ -1316,6 +1562,7 @@ class MapScreenController implements Screen {
       highlight: highlightColorOf(this.filters),
       ...(this.cardTarget === undefined ? {} : { selectedId: this.cardTarget.spotId }),
       inRange,
+      pinScale: (spotId: string): readonly [number, number] => this.show.pinScale(spotId, t),
     };
   }
 
@@ -1344,6 +1591,7 @@ class MapScreenController implements Screen {
     const tier = tierOf(camera.metersPerPx);
     const vm = this.vm;
     this.zoomToggle?.update(tier);
+    this.updateSideList(tier);
     if (this.locateButton !== undefined) {
       const active = this.following ? '1' : '0';
       if (this.locateButton.dataset.active !== active) this.locateButton.dataset.active = active;
@@ -1354,6 +1602,41 @@ class MapScreenController implements Screen {
     this.saveCamera();
     this.frames += 1;
     if (this.frames % SR_LIST_EVERY_FRAMES === 1) this.renderSpotList();
+  }
+
+  /**
+   * 中間の表示のとき、右側に「映っているお店」を並べる（今日だけ・行きたい・フィルタに合う・訪問済みの順。カード・一覧を開いている間は隠す）。
+   * @param tier 寄り具合
+   * @sideEffect 右の列を出し入れし、中身を入れ替える
+   */
+  private updateSideList(tier: SceneTier): void { // audit-ignore: fnlog-missing 毎フレーム呼ぶ（作り直すのは間引いたときだけ）
+    const list = this.sideList;
+    if (list === undefined) return;
+    const visible = tier === 'district' && this.card?.isOpen() !== true && this.nearby?.isOpen() !== true;
+    list.setVisible(visible);
+    list.setSelected(this.cardTarget?.spotId);
+    if (!visible || this.frames % SIDE_LIST_EVERY_FRAMES !== 0) return;
+    /**
+     * 右の列に並べる順の点数（今日だけ・行きたい・フィルタに合う・開催中・訪問済み）。
+     * @param p 置いたスポット
+     * @returns 点数（大きいほど上）
+     */
+    const rankOf = (p: PlacedSpot): number => (p.spot.today?.hot === true ? 8 : 0) + (p.spot.want ? 6 : 0) + (p.match === true ? 5 : 0) + (p.spot.today !== undefined ? 3 : 0) + (p.spot.status === 'visited' ? 1 : 0); // audit-ignore: fnlog-missing 並べ替えの小さな採点
+    const items: SideShopItem[] = this.placed
+      .filter((p) => p.spot.kind === 'shop' && p.match !== false && p.x > 0 && p.x < (this.size?.width ?? 0) && p.y > 0 && p.y < (this.size?.height ?? 0))
+      .sort((a, b) => rankOf(b) - rankOf(a))
+      .slice(0, 14)
+      .map((p) => ({
+        id: p.spot.id,
+        ...(p.spot.name === undefined ? {} : { name: p.spot.name }),
+        icon: p.spot.goods?.icon ?? 'gift',
+        unknown: p.spot.status === 'unknown',
+        visited: p.spot.status === 'visited',
+        want: p.spot.want,
+        ...(p.spot.today === undefined ? {} : { tag: p.spot.today.tag }),
+        hot: p.spot.today?.hot === true,
+      }));
+    list.update(items);
   }
 
   /**
@@ -1368,6 +1651,9 @@ class MapScreenController implements Screen {
       this.claim !== undefined ||
       this.rings.length > 0 ||
       this.fx.active() ||
+      this.show.active(performance.now()) ||
+      this.rise !== undefined ||
+      this.voices.active() ||
       this.filters.size > 0 ||
       this.cardTarget !== undefined ||
       this.position !== undefined ||

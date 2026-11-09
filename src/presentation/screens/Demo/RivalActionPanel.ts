@@ -73,7 +73,7 @@ export function createRivalActionPanel(deps: DemoPanelDeps, districts: readonly 
       h('h2', { class: 'sheet-section-title', text: 'ライバル行動' }),
       select,
       h('div', { class: 'demo-row' }, [button]),
-      h('p', { class: 'hint', text: '閉じると下シートに「取り返し」カードが出ます' }),
+      h('p', { class: 'hint', text: '閉じると下シートに「奪還」カードが出ます' }),
     ]),
   );
 }

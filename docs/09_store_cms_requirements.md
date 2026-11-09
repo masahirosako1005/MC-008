@@ -65,7 +65,7 @@
 | 件数 | 地区5・名所14・店舗66 と**完全に一致しないと起動しない** | `masterValidators.ts` の `MASTER_COUNTS`、DI-13 |
 | ハッシュ照合 | 仕組みはあるが、container が有効にしていない | `MasterDataLoader.ts`（`verifyHashes`）、08 §8 |
 | `Spot` | id、kind、districtId、name（20字）、point、category（自由入力・12字）、description（ビルド時40〜70字、実行時は120字まで）、amenities（6種）、hours（自由入力・40字）、partner | `src/domain/spot/Spot.ts`、`masterRecordParsers.ts` の `TEXT_LIMITS` |
-| 写真 | 項目がない。スポット詳細は Canvas のイラストで代わりにしている | `SpotIllustrationCanvas.ts` |
+| 写真 | 項目がない。2026-11-09 からデモでは、図鑑とスポット詳細に Wikimedia Commons の写真を同梱して出している（名所＝実写、店舗＝カテゴリのイメージ写真）。読めないときは Canvas のイラスト。CMS で登録した写真ができたら、店舗はそちらを優先する | `presentation/shared/spotPhotos.ts`・`spotPhotoData.ts`・`screens/Spot/SpotPhotoView.ts`・`scripts/photos/` |
 | カテゴリ | 53種類の自由入力。そのうち27種類は、図鑑で既定の絵文字になる | `presentation/screens/Zukan/cardFace.ts` |
 | 協力店 | 66店中36店。名所は `partner: false` に固定 | `master.schema.json` |
 | `ShopEvent` | id `c_…`、spotId、kind（coupon/event）、題名（30字）、説明（80字）、Period（JST の暦日で、両端の日を含む） | `src/domain/revisit/ShopEvent.ts`、`Period.ts` |
@@ -135,7 +135,7 @@
 | CMS-A06 | ログイン試行の回数を制限し、セッションを一定時間で切る（§4） | Must | 2 | － |
 | CMS-A07 | 運営者が店舗アカウントを停止・再開できる。停止しても、掲載中の内容は運営者が判断して残せる | Should | 2 | － |
 | CMS-A08 | スタッフ招待（1店に複数アカウント）、複数店舗の兼務 | Could | 3 | － |
-| CMS-A09 | （デモ）ログインは作らない。デモメニューで「店舗（店を選ぶ）／運営者」を切り替える | Must | 1 | － |
+| CMS-A09 | （デモ）ログインは作らない。デモメニューで「店舗（店を選ぶ）／運営者」を切り替える。→ 2026-11-09 に §7.4 で置き換え：デモでは運営者として自動でログインし（自分の PC からだけ）、「店を選ぶ」は本物のセッションの上で動く | Must | 1 | － |
 
 ### 2.2 店舗情報
 
@@ -463,14 +463,29 @@ CMS（PC）──HTTP──▶ 連携サーバー ──▶ SQLite（登録内�
 
 - 切り替えはビルド時の `VITE_CMS_BACKEND=server`（上のスクリプトが付ける）。ふだんの `npm run dev`（5173）は今までどおり localStorage でつなぐ。
 - DB は `.data/cms-demo.sqlite`（`--db` で変えられる。消すと登録内容が空に戻る）。`.data/`・`dist-server/`・`dist-backend/` は git に入れない。
-- スマホから開くときは `--host 0.0.0.0` を付ける（例：`node scripts/dev/backend.mjs serve --host 0.0.0.0`）。ログインが無いので、同じネットワークの人なら誰でも編集できる。発表の場だけで使う。
-  - 注意：アプリは `crypto.randomUUID` を使うため、安全な文脈（https か localhost）が必要。LAN の http://192.168.… では動かない。スマホで見せるときは、USB 経由のポート転送（localhost として開く）か、https の用意が要る。
+
+**https（2026-11-09）**
+
+- スマホから開くときは `node scripts/dev/backend.mjs serve --host 0.0.0.0`。LAN に出すときは**自動で https になる**（平文のまま LAN に出さない）。自分の PC だけで https にするときは `--tls`。`dev` は自分の PC からだけ開ける（LAN に出すときは `serve` を使う）。
+- 証明書は `scripts/dev/devCert.mjs` が Node 標準（`node:crypto`）だけで作る。依存パッケージ・openssl は要らない。
+- **置き場所はリポジトリの外のユーザーごとのフォルダ**（Windows は `%LOCALAPPDATA%\machiquest\dev-tls`、それ以外は `~/.local/share/machiquest/dev-tls`。POSIX では 700/600）。共有 PC ではリポジトリのフォルダをほかの利用者も読み書きできることがあるので、認証局の鍵を置かない。起動時に場所を表示する。
+  - `ca.crt`／`ca.key`：手元用の認証局（10年）。**名前の制限**（Name Constraints・重要）で、localhost と 127/8・10/8・172.16/12・192.168/16・::1、主体の名前は `O=MachiQuest Dev` の下だけに絞り、**用途もサーバー証明書（serverAuth）だけ**にする。OpenSSL と主要なブラウザ（Chrome・Safari・Firefox）はこの制限に従うが、従わない環境（Android のアプリ内の表示など）もありうるので、鍵は人に渡さず、**発表が終わったらスマホから認証局を消す**。
+  - 使い回すときは、このスクリプトが作った形（名前の制限・用途あり、鍵と証明書が対）かを毎回確かめ、違えば作り直す（ほかの人が置き換えた制限なしの認証局を、知らずにスマホへ入れないため）。
+  - `server.crt`／`server.key`：連携サーバーの証明書（EC P-256、1年＝ブラウザの上限 398日以内）。対象は localhost・127.0.0.1・::1・この PC の LAN の IPv4（社内の範囲のものだけ）。IP が変わったとき・期限が14日を切ったときは自動で作り直す。認証局は使い回すので、スマホに入れ直さなくてよい。
+- スマホで警告を出さずに開くには、起動時に表示される `ca.crt` をスマホに入れて信頼する（入れなくても、警告を進めば開ける）。
+- https で起動したときは、起動後に**認証局だけを信頼して https でつながるかを確かめ、つながらなければ止める**（平文のまま LAN に出さない）。サーバー側も、自分の PC 以外で待ち受けるのに TLS（か `--trust-proxy`）が無ければ起動しない。
+- なぜ https か：アプリは `crypto.randomUUID` を使うため安全な文脈（https か localhost）が要り、LAN の http://192.168.… では起動しない。加えて、同じ Wi-Fi での盗み見・書き換えを防ぐ。
+- 確かめたこと：
+  - `scripts/dev/devCert.test.mjs`（8件）：OpenSSL の本物の TLS で認証局だけを信頼して検証に通る、名前の制限の外の名前（例 bank.example）の証明書は「permitted subtree violation」で落ちる、用途と名前の制限が付いている、置き換えられた認証局は使い回さない、使い回しと作り直しの条件。
+  - `openssl verify -x509_strict -purpose sslserver` に通る。Windows の検証機構（schannel）でも、認証局だけを信頼して検証に通る。
+  - 独立したレビュー担当に見てもらい、指摘（鍵の置き場所・使い回しの確認・認証局の用途・説明の言い過ぎ・平文で起動したときの止め方・引数の読み違い・IPv6 の中の IPv4・権限・通し確認の検証不足）をすべて直した。
+- サーバーへは `--tls-cert`／`--tls-key`（PEM のパス）で渡す。サーバー側の https の受け口・TLS 必須・HSTS（名前の Host にだけ付ける）は、ログイン・認可と一緒に別の作業（jisui-share008-d4）で実装した。
 
 **実装の配置**
 
 | 層 | ファイル |
 |---|---|
-| エントリ | `src/serverMain.ts`、`vite.server.config.ts`（Node 用の1ファイルにまとめる）、`scripts/dev/backend.mjs`、`scripts/e2e/cms-backend.mjs` |
+| エントリ | `src/serverMain.ts`、`vite.server.config.ts`（Node 用の1ファイルにまとめる）、`scripts/dev/backend.mjs`、`scripts/dev/devCert.mjs`（https の証明書）、`scripts/e2e/cms-backend.mjs` |
 | infrastructure/api（ブラウザ側・共有の契約） | `apiRoutes.ts`（道筋）、`requestApi.ts`、`HttpCmsServices.ts`、`WriteGuard.ts`（二重登録の防止）、`CmsSnapshotSync.ts`、`schema/{shape,cmsApiShapes,publicCmsSnapshot}.ts` |
 | infrastructure/server | `http/{createApiHandler,cmsRoutes,publicRoutes,httpIo,SnapshotStream,FixedWindowRateLimiter,staticFiles}.ts`、`sqlite/{CmsDatabase,SqliteCmsOverlayRepository,cmsAuditDiff}.ts`、`buildPublicCmsSnapshot.ts`、`nodeFetchText.ts`、`serverOptions.ts` |
 | infrastructure/di | `serverContainer.ts`、`cmsServerReflection.ts`（アプリ側の反映）、`cmsUseCases.ts`（ユースケース一式の組み立て。cmsContainer と共有） |
@@ -483,7 +498,58 @@ CMS（PC）──HTTP──▶ 連携サーバー ──▶ SQLite（登録内�
 - 独立したレビュー担当（サブエージェント）に見てもらい、指摘7件（DNS リバインディング、連打・送り直しの二重登録、SSE がつなぎ直さない、本文の上限、DB を作り直したときの版番号、DB の例外の扱い、本番ビルドに CMS の API が残る）をすべて直した。
 - ヘッドレス Edge（`e2e:backend`）：PC の CMS で営業時間・便利情報を保存し、クーポンを掲載すると、別のブラウザコンテキストのスマホのアプリに、再読み込みなしで届く（8項目すべて成功）。
 
-**まだ無いもの（フェーズ2の残り）**：ログインとロール、担当店舗との照合（今は道筋のスポットID を信じている）、掲載確認、変更履歴の画面、CMS の別オリジン化、ホスティング、変更履歴の保持期間（3年）での削除、本番版アプリでのスナップショット受信（今はデモの版だけ）。
+**まだ無いもの（フェーズ2の残り）**：掲載確認、変更履歴の画面、ホスティング先の決定。ログイン・ロール・担当店舗の照合・CMS の別オリジン化・保持期間での削除・本番版アプリでのスナップショット受信は §7.4 で実装した。
+
+### 7.4 ログイン・認可・本番向けの運用（2026-11-09。CMS-A04・A06・A07、§1.2、§4.1）
+
+連携サーバーを本番として動かすための土台。ユーザー指示「本実装進めてほしい」。運用手順は `docs/11_backend_operations.md`。
+
+**決めたこと**
+- ログインは ID とパスワード（CMS-A04）。パスワードは Node 標準の scrypt（N=2^15・r=8・p=3。OWASP の推奨値）でハッシュ化し、`scrypt$N$r$p$salt$key` の形で保存する（SEC-19。Argon2id／bcrypt は依存パッケージが要るため、U1 の決定に合わせて scrypt）。
+- セッションは HttpOnly・SameSite=Strict・Path=/api の Cookie `cms_session`。https（か TLS を終端する中継の後ろ）では Secure。DB にはトークンの SHA-256 だけを置く。期限はログインから 12 時間・最後の操作から 60 分（CMS-A06）。
+- ログインの失敗が 5 回続くと 15 分ロック。ログインの試みは 1 つの相手につき 1 分に 10 回まで。知らない ID でも同じ計算をして同じ文を返す（ID の有無が分からないように）。
+- ロールは店舗（shopOwner）と運営者（operator）。店舗の API は、道筋のスポットID をセッションの担当店舗と照らし合わせる（運営者はすべて。SEC-01）。店舗の一覧も担当する店舗だけを返す。運営者だけの操作（アカウント管理・デモのやり直し）は経路の `auth: 'operator'` で確かめる（SEC-03）。
+- **本番の版でも店舗CMS の API を出す**（ログインが要る）。デモの日付・デモのログイン・デモのやり直しはデモの版だけ。
+- **デモの「店を選ぶ」は本物のセッションで再現する**（CMS-A09 の置き換え）：デモの版の CMS は、セッションが無ければ `POST /api/auth/demo-login` で運営者として自動で入る。この API は**つないできた相手が自分の PC（ループバック）のときだけ**受け付ける（LAN に出しても、同じ Wi-Fi の人は運営者になれない）。デモ用のアカウント（`demo.operator`・`demo.<スポットID>`）はパスワードでは入れない。
+- CMS は利用者アプリと**別のオリジン**に置ける（§7.1）：`--cms-port` で同じプロセスが2つのポートで待ち受け、公開の面（アプリ＋公開 API）には店舗CMS・ログインの API を出さない。`--mode cms` のビルド（`dist-cms`）が店舗CMS だけの画面。
+- 自分の PC 以外で待ち受けるときは TLS（`--tls-cert/--tls-key`）か `--trust-proxy` が無ければ起動しない（SEC-05）。HSTS は名前の Host にだけ付ける。`--allowed-hosts` で本番のホスト名を許可する（DNS リバインディング対策の延長）。読取系にも回数制限（1 分に 600 回）を付けた。
+- 変更履歴の操作者（actor）はログイン中のアカウントID。ログイン・失敗・ロック・ログアウト・パスワード変更・アカウントの作成と変更は `cms_auth_log` に残す（SEC-24）。IP・パスワード・メールは残さない（SEC-25）。保持期間 3 年（仮）で古いものを 10 分ごとに消す（変更履歴も同じ）。
+- 最初の運営者はコマンドライン `node dist-server/serverMain.mjs account create ...` で作る。以後は運営者が CMS の「アカウント」で作り、パスワードを作り直し、停止・再開する（CMS-A02・A07）。
+
+**API**（道筋は `src/infrastructure/api/apiAuthRoutes.ts`）
+
+| 道筋 | 用途 | 必要なもの | 使える版 |
+|---|---|---|---|
+| `POST /api/auth/login`、`POST /api/auth/logout`、`GET /api/auth/me`、`POST /api/auth/password` | ログイン・ログアウト・ログイン中の人・自分のパスワード変更 | （login 以外）セッション | 両方 |
+| `POST /api/auth/demo-login` | 運営者か店舗の担当者として入る | 自分の PC から | デモだけ |
+| `GET/POST /api/cms/accounts`、`PUT …/:id/shops`、`PUT …/:id/status`、`POST …/:id/password` | アカウントの一覧・作成・担当店舗・停止と再開・パスワードの作り直し | 運営者 | 両方 |
+
+失敗コードと HTTP：UNAUTHENTICATED・AUTH_FAILED＝401、FORBIDDEN・FORBIDDEN_SHOP＝403、ACCOUNT_NOT_FOUND＝404、LOGIN_ID_TAKEN＝409、ACCOUNT_LOCKED＝423、RATE_LIMITED＝429。
+
+**画面**
+- ログイン（C01。`screens/Login/`）：ID・パスワード・ボタンだけ。本番でセッションが無いときに出る。
+- アカウント（C08。`screens/Account/`）：名前・ID・区分、パスワードの変更、ログアウト。上部バーのアカウントのメニューから。デモのアカウントでは変更とログアウトを出さない。
+- アカウント管理（O07。`screens/Accounts/`。運営者だけのタブ）：一覧、追加（パスワードは画面で作って1回だけ見せる）、担当店舗、パスワードの作り直し、停止と再開。
+- 店舗のアカウントは、担当する店舗だけがお店の切り替えに出る（1店なら切り替え無し）。
+
+**実装の配置**
+
+| 層 | ファイル |
+|---|---|
+| infrastructure/server/auth | `passwordHash.ts`（scrypt）、`sessionCookie.ts`（トークン・Cookie）、`principal.ts`（ログイン中の人・担当店舗の判定）、`requestOrigin.ts`（中継の後ろでの相手と https の判定）、`AuthService.ts`（ログイン・セッション・アカウント管理の手順） |
+| infrastructure/server | `http/authRoutes.ts`、`sqlite/SqliteAuthStore.ts`（版 2 の表）、`cli/accountCommand.ts`。変更：`http/createApiHandler.ts`（Route.auth・読取系の回数制限・HSTS・許可するホスト名）、`http/cmsRoutes.ts`（担当店舗の照合・操作者）、`http/httpIo.ts`、`sqlite/CmsDatabase.ts`（版 2 への移行・`prepare`・古い変更履歴の削除）、`serverOptions.ts`、`src/serverMain.ts`（https・2 ポート・account サブコマンド） |
+| infrastructure/api | `apiAuthRoutes.ts`、`schema/authApiShapes.ts`、`HttpCmsAuthServices.ts`。変更：`HttpCmsServices.ts`（`auth` を足す） |
+| application | `CmsAuthServices.ts`、`dto/CmsAuthDto.ts`。変更：`CmsServices.ts`（`auth?`）、`AppServices.ts`（`onCatalogChanged` を本番でも） |
+| di | 変更：`serverContainer.ts`（AuthService・面・掃除）、`cmsContainer.ts`（本番の版は server だけ）、`container.ts`（本番でもスナップショットを受け取る） |
+| presentation/cms | `screens/Login/CmsLoginScreen.ts`、`screens/Account/CmsAccountScreen.ts`、`screens/Accounts/CmsAccountsScreen.ts`、`cmsAuth.css`。変更：`CmsApp.ts`・`cmsRoute.ts`・`cmsUi.ts`（ログインの門・アカウントのメニュー・タブ・`APP_ORIGIN`） |
+| ビルド・運用 | `vite.config.ts`（`--mode cms`）、`scripts/build/backend.mjs`（`npm run build:backend`）、`Dockerfile`、`.dockerignore`、`Common/constants/env.ts`（`APP_ORIGIN`）、`docs/11_backend_operations.md` |
+
+**確かめたこと**
+- 単体テスト：`passwordHash.test.ts`（照合・NFC・入れないアカウント・壊れた保存値・かけ直し）、`sessionCookie.test.ts`（トークン・Cookie の属性・Cookie ヘッダーの読み方）、`serverOptions.test.ts`（新しいオプション・環境変数・TLS の対）。
+- 統合テスト `cmsBackend.test.ts`（17件）：ログインしていないと 401、店舗のアカウントは担当する店舗だけ（他店は 403・一覧は担当分だけ・デモのやり直しは 403）、パスワードでログイン（Cookie の属性・知らない ID と同じ文・5 回でロック・ログアウトで切れる）、中継の後ろで Secure・ログインの回数制限、パスワード変更でほかの端末が切れる・運営者のアカウント管理（作成・重複・弱いパスワード・担当店舗・停止・自分は停止できない）・変更履歴の操作者、CMS を別の面に分けると公開の面に CMS・ログインの API が無い、本番の版でも CMS API は認証つき、読取系の回数制限、`--allowed-hosts`。
+- `npm audit --audit-level=high`：脆弱性 0。監査記録は `docs/audit/20261109_security.md`。
+
+**まだ無いもの**：2要素認証（CMS-A05。運営者は必須の要件なので次に）、パスワード再設定のメール（CMS-A03）、参加申請と承認（A01・A02・O01）、掲載確認（E05・O04）、変更履歴の画面（S10・O09）、利用者アプリのデータのサーバー化（SEC-21。フェーズ3）。
 
 ---
 
@@ -588,7 +654,7 @@ CMS（PC）──HTTP──▶ 連携サーバー ──▶ SQLite（登録内�
 
 | # | 項目 | 選択肢・論点 | 決める時期 |
 |---|---|---|---|
-| U1 | バックエンドの技術とホスティング | **技術は決定**（2026-11-09）：TypeScript＋Node 標準（`node:http`・`node:sqlite`）、依存パッケージなし（§7.3）。**ホスティングは未決**（社内の制約、運用の担い手、本番の DB を SQLite のままにするか） | ホスティングはフェーズ2の前 |
+| U1 | バックエンドの技術とホスティング | **技術は決定**（2026-11-09）：TypeScript＋Node 標準（`node:http`／`node:https`・`node:sqlite`）、依存パッケージなし（§7.3・§7.4）。**ホスティングは未決**（社内の制約、運用の担い手、本番の DB を SQLite のままにするか）。候補と要件は `docs/11_backend_operations.md` §7 | ホスティングはフェーズ2の前 |
 | U2 | すぐ公開する項目の範囲 | §2.2 S09 の案（営業時間・臨時休業・便利情報はすぐ公開）でよいか。信頼できる店舗は全項目をすぐ公開にするか | フェーズ2の前 |
 | U3 | 店頭QR の方式 | 印刷した固定の QR＋GPS（Q04〜Q06）か、店頭端末の動的な QR（Q09）か。併用の半径100m は妥当か | フェーズ3の前 |
 | U4 | 少数を秘匿するしきい値 | 5人（仮）でよいか。曜日×時間帯のように細かい集計の扱い | フェーズ3の前 |

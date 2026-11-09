@@ -8,25 +8,26 @@
  */
 
 /* ---- 画面（暗いゲームの UI。上部バーも暗くする） ---- */
-.screen[data-route="rank"] { background: #070b17; }
-.screen[data-route="rank"] .top-bar { background: #070b17; box-shadow: none; color: #ffffff; }
+.screen[data-route="rank"] { background: var(--night-950); }
+.screen[data-route="rank"] .top-bar { background: var(--night-950); box-shadow: none; color: #ffffff; }
 .screen[data-route="rank"] .top-bar__title { color: #ffffff; letter-spacing: 0.06em; }
 .rank {
-  --rk-text: #f1f5f9;
-  --rk-sub: #94a3b8;
+  --rk-text: var(--on-night);
+  --rk-sub: var(--on-night-3);
   --rk-line: rgba(255, 255, 255, 0.09);
-  --rk-hot: #ff8a6b;
-  background: #070b17;
+  --rk-hot: var(--brand-300);
+  background: var(--night-950);
   color: var(--rk-text);
 }
 
 /* ---- 段の色（紋章とステータスパネルの光） ---- */
-.rank [data-tier="0"] { --t: #e0965f; --t-edge: #8f5524; --t-light: #fbe0c8; --t-ink: #4a2508; }
-.rank [data-tier="1"] { --t: #c9d1dc; --t-edge: #5b6472; --t-light: #ffffff; --t-ink: #1f2937; }
-.rank [data-tier="2"] { --t: #ffc21a; --t-edge: #a16207; --t-light: #fff3b0; --t-ink: #451a03; }
-.rank [data-tier="3"] { --t: #3cc8ff; --t-edge: #0369a1; --t-light: #e6f8ff; --t-ink: #082f49; }
-.rank [data-tier="4"] { --t: #cf8cff; --t-edge: #6b21a8; --t-light: #f8edff; --t-ink: #3b0764; }
-.rank [data-tier="locked"] { --t: #2b3445; --t-edge: #4b5563; --t-light: #3d4757; --t-ink: #9ca3af; }
+/* 金属の段（tokens.css の --metal-*。docs/10）: 0 銅 → 1 銀 → 2 金 → 3 白金 → 4 伝説。まだの段は夜の盤の色 */
+.rank [data-tier="0"] { --t: var(--metal-bronze); --t-edge: var(--metal-bronze-edge); --t-light: var(--metal-bronze-light); --t-ink: var(--metal-bronze-ink); }
+.rank [data-tier="1"] { --t: var(--metal-silver); --t-edge: var(--metal-silver-edge); --t-light: var(--metal-silver-light); --t-ink: var(--metal-silver-ink); }
+.rank [data-tier="2"] { --t: var(--metal-gold); --t-edge: var(--metal-gold-edge); --t-light: var(--metal-gold-light); --t-ink: var(--metal-gold-ink); }
+.rank [data-tier="3"] { --t: var(--metal-platinum); --t-edge: var(--metal-platinum-edge); --t-light: var(--metal-platinum-light); --t-ink: var(--metal-platinum-ink); }
+.rank [data-tier="4"] { --t: var(--metal-legend); --t-edge: var(--metal-legend-edge); --t-light: var(--metal-legend-light); --t-ink: var(--metal-legend-ink); }
+.rank [data-tier="locked"] { --t: var(--night-700); --t-edge: var(--night-600); --t-light: var(--night-600); --t-ink: var(--on-night-3); }
 
 /* ---- 紋章（SVG。内側は金属のグラデーション、縁は面取り） ---- */
 .rank-emblem { display: block; overflow: visible; }
@@ -75,7 +76,7 @@
     radial-gradient(circle at 50% 24%, color-mix(in srgb, var(--t) 58%, transparent) 0, transparent 44%),
     radial-gradient(ellipse at 50% 112%, color-mix(in srgb, var(--brand) 34%, transparent) 0, transparent 56%),
     radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.5px) 0 0 / 14px 14px,
-    linear-gradient(180deg, #0c1328 0%, #070b17 100%);
+    linear-gradient(180deg, var(--night-900) 0%, var(--night-950) 100%);
 }
 .rank-motes { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 .rank-mote { position: absolute; bottom: -0.5rem; left: var(--x); width: var(--s); height: var(--s); border-radius: 50%; background: var(--t-light); box-shadow: 0 0 8px var(--t); opacity: 0; }
@@ -88,9 +89,9 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(110, 231, 183, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(110, 231, 183, 0.35), 0 0 14px rgba(110, 231, 183, 0.25);
-  color: #6ee7b7;
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 35%, transparent), 0 0 14px color-mix(in srgb, var(--success) 25%, transparent);
+  color: color-mix(in srgb, var(--success) 60%, #ffffff);
 }
 .rank-hero__keep .icon { width: 1.25rem; height: 1.25rem; stroke-width: 2; }
 .rank-hero__kicker {
@@ -196,7 +197,7 @@
   content: "";
   position: absolute;
   inset: -50%;
-  background: linear-gradient(115deg, transparent 30%, #ff4fd8 40%, #4ff3ff 50%, #fff36b 60%, transparent 70%) 0 0 / 200% 200%;
+  background: linear-gradient(115deg, transparent 30%, var(--metal-legend) 40%, var(--glow) 50%, var(--metal-gold-light) 60%, transparent 70%) 0 0 / 200% 200%;
   transform: translate(calc(var(--tilt-x, 0) * 18%), calc(var(--tilt-y, 0) * 12%));
   transition: transform 0.25s ease-out;
 }
@@ -256,11 +257,11 @@
   margin: 0.5rem 0 0;
   padding: 0.25rem 0.875rem;
   border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, #ff5a36, #ff8a3d);
+  background: linear-gradient(90deg, var(--brand), color-mix(in srgb, var(--brand) 50%, var(--glow)));
   color: #ffffff;
   font-size: 0.875rem;
   font-weight: 700;
-  box-shadow: 0 0 0 3px rgba(255, 90, 54, 0.3), 0 0 18px rgba(255, 90, 54, 0.7);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 30%, transparent), 0 0 18px color-mix(in srgb, var(--brand) 70%, transparent);
 }
 .rank-hero__near .icon { width: 1rem; height: 1rem; stroke-width: 2.6; }
 .rank-hero__flash {
@@ -293,8 +294,8 @@
   border-radius: inherit;
   background:
     repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0 5px, transparent 5px 12px) 0 0 / 34px 100%,
-    linear-gradient(90deg, #ff5a36, #ffb36b);
-  box-shadow: 0 0 12px rgba(255, 90, 54, 0.9);
+    linear-gradient(90deg, var(--brand), var(--glow));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--brand) 90%, transparent);
 }
 .rank-road__nodes { margin: 0; padding: 0; list-style: none; }
 .rank-road__node {
@@ -320,8 +321,8 @@
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
-  border: 2px solid rgba(255, 90, 54, 0.85);
-  box-shadow: 0 0 12px rgba(255, 90, 54, 0.6);
+  border: 2px solid color-mix(in srgb, var(--brand) 85%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--brand) 60%, transparent);
   opacity: 0.8;
 }
 .rank-road__name { margin-top: 0.125rem; font-size: 0.625rem; line-height: 1.25; text-align: center; color: rgba(255, 255, 255, 0.45); }
@@ -345,13 +346,13 @@
   margin-bottom: 0.25rem;
   padding: 0.125rem 0.5rem;
   border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, #ff5a36, #ff8a3d);
+  background: linear-gradient(90deg, var(--brand), color-mix(in srgb, var(--brand) 50%, var(--glow)));
   color: #ffffff;
   font-size: 0.6875rem;
   font-weight: 700;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 0 12px rgba(255, 90, 54, 0.6);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--brand) 60%, transparent);
 }
 .rank-road__bubble::after {
   content: "";
@@ -360,13 +361,13 @@
   bottom: -0.25rem;
   border: 0.25rem solid transparent;
   border-bottom: 0;
-  border-top-color: #ff7040;
+  border-top-color: color-mix(in srgb, var(--brand) 75%, var(--glow));
   transform: translateX(-50%);
 }
 .rank-road__avatar { position: relative; z-index: 1; display: block; width: auto; height: 3.5rem; }
 .rank-road__avatar-fallback { position: relative; z-index: 1; width: 2.5rem; height: 2.5rem; display: grid; place-items: center; border-radius: 50%; background: #ffffff; color: var(--ink); }
 .rank-road__avatar-fallback .icon { width: 1.5rem; height: 1.5rem; }
-.rank-road__shadow { width: 2.25rem; height: 0.375rem; margin-top: -0.25rem; border-radius: 50%; background: radial-gradient(rgba(255, 138, 107, 0.55), transparent 70%); }
+.rank-road__shadow { width: 2.25rem; height: 0.375rem; margin-top: -0.25rem; border-radius: 50%; background: radial-gradient(color-mix(in srgb, var(--brand-300) 55%, transparent), transparent 70%); }
 .rank-road__trail {
   position: absolute;
   right: 50%;
@@ -374,8 +375,8 @@
   width: 5rem;
   height: 0.25rem;
   border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, transparent, rgba(255, 138, 107, 0.9));
-  box-shadow: 0 0 10px rgba(255, 90, 54, 0.8);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--brand-300) 90%, transparent));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--brand) 80%, transparent);
   opacity: 0;
 }
 .rank-road__dot {
@@ -402,7 +403,7 @@
 .rank-hero + .rank-card { margin-top: 1.125rem; }
 .rank-head { display: flex; align-items: center; gap: 0.5rem; min-height: 1.75rem; margin-bottom: 0.75rem; }
 .rank-head::after { content: ""; order: 1; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent); }
-.rank-head__icon { display: flex; color: var(--brand); filter: drop-shadow(0 0 6px rgba(255, 90, 54, 0.75)); }
+.rank-head__icon { display: flex; color: var(--brand); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand) 75%, transparent)); }
 .rank-head__icon .icon { width: 1.125rem; height: 1.125rem; stroke-width: 2.1; }
 .rank-head__title { margin: 0; font-size: 0.875rem; font-weight: 700; letter-spacing: 0.1em; color: #ffffff; }
 .rank-head__pill {
@@ -412,9 +413,9 @@
   gap: 0.25rem;
   padding: 0.125rem 0.5rem;
   border-radius: var(--radius-pill);
-  background: rgba(255, 90, 54, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(255, 90, 54, 0.45);
-  color: #ffb4a1;
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 45%, transparent);
+  color: var(--brand-200);
   font-size: 0.6875rem;
   font-weight: 700;
 }
@@ -452,11 +453,11 @@
   background: rgba(255, 255, 255, 0.04);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
-.rank-stat[data-tone="brand"] { --tone: #ff7a59; }
-.rank-stat[data-tone="sea"] { --tone: #38bdf8; }
-.rank-stat[data-tone="silver"] { --tone: #cbd5e1; }
-.rank-stat[data-tone="gold"] { --tone: #fbbf24; }
-.rank-stat[data-tone="leaf"] { --tone: #34d399; }
+.rank-stat[data-tone="brand"] { --tone: var(--brand-400); }
+.rank-stat[data-tone="sea"] { --tone: var(--glow); }
+.rank-stat[data-tone="silver"] { --tone: var(--metal-silver); }
+.rank-stat[data-tone="gold"] { --tone: var(--metal-gold); }
+.rank-stat[data-tone="leaf"] { --tone: var(--success); }
 .rank-stat__icon {
   width: 2.375rem;
   height: 2.375rem;
@@ -478,9 +479,9 @@
   gap: 0.25rem;
   padding: 0.125rem 0.625rem;
   border-radius: var(--radius-pill);
-  background: rgba(251, 191, 36, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.45), 0 0 12px rgba(251, 191, 36, 0.2);
-  color: #fcd34d;
+  background: color-mix(in srgb, var(--metal-gold) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--metal-gold) 45%, transparent), 0 0 12px color-mix(in srgb, var(--metal-gold) 20%, transparent);
+  color: color-mix(in srgb, var(--metal-gold) 50%, var(--metal-gold-light));
   font-size: 0.75rem;
   font-weight: 700;
 }
@@ -489,7 +490,7 @@
 /* リーグのメダル */
 .rank-medals { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
 .rank-medal {
-  --m-bg: #1e2638; --m-edge: var(--brand); --m-ink: #ffffff; --m-r1: #ff5a36; --m-r2: #b4321a; --m-glow: rgba(255, 90, 54, 0.35);
+  --m-bg: var(--night-800); --m-edge: var(--brand); --m-ink: #ffffff; --m-r1: var(--brand); --m-r2: var(--brand-800); --m-glow: color-mix(in srgb, var(--brand) 35%, transparent);
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -504,10 +505,10 @@
   cursor: pointer;
 }
 .rank-medal:active { transform: scale(0.97); }
-.rank-medal[data-medal="gold"] { --m-bg: radial-gradient(circle at 35% 30%, #fff7cc, #fbbf24 55%, #b7791f); --m-edge: #fde68a; --m-ink: #5b3604; --m-r1: #ef4444; --m-r2: #3b82f6; --m-glow: rgba(251, 191, 36, 0.6); }
-.rank-medal[data-medal="silver"] { --m-bg: radial-gradient(circle at 35% 30%, #ffffff, #cbd5e1 55%, #7b8597); --m-edge: #f1f5f9; --m-ink: #1f2937; --m-r1: #ef4444; --m-r2: #3b82f6; --m-glow: rgba(203, 213, 225, 0.5); }
-.rank-medal[data-medal="bronze"] { --m-bg: radial-gradient(circle at 35% 30%, #ffe3cc, #e0965f 55%, #8f5524); --m-edge: #fbe0c8; --m-ink: #3b1d06; --m-r1: #ef4444; --m-r2: #3b82f6; --m-glow: rgba(224, 150, 95, 0.5); }
-.rank-medal[data-medal="guest"] { --m-bg: transparent; --m-edge: rgba(255, 255, 255, 0.25); --m-ink: var(--rk-sub); --m-r1: #475569; --m-r2: #334155; --m-glow: transparent; }
+.rank-medal[data-medal="gold"] { --m-bg: radial-gradient(circle at 35% 30%, var(--metal-gold-light), var(--metal-gold) 55%, var(--metal-gold-edge)); --m-edge: var(--metal-gold-light); --m-ink: var(--metal-gold-ink); --m-r1: var(--danger); --m-r2: var(--brand); --m-glow: color-mix(in srgb, var(--metal-gold) 60%, transparent); }
+.rank-medal[data-medal="silver"] { --m-bg: radial-gradient(circle at 35% 30%, #ffffff, var(--metal-silver) 55%, color-mix(in srgb, var(--metal-silver) 35%, var(--metal-silver-edge))); --m-edge: var(--metal-silver-light); --m-ink: var(--metal-silver-ink); --m-r1: var(--danger); --m-r2: var(--brand); --m-glow: color-mix(in srgb, var(--metal-silver) 50%, transparent); }
+.rank-medal[data-medal="bronze"] { --m-bg: radial-gradient(circle at 35% 30%, var(--metal-bronze-light), var(--metal-bronze) 55%, var(--metal-bronze-edge)); --m-edge: var(--metal-bronze-light); --m-ink: var(--metal-bronze-ink); --m-r1: var(--danger); --m-r2: var(--brand); --m-glow: color-mix(in srgb, var(--metal-bronze) 50%, transparent); }
+.rank-medal[data-medal="guest"] { --m-bg: transparent; --m-edge: rgba(255, 255, 255, 0.25); --m-ink: var(--rk-sub); --m-r1: var(--night-600); --m-r2: var(--night-700); --m-glow: transparent; }
 .rank-medal__ribbon { width: 1.75rem; height: 0.875rem; margin-bottom: -0.25rem; background: linear-gradient(90deg, var(--m-r1) 0 50%, var(--m-r2) 50% 100%); clip-path: polygon(0 0, 100% 0, 72% 100%, 28% 100%); }
 .rank-medal__disk {
   position: relative;
@@ -548,22 +549,22 @@
   align-items: center;
   padding: 0.5rem 0.25rem 0.375rem;
   border-radius: 1rem;
-  background: linear-gradient(180deg, rgba(255, 90, 54, 0.16), rgba(255, 90, 54, 0.04));
-  box-shadow: inset 0 0 0 1px rgba(255, 90, 54, 0.35);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 16%, transparent), color-mix(in srgb, var(--brand) 4%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 35%, transparent);
 }
-.rank-rule__icon { display: flex; color: var(--rk-hot); filter: drop-shadow(0 0 6px rgba(255, 90, 54, 0.7)); }
+.rank-rule__icon { display: flex; color: var(--rk-hot); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand) 70%, transparent)); }
 .rank-rule__icon .icon { width: 1.25rem; height: 1.25rem; stroke-width: 2; }
-.rank-rule__value { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: #ffffff; font-variant-numeric: tabular-nums; text-shadow: 0 0 12px rgba(255, 90, 54, 0.8); }
+.rank-rule__value { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: #ffffff; font-variant-numeric: tabular-nums; text-shadow: 0 0 12px color-mix(in srgb, var(--brand) 80%, transparent); }
 .rank-rule__label { font-size: 0.625rem; color: var(--rk-sub); }
 .rank-log { margin: 0; padding: 0; list-style: none; }
 .rank-log__row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4375rem 0; border-top: 1px solid rgba(255, 255, 255, 0.06); }
 .rank-log__row:first-child { border-top: 0; }
-.rank-log__icon { flex: none; width: 1.75rem; height: 1.75rem; display: grid; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, 0.06); color: #cbd5e1; }
+.rank-log__icon { flex: none; width: 1.75rem; height: 1.75rem; display: grid; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, 0.06); color: var(--on-night-2); }
 .rank-log__icon .icon { width: 1rem; height: 1rem; stroke-width: 2; }
-.rank-log__row[data-kind="welcomeBack"] .rank-log__icon { background: rgba(255, 90, 54, 0.18); color: var(--rk-hot); box-shadow: 0 0 10px rgba(255, 90, 54, 0.35); }
+.rank-log__row[data-kind="welcomeBack"] .rank-log__icon { background: color-mix(in srgb, var(--brand) 18%, transparent); color: var(--rk-hot); box-shadow: 0 0 10px color-mix(in srgb, var(--brand) 35%, transparent); }
 .rank-log__spot { flex: 1; min-width: 0; font-size: var(--fs-s); color: var(--rk-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rank-log__date { flex: none; font-size: 0.625rem; color: var(--rk-sub); font-variant-numeric: tabular-nums; }
-.rank-log__points { flex: none; min-width: 2.25rem; text-align: right; font-family: var(--font-display); font-size: var(--fs-m); color: var(--rk-hot); font-variant-numeric: tabular-nums; text-shadow: 0 0 10px rgba(255, 90, 54, 0.6); }
+.rank-log__points { flex: none; min-width: 2.25rem; text-align: right; font-family: var(--font-display); font-size: var(--fs-m); color: var(--rk-hot); font-variant-numeric: tabular-nums; text-shadow: 0 0 10px color-mix(in srgb, var(--brand) 60%, transparent); }
 .rank-log__empty { display: flex; align-items: center; gap: 0.375rem; margin: 0; font-size: var(--fs-s); color: var(--rk-sub); }
 .rank-log__empty .icon { width: 1.125rem; height: 1.125rem; }
 
@@ -701,14 +702,14 @@
   12% { opacity: 0.9; }
   100% { transform: translateY(-34rem); opacity: 0; }
 }
-@keyframes rank-near { 50% { transform: scale(1.06); box-shadow: 0 0 0 5px rgba(255, 90, 54, 0.25), 0 0 26px rgba(255, 90, 54, 0.9); } }
+@keyframes rank-near { 50% { transform: scale(1.06); box-shadow: 0 0 0 5px color-mix(in srgb, var(--brand) 25%, transparent), 0 0 26px color-mix(in srgb, var(--brand) 90%, transparent); } }
 @keyframes rank-fill { from { width: 0; } }
 @keyframes rank-flow { to { background-position: 34px 0, 0 0; } }
 @keyframes rank-walk { from { left: 0; } }
 @keyframes rank-trail { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes rank-dot { from { left: 0; } }
 @keyframes rank-bob { to { transform: translateY(-3px); } }
-@keyframes rank-pulse { 0% { box-shadow: 0 0 0 3px var(--brand), 0 0 0 3px rgba(255, 90, 54, 0.6); } 100% { box-shadow: 0 0 0 3px var(--brand), 0 0 0 12px rgba(255, 90, 54, 0); } }
+@keyframes rank-pulse { 0% { box-shadow: 0 0 0 3px var(--brand), 0 0 0 3px color-mix(in srgb, var(--brand) 60%, transparent); } 100% { box-shadow: 0 0 0 3px var(--brand), 0 0 0 12px color-mix(in srgb, var(--brand) 0%, transparent); } }
 @keyframes rank-glow { 50% { filter: drop-shadow(0 0 12px var(--t)); } }
 @keyframes rank-target { 0% { transform: scale(0.75); opacity: 0.9; } 100% { transform: scale(1.35); opacity: 0; } }
 @keyframes rank-pop { from { opacity: 0; transform: scale(0.88); } }

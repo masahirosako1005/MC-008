@@ -49,13 +49,13 @@ export function districtsOfRival(rival: Rival, lords: ReadonlyMap<DistrictId, st
 }
 
 /**
- * 表示名から、アイコンに描く1文字を返す（「旅人」の接頭辞は除く）。
+ * 表示名から、アイコンに描く1文字を返す（「冒険者」「旅人」の接頭辞は除く）。
  * @param name 表示名（例: おまいり番長）
  * @returns 1文字（例: お）。取れなければ「？」
  */
 export function initialOf(name: string): string {
   const log = logger.fn('initialOf');
-  const body = name.startsWith('旅人') && name.length > 2 ? name.slice(2) : name;
+  const body = name.replace(/^(冒険者|旅人)(?=.)/u, '');
   return log.exit(Array.from(body)[0] ?? '？');
 }
 

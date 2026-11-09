@@ -212,7 +212,7 @@ export function filterCounts(spots: readonly SceneSpot[], prefs: MapPrefs): Reco
  */
 export function highlightColorOf(active: ReadonlySet<MapFilterId>): string { // audit-ignore: fnlog-missing 毎フレーム描画
   for (const f of MAP_FILTERS) if (active.has(f.id)) return FILTER_COLORS[f.id];
-  return '#ff6a3d';
+  return '#1e6bff';
 }
 
 /**

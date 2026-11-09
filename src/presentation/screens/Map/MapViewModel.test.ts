@@ -344,7 +344,7 @@ describe('buildMapViewModel', () => {
     expect(vm.districts.find((d) => d.id === 'd_joka')?.fadeTag).toBeUndefined();
   });
   it('自分が主の地区は上部バーの補足に主を出す', () => {
-    expect(vm.districts.find((d) => d.id === 'd_honmachi')?.subtitle).toContain('地区の主');
+    expect(vm.districts.find((d) => d.id === 'd_honmachi')?.subtitle).toContain('地区の領主');
   });
   it('未発見の店舗の名前は DTO に入っていても落とす', () => {
     const unknown = vm.spots.find((s) => s.id === 's_jo05');

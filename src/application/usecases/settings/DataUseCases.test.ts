@@ -9,7 +9,7 @@ describe('ExportDataUseCase', () => {
     const tw = createTestWorld();
     const userData = new InMemoryDataPort({ settings: { textScale: 'large' }, 'traveler.t_abc': { visits: [] } });
     const out = must(await new ExportDataUseCase({ userData, clock: tw.clock, demo: false }).execute());
-    expect(out.filename).toBe(`kayoimachi-data-${tw.clock.today()}.json`);
+    expect(out.filename).toBe(`machiquest-data-${tw.clock.today()}.json`);
     expect(out.entryCount).toBe(2);
     expect(JSON.parse(out.content)).toEqual({
       format: EXPORT_FORMAT,
@@ -23,7 +23,7 @@ describe('ExportDataUseCase', () => {
   it('デモではファイル名と中身にデモと記す', async () => {
     const tw = createTestWorld();
     const out = must(await new ExportDataUseCase({ userData: new InMemoryDataPort(), clock: tw.clock, demo: true }).execute());
-    expect(out.filename).toBe(`kayoimachi-demo-data-${tw.clock.today()}.json`);
+    expect(out.filename).toBe(`machiquest-demo-data-${tw.clock.today()}.json`);
     expect(JSON.parse(out.content)).toMatchObject({ build: 'demo', entries: {} });
   });
 });

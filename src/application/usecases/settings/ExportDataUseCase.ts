@@ -52,7 +52,7 @@ export class ExportDataUseCase implements UseCase<void, ExportDataDto> {
       build: this.deps.demo ? 'demo' : 'production',
       entries,
     };
-    const filename = `kayoimachi-${this.deps.demo ? 'demo-' : ''}data-${this.deps.clock.today()}.json`;
+    const filename = `machiquest-${this.deps.demo ? 'demo-' : ''}data-${this.deps.clock.today()}.json`;
     log.info('データを書き出しました', { entryCount: loaded.value.length });
     return log.exit(ok({ filename, content: `${JSON.stringify(document, null, 2)}\n`, entryCount: loaded.value.length }));
   }

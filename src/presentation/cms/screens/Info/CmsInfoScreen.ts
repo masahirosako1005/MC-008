@@ -100,20 +100,20 @@ function isChanged(ctx: CmsContext, draft: InfoDraft): boolean {
 }
 
 /**
- * 時刻を選ぶ欄を作る（選択肢に無い値も先頭に足す）。
+ * 時刻を選ぶ欄を作る（選択肢に無い値も先頭に足す）。OS の矢印は消し、お店の切り替えと同じ包み（cms-selectwrap）と印にする。
  * @param label 読み上げ名
  * @param value 初期値
  * @param testId テスト用 ID
  * @param onChange 選んだときの処理
- * @returns select
+ * @returns 包み（element）と select
  */
-function timeSelect(label: string, value: string, testId: string, onChange: (value: string) => void): HTMLSelectElement {
+function timeSelect(label: string, value: string, testId: string, onChange: (value: string) => void): { readonly element: HTMLElement; readonly select: HTMLSelectElement } {
   const log = logger.fn('timeSelect', { label, value });
   const options = timeOptions();
   const values = options.includes(value) ? options : [value, ...options];
   const select = h('select', { class: 'cms-select cms-select--time', attrs: { 'data-testid': testId, id: testId, 'aria-label': label } }, values.map((v) => h('option', { attrs: { value: v, selected: v === value }, text: v })));
   select.addEventListener('change', () => onChange(select.value));
-  return log.exit(select);
+  return log.exit({ element: h('span', { class: 'cms-selectwrap' }, [select, icon('chevronRight', 'cms-selectwrap__icon')]), select });
 }
 
 /**
@@ -127,7 +127,7 @@ function hoursSection(draft: InfoDraft, onChange: () => void, onFocus: (target: 
   const log = logger.fn('hoursSection', { open: draft.open, close: draft.close });
   const open = timeSelect('開店', draft.open, 'cms-open', (v) => { draft.open = v; onChange(); });
   const close = timeSelect('閉店', draft.close, 'cms-close', (v) => { draft.close = v; onChange(); });
-  const error = attachFieldError(close, 'cms-hours-error');
+  const error = attachFieldError(close.select, 'cms-hours-error');
   const days = WEEKDAY_LABELS.map((label, day) => {
     const button = h('button', { class: 'cms-day', attrs: { type: 'button', 'aria-pressed': draft.closedDays.has(day) ? 'true' : 'false', 'data-testid': `cms-closed-${day}` }, text: label });
     button.addEventListener('click', () => {
@@ -140,7 +140,7 @@ function hoursSection(draft: InfoDraft, onChange: () => void, onFocus: (target: 
   });
   const note = textField({ label: '補足', max: HOURS_NOTE_MAX, value: draft.note, placeholder: '例：土曜は15時まで', testId: 'cms-hours-note', onInput: (v) => { draft.note = v; onChange(); }, onFocus: () => onFocus('hours') });
   const element = formSection(undefined, [
-    h('div', { class: 'cms-field' }, [h('span', { class: 'cms-field__label', attrs: { id: 'cms-hours-label' }, text: '営業時間' }), h('div', { class: 'cms-inline', attrs: { role: 'group', 'aria-labelledby': 'cms-hours-label' } }, [open, h('span', { class: 'cms-muted', text: '〜' }), close]), error.element]),
+    h('div', { class: 'cms-field' }, [h('span', { class: 'cms-field__label', attrs: { id: 'cms-hours-label' }, text: '営業時間' }), h('div', { class: 'cms-inline', attrs: { role: 'group', 'aria-labelledby': 'cms-hours-label' } }, [open.element, h('span', { class: 'cms-muted', text: '〜' }), close.element]), error.element]),
     h('div', { class: 'cms-field' }, [h('span', { class: 'cms-field__label', attrs: { id: 'cms-closed-label' }, text: '定休日' }), h('div', { class: 'cms-days', attrs: { role: 'group', 'aria-labelledby': 'cms-closed-label' } }, days)]),
     note.element,
   ], { testId: 'cms-hours' });
@@ -149,7 +149,7 @@ function hoursSection(draft: InfoDraft, onChange: () => void, onFocus: (target: 
 }
 
 /**
- * 便利情報の区切り（2列のチェック）を作る。
+ * 便利情報の区切り（ラベル＋2列のチェック。見出しは置かず、営業時間の区切りと同じ「ラベル＋欄」の形）を作る。
  * @param draft 入力中の値
  * @param onChange 変わったときの処理
  * @param onFocus 欄に入ったときの処理
@@ -169,7 +169,10 @@ function amenitySection(draft: InfoDraft, onChange: () => void, onFocus: (target
     });
     return tile;
   });
-  const element = formSection('便利情報', [h('div', { class: 'cms-checks', attrs: { role: 'group', 'aria-label': '便利情報' } }, tiles)], { testId: 'cms-amenities' });
+  const element = formSection(undefined, [h('div', { class: 'cms-field' }, [
+    h('span', { class: 'cms-field__label', attrs: { id: 'cms-amenities-label' }, text: '便利情報' }),
+    h('div', { class: 'cms-checks', attrs: { role: 'group', 'aria-labelledby': 'cms-amenities-label' } }, tiles),
+  ])], { testId: 'cms-amenities' });
   element.addEventListener('focusin', () => onFocus('amenities'));
   return log.exit(element);
 }
@@ -233,7 +236,7 @@ function refresh(ctx: CmsContext, draft: InfoDraft, parts: InfoParts): void {
  */
 async function save(ctx: CmsContext, draft: InfoDraft, parts: InfoParts): Promise<void> {
   const log = logger.fn('save', { spotId: ctx.info.id });
-  setButtonLabel(parts.saveButton, '保存中…');
+  setButtonLabel(parts.saveButton, '保存中');
   const result = await ctx.services.saveShopInfo.execute({
     spotId: ctx.info.id,
     hours: { open: draft.open, close: draft.close, closedDays: [...draft.closedDays], note: draft.note },
@@ -275,7 +278,6 @@ export function renderCmsInfoScreen(ctx: CmsContext): HTMLElement {
     pageTitle('お店の情報', previewButton(ctx)),
     hours.element,
     amenitySection(draft, onChange, onFocus),
-    h('p', { class: 'cms-footnote', text: '店名・紹介文の変更は運営者へ連絡してください' }),
     actionBar(status, [resetButton, saveButton]),
   ]);
   return log.exit(twoColumn(preview.element, form));

@@ -52,7 +52,7 @@ export interface SettingsRow {
   readonly value: string;
 }
 
-/** アプリ名（CLAUDE.md 12 の仮称。index.html の title と合わせる） */
+/** アプリ名（CLAUDE.md 11「まちクエ」。index.html の title と合わせる） */
 export const APP_DISPLAY_NAME = 'まちクエ';
 
 /**
@@ -120,7 +120,7 @@ export function aboutRows(isDemo: boolean): readonly SettingsRow[] {
 
 /** データのまとまりの文言（DI-21 書き出し・PRV-05 削除） */
 export const DATA_TEXTS = {
-  exportLead: '訪問の記録・ポイント・カード・着せ替え・設定を、JSON ファイルにして端末に保存します。',
+  exportLead: 'クエストの記録・EXP・カード・着せ替え・設定を、JSON ファイルにして端末に保存します。',
   exportButton: 'データを書き出す',
   exported: (count: number): string => `データを書き出しました（${count}件）`,
   exportFailed: 'データを書き出せませんでした',
@@ -139,7 +139,7 @@ export const DATA_TEXTS = {
  */
 export function deleteConfirmText(isDemo: boolean): string {
   const log = logger.fn('deleteConfirmText', { isDemo });
-  const base = '訪問の記録、ポイント、カード、アイテム、着せ替え、設定がこの端末から消え、アプリを最初から始め直します。元には戻せません。残しておきたいときは、先に「データを書き出す」で保存してください。';
+  const base = 'クエストの記録、EXP、カード、アイテム、着せ替え、設定がこの端末から消え、アプリを最初から始め直します。元には戻せません。残しておきたいときは、先に「データを書き出す」で保存してください。';
   return log.exit(isDemo ? `${base}（デモ版は、最初のデモの状態に戻ります）` : base);
 }
 

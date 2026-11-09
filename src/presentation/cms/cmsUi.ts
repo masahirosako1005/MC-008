@@ -175,6 +175,54 @@ export function eventBadge(event: CmsShopEventDto): HTMLElement {
   return log.exit(badge(event.status === 'withdrawn' ? '取り下げ' : '終了', 'muted'));
 }
 
+/** 行に出す下書き（札は「下書き」） */
+export interface EventRowDraft {
+  readonly draft: true;
+  readonly title: string;
+  readonly start: string;
+  readonly end: string;
+}
+
+/**
+ * クーポン・イベントの行の中身（札｜題名1行＋期間1行｜印）を作る。期間は「11/14(土)〜11/15(日)」だけ（種類の前置きは付けない）。
+ * @param event クーポン・イベント、または下書き
+ * @param chevron 右端に印を出すか（押せる行だけ）
+ * @returns 子要素の並び
+ */
+function eventRowParts(event: CmsShopEventDto | EventRowDraft, chevron: boolean): Child[] {
+  const log = logger.fn('eventRowParts', { chevron });
+  return log.exit([
+    'draft' in event ? badge('下書き', 'muted') : eventBadge(event),
+    h('span', { class: 'cms-row__main' }, [
+      h('span', { class: 'cms-row__title', text: event.title }),
+      h('span', { class: 'cms-row__sub', text: `${mdDate(event.start)}〜${mdDate(event.end)}` }),
+    ]),
+    chevron ? icon('chevronRight', 'cms-row__chevron') : undefined,
+  ]);
+}
+
+/**
+ * 行全体を押すと開くクーポン・イベントの行を作る（ホームと一覧で同じ形にする）。
+ * @param event クーポン・イベント、または下書き
+ * @param onClick 押したときの処理
+ * @param testId テスト用 ID
+ * @returns button 要素
+ */
+export function eventRowButton(event: CmsShopEventDto | EventRowDraft, onClick: () => void, testId: string): HTMLButtonElement {
+  const log = logger.fn('eventRowButton', { testId });
+  return log.exit(h('button', { class: 'cms-row cms-row--event', attrs: { type: 'button', 'data-testid': testId }, on: { click: onClick } }, eventRowParts(event, true)));
+}
+
+/**
+ * 押せないクーポン・イベントの行（店舗CMS で掲載したものでなく、取り下げられないもの）を作る。印は出さない。
+ * @param event クーポン・イベント
+ * @returns 要素
+ */
+export function eventRowStatic(event: CmsShopEventDto): HTMLElement {
+  const log = logger.fn('eventRowStatic', { id: event.id });
+  return log.exit(h('div', { class: 'cms-row cms-row--event' }, eventRowParts(event, false)));
+}
+
 /** 入力欄の部品 */
 export interface CmsField<E extends HTMLElement> {
   readonly element: HTMLElement;

@@ -463,7 +463,7 @@ function toDistrictVm(d: DistrictMapDto, avoid: BuildingAvoid): MapDistrictVm {
   const level = Number.isFinite(d.level) ? Math.min(MAX_LEVEL, Math.max(0, Math.round(d.level))) : 0;
   const lv = levelLabel(level);
   const polygon = d.polygon.map((p) => ({ lat: p.lat, lng: p.lng }));
-  const lordText = d.isLordMe ? '♛ あなたが地区の主' : d.lordName === undefined ? undefined : `主：${d.lordName}`;
+  const lordText = d.isLordMe ? '♛ あなたがこの地区の領主' : d.lordName === undefined ? undefined : `領主：${d.lordName}`;
   const subtitle = [fadeLabel(d.fade), lordText].filter((s): s is string => s !== undefined).join(' ・ ');
   const vm: MapDistrictVm = {
     id: d.id,

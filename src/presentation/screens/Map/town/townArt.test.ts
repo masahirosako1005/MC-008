@@ -133,15 +133,15 @@ describe('paintOverview', () => {
     for (let i = 3; i < px.length; i += 4) expect(px[i]).toBe(255);
   });
 
-  it('自分の陣地は朱が混ざり、色あせは明るく（灰色に）なる', () => {
+  it('自分の陣地は青が混ざり、色あせは明るく（灰色に）なる', () => {
     const grid = sampleGrid();
     const empty = new Uint8Array(grid.cols * grid.rows);
     const base = paintOverview(grid, { levels: [], fades: [], territory: empty });
     const mine = new Uint8Array(empty.length).fill(TERRITORY_MINE);
     const tinted = paintOverview(grid, { levels: [], fades: [], territory: mine });
     const faded = paintOverview(grid, { levels: [], fades: [1, 1, 1, 1, 1, 1], territory: empty });
-    // 1行目・列0 は芝（Cell.GRASS）。赤が増え、緑が減る
-    expect(tinted[0]).toBeGreaterThan(base[0] ?? 0);
+    // 1行目・列0 は芝（Cell.GRASS）。青が増え、緑が減る（自分の陣地の色は TERRITORY_MINE_COLOR＝ブランドの青）
+    expect(tinted[2]).toBeGreaterThan(base[2] ?? 0);
     expect(tinted[1]).toBeLessThan(base[1] ?? 0);
     const sat = (a: Uint8ClampedArray): number => Math.max(a[0] ?? 0, a[1] ?? 0, a[2] ?? 0) - Math.min(a[0] ?? 0, a[1] ?? 0, a[2] ?? 0);
     expect(sat(faded)).toBeLessThan(sat(base));

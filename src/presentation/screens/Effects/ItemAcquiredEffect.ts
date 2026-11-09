@@ -8,6 +8,7 @@ import { beginFrame } from '@/Common/ui/canvas/CanvasBase';
 import type { CanvasSize } from '@/Common/ui/canvas/CanvasBase';
 import { drawCircle } from '@/Common/ui/canvas/drawUtils';
 import { h } from '@/Common/ui/dom';
+import { PALETTE } from '@/Common/ui/theme/palette';
 import { drawConfetti, drawSparkle } from '@/presentation/screens/Effects/effectArt';
 import { startCanvasAnimation } from '@/presentation/screens/Effects/EffectFrame';
 import type { CanvasAnimationHandle, EffectView } from '@/presentation/screens/Effects/EffectFrame';
@@ -50,14 +51,14 @@ function drawItemFrame(ctx: CanvasRenderingContext2D, size: CanvasSize, gear: Ge
   const s = Math.min(size.width, size.height);
   const center = { x: size.width / 2, y: size.height * 0.52 };
   const pop = Math.max(0, easeOutBack(clamp01(progress / 0.45)));
-  drawCircle(ctx, center, s * 0.38 * pop, { fill: '#ffede7' });
+  drawCircle(ctx, center, s * 0.38 * pop, { fill: PALETTE.brandSoft });
   drawConfetti(ctx, confettiFor(`item:${gear}`, 16), { center, radius: s * 0.55 }, progress);
   if (pop > 0.05) paintGear(ctx, gear, { x: center.x, y: center.y + s * 0.2 }, s * 0.34 * pop);
   const t = clamp01((progress - 0.45) / 0.3);
   if (t <= 0) return;
-  drawSparkle(ctx, { x: center.x + s * 0.3, y: center.y - s * 0.26 }, s * 0.045 * easeOutBack(t), '#f5b700');
-  drawSparkle(ctx, { x: center.x - s * 0.32, y: center.y - s * 0.08 }, s * 0.03 * easeOutBack(t), '#ff5a36');
-  drawSparkle(ctx, { x: center.x + s * 0.24, y: center.y + s * 0.24 }, s * 0.025 * easeOutBack(t), '#f5b700');
+  drawSparkle(ctx, { x: center.x + s * 0.3, y: center.y - s * 0.26 }, s * 0.045 * easeOutBack(t), PALETTE.metalGold);
+  drawSparkle(ctx, { x: center.x - s * 0.32, y: center.y - s * 0.08 }, s * 0.03 * easeOutBack(t), PALETTE.brand);
+  drawSparkle(ctx, { x: center.x + s * 0.24, y: center.y + s * 0.24 }, s * 0.025 * easeOutBack(t), PALETTE.metalGold);
 }
 
 /**

@@ -26,4 +26,4 @@ export const MAX_PROCESSED_OPERATION_IDS = 500;
 export const MAX_NICKNAME_LENGTH = 20;
 
 /** ニックネームが空のときの既定名（仮） */
-export const DEFAULT_NICKNAME = '旅人';
+export const DEFAULT_NICKNAME = '冒険者';

@@ -1,8 +1,8 @@
 {
-  "name": "nnishi-kayoimachi",
+  "name": "nnishi-machiquest",
   "private": true,
   "version": "0.1.0",
-  "description": "N西市 再訪促進スマホWebアプリ（街に通うほど、自分だけの街が育つ）",
+  "description": "N西市 再訪促進スマホWebアプリ「まちクエ」（街がクエストの場所。通うほど、自分だけの街が育つ）",
   "type": "module",
   "scripts": {
     "dev": "vite --mode demo",
@@ -18,6 +18,9 @@
     "master:hash": "node scripts/master/hash-master.mjs",
     "e2e": "node scripts/e2e/demo-scenario.mjs",
     "server:build": "vite build -c vite.server.config.ts --mode demo",
+    "server:build:prod": "vite build -c vite.server.config.ts",
+    "build:cms": "vite build --mode cms --outDir dist-cms --emptyOutDir",
+    "build:backend": "node scripts/build/backend.mjs",
     "dev:backend": "node scripts/dev/backend.mjs dev",
     "demo:backend": "node scripts/dev/backend.mjs serve",
     "e2e:backend": "node scripts/e2e/cms-backend.mjs"

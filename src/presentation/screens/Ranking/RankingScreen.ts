@@ -335,7 +335,7 @@ class RankingController {
     if (img !== undefined) return h('span', { class: 'rk-avatar', attrs: { 'aria-hidden': 'true' } }, [img]);
     return entry.isMe
       ? h('span', { class: fallbackClass, attrs: { 'aria-hidden': 'true' } }, [createIcon('star')])
-      : h('span', { class: fallbackClass, attrs: { 'aria-hidden': 'true' }, text: entry.name.replace(/^旅人/, '').slice(0, 1) });
+      : h('span', { class: fallbackClass, attrs: { 'aria-hidden': 'true' }, text: entry.name.replace(/^(冒険者|旅人)/, '').slice(0, 1) });
   }
 
   /**
@@ -550,7 +550,7 @@ class RankingController {
       {
         class: 'rk-lord',
         dataset: { tone: status.tone },
-        attrs: { type: 'button', 'data-testid': 'ranking-lord-card', 'aria-label': `${lord.districtName} 主：${lord.lordName ?? 'なし'}。${status.tone === 'me' ? 'あなたが主' : `主まで${status.text}`}` },
+        attrs: { type: 'button', 'data-testid': 'ranking-lord-card', 'aria-label': `${lord.districtName} 領主：${lord.lordName ?? 'なし'}。${status.tone === 'me' ? 'あなたが領主' : `領主まで${status.text}`}` },
         on: { click: userAction('ranking-lord', (): void => this.ctx.router.navigate(`#/map/${lord.districtId}`)) },
       },
       [
@@ -571,8 +571,8 @@ class RankingController {
   private createLords(lords: readonly RankingLordDto[]): HTMLElement {
     const log = logger.fn('createLords', { lords: lords.length });
     return log.exit(
-      h('section', { class: ['rk-card', 'rk-card--lords'], attrs: { 'data-testid': 'ranking-lords', 'aria-label': '地区の主（直近30日）' } }, [
-        h('h3', { class: 'rk-card__title' }, [createIcon('crown'), '地区の主']),
+      h('section', { class: ['rk-card', 'rk-card--lords'], attrs: { 'data-testid': 'ranking-lords', 'aria-label': '地区の領主（直近30日）' } }, [
+        h('h3', { class: 'rk-card__title' }, [createIcon('crown'), '地区の領主']),
         h('div', { class: 'rk-lords' }, lords.map((lord) => this.lordTile(lord))),
       ]),
     );

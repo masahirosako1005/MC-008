@@ -166,7 +166,7 @@ export class App {
     if (shouldShowLaunch()) mountLaunchScreen(this.parts.phone, this.services);
     this.root.replaceChildren(this.parts.viewport);
     this.router.onChange((route) => void this.showRoute(route));
-    this.services.demo?.onCatalogChanged?.(() => this.onCatalogChanged());
+    (this.services.onCatalogChanged ?? this.services.demo?.onCatalogChanged)?.(() => this.onCatalogChanged());
     await this.refreshStatus();
     this.router.start();
     log.info('アプリを起動しました', { route: this.router.current().name });

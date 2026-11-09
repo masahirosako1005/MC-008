@@ -1,6 +1,7 @@
 /**
  * @file 連携サーバーの DB（infrastructure/server/sqlite 層。Node 標準の node:sqlite。docs/09 §7.3、U1 の決定）
- * SQL はこのファイルだけに書く。中身の検証（parse）と版数・監査の手順は SqliteCmsOverlayRepository が受け持つ。
+ * 登録内容の表の SQL はこのファイルに、ログインに関する表（アカウント・セッション・記録）の SQL は SqliteAuthStore.ts に書く。
+ * 中身の検証（parse）と版数・監査の手順は SqliteCmsOverlayRepository が受け持つ。
  *
  * | 表 | 中身 |
  * |---|---|
@@ -9,13 +10,14 @@
  * | cms_shop_events | CMS で登録したクーポン・イベント（取り下げても消さない＝CMS-E08） |
  * | cms_processed_operations | 処理済みの操作ID（二重登録の防止＝DI-07） |
  * | cms_audit_log | 変更履歴（いつ・誰が・何を・前と後＝DI-20。追記だけ） |
+ * | cms_accounts・cms_account_shops・cms_sessions・cms_auth_log | ログイン（版 2。SqliteAuthStore.ts） |
  *
- * 形の版は PRAGMA user_version で持つ（DI-15）。このクラスのメソッドは SQLite の例外をそのまま投げる（呼び出し側が Result に変える）。
+ * 形の版は PRAGMA user_version で持ち、古い DB は順に進める（DI-15）。このクラスのメソッドは SQLite の例外をそのまま投げる（呼び出し側が Result に変える）。
  */
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import type { SQLOutputValue } from 'node:sqlite';
+import type { SQLOutputValue, StatementSync } from 'node:sqlite';
 import { createLogger } from '@/Common/logging/logger';
 import { AppError, fail, ok } from '@/Common/result/Result';
 import type { Result } from '@/Common/result/Result';
@@ -24,11 +26,13 @@ import type { Instant } from '@/Common/utils/date';
 import type { CmsOverlayData } from '@/application/ports/CmsOverlayRepository';
 import { parseJsonText } from '@/infrastructure/json/parseJsonText';
 import { uuid } from '@/infrastructure/random/CryptoIdGenerator';
+import { AUTH_SCHEMA_V2 } from '@/infrastructure/server/sqlite/SqliteAuthStore';
+import type { AuthDbAccess } from '@/infrastructure/server/sqlite/SqliteAuthStore';
 
 const logger = createLogger('infrastructure/server/sqlite/CmsDatabase');
 
-/** 今の形の版 */
-export const CMS_DB_SCHEMA_VERSION = 1;
+/** 今の形の版（1: 登録内容、2: ログインの表） */
+export const CMS_DB_SCHEMA_VERSION = 2;
 /** DB ごとの ID の長さ（英数字） */
 const DB_ID_LENGTH = 12;
 
@@ -49,6 +53,12 @@ CREATE TABLE cms_audit_log (
   target_type TEXT NOT NULL, target_id TEXT NOT NULL, before_json TEXT, after_json TEXT, overlay_version INTEGER NOT NULL
 ) STRICT;
 `;
+
+/** 形の版ごとの SQL（古い DB はこの順に進める） */
+const SCHEMA_STEPS: readonly { readonly version: number; readonly sql: string }[] = [
+  { version: 1, sql: SCHEMA_V1 },
+  { version: 2, sql: AUTH_SCHEMA_V2 },
+];
 
 /** 版番号と保存日時（書くときの値） */
 export interface CmsDatabaseWrite {
@@ -120,7 +130,7 @@ function compact(fields: Record<string, unknown>): Record<string, unknown> {
 }
 
 /** 連携サーバーの DB */
-export class CmsDatabase {
+export class CmsDatabase implements AuthDbAccess {
   private readonly listeners = new Set<(state: CmsDatabaseState) => void>();
 
   /**
@@ -154,7 +164,7 @@ export class CmsDatabase {
   }
 
   /**
-   * 形の版をそろえる（今は版 1 だけ）。
+   * 形の版をそろえる（古い版の DB は、足りない版の SQL を順に流して進める＝DI-15）。
    * @param connection 接続
    * @returns 成功: void。失敗: STORAGE_FAILED（このプログラムより新しい版）
    * @sideEffect 表を作り、user_version を書く
@@ -165,9 +175,10 @@ export class CmsDatabase {
     if (current > CMS_DB_SCHEMA_VERSION) {
       return log.fail(fail(AppError.of('STORAGE_FAILED', 'データベースの版が新しすぎます', { current, supported: CMS_DB_SCHEMA_VERSION })));
     }
-    if (current === 0) {
-      connection.exec(`BEGIN; ${SCHEMA_V1} PRAGMA user_version = ${CMS_DB_SCHEMA_VERSION}; COMMIT;`);
-      log.info('データベースの表を作りました', { version: CMS_DB_SCHEMA_VERSION });
+    for (const step of SCHEMA_STEPS) {
+      if (current >= step.version) continue;
+      connection.exec(`BEGIN; ${step.sql} PRAGMA user_version = ${step.version}; COMMIT;`);
+      log.info('データベースの表を進めました', { version: step.version });
     }
     // DB ごとの ID（無ければ作る。推測されにくい乱数＝SEC-12。公開してよい値）
     connection.prepare("INSERT OR IGNORE INTO cms_meta (key, value) VALUES ('db.id', ?)").run(uuid().replace(/-/g, '').slice(0, DB_ID_LENGTH));
@@ -290,6 +301,26 @@ export class CmsDatabase {
       at: r['at'], actor: r['actor'], action: r['action'], targetType: r['target_type'], targetId: r['target_id'],
       before: jsonColumn(r['before_json']), after: jsonColumn(r['after_json']), overlayVersion: Number(r['overlay_version']),
     }) as unknown as CmsAuditEntry));
+  }
+
+  /**
+   * 保持期間を過ぎた変更履歴を消す（docs/09 §6.4 の3年（仮））。
+   * @param before この日時より前のものを消す
+   * @returns 消した数
+   * @sideEffect cms_audit_log から削除する
+   */
+  deleteAuditBefore(before: Instant): number {
+    const log = logger.fn('deleteAuditBefore');
+    return log.exit(Number(this.connection.prepare('DELETE FROM cms_audit_log WHERE at < ?').run(before).changes));
+  }
+
+  /**
+   * SQL を準備する（SqliteAuthStore など、同じ DB のほかの表を扱う sqlite/ の部品が使う。SQL は sqlite/ の中だけに書く）。
+   * @param sql SQL（プレースホルダは ?）
+   * @returns 準備した文
+   */
+  prepare(sql: string): StatementSync {
+    return this.connection.prepare(sql);
   }
 
   /**

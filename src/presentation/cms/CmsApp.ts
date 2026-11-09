@@ -2,7 +2,8 @@
  * @file 店舗CMS のシェル（presentation/cms 層。docs/09 §5・§7.2 フェーズ1）
  * 上部バー（ロゴ・「デモ」のメニュー・ページのタブ・お店の切り替え・アプリを開く）と本文。ルートは '#/<スポットID>/<ページ>'。
  * - デモ用のもの（デモの日付・リセット、スマホでは「アプリを開く」も）は「デモ」の札のメニューにまとめる（業務の画面に並べない）
- * - 本文は各画面が「左：見え方／右：フォーム」で組む。スマホ幅では見え方をシートで開く（openPreview）
+ * - 本文は各画面が「左：見え方／右：フォーム」で組む。スマホ幅では見え方を全画面のシート（dialog）で開く（openPreview）。
+ *   開いている間は後ろ（上部バー・本文へ移動・フォーム）を inert にし、Tab はシートの中だけを回る。Esc・×で閉じて「見え方」ボタンに戻る
  * - 通知は一度に1つだけ（前のものを消してから出す）
  * - 保存前の入力（draft）はページやお店を移っても残す。お店の情報だけは、未保存のまま移るときに確認し、タブに点を付ける
  * - ページを移ったら見出し（h1）にフォーカスを移す
@@ -27,6 +28,12 @@ import { renderCmsHomeScreen } from '@/presentation/cms/screens/Home/CmsHomeScre
 import { renderCmsInfoScreen } from '@/presentation/cms/screens/Info/CmsInfoScreen';
 
 const logger = createLogger('presentation/cms/CmsApp');
+
+/** PC の配置になる幅（cms.css の @media (max-width: 959px) と合わせる） */
+const WIDE_QUERY = '(min-width: 960px)';
+
+/** Tab で移れる要素の選び方（シートの中を回すときに使う） */
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** ページごとの画面 */
 const SCREENS: Readonly<Record<CmsPage, CmsScreen>> = {
@@ -89,6 +96,8 @@ export class CmsApp {
   private readonly shell = h('div', { class: 'cms-app', attrs: { 'data-modal-host': true } });
   private readonly header = h('header', { class: 'cms-topbar' });
   private readonly main = h('main', { class: 'cms-main', attrs: { 'data-testid': 'cms-main' } });
+  /** 本文へ移動（ハッシュはルートに使うので、リンクではなくボタンでフォーカスを移す） */
+  private readonly skip = h('button', { class: 'cms-skip', attrs: { type: 'button' }, text: '本文へ移動', on: { click: () => this.main.focus() } });
   private readonly toastHost: ToastHost;
   private readonly notifier: CmsNotifier;
   private shops: readonly CmsShopSummaryDto[] = [];
@@ -119,12 +128,69 @@ export class CmsApp {
         this.toastHost.show(message, { kind });
       },
     };
-    // ハッシュはルートに使うので、本文へ移動はリンクではなくボタンでフォーカスを移す
-    const skip = h('button', { class: 'cms-skip', attrs: { type: 'button' }, text: '本文へ移動', on: { click: () => this.main.focus() } });
     this.main.tabIndex = -1;
-    this.shell.addEventListener('cms-close-preview', () => this.shell.classList.remove('cms-app--preview-open'));
-    this.shell.append(skip, this.header, this.main, toastLayer);
+    this.shell.addEventListener('cms-close-preview', () => this.setPreviewOpen(false, true));
+    // PC の幅に広げたら、シートは閉じる（PC では見え方が左に常に出ている）
+    if (typeof window.matchMedia === 'function') window.matchMedia(WIDE_QUERY).addEventListener('change', (event) => { if (event.matches) this.setPreviewOpen(false, false); });
+    this.shell.append(this.skip, this.header, this.main, toastLayer);
     this.root.replaceChildren(this.shell);
+  }
+
+  /** シートを開いている間のキー（Esc で閉じる。Tab はシートの中だけを回す） */
+  private readonly onPreviewKey = (event: KeyboardEvent): void => { // audit-ignore: fnlog-missing キーを押すたびに呼ぶ振り分け（ログは setPreviewOpen・keepFocusInSheet が出す）
+    if (event.key === 'Escape') this.setPreviewOpen(false, true);
+    else if (event.key === 'Tab') this.keepFocusInSheet(event);
+  };
+
+  /**
+   * Tab・Shift+Tab でシートの端から出るときに、反対の端へ回す（シートの外にフォーカスがあれば中へ戻す）。
+   * @param event Tab の keydown
+   * @sideEffect 端のときだけ既定の移動を止めてフォーカスを移す
+   */
+  private keepFocusInSheet(event: KeyboardEvent): void {
+    const log = logger.fn('keepFocusInSheet', { shift: event.shiftKey });
+    const sheet = this.main.querySelector<HTMLElement>('.cms-layout__preview');
+    const items = sheet === null ? [] : [...sheet.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.getClientRects().length > 0 && el.closest('[inert]') === null);
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (sheet === null || first === undefined || last === undefined) return log.exit(undefined, 'none');
+    const active = document.activeElement;
+    const inside = active instanceof Node && sheet.contains(active);
+    const next = event.shiftKey ? (!inside || active === first ? last : undefined) : (!inside || active === last ? first : undefined);
+    if (next === undefined) return log.exit(undefined, 'pass');
+    event.preventDefault();
+    next.focus();
+    return log.exit(undefined, 'wrap');
+  }
+
+  /**
+   * スマホ幅の「見え方」のシートを開け閉めする（dialog として扱う）。
+   * 開くとき：シートに role="dialog"・aria-modal を付け、後ろ（上部バー・本文へ移動・フォーム）を inert にし、ページのスクロールを止めて×へフォーカスを移す。
+   * 閉じるとき：それらをすべて外し、restoreFocus なら見えている「見え方」ボタンへフォーカスを戻す。
+   * @param open 開くなら true
+   * @param restoreFocus 閉じたあと「見え方」ボタンへフォーカスを戻すか（描き直しのときは false）
+   * @sideEffect shell・html のクラス、シートとフォームの属性、document の keydown リスナを変える
+   */
+  private setPreviewOpen(open: boolean, restoreFocus: boolean): void {
+    const log = logger.fn('setPreviewOpen', { open, restoreFocus });
+    const sheet = this.main.querySelector<HTMLElement>('.cms-layout__preview');
+    const form = this.main.querySelector<HTMLElement>('.cms-layout__form');
+    const wasOpen = this.shell.classList.contains('cms-app--preview-open');
+    this.shell.classList.toggle('cms-app--preview-open', open);
+    document.documentElement.classList.toggle('cms-scroll-lock', open);
+    for (const el of [this.header, this.skip, form]) if (el !== null) el.inert = open;
+    if (open) {
+      sheet?.setAttribute('role', 'dialog');
+      sheet?.setAttribute('aria-modal', 'true');
+      document.addEventListener('keydown', this.onPreviewKey);
+      sheet?.querySelector<HTMLElement>('[data-testid="cms-close-preview"]')?.focus();
+      return log.exit(undefined);
+    }
+    sheet?.removeAttribute('role');
+    sheet?.removeAttribute('aria-modal');
+    document.removeEventListener('keydown', this.onPreviewKey);
+    if (restoreFocus && wasOpen) [...this.main.querySelectorAll<HTMLElement>('[data-testid="cms-open-preview"]')].find((el) => el.getClientRects().length > 0)?.focus();
+    return log.exit(undefined);
   }
 
   /**
@@ -226,7 +292,7 @@ export class CmsApp {
       },
       hasSeen: (page): boolean => this.seen.get(info.id)?.has(page) === true,
       openPreview: (): void => {
-        this.shell.classList.add('cms-app--preview-open');
+        this.setPreviewOpen(true, false);
         // シートが見えてから、見え方の列に「開いた」と知らせる（枠の中を対象の部分まで動かし直す）
         requestAnimationFrame(() => this.main.querySelector('.cms-preview-col')?.dispatchEvent(new Event('cms-preview-opened')));
       },
@@ -245,8 +311,8 @@ export class CmsApp {
     const ctx = this.contextOf(route, info);
     this.renderHeader(route, info);
     this.main.querySelectorAll('[data-dispose]').forEach((el) => el.dispatchEvent(new Event('cms-dispose')));
+    this.setPreviewOpen(false, false);
     clear(this.main);
-    this.shell.classList.remove('cms-app--preview-open');
     this.main.dataset.page = route.page;
     this.main.append(SCREENS[route.page](ctx));
     const seen = this.seen.get(info.id) ?? new Set<CmsPage>();

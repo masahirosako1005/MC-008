@@ -12,6 +12,7 @@ import { createLogger } from '@/Common/logging/logger';
 import { canvasFont } from '@/Common/ui/canvas/drawUtils';
 import type { Point2D } from '@/Common/ui/canvas/geometry';
 import { createSeededRandom, hashString } from '@/Common/ui/canvas/seededHash';
+import { PALETTE } from '@/Common/ui/theme/palette';
 import type { LatLng } from '@/presentation/screens/Map/MapViewModel';
 
 const logger = createLogger('presentation/screens/Map/town/mapEffects');
@@ -37,9 +38,9 @@ const SHAKE_MS = 320;
 /** 土ぼこりを出す間隔（ミリ秒） */
 const DUST_EVERY_MS = 230;
 /** 紙吹雪の色 */
-const CONFETTI_COLORS: readonly string[] = ['#ff6a3d', '#ffc83d', '#2fa39a', '#3e6fb5', '#ff8fab', '#8c6bc8', '#ffffff'];
+const CONFETTI_COLORS: readonly string[] = [...PALETTE.confetti, '#ff8fab', PALETTE.gold];
 /** 朱（スタンプ・強調） */
-const VERMILION = '#e8513a';
+const VERMILION = PALETTE.brand;
 /** インク */
 const INK = '#2b2a3a';
 
@@ -186,7 +187,7 @@ export class MapEffects {
       if (elapsed < 0) continue;
       const k = elapsed / EFFECT_MS[e.kind];
       const p = project(e.at);
-      if (e.kind === 'checkin') drawCheckIn(ctx, p, elapsed, e.seed, calm, textScale);
+      if (e.kind === 'checkin') drawCheckIn(ctx, p, elapsed, e.seed, calm, textScale, e.text);
       else if (e.kind === 'points') drawPoints(ctx, p, k, e.text ?? '', textScale);
       else if (e.kind === 'coins' && e.target !== undefined) drawCoins(ctx, p, e.target, k, e.seed);
       else if (e.kind === 'discover') drawDiscover(ctx, p, k, elapsed, e.seed, textScale);
@@ -260,7 +261,7 @@ function drawArrive(ctx: CanvasRenderingContext2D, p: Point2D, k: number): void 
  * @param textScale 文字の拡大率
  * @sideEffect canvas に描く
  */
-function drawCheckIn(ctx: CanvasRenderingContext2D, p: Point2D, elapsed: number, seed: number, calm: boolean, textScale: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+function drawCheckIn(ctx: CanvasRenderingContext2D, p: Point2D, elapsed: number, seed: number, calm: boolean, textScale: number, text?: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
   const center = { x: p.x, y: p.y - 34 };
   const afterImpact = elapsed - STAMP_IMPACT_MS;
   if (afterImpact >= 0) {
@@ -268,7 +269,7 @@ function drawCheckIn(ctx: CanvasRenderingContext2D, p: Point2D, elapsed: number,
     if (!calm) drawConfetti(ctx, center, afterImpact, seed);
     drawSparkles(ctx, center, afterImpact / 900, seed);
   }
-  drawStamp(ctx, center, elapsed, textScale);
+  drawStamp(ctx, center, elapsed, textScale, text);
 }
 
 /**
@@ -383,7 +384,7 @@ function drawStar(ctx: CanvasRenderingContext2D, x: number, y: number, s: number
  * @param textScale 文字の拡大率
  * @sideEffect canvas に描く
  */
-function drawStamp(ctx: CanvasRenderingContext2D, c: Point2D, elapsed: number, textScale: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+function drawStamp(ctx: CanvasRenderingContext2D, c: Point2D, elapsed: number, textScale: number, text?: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
   const total = EFFECT_MS.checkin;
   const fadeFrom = total - 450;
   const scale = elapsed < STAMP_IMPACT_MS ? 2.4 - 1.4 * easeOutCubic(elapsed / STAMP_IMPACT_MS) : 1 + 0.06 * Math.max(0, 1 - (elapsed - STAMP_IMPACT_MS) / 160);
@@ -412,8 +413,10 @@ function drawStamp(ctx: CanvasRenderingContext2D, c: Point2D, elapsed: number, t
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = canvasFont(13, 900, textScale);
-  ctx.fillText('チェック', 0, -7);
-  ctx.fillText('イン！', 0, 9);
+  // 文字は「上の行|下の行」（既定はチェックイン。購入は「お買い|上げ！」など）
+  const [top, bottom] = (text ?? 'チェック|イン！').split('|');
+  ctx.fillText(top ?? '', 0, bottom === undefined ? 1 : -7);
+  if (bottom !== undefined) ctx.fillText(bottom, 0, 9);
   ctx.restore();
 }
 

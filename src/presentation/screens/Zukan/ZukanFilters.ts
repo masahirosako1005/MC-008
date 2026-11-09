@@ -1,10 +1,10 @@
 /**
  * @file 図鑑の絞り込み（presentation/screens/Zukan 層）
- * 2026-11-09 ユーザー指示「最上部の町ごとに分けなくていい。地区と状態でフィルターできるように」で、地区タブを2段の絞り込みに置き換えた。
- * - 地区: すべて／各地区（地区の色の丸。色あせ中は破線の輪、未訪問は灰色の輪）
- * - 状態: すべて／訪問済み／発見済み／未発見
- * 選択中は aria-checked と白い選択面・太字で示す（色だけに頼らない）。色あせ中であることは読み上げ名でも伝える。
- * 絞り込みを変えても作り直さず update で選択だけを差し替える（フォーカスを保つ）。
+ * 2026-11-09 ユーザー指示「最上部の町ごとに分けなくていい。地区と状態でフィルターできるように」で地区タブをやめ、
+ * 同日「タブがでかいので、プルダウン形式で」で、地区と状態をプルダウン（ネイティブの select）2つの1段にした。図鑑を開いてすぐカードが見えるようにする。
+ * - 地区: すべての地区／各地区（色あせ中・未訪問は文言で添える。選んだ地区の色の丸をプルダウンの左に出す）
+ * - 状態: すべての状態／達成済み／発見済み／未発見
+ * 絞り込みを変えても作り直さず update で選択だけを差し替える（フォーカスを保つ）。タップ領域は 44px 以上。
  */
 import type { ZukanDistrictTabDto } from '@/application/dto/Dto';
 import { createLogger } from '@/Common/logging/logger';
@@ -33,91 +33,68 @@ export interface ZukanFiltersHandle {
   update(filter: ZukanFilter): void;
 }
 
-/** 選択肢1つ分の材料 */
-interface ChoiceSpec {
+/** プルダウンの選択肢1つ分 */
+interface OptionSpec {
   readonly value: string;
   readonly label: string;
-  readonly ariaLabel?: string;
-  /** 地区の色の丸（地区のときだけ） */
-  readonly dot?: { readonly color: string; readonly fadeKind: ZukanDistrictTabDto['fadeKind'] };
 }
 
 /**
- * 選択肢のボタンを1つ作る。
- * @param group 選択肢の組の名前（testid に使う）
- * @param spec 選択肢
- * @param onPick 押されたときの処理
- * @returns button 要素（role="radio"）
+ * 地区の状態の添え書き（色は select の中に出せないので文言で伝える）。
+ * @param district 地区
+ * @returns '（色あせ中）'／'（未訪問）'／''
  */
-function createChoice(group: string, spec: ChoiceSpec, onPick: (value: string) => void): HTMLElement {
-  const log = logger.fn('createChoice', { group, value: spec.value });
-  let dot: HTMLElement | undefined;
-  if (spec.dot !== undefined) {
-    dot = h('span', { class: 'zukan-filter__dot', attrs: { 'aria-hidden': 'true' }, dataset: { fade: spec.dot.fadeKind } });
-    setStyle(dot, '--district', spec.dot.color);
-  }
-  const button = h(
-    'button',
-    {
-      class: 'zukan-filter__choice',
-      attrs: { type: 'button', role: 'radio', 'aria-checked': 'false', 'aria-label': spec.ariaLabel ?? spec.label, 'data-testid': `zukan-filter-${group}`, 'data-value': spec.value },
-      on: { click: userAction(`zukan-filter-${group}`, (): void => onPick(spec.value)) },
-    },
-    [dot, h('span', { class: 'zukan-filter__label', text: spec.label })],
-  );
-  return log.exit(button);
+function districtNote(district: ZukanDistrictTabDto): string {
+  const log = logger.fn('districtNote', { districtId: district.id, fade: district.fadeKind });
+  return log.exit(district.fadeKind === 'fading' ? '（色あせ中）' : district.fadeKind === 'never' ? '（未訪問）' : '');
 }
 
 /**
- * 1段分（見出し＋選択肢の組）を作る。
- * @param group 選択肢の組の名前
- * @param title 見出し（'地区'／'状態'）
- * @param choices 選択肢のボタン
- * @returns 要素
- */
-function createRow(group: string, title: string, choices: readonly HTMLElement[]): HTMLElement {
-  const log = logger.fn('createRow', { group, count: choices.length });
-  const titleId = `zukan-filter-title-${group}`;
-  return log.exit(
-    h('div', { class: 'zukan-filter__row' }, [
-      h('span', { class: 'zukan-filter__title', attrs: { id: titleId }, text: title }),
-      h('div', { class: 'zukan-filter__choices', attrs: { role: 'radiogroup', 'aria-labelledby': titleId }, dataset: { group } }, choices),
-    ]),
-  );
-}
-
-/**
- * 選択肢の組の選択中を差し替える。
- * @param choices 選択肢のボタン
- * @param value 選択中の値
- * @sideEffect aria-checked を書き換える
- */
-function markChecked(choices: readonly HTMLElement[], value: string): void {
-  const log = logger.fn('markChecked', { value });
-  for (const choice of choices) choice.setAttribute('aria-checked', choice.dataset.value === value ? 'true' : 'false');
-  log.exit(undefined);
-}
-
-/**
- * 地区の選択肢の材料（先頭は「すべて」、続いて地区の表示順）を作る。
+ * 地区の選択肢（先頭は「すべての地区」、続いて地区の表示順。色あせ中・未訪問は文言で添える）。
  * @param districts 地区の一覧
- * @returns 選択肢の材料
+ * @returns 選択肢
  */
-function districtChoiceSpecs(districts: readonly ZukanDistrictTabDto[]): ChoiceSpec[] {
-  const log = logger.fn('districtChoiceSpecs', { count: districts.length });
-  return log.exit([
-    { value: ALL_DISTRICTS, label: 'すべて', ariaLabel: 'すべての地区' },
-    ...districts.map((d) => ({
-      value: d.id,
-      label: d.shortName,
-      ariaLabel: `${d.shortName}（${d.theme}）${d.fadeKind === 'fading' ? '、色あせ中' : ''}`,
-      dot: { color: d.color, fadeKind: d.fadeKind },
-    })),
-  ]);
+export function districtOptionsOf(districts: readonly ZukanDistrictTabDto[]): OptionSpec[] {
+  const log = logger.fn('districtOptionsOf', { count: districts.length });
+  return log.exit([{ value: ALL_DISTRICTS, label: 'すべての地区' }, ...districts.map((d) => ({ value: d.id, label: `${d.shortName}${districtNote(d)}` }))]);
 }
 
 /**
- * 図鑑の絞り込み（地区・状態の2段）を作る。選択中の選択肢を押しても何もしない。
+ * 状態の選択肢（先頭は「すべての状態」）。
+ * @returns 選択肢
+ */
+export function statusOptionsOf(): OptionSpec[] {
+  const log = logger.fn('statusOptionsOf');
+  return log.exit(STATUS_FILTERS.map((s) => ({ value: s.value, label: s.value === 'all' ? 'すべての状態' : s.label })));
+}
+
+/**
+ * プルダウン1つ（小さな見出し＋select＋開く印）を作る。
+ * @param group 組の名前（testid に使う）
+ * @param title 見出し（'地区'／'状態'）
+ * @param options 選択肢
+ * @param onPick 選ばれたときの処理
+ * @returns ラベル要素と select
+ */
+function createSelect(group: string, title: string, options: readonly OptionSpec[], onPick: (value: string) => void): { label: HTMLElement; select: HTMLSelectElement } {
+  const log = logger.fn('createSelect', { group, count: options.length });
+  const select = h(
+    'select',
+    { class: 'zukan-select__input', attrs: { 'aria-label': `${title}で絞り込む`, 'data-testid': `zukan-filter-${group}` } },
+    options.map((o) => h('option', { attrs: { value: o.value }, text: o.label })),
+  );
+  select.addEventListener('change', userAction(`zukan-filter-${group}`, (): void => onPick(select.value)));
+  const label = h('label', { class: 'zukan-select', dataset: { group } }, [
+    h('span', { class: 'zukan-select__title', attrs: { 'aria-hidden': 'true' }, text: title }),
+    group === 'district' ? h('span', { class: 'zukan-select__dot', attrs: { 'aria-hidden': 'true' } }) : undefined,
+    select,
+    h('span', { class: 'zukan-select__chevron', attrs: { 'aria-hidden': 'true' } }),
+  ]);
+  return log.exit({ label, select });
+}
+
+/**
+ * 図鑑の絞り込み（地区・状態のプルダウン2つ）を作る。選択中と同じものを選んでも何もしない。
  * @param opts 地区一覧・いまの絞り込み・変わったときの処理
  * @returns 要素と、選択中を差し替える関数
  */
@@ -125,7 +102,7 @@ export function createZukanFilters(opts: ZukanFiltersOptions): ZukanFiltersHandl
   const log = logger.fn('createZukanFilters', { districts: opts.districts.length, districtId: opts.filter.districtId, status: opts.filter.status });
   let current = opts.filter;
   /**
-   * 地区の選択肢が押されたとき（選択中なら何もしない）。
+   * 地区が選ばれたとき（選択中なら何もしない）。
    * @param value 選択肢の値（'all' はすべての地区）
    */
   const pickDistrict = (value: string): void => {
@@ -135,7 +112,7 @@ export function createZukanFilters(opts: ZukanFiltersOptions): ZukanFiltersHandl
     pickLog.exit(undefined);
   };
   /**
-   * 状態の選択肢が押されたとき（選択中なら何もしない）。
+   * 状態が選ばれたとき（選択中なら何もしない）。
    * @param value 選択肢の値（'all' はすべての状態）
    */
   const pickStatus = (value: string): void => {
@@ -144,22 +121,22 @@ export function createZukanFilters(opts: ZukanFiltersOptions): ZukanFiltersHandl
     if (status !== current.status) opts.onChange({ ...current, status });
     pickLog.exit(undefined);
   };
-  const districtChoices = districtChoiceSpecs(opts.districts).map((spec) => createChoice('district', spec, pickDistrict));
-  const statusChoices = STATUS_FILTERS.map((s) => createChoice('status', { value: s.value, label: s.label, ariaLabel: `状態: ${s.label}` }, pickStatus));
-  const element = h('div', { class: 'zukan-filter', attrs: { 'data-testid': 'zukan-filter', role: 'group', 'aria-label': '図鑑の絞り込み' } }, [
-    createRow('district', '地区', districtChoices),
-    createRow('status', '状態', statusChoices),
-  ]);
+  const district = createSelect('district', '地区', districtOptionsOf(opts.districts), pickDistrict);
+  const status = createSelect('status', '状態', statusOptionsOf(), pickStatus);
+  const element = h('div', { class: 'zukan-filter', attrs: { 'data-testid': 'zukan-filter', role: 'group', 'aria-label': '図鑑の絞り込み' } }, [district.label, status.label]);
   /**
-   * 選択中の表示を差し替える。
+   * 選択中の表示を差し替える（選んだ地区の色の丸も）。
    * @param filter 新しい絞り込み
-   * @sideEffect 選択肢の aria-checked を書き換える
+   * @sideEffect select の値と地区の色の丸を書き換える
    */
   const update = (filter: ZukanFilter): void => {
     const updateLog = logger.fn('update', { districtId: filter.districtId, status: filter.status });
     current = filter;
-    markChecked(districtChoices, filter.districtId ?? ALL_DISTRICTS);
-    markChecked(statusChoices, filter.status);
+    district.select.value = filter.districtId ?? ALL_DISTRICTS;
+    status.select.value = filter.status;
+    const picked = opts.districts.find((d) => d.id === filter.districtId);
+    district.label.dataset.picked = picked === undefined ? '0' : '1';
+    if (picked !== undefined) setStyle(district.label, '--district', picked.color);
     updateLog.exit(undefined);
   };
   update(current);

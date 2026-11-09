@@ -7,9 +7,11 @@
 import { createLogger } from '@/Common/logging/logger';
 import { beginFrame } from '@/Common/ui/canvas/CanvasBase';
 import type { CanvasSize } from '@/Common/ui/canvas/CanvasBase';
+import { mixColors, toRgba } from '@/Common/ui/canvas/colorUtils';
 import { canvasFont, drawCircle, drawPolygon, drawRoundRect, drawTextWithOutline, roundRectPath } from '@/Common/ui/canvas/drawUtils';
 import type { Rect } from '@/Common/ui/canvas/geometry';
 import { h } from '@/Common/ui/dom';
+import { PALETTE } from '@/Common/ui/theme/palette';
 import { drawConfetti, drawHalo, drawSparkle } from '@/presentation/screens/Effects/effectArt';
 import { startCanvasAnimation } from '@/presentation/screens/Effects/EffectFrame';
 import type { CanvasAnimationHandle, EffectView } from '@/presentation/screens/Effects/EffectFrame';
@@ -41,15 +43,26 @@ interface CardPalette {
   readonly word: string;
 }
 
-/** ランクごとのカードの色と表示名 */
+/**
+ * 金属の段の明暗（PALETTE の金・銀から作る。tokens.css の --metal-gold-light／--metal-gold-ink／--metal-silver-light／-edge に当たる）。
+ * PALETTE にまだ明暗の名前がないので、ここで混ぜて作る（docs/10 §2 金属の段）。
+ */
+const METAL_TONE = {
+  goldLight: mixColors(PALETTE.metalGold, PALETTE.white, 0.55),
+  goldInk: mixColors(PALETTE.goldInk, PALETTE.ink, 0.5),
+  silverLight: mixColors(PALETTE.metalSilver, PALETTE.white, 0.8),
+  silverDeep: mixColors(PALETTE.metalSilver, PALETTE.mutedInk, 0.45),
+} as const;
+
+/** ランクごとのカードの色と表示名（色は PALETTE の金属の段・ブランド・文字色） */
 const CARD_STYLES: Readonly<Record<CardAwardEffectModel['rank'], CardPalette & { readonly label: string }>> = {
   gold: {
-    stops: ['#fde68a', '#f59e0b', '#b45309'], ink: '#451a03', halo: 'rgba(245, 183, 0, 0.32)',
-    confetti: ['#ff5a36', '#f5b700', '#fde68a', '#111827'], word: 'GOLD', label: '金',
+    stops: [METAL_TONE.goldLight, PALETTE.metalGold, PALETTE.goldDeep], ink: METAL_TONE.goldInk, halo: toRgba(PALETTE.metalGold, 0.32),
+    confetti: [PALETTE.brand, PALETTE.metalGold, METAL_TONE.goldLight, PALETTE.ink], word: 'GOLD', label: '金',
   },
   silver: {
-    stops: ['#f9fafb', '#d1d5db', '#9ca3af'], ink: '#1f2937', halo: 'rgba(156, 163, 175, 0.32)',
-    confetti: ['#ff5a36', '#d1d5db', '#6b7280', '#111827'], word: 'SILVER', label: '銀',
+    stops: [METAL_TONE.silverLight, PALETTE.metalSilver, METAL_TONE.silverDeep], ink: PALETTE.ink, halo: toRgba(METAL_TONE.silverDeep, 0.32),
+    confetti: [PALETTE.brand, PALETTE.metalSilver, PALETTE.mutedInk, PALETTE.ink], word: 'SILVER', label: '銀',
   },
 };
 
@@ -136,19 +149,19 @@ function drawCardText(ctx: CanvasRenderingContext2D, rect: Rect, model: CardAwar
 }
 
 /**
- * カードの裏面（濃いグレーにコーラルの斜めの帯と輪のロゴ）を描く。
+ * カードの裏面（濃いグレーにブランドの青の斜めの帯と輪のロゴ）を描く。
  * @param ctx 2D コンテキスト
  * @param rect カードの矩形（中心原点）
  * @sideEffect ctx に描画する
  */
 function drawCardBack(ctx: CanvasRenderingContext2D, rect: Rect): void { // audit-ignore: fnlog-missing 毎フレーム描画
   const { x, y, width: w, height: hh } = rect;
-  drawRoundRect(ctx, rect, 12, { fill: '#111827' });
+  drawRoundRect(ctx, rect, 12, { fill: PALETTE.ink });
   ctx.save();
   roundRectPath(ctx, rect, 12);
   ctx.clip();
-  drawPolygon(ctx, [{ x: x + w * 0.55, y }, { x: x + w * 0.75, y }, { x: x + w * 0.45, y: y + hh }, { x: x + w * 0.25, y: y + hh }], { fill: '#ff5a36' });
-  drawCircle(ctx, { x: 0, y: 0 }, hh * 0.18, { stroke: '#ffffff', lineWidth: 2 });
+  drawPolygon(ctx, [{ x: x + w * 0.55, y }, { x: x + w * 0.75, y }, { x: x + w * 0.45, y: y + hh }, { x: x + w * 0.25, y: y + hh }], { fill: PALETTE.brand });
+  drawCircle(ctx, { x: 0, y: 0 }, hh * 0.18, { stroke: PALETTE.white, lineWidth: 2 });
   ctx.restore();
 }
 
@@ -179,8 +192,8 @@ function drawCardFrame(ctx: CanvasRenderingContext2D, size: CanvasSize, model: C
   ctx.restore();
   if (progress > 0.62) {
     const t = clamp01((progress - 0.62) / 0.3);
-    drawSparkle(ctx, { x: center.x + cardW * 0.52, y: center.y - cardH * 0.5 }, 7 * easeOutBack(t), '#f5b700');
-    drawSparkle(ctx, { x: center.x - cardW * 0.56, y: center.y + cardH * 0.34 }, 5 * easeOutBack(t), '#ff5a36');
+    drawSparkle(ctx, { x: center.x + cardW * 0.52, y: center.y - cardH * 0.5 }, 7 * easeOutBack(t), PALETTE.metalGold);
+    drawSparkle(ctx, { x: center.x - cardW * 0.56, y: center.y + cardH * 0.34 }, 5 * easeOutBack(t), PALETTE.brand);
   }
 }
 

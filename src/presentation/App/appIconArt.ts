@@ -17,7 +17,7 @@ export type AppIconName = 'map' | 'zukan' | 'avatar' | 'ranking' | 'rank' | 'gea
 
 /** 色 */
 const C = {
-  ink: '#2b2b33', white: '#ffffff', coral: '#ff7a5c', coralDeep: '#e8553a', gold: '#f5b700', goldDeep: '#d97706', goldLight: '#ffe082',
+  ink: '#2b2b33', white: '#ffffff', accent: '#3d7dff', accentDeep: '#1556d6', gold: '#f5b700', goldDeep: '#d97706', goldLight: '#ffe082',
   silver: '#cfd6df', silverDeep: '#9aa5b4', bronze: '#e0a46e', bronzeDeep: '#b9773f', navy: '#334a7a', sky: '#8ccaf0', skyDeep: '#5aa7dc',
   mint: '#cdebd5', mintDeep: '#9fd8b2', paper: '#f4f7fb', blue: '#4a6fa5', blueDeep: '#36557f', slate: '#4b5563', gray: '#c7ccd4',
 } as const;
@@ -106,21 +106,21 @@ const PAINTERS: Readonly<Record<AppIconName, (ctx: CanvasRenderingContext2D) => 
   map: (ctx) => {
     poly(ctx, [2.5, 7, 8.5, 5, 8.5, 20, 2.5, 22], C.mint); poly(ctx, [8.5, 5, 15.5, 7, 15.5, 22, 8.5, 20], C.paper); poly(ctx, [15.5, 7, 21.5, 5, 21.5, 20, 15.5, 22], C.mintDeep);
     line(ctx, [3, 17, 8, 15, 13, 17.5, 21, 14], C.skyDeep, 1.6); line(ctx, [5.5, 9, 11, 21], C.white, 1.1);
-    dot(ctx, 13.5, 7.6, 4, C.coral); poly(ctx, [10.2, 9.4, 16.8, 9.4, 13.5, 14.5], C.coral); dot(ctx, 13.5, 7.6, 1.6, C.white);
+    dot(ctx, 13.5, 7.6, 4, C.accent); poly(ctx, [10.2, 9.4, 16.8, 9.4, 13.5, 14.5], C.accent); dot(ctx, 13.5, 7.6, 1.6, C.white);
   },
   /** 図鑑: ひらいた本にカードとしおり */
   zukan: (ctx) => {
     box(ctx, [2, 6, 20, 15.5, 2.2], C.blueDeep); box(ctx, [3.4, 4.5, 8.2, 15.5, 1.4], C.white); box(ctx, [12.4, 4.5, 8.2, 15.5, 1.4], C.white);
     box(ctx, [4.8, 6.4, 5.4, 7, 1], C.gold); sparkle(ctx, 7.5, 9.9, 2.2, C.white); line(ctx, [5, 16, 10, 16], C.gray, 1); line(ctx, [5, 18, 8.5, 18], C.gray, 1);
     line(ctx, [14, 8, 19, 8], C.gray, 1); line(ctx, [14, 10.5, 19, 10.5], C.gray, 1); line(ctx, [14, 13, 17.5, 13], C.gray, 1);
-    poly(ctx, [16.5, 3, 19.5, 3, 19.5, 9, 18, 7.6, 16.5, 9], C.coral);
+    poly(ctx, [16.5, 3, 19.5, 3, 19.5, 9, 18, 7.6, 16.5, 9], C.accent);
   },
   /** アバター: アバター画面と同じ絵の顔（既定の装い） */
   avatar: (ctx) => {
     const head = AVATAR_FOCUS.head;
     const s = 24 / Math.max(head.w, head.h);
-    dot(ctx, 12, 13, 11, '#ffede7');
-    drawAvatar(ctx, { ...DEFAULT_LOOK, outfitColor: C.coral }, { x: 12 - (head.x + head.w / 2) * s, y: 12.5 - (head.y + head.h / 2) * s, scale: s });
+    dot(ctx, 12, 13, 11, '#e8f0ff');
+    drawAvatar(ctx, { ...DEFAULT_LOOK, outfitColor: C.accent }, { x: 12 - (head.x + head.w / 2) * s, y: 12.5 - (head.y + head.h / 2) * s, scale: s });
   },
   /** ランキング: 金・銀・銅の表彰台と王冠 */
   ranking: (ctx) => {
@@ -130,7 +130,7 @@ const PAINTERS: Readonly<Record<AppIconName, (ctx: CanvasRenderingContext2D) => 
   },
   /** ランク: リボンつきの金メダル */
   rank: (ctx) => {
-    poly(ctx, [6.5, 1.5, 10.5, 1.5, 13.4, 10, 9.4, 10], C.coral); poly(ctx, [17.5, 1.5, 13.5, 1.5, 10.6, 10, 14.6, 10], C.navy);
+    poly(ctx, [6.5, 1.5, 10.5, 1.5, 13.4, 10, 9.4, 10], C.accent); poly(ctx, [17.5, 1.5, 13.5, 1.5, 10.6, 10, 14.6, 10], C.navy);
     dot(ctx, 12, 15.2, 7, C.goldDeep); dot(ctx, 12, 14.8, 6.6, C.gold); dot(ctx, 12, 14.8, 4.6, C.goldLight); sparkle(ctx, 12, 14.8, 3.4, C.goldDeep);
   },
   /** 歯車: 8枚歯のスレートの歯車 */
@@ -139,7 +139,7 @@ const PAINTERS: Readonly<Record<AppIconName, (ctx: CanvasRenderingContext2D) => 
     ctx.translate(12, 12);
     for (let i = 0; i < 8; i += 1) { ctx.rotate(Math.PI / 4); box(ctx, [-2.1, -10.2, 4.2, 5, 1.2], C.slate); }
     ctx.restore();
-    dot(ctx, 12, 12, 7.4, C.slate); dot(ctx, 12, 12, 3.3, C.white); dot(ctx, 12, 12, 1.4, C.coral);
+    dot(ctx, 12, 12, 7.4, C.slate); dot(ctx, 12, 12, 3.3, C.white); dot(ctx, 12, 12, 1.4, C.accent);
   },
 };
 

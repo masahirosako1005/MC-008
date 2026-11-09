@@ -24,13 +24,13 @@ describe('formatDemoDate', () => {
 });
 
 describe('ライバル行動の文言', () => {
-  it('ボタンは「おまいり番長が{地区}の主を奪う」', () => {
-    expect(rivalButtonLabel('天満地区')).toBe('おまいり番長が天満地区の主を奪う');
+  it('ボタンは「おまいり番長が{地区}の領主を奪う」', () => {
+    expect(rivalButtonLabel('天満地区')).toBe('おまいり番長が天満地区の領主を奪う');
   });
   it('主が交代したかどうかで結果の文言を変える', () => {
     const base = { districtId: 'd_tenma', districtName: '天満地区', rivalName: 'おまいり番長' };
-    expect(rivalResultMessage({ ...base, changed: true })).toBe('おまいり番長が天満地区の主になりました');
-    expect(rivalResultMessage({ ...base, changed: false })).toBe('おまいり番長が天満地区を訪れました（主は変わりません）');
+    expect(rivalResultMessage({ ...base, changed: true })).toBe('おまいり番長が天満地区の領主になりました');
+    expect(rivalResultMessage({ ...base, changed: false })).toBe('おまいり番長が天満地区を訪れました（領主は変わりません）');
   });
   it('既定の地区は天満（d_tenma）。地区一覧を読めなければ天満だけを選べる', () => {
     expect(DEFAULT_RIVAL_DISTRICT_ID).toBe('d_tenma');

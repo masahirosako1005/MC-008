@@ -56,6 +56,8 @@ export interface TerritoryModel {
   readonly rivalCount: number;
   /** 地区ID → 自分の陣地のマス数 */
   readonly mineByDistrict: ReadonlyMap<string, number>;
+  /** 地区ID → 地区の陸のマス数（陣地の割合の分母） */
+  readonly landByDistrict: ReadonlyMap<string, number>;
   readonly claims: readonly TerritoryClaim[];
   /** 自分の陣地の境界線（セル座標の線分 [c0, r0, c1, r1, ...]） */
   readonly mineEdges: Float32Array;
@@ -111,6 +113,7 @@ export function computeTerritory(grid: TownGrid, spots: readonly TerritorySpot[]
     mineCount: counts.mine,
     rivalCount: counts.rival,
     mineByDistrict: counts.mineByDistrict,
+    landByDistrict: counts.landByDistrict,
     claims,
     mineEdges: edgesOf(grid, cells, TERRITORY_MINE),
     rivalEdges: edgesOf(grid, cells, TERRITORY_RIVAL),
@@ -168,13 +171,17 @@ function paintDisc(grid: TownGrid, cells: Uint8Array, col: number, row: number, 
  * @param cells 陣地
  * @returns 自分・ライバルのマス数と地区ごとの自分のマス数
  */
-function countCells(grid: TownGrid, cells: Uint8Array): { mine: number; rival: number; mineByDistrict: Map<string, number> } {
+function countCells(grid: TownGrid, cells: Uint8Array): { mine: number; rival: number; mineByDistrict: Map<string, number>; landByDistrict: Map<string, number> } {
   const log = logger.fn('countCells');
   let mine = 0;
   let rival = 0;
   const byIndex = new Map<number, number>();
+  const landIndex = new Map<number, number>();
   for (let i = 0; i < cells.length; i++) {
     const v = cells[i];
+    const dist = grid.district[i] ?? 0;
+    const kind = grid.kinds[i];
+    if (dist > 0 && kind !== Cell.WATER && kind !== Cell.BANK) landIndex.set(dist, (landIndex.get(dist) ?? 0) + 1);
     if (v === TERRITORY_RIVAL) rival++;
     if (v !== TERRITORY_MINE) continue;
     mine++;
@@ -186,7 +193,12 @@ function countCells(grid: TownGrid, cells: Uint8Array): { mine: number; rival: n
     const id = grid.districtIds[d - 1];
     if (id !== undefined) mineByDistrict.set(id, n);
   }
-  return log.exit({ mine, rival, mineByDistrict });
+  const landByDistrict = new Map<string, number>();
+  for (const [d, n] of landIndex) {
+    const id = grid.districtIds[d - 1];
+    if (id !== undefined) landByDistrict.set(id, n);
+  }
+  return log.exit({ mine, rival, mineByDistrict, landByDistrict });
 }
 
 /**
@@ -267,6 +279,7 @@ export function emptyTerritory(grid: Pick<TownGrid, 'cols' | 'rows'>): Territory
     mineCount: 0,
     rivalCount: 0,
     mineByDistrict: new Map(),
+    landByDistrict: new Map(),
     claims: [],
     mineEdges: new Float32Array(0),
     rivalEdges: new Float32Array(0),

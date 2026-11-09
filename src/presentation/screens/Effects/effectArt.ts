@@ -5,11 +5,12 @@
  * requestAnimationFrame の描画ループから毎フレーム呼ばれるため関数ログは出さない（呼び出し側の start/stop でまとめてログ）。
  */
 import type { Point2D } from '@/Common/ui/canvas/geometry';
+import { PALETTE } from '@/Common/ui/theme/palette';
 import { confettiPose } from '@/presentation/screens/Effects/effectMath';
 import type { ConfettiPiece } from '@/presentation/screens/Effects/effectMath';
 
-/** 紙吹雪の既定の色（ブランドのコーラル・金・グレー・濃いグレー） */
-export const CONFETTI_COLORS: readonly string[] = ['#ff5a36', '#f5b700', '#9ca3af', '#111827'];
+/** 紙吹雪の既定の色（演出で共通の PALETTE.confetti＝ブランド・金・白金・伝説。白いカードの上に描くので白は除く） */
+export const CONFETTI_COLORS: readonly string[] = PALETTE.confetti.filter((c) => c !== PALETTE.white);
 
 /**
  * 紙吹雪を描く。
@@ -34,7 +35,7 @@ export function drawConfetti( // audit-ignore: fnlog-missing 毎フレーム描�
     ctx.translate(at.center.x + pose.dx * at.radius, at.center.y + pose.dy * at.radius);
     ctx.rotate(pose.rotation);
     ctx.globalAlpha = pose.alpha;
-    ctx.fillStyle = colors[piece.color % colors.length] ?? CONFETTI_COLORS[0] ?? '#ff5a36';
+    ctx.fillStyle = colors[piece.color % colors.length] ?? CONFETTI_COLORS[0] ?? PALETTE.brand;
     const s = piece.size;
     ctx.beginPath();
     if (piece.shape === 'rect') ctx.rect(-s / 2, -s * 0.3, s, s * 0.6);

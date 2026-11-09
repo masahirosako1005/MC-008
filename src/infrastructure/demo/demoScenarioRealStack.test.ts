@@ -188,7 +188,7 @@ describe('実演シナリオ（本物の infrastructure ＋ 実マスタ＝大�
     expect(await reasonOf(stack, 'fade', 'd_tenma')).toMatchObject({ title: '色あせ中：天満地区' });
 
     expect(must(await stack.demo.simulateRival.execute({ operationId: uuid() }))).toMatchObject({ districtId: 'd_tenma', rivalName: 'おまいり番長', changed: true });
-    expect(await reasonOf(stack, 'reclaim', 'd_tenma')).toMatchObject({ title: '天満地区の主をおまいり番長に奪われた' });
+    expect(await reasonOf(stack, 'reclaim', 'd_tenma')).toMatchObject({ title: '天満地区の領主をおまいり番長に奪われた' });
 
     await walkAndVisit(stack, 'l_tm01');
     expect(takeEvents(stack, 'DistrictRevived')).toEqual([expect.objectContaining({ districtId: 'd_tenma', daysSinceLastVisit: 32, level: 3 })]);

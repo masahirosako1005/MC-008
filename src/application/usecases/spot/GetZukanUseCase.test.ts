@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Result } from '@/Common/result/Result';
 import { createTestWorld, must, seedTraveler } from '@/application/testing/fakes';
-import type { ZukanDistrictDto, ZukanDto } from '@/application/dto/Dto';
 import { familiarityOf, GetZukanUseCase, nextFamiliarityText } from '@/application/usecases/spot/GetZukanUseCase';
 import { GetTownStateUseCase } from '@/application/usecases/town/GetTownStateUseCase';
 
@@ -10,22 +9,14 @@ function codeOf(result: Result<unknown>): string | undefined {
   return result.ok ? undefined : result.error.code;
 }
 
-/** 地区の見出しを取り出す（無ければテスト失敗） */
-function headerOf(zukan: ZukanDto, districtId: string): ZukanDistrictDto {
-  const header = zukan.headers.find((h) => h.id === districtId);
-  if (header === undefined) throw new Error(`見出しがありません: ${districtId}`);
-  return header;
-}
-
 describe('GetZukanUseCase', () => {
-  it('地区を省略するとすべての地区のタイルを返し（最初の絞り込みなし）、地区と見出しは全地区を表示順で返す', async () => {
+  it('地区を省略するとすべての地区のタイルを返し（最初の絞り込みなし）、地区は全地区を表示順で返す', async () => {
     const tw = createTestWorld();
     await seedTraveler(tw);
     const zukan = must(await new GetZukanUseCase(tw).execute({}));
     const ordered = [...tw.spots.allDistricts()].sort((a, b) => a.order - b.order);
     expect(zukan.selectedDistrictId).toBeUndefined();
     expect(zukan.districts.map((d) => d.id)).toEqual(ordered.map((d) => d.id));
-    expect(zukan.headers.map((d) => d.id)).toEqual(ordered.map((d) => d.id));
     expect(zukan.tiles).toHaveLength(tw.spots.allSpots().length);
     expect(new Set(zukan.tiles.map((t) => t.districtId))).toEqual(new Set(ordered.map((d) => String(d.id))));
   });
@@ -77,16 +68,6 @@ describe('GetZukanUseCase', () => {
     expect(unknownLandmarks).toEqual([...unknownLandmarks].sort((a, b) => a - b));
   });
 
-  it('見出しは通った回数・最近いつ・成長段階を返し、達成率を含まない', async () => {
-    const tw = createTestWorld();
-    await seedTraveler(tw, { visits: [['l_jo01', -9], ['s_jo01', -7]] });
-    const zukan = must(await new GetZukanUseCase(tw).execute({}));
-    const joka = headerOf(zukan, 'd_joka');
-    expect(joka).toMatchObject({ id: 'd_joka', name: '城下地区', visitCount: 2, lastVisitLabel: '2026/11/02（月）' });
-    expect(joka.level).toBeGreaterThanOrEqual(1);
-    expect(JSON.stringify(zukan)).not.toMatch(/rate|percent|total|%/i);
-  });
-
   it('なじみ度は通った回数で 1回=訪問／3回=なじみ／5回=常連 になり、次の段階までの文言を返す', () => {
     expect([1, 2, 3, 4, 5, 9].map(familiarityOf)).toEqual([1, 1, 2, 2, 3, 3]);
     expect([1, 2, 3, 4, 5].map(nextFamiliarityText)).toEqual(['あと2回でなじみ', 'あと1回でなじみ', 'あと2回で常連', 'あと1回で常連', undefined]);
@@ -103,23 +84,14 @@ describe('GetZukanUseCase', () => {
     expect(zukan.tiles.find((t) => t.id === 's_jo01')).toMatchObject({ familiarity: 1, familiarityLabel: '訪問', seasons: ['autumn'], visitedToday: false });
   });
 
-  it('見出しは地区の色と、地区カードと同じ「次の目標」を返し、地区は色あせ状態を持つ', async () => {
+  it('地区は色と色あせ状態を持ち、結果に達成率を含まない', async () => {
     const tw = createTestWorld();
     await seedTraveler(tw, { visits: [['l_jo01', -5]] });
     const zukan = must(await new GetZukanUseCase(tw).execute({}));
-    const card = must(await new GetTownStateUseCase(tw).execute()).districts.find((d) => d.id === 'd_joka');
-    expect(headerOf(zukan, 'd_joka').color).toMatch(/^#[0-9a-f]{6}$/i);
-    expect(headerOf(zukan, 'd_joka').nextGoalText).toBe(card?.nextGoalText);
+    expect(zukan.districts.find((d) => d.id === 'd_joka')?.color).toMatch(/^#[0-9a-f]{6}$/i);
     expect(zukan.districts.find((d) => d.id === 'd_joka')?.fadeKind).toBe('fresh');
     expect(zukan.districts.find((d) => d.id === 'd_satoyama')?.fadeKind).toBe('never');
-  });
-
-  it('一度も訪れていない地区は lastVisitLabel なし・色あせは never', async () => {
-    const tw = createTestWorld();
-    await seedTraveler(tw);
-    const zukan = must(await new GetZukanUseCase(tw).execute({ districtId: 'd_satoyama' }));
-    expect(headerOf(zukan, 'd_satoyama').lastVisitLabel).toBeUndefined();
-    expect(headerOf(zukan, 'd_satoyama')).toMatchObject({ visitCount: 0, level: 0, fade: { kind: 'never' } });
+    expect(JSON.stringify(zukan)).not.toMatch(/rate|percent|total|%/i);
   });
 
   it('districtId の形式が不正なら INVALID_INPUT、存在しない地区なら DISTRICT_NOT_FOUND', async () => {

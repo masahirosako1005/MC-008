@@ -1,12 +1,12 @@
 /**
  * @file 図鑑の表示文言と絞り込みを決める純粋関数（presentation/screens/Zukan 層）
- * タイルの名前・補足・読み上げ名・なじみ度の星・季節の印、見出しの数字、地区と状態の絞り込みを DOM と切り離して決め、テストできるようにする。
+ * タイルの名前・補足・読み上げ名・なじみ度の星・季節の印、地区と状態の絞り込みを DOM と切り離して決め、テストできるようにする。
  * 達成率（％や「全n件中m件」）は作らない（CLAUDE.md 6.5）。
  */
-import type { SeasonDto, SpotKindDto, SpotStatusDto, ZukanDistrictDto, ZukanTileDto } from '@/application/dto/Dto';
+import type { SeasonDto, SpotKindDto, SpotStatusDto, ZukanTileDto } from '@/application/dto/Dto';
 import { createLogger } from '@/Common/logging/logger';
 import { UNKNOWN_SPOT_NAME } from '@/Common/ui/cards/SpotCard';
-import { KIND_LABELS, LEVEL_DESCRIPTIONS } from '@/presentation/shared/labels';
+import { KIND_LABELS } from '@/presentation/shared/labels';
 
 const logger = createLogger('presentation/screens/Zukan/zukanModel');
 
@@ -25,7 +25,7 @@ export interface ZukanFilter {
 /** 状態の絞り込みの選択肢（左から） */
 export const STATUS_FILTERS: readonly { readonly value: ZukanStatusFilter; readonly label: string }[] = [
   { value: 'all', label: 'すべて' },
-  { value: 'visited', label: '訪問済み' },
+  { value: 'visited', label: '達成済み' },
   { value: 'discovered', label: '発見済み' },
   { value: 'unknown', label: '未発見' },
 ];
@@ -68,7 +68,7 @@ export function tileName(tile: ZukanTileDto): string {
 
 /**
  * タイルの補足。訪問済みは次のなじみ度まで（最高段階なら呼び名）、発見済みは「まだ行っていない」、未発見は「未発見」。
- * 未発見の見つけ方はカードごとに繰り返さず、格子の上に1回だけ出す（SpotGrid の UNKNOWN_TILE_HINT）。
+ * 未発見の見つけ方はカードには出さず、拡大プレビューの「取得方法」と読み上げ名で伝える。
  * @param tile タイル
  * @returns 補足の文言
  */
@@ -114,29 +114,6 @@ export function tileAriaLabel(tile: ZukanTileDto): string {
   const seasons = seasonMarks(tile).filter((m) => m.visited).map((m) => m.label).join('・');
   const next = tile.nextFamiliarityText === undefined ? '' : `、${tile.nextFamiliarityText}`;
   return log.exit(`${head}${tile.familiarityLabel ?? '訪問'}、通った ${tile.visitCount}回、訪れた季節 ${seasons}${next}`);
-}
-
-/**
- * 最終訪問日を年なしの短い表示にする（'2026/11/04（水）' → '11/04（水）'）。
- * @param district 選んでいる地区
- * @returns 短い日付。未訪問なら '—'
- */
-export function shortLastVisit(district: ZukanDistrictDto): string {
-  const log = logger.fn('shortLastVisit', { hasLastVisit: district.lastVisitLabel !== undefined });
-  const label = district.lastVisitLabel;
-  if (label === undefined) return log.exit('—');
-  return log.exit(label.replace(/^\d{4}\//, ''));
-}
-
-/**
- * 成長段階の説明（'建物が増える' など）。
- * @param level 成長段階 0..3
- * @returns 説明
- */
-export function levelDescription(level: number): string {
-  const log = logger.fn('levelDescription', { level });
-  const lv = Math.min(LEVEL_DESCRIPTIONS.length - 1, Math.max(0, Math.round(level)));
-  return log.exit(LEVEL_DESCRIPTIONS[lv] ?? '');
 }
 
 /**

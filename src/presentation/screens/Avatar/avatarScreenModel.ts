@@ -12,13 +12,13 @@ const logger = createLogger('presentation/screens/Avatar/avatarScreenModel');
 export const MAX_STAGE_OBJECTS = 3;
 
 /** はずせる枠（何も着けない状態にできる） */
-export const REMOVABLE_SLOTS: ReadonlySet<string> = new Set(['hat', 'accessory', 'pet', 'object', 'title']);
+export const REMOVABLE_SLOTS: ReadonlySet<string> = new Set(['hat', 'accessory', 'pet', 'object', 'title', 'aura', 'emote']);
 
 /** サムネイルで切り出すところ */
 export type ThumbFocus = 'head' | 'body' | 'legs' | 'full';
 
 /** カテゴリ（タブ）のキー */
-export type CategoryKey = 'pickup' | 'hair' | 'face' | 'top' | 'bottom' | 'shoes' | 'hat' | 'accessory' | 'held' | 'pet' | 'background' | 'object' | 'title' | 'coord';
+export type CategoryKey = 'pickup' | 'collection' | 'hair' | 'face' | 'top' | 'bottom' | 'shoes' | 'hat' | 'accessory' | 'held' | 'pet' | 'aura' | 'emote' | 'background' | 'object' | 'title' | 'coord';
 
 /** カテゴリの定義 */
 export interface CategoryDef {
@@ -30,14 +30,19 @@ export interface CategoryDef {
   readonly chipSlot?: string;
   /** チップの見出し */
   readonly chipLabel?: string;
+  /** 格子の上に小さく並べる別の枠（顔のタブの性別など） */
+  readonly topSlot?: string;
+  /** topSlot の見出し */
+  readonly topLabel?: string;
   readonly focus: ThumbFocus;
 }
 
 /** カテゴリ（タブの並び） */
 export const CATEGORIES: readonly CategoryDef[] = Object.freeze([
   { key: 'pickup', label: 'ピックアップ', focus: 'full' },
+  { key: 'collection', label: 'コレクション', focus: 'full' },
   { key: 'hair', label: '髪型', gridSlot: 'hair', chipSlot: 'hairColor', chipLabel: '髪の色', focus: 'head' },
-  { key: 'face', label: '顔', gridSlot: 'eyes', chipSlot: 'skin', chipLabel: 'はだの色', focus: 'head' },
+  { key: 'face', label: '顔', gridSlot: 'eyes', chipSlot: 'skin', chipLabel: 'はだの色', topSlot: 'body', topLabel: '性別', focus: 'head' },
   { key: 'top', label: 'トップス', gridSlot: 'top', chipSlot: 'topColor', chipLabel: '服の色', focus: 'body' },
   { key: 'bottom', label: 'ボトムス', gridSlot: 'bottom', focus: 'legs' },
   { key: 'shoes', label: 'くつ', gridSlot: 'shoes', focus: 'legs' },
@@ -45,6 +50,8 @@ export const CATEGORIES: readonly CategoryDef[] = Object.freeze([
   { key: 'accessory', label: 'アクセ', gridSlot: 'accessory', focus: 'full' },
   { key: 'held', label: '持ち物', gridSlot: 'held', focus: 'full' },
   { key: 'pet', label: '相棒', gridSlot: 'pet', focus: 'full' },
+  { key: 'emote', label: 'エモート', gridSlot: 'emote', focus: 'full' },
+  { key: 'aura', label: 'オーラ', gridSlot: 'aura', focus: 'full' },
   { key: 'background', label: '背景', gridSlot: 'background', focus: 'full' },
   { key: 'object', label: 'オブジェ', gridSlot: 'object', focus: 'full' },
   { key: 'title', label: '称号', gridSlot: 'title', focus: 'full' },
@@ -130,6 +137,17 @@ export function withTryOn(outfit: readonly string[], tryOnId: string | undefined
 }
 
 /**
+ * セットの部品をまとめて重ねた装い（試着・着る）。
+ * @param outfit もとの装い
+ * @param partIds セットの部品
+ * @returns 新しい装い
+ */
+export function withSet(outfit: readonly string[], partIds: readonly string[]): readonly string[] {
+  const log = logger.fn('withSet', { count: partIds.length });
+  return log.exit(partIds.reduce<readonly string[]>((acc, id) => equipPart(acc, id).outfit, outfit));
+}
+
+/**
  * 2つの装いが同じか（並びは問わない）。
  * @param a 装い
  * @param b 装い
@@ -170,26 +188,27 @@ export function newCountOf(parts: readonly AvatarPartDto[], slots: readonly (str
  * @returns 枠（ピックアップ・マイコーデは空）
  */
 export function slotsOfCategory(category: CategoryDef): string[] {
-  return [category.gridSlot, category.chipSlot].filter((s): s is string => s !== undefined);
+  return [category.topSlot, category.gridSlot, category.chipSlot].filter((s): s is string => s !== undefined);
 }
 
 /**
- * おまかせの装いを作る（必須の枠は持っている部品から1つ、はずせる枠は半分の確率で1つ、置くものは0〜2つ）。
+ * おまかせの装いを作る（必須の枠は持っている部品から1つ、はずせる枠は半分の確率で1つ、置くものは0〜2つ）。性別はいまのままにする。
  * @param parts すべての部品
  * @param random 0 以上 1 未満の乱数を返す関数
+ * @param current いまの装い（性別を引き継ぐ）
  * @returns 装い
  */
-export function randomOutfitOf(parts: readonly AvatarPartDto[], random: () => number): string[] {
+export function randomOutfitOf(parts: readonly AvatarPartDto[], random: () => number, current: readonly string[] = []): string[] {
   const log = logger.fn('randomOutfitOf', { parts: parts.length });
   const owned = parts.filter((p) => p.owned);
-  const slots = [...new Set(owned.map((p) => p.slot))];
+  const slots = [...new Set(owned.map((p) => p.slot))].filter((slot) => slot !== 'body');
   /**
    * 候補から1つ選ぶ。
    * @param list 候補
    * @returns 選んだ部品ID
    */
   const pick = (list: readonly AvatarPartDto[]): string | undefined => list[Math.floor(random() * list.length)]?.id; // audit-ignore: fnlog-missing 枠ごとに呼ぶ1行の選択
-  const outfit: string[] = [];
+  const outfit: string[] = current.filter((id) => slotOfPartId(id) === 'body');
   for (const slot of slots) {
     const list = owned.filter((p) => p.slot === slot);
     const count = slot === 'object' ? Math.floor(random() * 3) : REMOVABLE_SLOTS.has(slot) && random() < 0.5 ? 0 : 1;

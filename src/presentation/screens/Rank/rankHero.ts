@@ -124,7 +124,7 @@ function createPips(dto: RankStatusDto): HTMLElement {
  */
 function createWalker(dto: RankStatusDto, progress: RankProgress, avatar: HTMLElement | undefined): HTMLElement {
   const log = logger.fn('createWalker', { roadPercent: progress.roadPercent, hasAvatar: avatar !== undefined });
-  const bubble = progress.isTop ? '最高ランク！' : `あと${dto.rank.remaining ?? 0}pt`;
+  const bubble = progress.isTop ? '最高ランク！' : `あと${dto.rank.remaining ?? 0}EXP`;
   const walker = h('div', { class: 'rank-road__walker', attrs: { 'data-testid': 'rank-next' } }, [
     h('span', { class: 'rank-road__bubble', text: bubble }),
     h('span', { class: 'rank-road__trail', attrs: { 'aria-hidden': 'true' } }),
@@ -156,7 +156,7 @@ function createRoad(dto: RankStatusDto, avatar: HTMLElement | undefined): HTMLEl
   // 現在地の点は道の中に置き、紋章の下に隠れるようにする（段ちょうどのときに数字を隠さない）
   const track = h('span', { class: 'rank-road__track' }, [h('span', { class: 'rank-road__fill' }), h('span', { class: 'rank-road__dot', attrs: { 'aria-hidden': 'true' } })]);
   setStyle(track, '--fill', `${progress.roadPercent}%`);
-  const next = dto.rank.nextName === undefined ? '最上段' : `次は${dto.rank.nextName}、あと${dto.rank.remaining ?? 0}ポイント`;
+  const next = dto.rank.nextName === undefined ? '最上段' : `次は${dto.rank.nextName}、あと${dto.rank.remaining ?? 0}EXP`;
   return log.exit(
     h('div', { class: 'rank-road', attrs: { role: 'img', 'aria-label': `ランクロード。いまは${dto.rank.name}。${next}`, 'data-testid': 'rank-road' } }, [
       h('div', { class: 'rank-road__lane' }, [track, h('ol', { class: 'rank-road__nodes', attrs: { 'aria-hidden': 'true' } }, nodes), createWalker(dto, progress, avatar)]),
@@ -185,7 +185,7 @@ export function createHero(dto: RankStatusDto, avatar: HTMLElement | undefined, 
     createStage(dto.rank.index, tilt),
     name,
     createPips(dto),
-    h('p', { class: 'rank-hero__points', attrs: { 'aria-label': `累計${dto.points}ポイント` } }, [points, h('span', { class: 'rank-hero__pt', text: 'PT' })]),
+    h('p', { class: 'rank-hero__points', attrs: { 'aria-label': `累計${dto.points}EXP` } }, [points, h('span', { class: 'rank-hero__pt', text: 'EXP' })]),
     near ? h('p', { class: 'rank-hero__near', attrs: { 'data-testid': 'rank-near' } }, [createIcon('arrowUp'), 'ランクアップ目前！']) : undefined,
     createRoad(dto, avatar),
     h('span', { class: 'rank-hero__flash', attrs: { 'aria-hidden': 'true' } }),

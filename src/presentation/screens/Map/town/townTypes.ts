@@ -156,9 +156,9 @@ export const TERRITORY_MINE = 1;
 export const TERRITORY_RIVAL = 2;
 
 /** 自分の陣地の色 */
-export const TERRITORY_MINE_COLOR = '#ff6a3d';
+export const TERRITORY_MINE_COLOR = '#1e6bff';
 /** ライバルの陣地の色 */
-export const TERRITORY_RIVAL_COLOR = '#7b61ff';
+export const TERRITORY_RIVAL_COLOR = '#ff5a3d';
 
 /**
  * セルの添字を返す（範囲外は -1）。

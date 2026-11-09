@@ -4,19 +4,19 @@
  * 未発見＝絵・名前・カテゴリも出す（「すべて表示」の指示。位置は出さない＝B）、発見済み＝シルエット、訪問済み＝カラー＋通った回数（CLAUDE.md 6.5）。基準 B・C。
  * 訪問済みには「なじみ度」（同じスポットに通うほど上がる）と訪れた季節を付け、次に通う理由にする（報酬は通いに出す＝CLAUDE.md 4.6）。
  * 達成率（％や「全n件中m件」）は返さない。埋めることではなく通うことを主役にする（CLAUDE.md 13）。
- * 成長段階・色あせ・なじみ度は訪問記録と今日から導出する（D4）。地区の数字と「次の目標」は DistrictView に集約（D2）。書込みはしない。
+ * 色あせ・なじみ度は訪問記録と今日から導出する（D4）。地区の見出し（回数・Lv・次の目標）は 2026-11-09 の指示で図鑑から外した（マイ街で見る）。書込みはしない。
  */
 import { createLogger } from '@/Common/logging/logger';
 import { AppError, fail, ok } from '@/Common/result/Result';
 import type { Result } from '@/Common/result/Result';
 import { parseDistrictId } from '@/Common/types/Id';
-import { formatJpDate, seasonOf } from '@/Common/utils/date';
+import { seasonOf } from '@/Common/utils/date';
 import type { LocalDate } from '@/Common/utils/date';
 import { isRecord } from '@/Common/utils/guards';
 import type { UseCase } from '@/application/AppServices';
-import type { FamiliarityDto, SeasonDto, ZukanDistrictDto, ZukanDistrictTabDto, ZukanDto, ZukanInput, ZukanTileDto } from '@/application/dto/Dto';
+import type { FamiliarityDto, SeasonDto, ZukanDistrictTabDto, ZukanDto, ZukanInput, ZukanTileDto } from '@/application/dto/Dto';
 import { spotStatusOf } from '@/application/usecases/exploration/SpotStatus';
-import { districtViewsOf, fadeDtoOf, toDistrictCardDto } from '@/application/usecases/shared/DistrictView';
+import { districtViewsOf } from '@/application/usecases/shared/DistrictView';
 import type { DistrictView } from '@/application/usecases/shared/DistrictView';
 import { loadWorld } from '@/application/usecases/shared/World';
 import type { WorldDeps } from '@/application/usecases/shared/World';
@@ -144,28 +144,6 @@ function toTile(traveler: Traveler, spot: Spot, today: LocalDate): ZukanTileDto 
 }
 
 /**
- * 地区の見出し（色・成長段階・通った回数・最近いつ・色あせ・次の目標）を作る。
- * @param view 地区の表示の材料
- * @returns ZukanDistrictDto（凍結済み）
- */
-function toDistrictHeader(view: DistrictView): ZukanDistrictDto {
-  const { district, status } = view;
-  const log = logger.fn('toDistrictHeader', { districtId: district.id, level: status.level });
-  const dto: ZukanDistrictDto = Object.freeze({
-    id: district.id,
-    name: district.name,
-    theme: district.theme,
-    color: district.color,
-    level: status.level,
-    visitCount: status.visitCount,
-    ...(status.lastVisit === undefined ? {} : { lastVisitLabel: formatJpDate(status.lastVisit) }),
-    fade: fadeDtoOf(status.fade),
-    nextGoalText: toDistrictCardDto(view).nextGoalText,
-  });
-  return log.exit(dto);
-}
-
-/**
  * 地区タブの一覧（表示順・色あせ状態つき）を作る。
  * @param views 全地区の表示の材料
  * @returns ZukanDistrictTabDto の配列（凍結済み）
@@ -225,7 +203,6 @@ export class GetZukanUseCase implements UseCase<ZukanInput, ZukanDto> {
     const selectedId = district.value?.id;
     const dto: ZukanDto = Object.freeze({
       districts: districtTabsOf(views),
-      headers: Object.freeze(views.map(toDistrictHeader)),
       ...(selectedId === undefined ? {} : { selectedDistrictId: selectedId }),
       tiles: Object.freeze(tiles),
     });

@@ -1,8 +1,10 @@
 /**
- * @file 店舗CMS の画面が受け取る唯一の入口（application 層。docs/09 §7.2）
- * フェーズ1（デモ）だけで使う。isDemoBuild でなければ cmsContainer が作らない（MUST-8, SEC-02）。
+ * @file 店舗CMS の画面が受け取る唯一の入口（application 層。docs/09 §7.2・§7.3）
+ * ブラウザだけの CMS（フェーズ1）はデモの版だけ。連携サーバーにつなぐとき（VITE_CMS_BACKEND=server）は本番の版でも使え、
+ * ログイン・アカウント（auth）がつく（docs/09 CMS-A04〜A07）。
  */
 import type { UseCase } from '@/application/AppServices';
+import type { CmsAuthServices } from '@/application/CmsAuthServices';
 import type {
   CmsShopInfoDto,
   CmsShopInput,
@@ -29,4 +31,6 @@ export interface CmsServices {
   readonly visitStats: UseCase<CmsShopInput, CmsVisitStatsDto>;
   /** CMS の登録内容をすべて消す（デモのやり直し） */
   readonly resetDemo: UseCase<void, void>;
+  /** ログインとアカウント（連携サーバーにつなぐときだけ。ブラウザだけの CMS には無い） */
+  readonly auth?: CmsAuthServices;
 }

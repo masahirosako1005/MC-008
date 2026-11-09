@@ -58,7 +58,7 @@ export class LocalStorageTravelerRepository implements TravelerRepository {
     const log = logger.fn('save', { id: traveler.id, expectedVersion, visits: traveler.visits.length });
     const checked = checkTravelerInvariants(traveler.toState());
     if (!checked.ok) {
-      return log.fail(fail(AppError.of('STORAGE_FAILED', '旅人データを保存できませんでした', { rule: checked.error.details?.['rule'] })));
+      return log.fail(fail(AppError.of('STORAGE_FAILED', '冒険者データを保存できませんでした', { rule: checked.error.details?.['rule'] })));
     }
     const written = this.envelopes.writeVersioned({
       suffix: travelerKeyOf(traveler.id),

@@ -153,10 +153,13 @@ const MAP_GRID = { xs: [-20, 96, 250, 395], ys: [-20, 140, 320, 480, 660] } as c
 const MAP_BLOCK_INSET = 8;
 
 /** 細い道（横の y と縦の x）・幹線（横の y）・商店街（縦の x と、川の手前で止める y） */
-const MAP_ROADS = { streetYs: [140, 480], streetXs: [96], arterialY: 320, arcadeX: 250, arcadeEndY: 560 } as const;
+const MAP_ROADS = { streetYs: [140, 480], streetXs: [96], arterialY: 320, arcadeX: 250, arcadeEndY: 380 } as const;
 
-/** 川の道筋 */
-const MAP_RIVER_PATH = 'M-20 610 C 100 570 220 620 395 575';
+/** 道の線の太さ（縁と中。幹線は細い道の2倍以上にして見分けられるようにする） */
+const MAP_ROAD_WIDTHS = { streetCasing: 13, street: 10, arterialCasing: 28, arterial: 24 } as const;
+
+/** 川の道筋（y 約378〜460。下のお知らせのカードに隠れない高さ。道より先に描くので、縦の道は橋としてまたぐ） */
+const MAP_RIVER_PATH = 'M-20 418 C 90 392 230 446 395 404';
 
 /** お店の印の位置 */
 const MAP_PIN = { x: 232, y: 236 } as const;
@@ -232,16 +235,16 @@ function mapPin(name: string): SVGGElement {
 function simpleMap(name: string): SVGSVGElement {
   const log = logger.fn('simpleMap');
   const svg = svgEl('svg', { viewBox: `0 0 ${MAP_SIZE.width} ${MAP_SIZE.height}`, preserveAspectRatio: 'xMidYMid slice', 'aria-hidden': 'true', class: 'cms-map' });
-  const street = { color: PALETTE.road, width: 10 };
-  const streetCasing = { color: PALETTE.roadCasing, width: 13 };
+  const street = { color: PALETTE.road, width: MAP_ROAD_WIDTHS.street };
+  const streetCasing = { color: PALETTE.roadCasing, width: MAP_ROAD_WIDTHS.streetCasing };
   svg.append(
     svgEl('rect', { x: 0, y: 0, width: MAP_SIZE.width, height: MAP_SIZE.height, fill: PALETTE.land }),
     ...mapBlocks(),
     svgEl('path', { d: MAP_RIVER_PATH, stroke: PALETTE.water, 'stroke-width': 28, fill: 'none', 'stroke-linecap': 'round' }),
     ...MAP_ROADS.streetYs.map((y) => roadLine('h', y, streetCasing)), ...MAP_ROADS.streetXs.map((x) => roadLine('v', x, streetCasing)),
     ...MAP_ROADS.streetYs.map((y) => roadLine('h', y, street)), ...MAP_ROADS.streetXs.map((x) => roadLine('v', x, street)),
-    roadLine('h', MAP_ROADS.arterialY, { color: PALETTE.arterialCasing, width: 22 }),
-    roadLine('h', MAP_ROADS.arterialY, { color: PALETTE.road, width: 18 }),
+    roadLine('h', MAP_ROADS.arterialY, { color: PALETTE.arterialCasing, width: MAP_ROAD_WIDTHS.arterialCasing }),
+    roadLine('h', MAP_ROADS.arterialY, { color: PALETTE.road, width: MAP_ROAD_WIDTHS.arterial }),
     roadLine('v', MAP_ROADS.arcadeX, { color: PALETTE.arcade, width: 14 }, MAP_ROADS.arcadeEndY),
     roadLine('v', MAP_ROADS.arcadeX, { color: PALETTE.brand, width: 1.5, dash: '4 4' }, MAP_ROADS.arcadeEndY),
     mapPin(name),
@@ -345,8 +348,12 @@ export function createPreviewColumn(info: CmsShopInfoDto, opts: PreviewColumnOpt
   const content = h('div', { class: 'cms-phone__content' });
   content.inert = true;
   const body = h('div', { class: ['screen-scroll', 'spot-detail__body', 'cms-phone__body'], attrs: { 'data-district-id': info.districtId } }, [content]);
-  const page = h('div', { class: 'cms-phone__page' }, [createTopBar({ title: info.name, back: { label: '地図', onClick: (): void => undefined } }), body]);
+  const topBar = createTopBar({ title: info.name, back: { label: '地図', onClick: (): void => undefined } });
+  const page = h('div', { class: 'cms-phone__page' }, [topBar, body]);
   const sheet = h('div', { class: 'cms-phone__sheet' });
+  // 枠の中は見るだけ（アプリの上部バー・地図のシートも Tab で入らず、読み上げの対象にもしない。動かすのは枠＝body だけ）
+  topBar.inert = true;
+  sheet.inert = true;
   const map = h('div', { class: 'cms-phone__map', attrs: { hidden: true } }, [simpleMap(info.name), sheet]);
   const caption = h('p', { class: 'cms-preview-col__caption', attrs: { 'data-testid': 'cms-preview-caption' } });
   const phone = h('figure', { class: 'cms-phone', attrs: { 'data-testid': 'cms-phone' } }, [h('div', { class: 'cms-phone__screen' }, [page, map])]);
@@ -369,6 +376,7 @@ export function createPreviewColumn(info: CmsShopInfoDto, opts: PreviewColumnOpt
       if (illustration === undefined) {
         illustration = createSpotIllustration(body, { seed: info.id, kind: 'shop', category: info.category, status: 'visited', name: info.name, districtId: info.districtId });
         body.append(content);
+        for (const child of body.children) if (child instanceof HTMLElement) child.inert = true;
       }
       const dto = toSpotDetailDto(info, next);
       const events = createCouponEventList(dto.shopEvents);

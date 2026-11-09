@@ -46,7 +46,7 @@ type TravelerRecords = Pick<TravelerState, 'discoveries' | 'visits' | 'redemptio
  * @returns INVALID_INPUT の失敗
  */
 function invalidState(rule: string): Result<never> {
-  return fail(AppError.of('INVALID_INPUT', '旅人データが正しくありません', { kind: 'TravelerState', rule }));
+  return fail(AppError.of('INVALID_INPUT', '冒険者データが正しくありません', { kind: 'TravelerState', rule }));
 }
 
 /**

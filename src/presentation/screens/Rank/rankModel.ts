@@ -144,7 +144,7 @@ export function settingTilesOf(input: SettingTilesInput): SettingTile[] {
   const offset = status?.dayOffset ?? 0;
   const tiles: SettingTile[] = [
     { key: 'textScale', glyph: 'Aa', label: '文字の大きさ', value: TEXT_SCALE_LABELS[input.textScale] },
-    { key: 'traveler', icon: 'person', label: '旅人', value: input.nickname, badge: status !== undefined && status.travelerProfile !== 'user' ? 'デモ' : undefined },
+    { key: 'traveler', icon: 'person', label: '冒険者', value: input.nickname, badge: status !== undefined && status.travelerProfile !== 'user' ? 'デモ' : undefined },
     { key: 'location', icon: 'pin', label: '位置情報', value: input.isDemo ? 'タップ歩行' : 'GPS' },
     { key: 'date', icon: 'calendar', label: '日付', value: status === undefined ? '—' : shortDateOf(status.today), badge: offset > 0 ? `+${offset}日` : undefined },
     { key: 'storage', icon: 'phone', label: '記録の保存先', value: '端末内' },

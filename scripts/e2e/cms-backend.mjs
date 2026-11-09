@@ -6,19 +6,26 @@
  *
  * 使い方:
  *   1. npm run demo:backend            （別の端末で動かしたまま。http://localhost:8787）
- *   2. node scripts/e2e/cms-backend.mjs [起点URL] [出力フォルダ]
- *      既定は http://localhost:8787 と e2e-output/cms-backend。登録内容は最初に消す（デモのやり直し）。
+ *   2. node scripts/e2e/cms-backend.mjs [CMS の起点URL] [出力フォルダ] [スマホの起点URL]
+ *      既定は http://localhost:8787・e2e-output/cms-backend・CMS と同じ。登録内容は最初に消す（デモのやり直し）。
+ *      https（serve --host 0.0.0.0 / --tls）のときは、スマホの起点に LAN の IP（例 https://192.168.1.23:8787）を渡すと、
+ *      「LAN の IP で開いても安全な接続として扱われ、アプリが動く」ことも確かめる（手元用の証明書なので、証明書の警告は無視して開く）。
  */
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { request } from 'node:https';
 import { createRequire } from 'node:module';
+import { join } from 'node:path';
+import { defaultTlsDir } from '../dev/devCert.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright-core');
 
 const BASE = process.argv[2] ?? 'http://localhost:8787';
 const OUT = process.argv[3] ?? 'e2e-output/cms-backend';
+const APP_BASE = process.argv[4] ?? BASE;
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const SPOT = 's_mm04';
+const HTTPS = BASE.startsWith('https:') || APP_BASE.startsWith('https:');
 mkdirSync(OUT, { recursive: true });
 
 const results = [];
@@ -26,23 +33,55 @@ const errors = [];
 /** 結果を1行残す */
 const check = (name, ok, note = '') => results.push(`${ok ? 'PASS' : 'FAIL'} ${name}${note ? ` — ${note}` : ''}`);
 
+/**
+ * 認証局だけを信頼して https でつなぎ、証明書の鎖が本当に正しいか確かめる（ブラウザは証明書の警告を無視して開くため、ここで別に確かめる）。
+ * @param base 起点 URL
+ * @param ca 認証局の証明書（PEM）
+ * @returns 'ok' か失敗の理由
+ */
+function verifyChain(base, ca) {
+  return new Promise((done) => {
+    const url = new URL('/api/health', base);
+    const req = request({ host: url.hostname.replace(/^\[|\]$/g, ''), port: url.port, path: url.pathname, ca, servername: url.hostname === 'localhost' ? 'localhost' : undefined }, (res) => {
+      res.resume();
+      done(res.statusCode === 200 ? 'ok' : `status ${res.statusCode}`);
+    });
+    req.on('error', (e) => done(e.message));
+    req.end();
+  });
+}
+
+if (HTTPS) {
+  const caPath = process.env.E2E_TLS_CA ?? join(defaultTlsDir(), 'ca.crt');
+  const ca = existsSync(caPath) ? readFileSync(caPath) : undefined;
+  for (const base of [...new Set([BASE, APP_BASE])]) {
+    const verdict = ca === undefined ? `認証局が見つかりません: ${caPath}` : await verifyChain(base, ca);
+    check('0 認証局だけを信頼して、証明書の鎖の検証に通る', verdict === 'ok', `${base} ${verdict === 'ok' ? '' : verdict}`.trim());
+  }
+}
+
 const browser = await chromium.launch({ executablePath: EDGE, headless: true });
-const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'ja-JP' });
-const pc = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'ja-JP' });
+const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'ja-JP', ignoreHTTPSErrors: HTTPS });
+const pc = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'ja-JP', ignoreHTTPSErrors: HTTPS });
 const app = await phone.newPage();
 const cms = await pc.newPage();
 for (const [name, page] of [['app', app], ['cms', cms]]) {
   page.on('pageerror', (e) => errors.push(`${name} pageerror: ${e.message}`));
   page.on('console', (m) => { if (m.type() === 'error' && !m.text().startsWith('Failed to load resource')) errors.push(`${name} console: ${m.text()}`); });
-  page.on('response', (r) => { if (r.status() >= 400) errors.push(`${name} ${r.status()}: ${r.url().replace(BASE, '')}`); });
+  page.on('response', (r) => { if (r.status() >= 400) errors.push(`${name} ${r.status()}: ${r.url().replace(BASE, '').replace(APP_BASE, '')}`); });
 }
 
 try {
+  // CMS の API はログインが必要（デモは運営者としてデモログイン）。pc の request は Cookie をページと共有するので、以後の cms.html もこのログインで動く。
+  // ログインの無い古いサーバー（404）でも通し確認は続ける
+  const login = await cms.request.post(`${BASE}/api/auth/demo-login`, { headers: { 'content-type': 'application/json' }, data: { role: 'operator' } });
+  check('0 デモログイン（運営者）', login.ok() || login.status() === 404, String(login.status()));
   const reset = await cms.request.post(`${BASE}/api/cms/demo/reset`, { headers: { 'content-type': 'application/json' }, data: {} });
   check('0 デモのやり直し（登録内容を消す）', reset.ok(), String(reset.status()));
 
-  await app.goto(`${BASE}/#/spot/${SPOT}`);
+  await app.goto(`${APP_BASE}/#/spot/${SPOT}`);
   await app.waitForSelector('[data-testid="spot-detail"][data-load="ready"]', { timeout: 30000 });
+  if (HTTPS) check('0 スマホは安全な接続として開ける（https。LAN の IP でもアプリが動く）', await app.evaluate(() => window.isSecureContext), APP_BASE);
   const before = await app.locator('[data-testid="spot-detail"]').innerText();
   await app.screenshot({ path: `${OUT}/1_app_before.png` });
 

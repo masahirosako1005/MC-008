@@ -59,7 +59,9 @@ function fakeContext(): FakeContext {
 }
 
 /** 契約（avatarLook）の背景の種類すべて */
-const ALL_BACKGROUNDS: readonly BackgroundStyle[] = ['plain', 'room', 'minamimori', 'tenma', 'tenroku', 'ogimachi', 'okawa', 'sunset', 'night', 'starry', 'dreamy', 'idol'];
+const ALL_BACKGROUNDS: readonly BackgroundStyle[] = ['plain', 'room', 'minamimori', 'tenma', 'tenroku', 'ogimachi', 'okawa', 'sunset', 'night', 'starry', 'dreamy', 'idol',
+  'aquarium', 'yozakura', 'snowlight', 'candy', 'beach', 'castle', 'cafe', 'galaxy',
+  'edo', 'nakazaki', 'tenjinMatsuri', 'momiji'];
 /** 契約（avatarLook）の置くものの種類すべて */
 const ALL_OBJECTS: readonly ObjectStyle[] = [
   'bench', 'plant', 'bicycle', 'vending', 'lamp', 'signboard', 'stall', 'torii', 'sakura',

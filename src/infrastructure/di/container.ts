@@ -226,22 +226,24 @@ async function overlaidCatalog(overlays: LocalStorageCmsOverlayRepository, catal
 }
 
 /**
- * デモでは店舗CMS（cms.html）の登録内容をマスタに重ね、別タブで保存されたら差し替える（docs/09 §7.2、APP-11）。
+ * 店舗CMS の登録内容をマスタに重ね、変わったら差し替える（docs/09 §7.2・§7.3、APP-11）。
+ * - 連携サーバー（VITE_CMS_BACKEND=server）：公開スナップショットを重ねる。本番の版でも使う（APP-01〜03）
+ * - ブラウザだけ（デモだけ）：同じブラウザの localStorage を読み、別タブで保存されたら差し替える
  * @param opts コンテナ設定
  * @param master 検証済みマスタ
  * @param store 保存先
  * @returns スポットの参照と、差し替えの通知の登録関数
- * @sideEffect デモでは window の storage イベントを監視する
+ * @sideEffect 連携サーバーでは SSE・タイマー、デモでは window の storage イベントを監視する
  */
 async function buildCmsReflection(opts: ContainerOptions, master: LoadedMaster, store: KeyValueStore): Promise<CmsReflection> {
   const log = logger.fn('buildCmsReflection', { mode: opts.mode });
-  // import.meta.env はビルド時に文字どおりの定数へ置き換わるので、本番ビルドからは以下の CMS の処理ごと消える（MUST-8）。
-  // env.ts の isProductionBuild 経由だと定数として畳み込まれないため、ここだけ直接書く（テストでは PROD=false なので通る）
-  if ((import.meta.env.PROD && import.meta.env.MODE !== 'demo') || opts.mode !== 'demo') return log.exit({ spots: master.spots });
   if ((opts.cmsBackend ?? CMS_BACKEND) === 'server') {
     // 連携サーバーの公開スナップショットを重ねる（別の端末の CMS で保存しても届く。docs/09 §7.3）
-    return log.exit(await buildServerCmsReflection({ catalog: master.catalog, store, prefix: PREFIX_BY_MODE.demo, ...(opts.cmsApi === undefined ? {} : { api: opts.cmsApi }) }));
+    return log.exit(await buildServerCmsReflection({ catalog: master.catalog, store, prefix: PREFIX_BY_MODE[opts.mode], ...(opts.cmsApi === undefined ? {} : { api: opts.cmsApi }) }));
   }
+  // import.meta.env はビルド時に文字どおりの定数へ置き換わるので、本番ビルドからは以下のブラウザだけの CMS の処理ごと消える（MUST-8）。
+  // env.ts の isProductionBuild 経由だと定数として畳み込まれないため、ここだけ直接書く（テストでは PROD=false なので通る）
+  if ((import.meta.env.PROD && import.meta.env.MODE !== 'demo') || opts.mode !== 'demo') return log.exit({ spots: master.spots });
   const overlays = new LocalStorageCmsOverlayRepository({ store, prefix: PREFIX_BY_MODE.demo });
   const spots = new RefreshableSpotRepository(await overlaidCatalog(overlays, master.catalog));
   const listeners = new Set<() => void>();
@@ -273,6 +275,7 @@ function buildServices(base: BaseDeps, updateLords: UpdateDistrictLordUseCase, c
   const demo = base.demo && base.demoControl ? buildDemoServices(base, base.demoControl, updateLords, cms) : undefined;
   return log.exit({
     isDemo: base.demo,
+    ...(cms.onCatalogChanged === undefined ? {} : { onCatalogChanged: cms.onCatalogChanged }),
     events: base.bus,
     status: new GetAppStatusUseCase(base),
     map: new GetMapDataUseCase(base),

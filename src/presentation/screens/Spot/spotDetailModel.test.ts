@@ -69,8 +69,8 @@ describe('カードとトーストの文言', () => {
     expect(nextCardLabel(undefined)).toBeUndefined();
   });
   it('おかえりボーナスがあれば括弧で添える', () => {
-    expect(visitToastMessage({ points: 15, bonusPoints: 0 })).toBe('訪問を記録しました +15pt');
-    expect(visitToastMessage({ points: 15, bonusPoints: 7 })).toBe('訪問を記録しました +15pt（おかえりボーナス +7）');
+    expect(visitToastMessage({ points: 15, bonusPoints: 0 })).toBe('クエスト達成！ +15EXP');
+    expect(visitToastMessage({ points: 15, bonusPoints: 7 })).toBe('クエスト達成！ +15EXP（おかえりボーナス +7）');
   });
   it('成長のトーストは地区名と新しい Lv を出す', () => {
     expect(growthToastMessage('城下地区', 3)).toBe('城下地区が Lv3 に育ちました');

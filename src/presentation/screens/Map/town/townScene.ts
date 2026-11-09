@@ -71,6 +71,8 @@ export interface SceneInput {
   readonly selectedId?: string;
   /** チェックインできる範囲にあるスポット */
   readonly inRange: ReadonlySet<string>;
+  /** お店の写真ピンの伸び縮み（チェックインの演出中だけ。横・縦の倍率） */
+  readonly pinScale?: (spotId: string) => readonly [number, number];
 }
 
 /** 画面に置いたスポット */
@@ -244,7 +246,7 @@ function drawOneSpot(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneI
     return;
   }
   drawShadow(ctx, p.x, p.y, box.w * p.scale * 0.42);
-  if (p.match === true || s.id === input.selectedId) drawGlow(ctx, p.x, p.y - h * 0.45, Math.max(box.w, box.h) * p.scale * 0.62, s.id === input.selectedId ? '#ff6a3d' : input.highlight, input.t);
+  if (s.id === input.selectedId) drawGlow(ctx, p.x, p.y - h * 0.45, Math.max(box.w, box.h) * p.scale * 0.62, '#1e6bff', input.t);
   if (s.kind === 'landmark' && s.landmark !== undefined) drawLandmark(ctx, s.landmark, p.x, p.y, p.scale, { faded });
   else drawToilet(ctx, p.x, p.y, p.scale, { nursing: s.nursing === true });
   drawMarks(ctx, p, input, p.x + (box.w * p.scale) / 2 - 2, p.y - h + 4);
@@ -288,7 +290,14 @@ function drawShopPin(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneI
   const f = PIN_FRAME_PX;
   const ring = s.today?.hot === true ? '#ffc83d' : s.want ? '#ff8fab' : s.status === 'visited' ? TERRITORY_MINE_COLOR : '#ffffff';
   drawShadow(ctx, p.x, p.y, Math.max(4, size * 0.22));
-  if (p.match === true || s.id === input.selectedId) drawGlow(ctx, p.x, top + size / 2, size * 0.7, s.id === input.selectedId ? '#ff6a3d' : input.highlight, input.t);
+  // 2026-11-09 ユーザー指示「フィルターするときにお店のサークル（外枠）いらない」: 輪は選択中のお店だけ
+  if (s.id === input.selectedId) drawGlow(ctx, p.x, top + size / 2, size * 0.7, '#1e6bff', input.t);
+  const squash = input.pinScale?.(s.id);
+  if (squash !== undefined && (squash[0] !== 1 || squash[1] !== 1)) {
+    ctx.translate(p.x, p.y);
+    ctx.scale(squash[0], squash[1]);
+    ctx.translate(-p.x, -p.y);
+  }
   // 柔らかい影
   ctx.fillStyle = 'rgba(30, 30, 50, 0.22)';
   ctx.beginPath();
@@ -362,13 +371,13 @@ function drawTodayTag(ctx: CanvasRenderingContext2D, x: number, bottom: number, 
   const w = ctx.measureText(text).width + 10;
   const h = 14;
   ctx.fillStyle = hot ? '#ffc83d' : '#ffffff';
-  ctx.strokeStyle = hot ? '#e0a100' : 'rgba(232, 81, 58, 0.6)';
+  ctx.strokeStyle = hot ? '#e0a100' : 'rgba(30, 107, 255, 0.6)';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.roundRect(x - w / 2, bottom - h, w, h, 7);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = hot ? INK : '#e8513a';
+  ctx.fillStyle = hot ? INK : '#1556d6';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, x, bottom - h / 2 + 0.5);
@@ -450,7 +459,6 @@ function drawMarks(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneInp
   if (s.want) marks.push('heart');
   else if (s.liked) marks.push('sparkle');
   if (input.inRange.has(s.id) && s.kind !== 'toilet') marks.push('check');
-  if (s.status === 'unknown' && s.kind === 'shop' && input.tier !== 'wide') marks.push('question');
   const scale = input.tier === 'near' ? 1.5 : 1;
   let x = right;
   const y = top;
@@ -530,7 +538,7 @@ function drawSelectArrow(ctx: CanvasRenderingContext2D, x: number, y: number, t:
   ctx.fillRect(Math.round(x - 7), top - 1, 14, 6);
   ctx.fillRect(Math.round(x - 5), top + 5, 10, 3);
   ctx.fillRect(Math.round(x - 3), top + 8, 6, 3);
-  ctx.fillStyle = '#ff6a3d';
+  ctx.fillStyle = '#1e6bff';
   ctx.fillRect(Math.round(x - 6), top, 12, 4);
   ctx.fillRect(Math.round(x - 4), top + 4, 8, 3);
   ctx.fillRect(Math.round(x - 2), top + 7, 4, 3);
@@ -665,10 +673,13 @@ export function drawClaimAnimation(ctx: CanvasRenderingContext2D, anim: ClaimAni
   ctx.textBaseline = 'middle';
   ctx.lineWidth = 5;
   ctx.strokeStyle = '#ffffff';
-  const label = `陣地 +${anim.gained}マス！`;
-  ctx.strokeText(label, cx, cy - 46 - rise * 18);
-  ctx.fillStyle = TERRITORY_MINE_COLOR;
-  ctx.fillText(label, cx, cy - 46 - rise * 18);
+  // gained が 0 のときは文字を出さない（チェックインでは、ごほうびの帯が「領地 +n マス」を数え上げる）
+  if (anim.gained > 0) {
+    const label = `領地 +${anim.gained}マス！`;
+    ctx.strokeText(label, cx, cy - 46 - rise * 18);
+    ctx.fillStyle = TERRITORY_MINE_COLOR;
+    ctx.fillText(label, cx, cy - 46 - rise * 18);
+  }
   ctx.restore();
   return true;
 }
@@ -686,14 +697,14 @@ export function drawClaimAnimation(ctx: CanvasRenderingContext2D, anim: ClaimAni
 export function drawCheckInCircle(ctx: CanvasRenderingContext2D, center: Point2D, radiusPx: number, label: string | undefined, textScale: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
   if (radiusPx < 6) return;
   ctx.save();
-  ctx.fillStyle = 'rgba(255, 106, 61, 0.09)';
+  ctx.fillStyle = 'rgba(30, 107, 255, 0.09)';
   ctx.beginPath();
   ctx.arc(center.x, center.y, radiusPx, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.9)';
   ctx.lineWidth = 4;
   ctx.stroke();
-  ctx.strokeStyle = '#ff6a3d';
+  ctx.strokeStyle = '#1e6bff';
   ctx.lineWidth = 2;
   ctx.setLineDash([7, 5]);
   ctx.lineDashOffset = -t / 70;
@@ -704,7 +715,7 @@ export function drawCheckInCircle(ctx: CanvasRenderingContext2D, center: Point2D
     const w = ctx.measureText(label).width + 10;
     const x = center.x - w / 2;
     const y = center.y - radiusPx - 9;
-    ctx.fillStyle = '#ff6a3d';
+    ctx.fillStyle = '#1e6bff';
     ctx.beginPath();
     ctx.roundRect(x, y - 8, w, 16, 8);
     ctx.fill();
@@ -733,7 +744,7 @@ export function drawRoute(ctx: CanvasRenderingContext2D, points: readonly Point2
   ctx.strokeStyle = 'rgba(255,255,255,0.95)';
   ctx.lineWidth = 7;
   ctx.stroke();
-  ctx.strokeStyle = '#ff6a3d';
+  ctx.strokeStyle = '#1e6bff';
   ctx.lineWidth = 3.5;
   ctx.setLineDash([2, 7]);
   ctx.lineDashOffset = -t / 40;
@@ -758,7 +769,7 @@ export function drawDistrictLabels(ctx: CanvasRenderingContext2D, districts: rea
     const p = project(camera, vp, d.center);
     if (p.x < -60 || p.y < -30 || p.x > vp.width + 60 || p.y > vp.height + 30) continue;
     const mine = mineByDistrict.get(d.id) ?? 0;
-    const sub = mine > 0 ? `陣地 ${mine}マス` : undefined;
+    const sub = mine > 0 ? `領地 ${mine}マス` : undefined;
     drawDistrictPill(ctx, { x: p.x, y: tier === 'wide' ? p.y : p.y - 40 }, d, sub, textScale, tier === 'wide' ? 13 : 11);
   }
 }

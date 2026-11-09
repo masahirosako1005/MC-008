@@ -1,0 +1,15 @@
+node_modules
+dist
+dist-demo
+dist-server
+dist-backend
+dist-cms
+.data
+.git
+e2e-output
+coverage
+*.log
+.env
+.env.*
+Password*.txt*
+password*.txt*

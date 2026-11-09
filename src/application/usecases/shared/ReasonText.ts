@@ -84,8 +84,8 @@ function deadlineDto(reason: DeadlineReason, spots: SpotRepository): RevisitReas
  */
 function reclaimDto(reason: ReclaimReason, spots: SpotRepository): RevisitReasonDto {
   const log = logger.fn('reclaimDto', { districtId: reason.districtId, lordCount: reason.lordCount, myCount: reason.myCount, needed: reason.needed });
-  const title = `${districtNameOf(spots, reason.districtId)}の主を${reason.lordName}に奪われた`;
-  const subtitle = `直近${LORD_WINDOW_DAYS}日：${reason.lordName} ${reason.lordCount}回／あなた ${reason.myCount}回・取り返しまであと${reason.needed}回`;
+  const title = `${districtNameOf(spots, reason.districtId)}の領主を${reason.lordName}に奪われた`;
+  const subtitle = `直近${LORD_WINDOW_DAYS}日：${reason.lordName} ${reason.lordCount}回／あなた ${reason.myCount}回・奪還まであと${reason.needed}回`;
   return log.exit({ kind: 'reclaim', title, subtitle, districtId: reason.districtId });
 }
 

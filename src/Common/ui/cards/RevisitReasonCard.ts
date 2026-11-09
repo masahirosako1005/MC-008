@@ -18,7 +18,7 @@ export type RevisitReasonKind = 'deadline' | 'reclaim' | 'fade' | 'unvisited' | 
 /** 種別ごとの見た目 */
 export interface RevisitReasonStyle {
   /** 画面に出す短いラベル（読み上げもこの名前） */
-  readonly label: '期限' | '取り返し' | '色あせ' | '未訪問' | '新着';
+  readonly label: '期限' | '奪還' | '色あせ' | '未達成' | '新着';
   /** 線のアイコン */
   readonly icon: IconName;
 }
@@ -26,9 +26,9 @@ export interface RevisitReasonStyle {
 /** 再訪理由の見た目（全画面で同じ表現にする） */
 export const REVISIT_REASON_STYLE: Readonly<Record<RevisitReasonKind, RevisitReasonStyle>> = {
   deadline: { label: '期限', icon: 'clock' },
-  reclaim: { label: '取り返し', icon: 'flag' },
+  reclaim: { label: '奪還', icon: 'flag' },
   fade: { label: '色あせ', icon: 'fade' },
-  unvisited: { label: '未訪問', icon: 'compass' },
+  unvisited: { label: '未達成', icon: 'compass' },
   new: { label: '新着', icon: 'sparkle' },
 };
 

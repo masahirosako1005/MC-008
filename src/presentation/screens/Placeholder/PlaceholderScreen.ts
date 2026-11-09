@@ -25,7 +25,7 @@ interface PlaceholderInfo {
 
 /** 種類ごとの文言（CLAUDE.md 6.5〜6.7・8.1） */
 export const PLACEHOLDER_INFO: Readonly<Record<PlaceholderKind, PlaceholderInfo>> = {
-  ranking: { title: 'ランキング', plan: '今月の通った回数の表彰台と、各地区の主を見られます。', criteria: 'C 再訪動機' },
+  ranking: { title: 'ランキング', plan: '今月の通った回数の表彰台と、各地区の領主を見られます。', criteria: 'C 再訪動機' },
   settings: { title: '設定', plan: '文字の大きさ（標準／大／特大）を切り替えられます。', criteria: 'A 初回満足度' },
 };
 

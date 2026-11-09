@@ -1,7 +1,7 @@
 /*
  * @file デザイントークン（Common/ui/styles）
- * コンセプト「街で使う、モダンな生活アプリ」：白とクールグレーの面＋地図アプリ風の淡いベースマップ＋アクセント1色（コーラル）。docs/08 §10。
- * ブランド主色はコーラル（--brand）1色。地区色5色（--d-*。名前は旧来のまま）は地区の識別だけに使う。グレーはクールグレー系。
+ * コンセプト「街で使う、モダンな生活アプリ」：白とクールグレーの面＋地図アプリ風の淡いベースマップ＋アクセント1色（ロイヤルブルー）。docs/08 §10。
+ * ブランド主色はロイヤルブルー（--brand）1色（2026-11-09 ユーザー指示でコーラル #ff5a36 から変更）。地区色5色（--d-*。名前は旧来のまま）は地区の識別だけに使う。グレーはクールグレー系。
  * Canvas 側の同じ色は src/Common/ui/theme/palette.ts（PALETTE）に置く。色を変えるときは両方を揃える。
  * 文字拡大: html[data-text-scale] でルートフォント 16/18/20px（docs/08 §6）。サイズは rem で書く。
  * フォント: Noto Sans JP（npm @fontsource/noto-sans-jp を Vite でバンドル＝self ホスト。CSP font-src 'self' を満たす）。
@@ -11,11 +11,43 @@
 @import "@fontsource/noto-sans-jp/700.css";
 
 :root {
-  /* ブランド主色（コーラル）。現在地・主要操作・選択中タブ・「あなた」にだけ使う */
-  --brand: #ff5a36;
-  --brand-ink: #d63d1f;          /* 白地の文字・白文字の塗りボタン（白とのコントラスト 5.0:1） */
-  --brand-soft: #ffede7;
-  --brand-grad: linear-gradient(135deg, #ff7a52 0%, #ff5a36 55%, #e8461f 100%); /* 主要ボタンはフラット（--brand-ink のベタ）。これは強調の帯など限られた所だけ */
+  /*
+   * ===== 色の体系（docs/10_color_system.md）=====
+   * 画面の CSS は、ここにある名前だけで色を書く（白・黒・--ink の透過 rgba は可）。新しい色が要るときはここに名前を足してから使う。
+   * 静的監査（scripts/audit/static-audit.mjs の color-literal）が、ここ以外の直書きを警告する。
+   */
+
+  /* ブランド（ロイヤルブルー）の段。500 が主色。現在地・主要操作・選択中・「あなた」に使う */
+  --brand-50: #eef4ff;
+  --brand-100: #dbe7ff;
+  --brand-200: #b9d1ff;
+  --brand-300: #8bb3ff;
+  --brand-400: #5a90ff;
+  --brand-500: #1e6bff;          /* 白とのコントラスト 4.6:1 */
+  --brand-600: #1556d6;          /* 白文字の塗り・白地の文字（6.2:1） */
+  --brand-700: #1145b0;
+  --brand-800: #0e388c;
+  --brand-900: #0b2a66;
+  --brand: var(--brand-500);
+  --brand-ink: var(--brand-600);
+  --brand-soft: #e8f0ff;
+  --brand-grad: linear-gradient(135deg, var(--brand-400) 0%, var(--brand-500) 55%, var(--brand-700) 100%); /* 主要ボタンはフラット（--brand-ink のベタ）。これは強調の帯など限られた所だけ */
+  /* ゲームの光の差し色（シアン）。夜の盤の光・走る光・ゲージの先にだけ使う */
+  --glow: #5ee0ff;
+  --glow-soft: rgba(94, 224, 255, 0.35);
+
+  /* 夜の盤（ゲームの画面：ランク・ランキングのバトル・起動画面・演出のパネル）。上ほど暗い */
+  --night-950: #070b17;
+  --night-900: #0b1530;
+  --night-800: #111d40;
+  --night-700: #1a2a5a;
+  --night-600: #26397a;
+  --night-line: rgba(255, 255, 255, 0.12);
+  --night-fill: rgba(255, 255, 255, 0.07);   /* 夜の盤の上のマス */
+  --on-night: #ffffff;
+  --on-night-2: rgba(255, 255, 255, 0.76);
+  --on-night-3: rgba(255, 255, 255, 0.5);
+  --night-grad: linear-gradient(160deg, var(--night-700) 0%, var(--night-900) 60%, var(--night-950) 100%);
 
   /* 旧トークン名（他画面の CSS が参照）。ブランド色へ寄せる */
   --accent: var(--brand);
@@ -42,7 +74,7 @@
   --page-bg: #e9ecf1;
   --bezel: #1f2937;              /* PC 表示の端末枠 */
   --bezel-edge: #4b5563;
-  --positive: #10b981;           /* 状態の点（旅人がいる・成功） */
+  --positive: var(--success);    /* 状態の点（旅人がいる・成功） */
   --scrim: rgba(17, 24, 39, 0.45);
   --fx-bg: rgba(17, 24, 39, 0.66);   /* 演出の幕（暗めの半透明＋背景ぼかし。中央に白いカード） */
 
@@ -59,7 +91,7 @@
   --d-rose-ink: #be185d;
 
   /* 意味色 */
-  --gold: #f5b700;               /* 金カード・地区の主の王冠・1位 */
+  --gold: var(--metal-gold);     /* 金カード・地区の主の王冠・1位 */
   --gold-ink: #92400e;
   --gold-grad: linear-gradient(160deg, #fde68a 0%, #f59e0b 55%, #b45309 100%);
   --silver-grad: linear-gradient(160deg, #f9fafb 0%, #d1d5db 50%, #9ca3af 100%);
@@ -67,10 +99,68 @@
   --sepia: #9ca3af;              /* 色あせ（クールグレー。名前は旧来のまま） */
   --sepia-ink: #6b7280;
   --sepia-soft: #f1f3f6;
-  --deadline: #e11d48;           /* 期限・クーポン */
-  --deadline-soft: #ffe4e9;
+  --deadline: var(--danger);     /* 期限・クーポン */
+  --deadline-soft: var(--danger-soft);
   --unknown: #9ca3af;            /* 未発見 */
   --discovered: #6b7280;         /* 発見済み（シルエット） */
+
+  /* 状態の色（意味が決まっている。飾りに使わない）。-ink は白地の文字、-soft は淡い面 */
+  --success: #10b981;
+  --success-ink: #047857;
+  --success-soft: #ecfdf5;
+  --warning: #f59e0b;            /* 注意・おすすめの★・今日だけ */
+  --warning-ink: #b45309;
+  --warning-soft: #fef3c7;
+  --danger: #e11d48;             /* 期限・失った・あと少し（急ぎ） */
+  --danger-ink: #be123c;
+  --danger-soft: #ffe4e9;
+
+  /*
+   * 金属の段（報酬・ランク・レア度で共通の1本のはしご）。銅 → 銀 → 金 → 白金 → 伝説。
+   * 各段: 本体 / -edge（ふち・影） / -light（光・淡い面） / -ink（その上の文字）
+   */
+  --metal-bronze: #e0965f;
+  --metal-bronze-edge: #8f5524;
+  --metal-bronze-light: #fbe0c8;
+  --metal-bronze-ink: #4a2508;
+  --metal-silver: #c9d1dc;
+  --metal-silver-edge: #5b6472;
+  --metal-silver-light: #f1f5f9;
+  --metal-silver-ink: #1f2937;
+  --metal-gold: #f5b700;
+  --metal-gold-edge: #a16207;
+  --metal-gold-light: #fde68a;
+  --metal-gold-ink: #4a3500;
+  --metal-platinum: #3cc8ff;
+  --metal-platinum-edge: #0369a1;
+  --metal-platinum-light: #e6f8ff;
+  --metal-platinum-ink: #082f49;
+  --metal-legend: #cf8cff;
+  --metal-legend-edge: #6b21a8;
+  --metal-legend-light: #f8edff;
+  --metal-legend-ink: #3b0764;
+  --legend-grad: linear-gradient(115deg, #ff5f6d, #ffc371, #f9f871, #6ee7b7, #60a5fa, #a78bfa, #f472b6, #ff5f6d); /* 虹（伝説・★4・SSR） */
+  --metal-gold-soft: #fff6d6;         /* 白地の上の淡い金の面（報酬の札・1位の行など） */
+  --metal-silver-grad: linear-gradient(160deg, var(--metal-silver-light) 0%, var(--metal-silver) 55%, var(--metal-silver-edge) 100%); /* 銀の枠・面 */
+  --metal-gold-grad: linear-gradient(160deg, var(--metal-gold-light) 0%, var(--metal-gold) 55%, var(--metal-gold-edge) 100%);       /* 金の枠・面 */
+  --success-on-night: #6ee7b7;        /* 夜の盤の上の成功色（明るい緑） */
+
+  /* レア度（図鑑 ★1〜★4・アバター N/R/SR/SSR で共通）。金属の段に対応させる */
+  --rarity-1: var(--g3);              /* N／★1 ノーマル */
+  --rarity-2: var(--metal-silver);    /* R／★2 */
+  --rarity-3: var(--metal-gold);      /* SR／★3 */
+  --rarity-4: var(--metal-legend);    /* SSR／★4 レジェンド（面は --legend-grad） */
+
+  /* リーグ（ランキング。リーグの見分けにだけ使う） */
+  --league-kayoi: #7c3aed;
+  --league-kayoi-ink: #5b21b6;
+  --league-kayoi-soft: #f3efff;
+  --league-hajimete: #0d9488;
+  --league-hajimete-ink: #115e59;
+  --league-hajimete-soft: #e6f7f5;
+  --league-rookie: #65a30d;
+  --league-rookie-ink: #3f6212;
+  --league-rookie-soft: #f0f8e2;
 
   /* フォント。見出し・本文とも Noto Sans JP（見出し 700、本文 400〜500。数字は tabular-nums） */
   --font-display: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;

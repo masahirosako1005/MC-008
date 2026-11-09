@@ -330,7 +330,7 @@ export function createSpotIllustration(parent: HTMLElement, model: SpotIllustrat
   parent.append(box);
   let surface: CanvasSurface | undefined;
   surface = createCanvasSurface(box, {
-    ariaLabel: model.status === 'visited' ? `${model.name}の街なみ（訪問済み）` : `${model.name}のシルエット（未訪問）`,
+    ariaLabel: model.status === 'visited' ? `${model.name}の街なみ（達成済み）` : `${model.name}のシルエット（未訪問）`,
     onResize: (size): void => {
       if (surface !== undefined) paintIllustration(surface.ctx, size, model);
     },

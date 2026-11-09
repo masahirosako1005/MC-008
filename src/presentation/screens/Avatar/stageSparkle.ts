@@ -7,6 +7,8 @@
  * 粒の位置・大きさは番号から決まる（乱数・時刻は使わない＝同じ t なら同じ絵）。t は経過秒、unit はアバターの拡大率（約 2.5）。
  */
 
+import { PALETTE } from '@/Common/ui/theme/palette';
+
 /** レア度 */
 export type SparkleRarity = 'N' | 'R' | 'SR' | 'SSR';
 
@@ -17,7 +19,8 @@ const COLORS = {
   heart: '#FF8FC2',
   rim: ['#FF9AC8', '#C9A2FF', '#9ADFFF'],
   rainbow: ['#FF6FB5', '#FFC94D', '#7CE38B', '#5CC8FF', '#A98BFF'],
-  burst: { N: ['#FFFFFF', '#FFD6EC'], R: ['#7DD3FC', '#FFFFFF'], SR: ['#C084FC', '#FFFFFF'], SSR: ['#FF6FB5', '#FFC94D', '#7CE38B', '#5CC8FF', '#A98BFF'] },
+  /** 着替えのキラッの色（レア度の段＝R 銀・SR 金・SSR 伝説の虹。docs/10 の PALETTE に合わせる） */
+  burst: { N: ['#FFFFFF', '#FFD6EC'], R: [PALETTE.metalSilver, '#FFFFFF'], SR: [PALETTE.metalGold, '#FFFFFF'], SSR: ['#FF6FB5', PALETTE.metalGold, '#7CE38B', PALETTE.metalPlatinum, PALETTE.metalLegend] },
 } as const;
 
 /** 「キラッ」の長さ（秒） */

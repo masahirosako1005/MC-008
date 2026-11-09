@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ZukanTileDto } from '@/application/dto/Dto';
 import { stepStatesOf } from '@/presentation/screens/Zukan/CardPreview';
 import { categoryIconOf, isShinyCard, rarityViewOf } from '@/presentation/screens/Zukan/cardFace';
-import { legendTeaserOf, ownedByRarity } from '@/presentation/screens/Zukan/RarityLegend';
+import { ownedByRarity } from '@/presentation/screens/Zukan/RarityLegend';
 
 const base: ZukanTileDto = { id: 'l_jo01', name: 'N西城跡', kind: 'landmark', districtId: 'd_joka', category: '史跡', status: 'visited', visitCount: 2, rarity: 4, rarityName: 'レジェンド' };
 
@@ -35,14 +35,6 @@ describe('cardFace', () => {
     expect(stepStatesOf({ ...base, familiarity: 3 }, 3)).toEqual(['done', 'done', 'next']);
     expect(stepStatesOf({ ...base, rarity: 3, familiarity: 3 }, 3)).toEqual(['done', 'done', 'done']);
     expect(stepStatesOf({ ...base, awakened: true }, 3)).toEqual(['done', 'done', 'done']);
-  });
-
-  it('レジェンドの一言は 覚醒＞すべて入手＞眠っている（すべての地区なら言い回しを変える）', () => {
-    expect(legendTeaserOf([], true)).toBeUndefined();
-    expect(legendTeaserOf([base, { ...base, status: 'unknown' }], true)).toBe('まだ眠っているレジェンドがあります');
-    expect(legendTeaserOf([{ ...base, status: 'unknown' }], false)).toBe('この地区のレジェンドがどこかに眠っています');
-    expect(legendTeaserOf([base, base], true)).toContain('入手済み');
-    expect(legendTeaserOf([base, { ...base, awakened: true }], true)).toContain('極に覚醒');
   });
 
   it('手持ちは訪問済みだけをレア度ごとに数える', () => {

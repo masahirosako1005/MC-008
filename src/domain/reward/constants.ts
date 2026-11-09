@@ -21,13 +21,13 @@ export const GOLD_CARD_VISITS = 10;
 /** 金カード: 同じ地区を訪問した季節の数（四季すべて）（仮） */
 export const GOLD_CARD_SEASONS = 4;
 
-/** 旅人ランクの閾値（累計ポイント。min 昇順）（仮） */
+/** 冒険者ランクの閾値（累計ポイント＝画面では EXP。min 昇順）（仮） */
 export const RANK_THRESHOLDS: readonly { readonly min: number; readonly name: string }[] = [
-  { min: 0, name: 'はじめての旅人' },
-  { min: 50, name: '旅人' },
-  { min: 150, name: '常連' },
-  { min: 400, name: '顔なじみ' },
-  { min: 800, name: '街の名士' },
+  { min: 0, name: '見習い冒険者' },
+  { min: 50, name: '冒険者' },
+  { min: 150, name: 'ベテラン冒険者' },
+  { min: 400, name: '街の英雄' },
+  { min: 800, name: '街の伝説' },
 ];
 
 /** アイテム「のぼり」: 訪問した異なる店舗の数（docs/08 D16）（仮） */

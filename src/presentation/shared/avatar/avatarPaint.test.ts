@@ -3,20 +3,24 @@
  */
 import { describe, expect, it } from 'vitest';
 import type {
-  AccessoryStyle, AvatarHat, AvatarHeld, AvatarLook, AvatarPose, BottomStyle, EyeStyle, HairStyle, PetStyle, ShoeStyle, TopStyle,
+  AccessoryStyle, AvatarHat, AvatarHeld, AvatarLook, AvatarPose, BodyType, BottomStyle, EyeStyle, HairStyle, PetStyle, ShoeStyle, TopStyle,
 } from '@/presentation/shared/avatar/avatarLook';
 import { AVATAR_FOCUS, drawAvatar } from '@/presentation/shared/avatar/avatarPaint';
 
 const HAIRS: readonly HairStyle[] = ['short', 'bob', 'long', 'ponytail', 'bun', 'twintail', 'curly', 'spiky', 'sidepart', 'wolf', 'braid', 'afro'];
 const EYES: readonly EyeStyle[] = ['smile', 'round', 'calm', 'sharp', 'sleepy', 'wink', 'sparkle', 'star'];
-const TOPS: readonly TopStyle[] = ['tee', 'hoodie', 'shirt', 'border', 'knit', 'cardigan', 'sailor', 'happi', 'yukata', 'jacket', 'stadium', 'apron', 'kimono'];
+const TOPS: readonly TopStyle[] = ['tee', 'hoodie', 'shirt', 'border', 'knit', 'cardigan', 'sailor', 'happi', 'yukata', 'jacket', 'stadium', 'apron', 'kimono', 'umeKimono', 'edoKimono', 'retroOnepiece', 'haoriSakura', 'tenjinYukata', 'momijiPoncho', 'downcoat'];
 const BOTTOMS: readonly BottomStyle[] = ['denim', 'shorts', 'skirt', 'longskirt', 'cargo', 'check', 'hakama', 'overall'];
 const SHOES: readonly ShoeStyle[] = ['sneaker', 'loafer', 'boots', 'sandal', 'geta', 'rain', 'highcut'];
-const HATS: readonly AvatarHat[] = ['beret', 'straw', 'crown', 'cap', 'knit', 'hachimaki', 'flower', 'catEars', 'bucket', 'silk', 'halo', 'tiara'];
-const ACCESSORIES: readonly AccessoryStyle[] = ['glasses', 'sunglasses', 'scarf', 'headphones', 'ribbon', 'muffler', 'bandaid', 'pochette', 'medal', 'wings', 'heartglasses'];
-const HELD: readonly AvatarHeld[] = ['camera', 'chochin', 'nobori', 'matsu', 'map', 'guidebook', 'softcream', 'takoyaki', 'balloon', 'umbrella', 'bouquet', 'fishing', 'uchiwa', 'croquette', 'sparkler', 'wand'];
-const PETS: readonly PetStyle[] = ['cat', 'shiba', 'rabbit', 'hiyoko', 'tanuki', 'penguin', 'pigeon', 'dragon', 'fox', 'unicorn'];
+const HATS: readonly AvatarHat[] = ['beret', 'straw', 'crown', 'cap', 'knit', 'hachimaki', 'flower', 'catEars', 'bucket', 'silk', 'halo', 'tiara', 'umeKanzashi', 'sugegasa', 'sakuraKanzashi', 'kitsuneMask', 'momijiBeret'];
+const ACCESSORIES: readonly AccessoryStyle[] = ['glasses', 'sunglasses', 'scarf', 'headphones', 'ribbon', 'muffler', 'bandaid', 'pochette', 'medal', 'wings', 'heartglasses', 'earmuffs'];
+const HELD: readonly AvatarHeld[] = ['camera', 'chochin', 'nobori', 'matsu', 'map', 'guidebook', 'softcream', 'takoyaki', 'balloon', 'umbrella', 'bouquet', 'fishing', 'uchiwa', 'croquette', 'sparkler', 'wand', 'omamori', 'kushikatsu', 'kamifusen', 'filmcamera', 'dango', 'kingyo', 'yakiimo', 'yukidaruma'];
+const PETS: readonly PetStyle[] = ['cat', 'shiba', 'rabbit', 'hiyoko', 'tanuki', 'penguin', 'pigeon', 'dragon', 'fox', 'unicorn', 'uso', 'mejiro', 'tsukimiUsagi'];
 const POSES: readonly AvatarPose[] = ['stand', 'wave', 'jump', 'peace'];
+const BODIES: readonly BodyType[] = ['neutral', 'girl', 'boy'];
+const EMOTES: readonly AvatarPose[] = ['love', 'dance', 'laugh', 'surprise', 'tilt', 'sleepy', 'cry', 'angry', 'cheer', 'spin', 'bow'];
+/** エモートを確かめる経過秒（周期の途中・端・長い時間） */
+const EMOTE_TIMES = [0, 0.11, 0.225, 0.3, 0.45, 0.6, 0.9, 1.2, 1.37, 2.05, 3.1, 7.77];
 
 /** 地図のスプライトの範囲（shared/avatarSprite.ts の AVATAR_BOX と同じ）＋誤差 */
 const BOX = { left: -38, right: 30, top: -76, bottom: 6 };
@@ -165,7 +169,7 @@ const VARIANTS: readonly AvatarLook[] = [
   ...PETS.map((pet) => ({ ...BASE, pet })),
 ];
 
-describe('drawAvatar', () => {
+describe('drawAvatar', { timeout: 60000 }, () => {
   it('すべての部品の種類を止まった絵で描け、save/restore が釣り合う', () => {
     for (const look of VARIANTS) {
       const canvas = fakeCanvas();
@@ -242,6 +246,122 @@ describe('drawAvatar', () => {
     expect(one.bounds().maxY).toBeGreaterThan(0);
     expect(two.bounds().minY).toBeCloseTo(80 + one.bounds().minY * 2, 5);
     expect(two.bounds().maxX).toBeCloseTo(50 + one.bounds().maxX * 2, 5);
+  });
+});
+
+describe('drawAvatar のエモート', { timeout: 60000 }, () => {
+  it('すべてのエモートを、いろいろな経過秒・すべての部品で描け、save/restore が釣り合う', () => {
+    for (const pose of EMOTES) {
+      for (const t of EMOTE_TIMES) {
+        for (const look of VARIANTS) {
+          const canvas = fakeCanvas();
+          expect(() => drawAvatar(canvas.ctx, look, { x: 0, y: 0, scale: 1 }, { pose, t })).not.toThrow();
+          expect(canvas.depth(), `${pose} t=${t}`).toBe(0);
+        }
+      }
+    }
+  });
+
+  it('すべてのエモートが、すべての部品の種類で範囲（x −38〜30・y −76〜6）に収まる', () => {
+    for (const pose of EMOTES) {
+      for (const t of EMOTE_TIMES) {
+        for (const look of VARIANTS) {
+          const canvas = fakeCanvas();
+          drawAvatar(canvas.ctx, look, { x: 0, y: 0, scale: 1 }, { pose, t });
+          expectInBox(canvas.bounds(), `${pose} t=${t} ${JSON.stringify(look)}`);
+        }
+      }
+    }
+  });
+
+  it('高い帽子・盛った髪・頭より高い持ち物・相棒と組み合わせても、エモートは範囲に収まる', () => {
+    const tall: readonly AvatarLook[] = [
+      ...HATS.map((hat) => ({ ...BASE, hair: 'afro' as const, hat, pet: 'unicorn' as const, held: 'umbrella' as const })),
+      ...HATS.map((hat) => ({ ...BASE, hair: 'bun' as const, hat, accessory: 'headphones' as const, held: 'fishing' as const })),
+      ...HATS.map((hat) => ({ ...BASE, hair: 'twintail' as const, hat, accessory: 'wings' as const, held: 'balloon' as const, pet: 'fox' as const })),
+      { ...BASE, hair: 'spiky', hat: 'hachimaki', accessory: 'ribbon', held: 'wand', pet: 'dragon' },
+    ];
+    for (const pose of EMOTES) {
+      for (const t of EMOTE_TIMES) {
+        for (const look of tall) {
+          const canvas = fakeCanvas();
+          drawAvatar(canvas.ctx, look, { x: 0, y: 0, scale: 1 }, { pose, t });
+          expectInBox(canvas.bounds(), `${pose} t=${t} ${look.hair ?? ''}+${look.hat ?? ''}+${look.held}`);
+        }
+      }
+    }
+  });
+
+  it('エモートは動く（同じポーズでも経過秒で絵が変わる）', () => {
+    for (const pose of EMOTES) {
+      const tops = EMOTE_TIMES.map((t) => {
+        const canvas = fakeCanvas();
+        drawAvatar(canvas.ctx, { ...BASE, hair: 'long' }, { x: 0, y: 0, scale: 1 }, { pose, t });
+        const b = canvas.bounds();
+        return `${b.minX.toFixed(2)},${b.maxX.toFixed(2)},${b.minY.toFixed(2)},${b.maxY.toFixed(2)}`;
+      });
+      expect(new Set(tops).size, pose).toBeGreaterThan(1);
+    }
+  });
+
+  it('縮小時（拡大率0.45）もすべてのエモートを描ける', () => {
+    for (const pose of EMOTES) {
+      const canvas = fakeCanvas();
+      expect(() => drawAvatar(canvas.ctx, { ...BASE, hat: 'tiara', pet: 'unicorn', held: 'wand' }, { x: 10, y: 10, scale: 0.45 }, { pose, t: 0.5 })).not.toThrow();
+      expect(canvas.depth()).toBe(0);
+    }
+  });
+});
+
+describe('drawAvatar の性別', () => {
+  /** 体つきが変わりやすい部品（肩幅・袖・首まわり）と、上や横にはみ出しやすい部品 */
+  const looks: readonly AvatarLook[] = [
+    BASE,
+    ...TOPS.map((top) => ({ ...BASE, top })),
+    ...ACCESSORIES.map((accessory) => ({ ...BASE, accessory, top: 'downcoat' as const })),
+    { ...BASE, hair: 'afro', hat: 'sugegasa', accessory: 'earmuffs', held: 'umbrella', pet: 'tsukimiUsagi', top: 'momijiPoncho', bottom: 'overall' },
+    { ...BASE, hair: 'twintail', hat: 'kitsuneMask', accessory: 'wings', held: 'kingyo', pet: 'uso', top: 'retroOnepiece', bottom: 'hakama' },
+    { ...BASE, hair: 'bun', hat: 'umeKanzashi', accessory: 'heartglasses', held: 'fishing', pet: 'mejiro', top: 'tenjinYukata', eyes: 'sparkle' },
+  ];
+
+  it('すべての性別 × すべてのポーズ・エモートで描け、save/restore が釣り合い、範囲に収まる', () => {
+    for (const body of BODIES) {
+      for (const pose of [...POSES.filter((p) => p !== 'jump'), ...EMOTES]) {
+        for (const t of [0, 0.3, 1.37, 3.1]) {
+          for (const look of looks) {
+            const canvas = fakeCanvas();
+            drawAvatar(canvas.ctx, { ...look, body }, { x: 0, y: 0, scale: 1 }, { pose, t });
+            expect(canvas.depth()).toBe(0);
+            expectInBox(canvas.bounds(), `${body} ${pose} t=${t} ${look.top ?? ''}+${look.hat ?? ''}+${look.accessory ?? ''}`);
+          }
+        }
+      }
+    }
+  });
+
+  it('すべての性別で、止まった絵・縮小した絵（地図）がすべての部品で描け、範囲に収まる', () => {
+    for (const body of BODIES) {
+      for (const look of VARIANTS) {
+        for (const scale of [1, 0.45]) {
+          const canvas = fakeCanvas();
+          drawAvatar(canvas.ctx, { ...look, body }, { x: 0, y: 0, scale });
+          expect(canvas.depth()).toBe(0);
+          const b = canvas.bounds();
+          expectInBox({ minX: b.minX / scale, maxX: b.maxX / scale, minY: b.minY / scale, maxY: b.maxY / scale }, `${body} ×${scale} ${JSON.stringify(look)}`);
+        }
+      }
+    }
+  });
+
+  it('女の子は肩幅が狭く、男の子は広い（胴の横幅で見分けられる）', () => {
+    const width = (body: BodyType): number => {
+      const canvas = fakeCanvas();
+      drawAvatar(canvas.ctx, { ...BASE, body, top: 'downcoat', held: 'camera' }, { x: 0, y: 0, scale: 1 });
+      const b = canvas.bounds();
+      return b.maxX - b.minX;
+    };
+    expect(width('girl')).toBeLessThan(width('neutral'));
+    expect(width('boy')).toBeGreaterThanOrEqual(width('neutral'));
   });
 });
 

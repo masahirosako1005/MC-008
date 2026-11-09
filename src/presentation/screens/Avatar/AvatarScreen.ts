@@ -6,21 +6,24 @@
  * - 部品は通った実績で手に入る。ここで手に入れることはできない（歩かずに稼げる仕組みは作らない＝CLAUDE.md 5 章）
  */
 import '@/presentation/screens/Avatar/AvatarScreen.css';
-import type { AvatarClosetDto, AvatarCoordDto, AvatarPartDto } from '@/application/dto/Dto';
+import type { AvatarClosetDto, AvatarCoordDto, AvatarPartDto, AvatarSetDto } from '@/application/dto/Dto';
 import { createLogger, setCorrelationId } from '@/Common/logging/logger';
 import { h } from '@/Common/ui/dom';
 import type { AppContext } from '@/presentation/App/AppContext';
 import type { Screen } from '@/presentation/App/Screen';
+import { createCollectionPanel } from '@/presentation/screens/Avatar/AvatarCollection';
 import { createCoordPanel, createColorChips, createPartDetail, createPartGrid, createPickup, createTitleList } from '@/presentation/screens/Avatar/AvatarPanels';
 import type { PartListInput } from '@/presentation/screens/Avatar/AvatarPanels';
-import { CATEGORIES, clearSlot, equipPart, nearlyUnlockedOf, newCountOf, randomOutfitOf, sameOutfit, slotOfPartId, slotsOfCategory, unequipPart, withTryOn } from '@/presentation/screens/Avatar/avatarScreenModel';
+import { CATEGORIES, clearSlot, equipPart, nearlyUnlockedOf, newCountOf, randomOutfitOf, sameOutfit, slotOfPartId, slotsOfCategory, unequipPart, withTryOn, withSet } from '@/presentation/screens/Avatar/avatarScreenModel';
 import type { CategoryDef, CategoryKey } from '@/presentation/screens/Avatar/avatarScreenModel';
 import { createAvatarIcon } from '@/presentation/screens/Avatar/avatarIcons';
 import { createAvatarStage } from '@/presentation/screens/Avatar/AvatarStage';
+import { composePhoto, savePhoto } from '@/presentation/screens/Avatar/photoFrame';
 import type { AvatarStageHandle } from '@/presentation/screens/Avatar/AvatarStage';
 import { createStageOverlay } from '@/presentation/screens/Avatar/StageOverlay';
 import type { StageOverlayHandle } from '@/presentation/screens/Avatar/StageOverlay';
-import { stageLookOf } from '@/presentation/shared/avatar/avatarLook';
+import { splitPartId, stageLookOf } from '@/presentation/shared/avatar/avatarLook';
+import type { EmoteStyle } from '@/presentation/shared/avatar/avatarLook';
 import type { AvatarPose } from '@/presentation/shared/avatar/avatarLook';
 
 const logger = createLogger('presentation/screens/Avatar/AvatarScreen');
@@ -74,6 +77,8 @@ class AvatarController {
   /** 画面を開いたときの装い（元に戻す） */
   private initialOutfit: readonly string[] = [];
   private tryOnId: string | undefined;
+  /** 試着中のセット（コレクション） */
+  private tryOnSet: AvatarSetDto | undefined;
   private selectedId: string | undefined;
   private category: CategoryKey = 'hair';
   /** いまのカテゴリで見た NEW（カテゴリを離れるときに保存する） */
@@ -84,6 +89,8 @@ class AvatarController {
   private tabs: HTMLElement | undefined;
   private panel: HTMLElement | undefined;
   private disposed = false;
+  /** 開いたときの決めポーズのタイマー */
+  private introTimer: ReturnType<typeof setTimeout> | undefined;
 
   /**
    * 骨組みを作る。
@@ -118,6 +125,19 @@ class AvatarController {
     this.category = this.parts.some((p) => p.isNew) ? 'pickup' : 'hair';
     if (loaded.value.needsSeenBaseline) void this.ctx.services.saveAvatar.execute({ outfit: this.outfit, seenPartIds: this.parts.filter((p) => p.owned).map((p) => p.id) });
     this.render();
+    this.scheduleIntroEmote();
+    log.exit(undefined);
+  }
+
+  /**
+   * 幕が開いたあとに、決めポーズのエモートを1回出す。
+   * @sideEffect タイマーを1つ予約する（unmount で取り消す）
+   */
+  private scheduleIntroEmote(): void {
+    const log = logger.fn('scheduleIntroEmote');
+    const emote = stageLookOf(this.outfit).emote;
+    if (emote === undefined) return log.exit(undefined, '決めポーズなし');
+    this.introTimer = setTimeout(() => this.stage?.playEmote(emote), 950);
     log.exit(undefined);
   }
 
@@ -129,6 +149,7 @@ class AvatarController {
     const log = logger.fn('unmount');
     if (this.saveTimer !== undefined || this.pendingSeen.size > 0) this.flushSeen(true);
     this.disposed = true;
+    if (this.introTimer !== undefined) clearTimeout(this.introTimer);
     this.stage?.destroy();
     this.stage = undefined;
     log.exit(undefined);
@@ -136,7 +157,7 @@ class AvatarController {
 
   /** 表示用の装い（試着を重ねたもの） */
   private preview(): readonly string[] {
-    return withTryOn(this.outfit, this.tryOnId);
+    return withTryOn(this.tryOnSet === undefined ? this.outfit : withSet(this.outfit, this.tryOnSet.partIds), this.tryOnId);
   }
 
   /** 表示している装いに SSR の部品があるか */
@@ -161,12 +182,13 @@ class AvatarController {
     if (closet === undefined) return log.exit(undefined);
     this.stage?.destroy();
     const look = stageLookOf(this.preview());
-    this.stage = createAvatarStage({ stage: look, hasSsr: this.hasSsr(), reducedMotion: prefersReducedMotion(), onTap: (): void => this.stage?.setPose('jump', true) });
+    this.stage = createAvatarStage({ stage: look, hasSsr: this.hasSsr(), reducedMotion: prefersReducedMotion(), onTap: (): void => this.onStageTap() });
     this.overlay = createStageOverlay({
       closet, parts: this.parts, outfit: this.preview(), tryOnId: this.tryOnId,
       onPose: (pose: AvatarPose): void => this.stage?.setPose(pose),
       onUndo: (): void => this.replaceOutfit(this.initialOutfit, '開いたときの服に戻しました'),
-      onRandom: (): void => this.replaceOutfit(randomOutfitOf(this.parts, cryptoRandom), 'おまかせで着替えました'),
+      onRandom: (): void => this.replaceOutfit(randomOutfitOf(this.parts, cryptoRandom, this.outfit), 'おまかせで着替えました'),
+      onPhoto: (): void => void this.takePhoto(),
     });
     const stageBox = h('section', { class: 'avatar-stage', attrs: { 'aria-label': 'アバターのステージ' } }, [this.stage.element, this.overlay.element]);
     this.tabs = h('nav', { class: 'avatar-tabs', attrs: { role: 'tablist', 'aria-label': '着せ替えのカテゴリ' } });
@@ -212,6 +234,7 @@ class AvatarController {
     this.flushSeen();
     this.category = key;
     this.tryOnId = undefined;
+    this.tryOnSet = undefined;
     this.selectedId = undefined;
     this.refreshStage();
     this.renderTabs();
@@ -242,12 +265,21 @@ class AvatarController {
     const goMap = (districtId?: string): void => this.ctx.router.navigate(districtId === undefined ? '#/map' : `#/map/${districtId}`);
     const children: (HTMLElement | undefined)[] = [];
     if (def.key === 'pickup') {
-      children.push(createPickup({ ...input, nearly: nearlyUnlockedOf(this.parts, NEARLY_COUNT), onGoMap: goMap }));
+      children.push(createPickup({ ...input, season: closet.season, nearly: nearlyUnlockedOf(this.parts, NEARLY_COUNT), onGoMap: goMap }));
       this.parts.filter((p) => p.isNew).forEach((p) => this.pendingSeen.add(p.id));
+    } else if (def.key === 'collection') {
+      children.push(createCollectionPanel({
+        sets: closet.sets, parts: this.parts, outfit: this.outfit, season: closet.season, tryingSetId: this.tryOnSet?.id,
+        onTry: (s: AvatarSetDto): void => this.trySet(s), onWear: (s: AvatarSetDto): void => this.wearSet(s), onGoMap: goMap,
+      }));
     } else if (def.key === 'coord') children.push(createCoordPanel(closet.coords, { onWear: (c: AvatarCoordDto): void => this.wearCoord(c), onSave: (i: number): void => void this.saveCoord(i, this.outfit), onDelete: (i: number): void => void this.saveCoord(i, null) }));
     else {
       const selected = this.parts.find((p) => p.id === this.selectedId);
       if (selected !== undefined) children.push(createPartDetail(selected, input, { onStopTryOn: (): void => this.stopTryOn(), onUnequip: (p: AvatarPartDto): void => this.applyOutfit(unequipPart(this.outfit, p.id)), onGoMap: goMap }));
+      if (def.topSlot !== undefined) {
+        const top = def.topSlot;
+        children.push(h('h3', { class: 'avatar-sub', text: def.topLabel ?? '' }), createPartGrid(top, input, (): void => undefined));
+      }
       if (def.chipSlot !== undefined) children.push(createColorChips(def.chipSlot, def.chipLabel ?? '色', input));
       if (def.gridSlot === 'title') children.push(createTitleList(input, (): void => this.applyOutfit(clearSlot(this.outfit, 'title'))));
       else if (def.gridSlot !== undefined) {
@@ -268,11 +300,19 @@ class AvatarController {
   private pick(part: AvatarPartDto): void {
     const log = logger.fn('pick', { id: part.id, owned: part.owned });
     this.selectedId = part.id;
+    const emote = part.slot === 'emote' ? (splitPartId(part.id)?.style as EmoteStyle | undefined) : undefined;
     if (!part.owned) {
-      this.tryOnId = this.tryOnId === part.id ? undefined : part.id;
+      this.tryOnId = this.tryOnId === part.id && emote === undefined ? undefined : part.id;
       this.refreshAll();
-      if (this.tryOnId !== undefined) this.stage?.sparkle(part.rarity);
+      if (emote !== undefined) this.stage?.playEmote(emote);
+      else if (this.tryOnId !== undefined) this.stage?.sparkle(part.rarity);
       return log.exit(undefined, '試着');
+    }
+    if (emote !== undefined) {
+      if (!this.outfit.includes(part.id)) this.applyOutfit(equipPart(this.outfit, part.id).outfit);
+      else this.refreshAll();
+      this.stage?.playEmote(emote);
+      return log.exit(undefined, 'エモート');
     }
     if (this.tryOnId !== undefined && slotOfPartId(this.tryOnId) === part.slot) this.tryOnId = undefined;
     if (this.outfit.includes(part.id)) return log.exit(this.applyOutfit(unequipPart(this.outfit, part.id)), 'はずす');
@@ -283,6 +323,37 @@ class AvatarController {
     }
     this.applyOutfit(result.outfit);
     this.stage?.sparkle(part.rarity);
+    log.exit(undefined);
+  }
+
+  /**
+   * ステージを押したとき。決めポーズがあればそのエモート、なければジャンプ。
+   * @sideEffect ステージの動きを変える
+   */
+  private onStageTap(): void {
+    setCorrelationId();
+    const log = logger.fn('onStageTap');
+    const emote = stageLookOf(this.preview()).emote;
+    if (emote === undefined) this.stage?.setPose('jump', true);
+    else this.stage?.playEmote(emote);
+    log.exit(undefined);
+  }
+
+  /**
+   * 記念撮影する（いまのステージに額と名前を付けて PNG で保存させる）。
+   * @sideEffect 撮影の光を出し、画像のダウンロードを始める。結果をトーストで伝える
+   */
+  private async takePhoto(): Promise<void> {
+    setCorrelationId();
+    const log = logger.fn('takePhoto');
+    const source = this.stage?.capture();
+    const closet = this.closet;
+    if (source === undefined || closet === undefined) return log.fail(undefined, 'ステージが無い');
+    const title = this.parts.find((p) => p.slot === 'title' && this.preview().includes(p.id))?.name;
+    const photo = composePhoto(source, title === undefined ? { nickname: closet.nickname } : { nickname: closet.nickname, title });
+    const saved = photo === undefined ? false : await savePhoto(photo, 'kayoimachi-avatar.png');
+    if (this.disposed) return log.exit(undefined);
+    this.ctx.toast.show(saved ? '写真を保存しました' : '写真を保存できませんでした', { kind: saved ? 'success' : 'error' });
     log.exit(undefined);
   }
 
@@ -313,11 +384,39 @@ class AvatarController {
     setCorrelationId();
     const log = logger.fn('replaceOutfit', { count: outfit.length });
     this.tryOnId = undefined;
+    this.tryOnSet = undefined;
     this.selectedId = undefined;
     this.applyOutfit(outfit);
     this.stage?.setPose('jump', true);
     this.stage?.sparkle('N');
     this.ctx.toast.show(message, { kind: 'success' });
+    log.exit(undefined);
+  }
+
+  /**
+   * セットを試着する（もう一度押すとやめる）。
+   * @param set セット
+   * @sideEffect ステージ・中身を描き直す
+   */
+  private trySet(set: AvatarSetDto): void {
+    const log = logger.fn('trySet', { id: set.id });
+    this.tryOnId = undefined;
+    this.tryOnSet = this.tryOnSet?.id === set.id ? undefined : set;
+    this.refreshAll();
+    if (this.tryOnSet !== undefined) this.stage?.sparkle(set.owned >= set.partIds.length ? 'SSR' : 'SR');
+    log.exit(undefined);
+  }
+
+  /**
+   * セットのうち持っている部品を着る。
+   * @param set セット
+   * @sideEffect 装いを変え、自動保存を予約する
+   */
+  private wearSet(set: AvatarSetDto): void {
+    const log = logger.fn('wearSet', { id: set.id, owned: set.owned });
+    const owned = set.partIds.filter((id) => this.parts.some((p) => p.id === id && p.owned));
+    if (owned.length === 0) return log.exit(undefined, '持っていない');
+    this.replaceOutfit(withSet(this.outfit, owned), set.name + 'を着ました');
     log.exit(undefined);
   }
 
@@ -354,7 +453,7 @@ class AvatarController {
     const log = logger.fn('refreshStage', { tryOnId: this.tryOnId });
     const preview = this.preview();
     this.stage?.update(stageLookOf(preview), this.hasSsr());
-    this.overlay?.update(preview, this.tryOnId, this.parts);
+    this.overlay?.update(preview, this.tryOnId, this.parts, this.tryOnSet?.name);
     log.exit(undefined);
   }
 

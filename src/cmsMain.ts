@@ -1,7 +1,8 @@
 /**
- * @file 店舗CMS（cms.html）のエントリポイント（docs/09 §7.2 フェーズ1）
- * デモビルドだけで動く（MUST-8, SEC-02）。本番ビルドには cms.html 自体を含めない（vite.config.ts）うえ、
- * 万一読み込まれても isDemoBuild でなければ案内だけを出して何もしない（二重の防御）。
+ * @file 店舗CMS（cms.html）のエントリポイント（docs/09 §7.2・§7.3）
+ * - デモビルド：ブラウザだけ（localStorage）か、連携サーバーにつなぐ（VITE_CMS_BACKEND=server）
+ * - 本番（--mode cms）：連携サーバーにつなぐ版だけ。ログインが要る（CmsApp が出す）。利用者アプリの本番ビルドには cms.html を含めない（vite.config.ts）
+ * 本番ビルドでブラウザだけの版が読み込まれても、cmsContainer が DEMO_DISABLED を返して案内だけを出す（MUST-8, SEC-02 の二重の防御）。
  */
 import { isDemoBuild } from '@/Common/constants/env';
 import { createLogger, setCorrelationId } from '@/Common/logging/logger';

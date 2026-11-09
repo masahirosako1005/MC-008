@@ -1,6 +1,6 @@
 /**
  * @file アバターのステージの絵（presentation/shared/avatar。Canvas 描画の純粋関数）
- * アバター画面のステージ（と、その一覧の小さな見本）に敷く「背景」12種と、アバターの横に置く「置くもの」19種を描く。
+ * アバター画面のステージ（と、その一覧の小さな見本）に敷く「背景」24種と、アバターの横に置く「置くもの」19種を描く。
  * キラキラ系（パステル地 #FFF5FB・ピンク／ラベンダー／空色／レモン／ミント・つやの照り・黒い線なし）の背景・置くものを含む。
  * - 背景は矩形 [0,0,w,h] を不透明に塗りきる。地面の線（アバターの足元）は h × STAGE_FLOOR_RATIO。
  *   中央の足元には輪や楕円を描かない（台座・スポットライト・粒子は画面側の stageSparkle が重ねる）。
@@ -787,6 +787,24 @@ function paintRiver(ctx: CanvasRenderingContext2D, r: readonly [number, number, 
 }
 
 /**
+ * ふんわり重なる房の木（幹・房・照り）を描く。桜・紅葉で色だけ変えて使う。
+ * @param ctx 描画先
+ * @param at 幹の X・足元の Y
+ * @param size 高さ（房の半径もここから決める）
+ * @param colors 房の色（順に使う）と照りの色
+ */
+function paintCanopyTree(ctx: CanvasRenderingContext2D, at: Pt, size: number, colors: { readonly puffs: readonly string[]; readonly light: string }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [x, base] = at;
+  const cy = base - size * 0.72;
+  const r = size * 0.34;
+  fillPoly(ctx, [[x - size * 0.04, base], [x + size * 0.04, base], [x + size * 0.02, cy + r * 0.3], [x + size * 0.1, cy], [x + size * 0.07, cy - r * 0.05], [x, cy + r * 0.2], [x - size * 0.08, cy - r * 0.02], [x - size * 0.03, cy + r * 0.4]], '#8c6d62');
+  const puffs: readonly (readonly [number, number, number])[] = [[0, 0, 1], [-0.62, 0.22, 0.7], [0.62, 0.25, 0.72], [-0.32, -0.45, 0.66], [0.36, -0.42, 0.62], [0, 0.42, 0.6]];
+  puffs.forEach(([dx, dy, k], i) => fillDisc(ctx, x + dx * r, cy + dy * r, r * k * 0.62, pick(colors.puffs, i)));
+  fillDisc(ctx, x - r * 0.25, cy - r * 0.35, r * 0.18, colors.light);
+  fillDisc(ctx, x + r * 0.35, cy - r * 0.1, r * 0.14, colors.light);
+}
+
+/**
  * 桜の木（幹と、ふんわり重なる花の房）を描く。
  * @param ctx 描画先
  * @param x 幹の X
@@ -794,13 +812,7 @@ function paintRiver(ctx: CanvasRenderingContext2D, r: readonly [number, number, 
  * @param size 高さ（花の房の半径もここから決める）
  */
 function paintSakuraTree(ctx: CanvasRenderingContext2D, x: number, base: number, size: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  const cy = base - size * 0.72;
-  const r = size * 0.34;
-  fillPoly(ctx, [[x - size * 0.04, base], [x + size * 0.04, base], [x + size * 0.02, cy + r * 0.3], [x + size * 0.1, cy], [x + size * 0.07, cy - r * 0.05], [x, cy + r * 0.2], [x - size * 0.08, cy - r * 0.02], [x - size * 0.03, cy + r * 0.4]], '#8c6d62');
-  const puffs: readonly (readonly [number, number, number])[] = [[0, 0, 1], [-0.62, 0.22, 0.7], [0.62, 0.25, 0.72], [-0.32, -0.45, 0.66], [0.36, -0.42, 0.62], [0, 0.42, 0.6]];
-  puffs.forEach(([dx, dy, k], i) => fillDisc(ctx, x + dx * r, cy + dy * r, r * k * 0.62, i % 2 === 0 ? '#f9bfd6' : '#f6a8c8'));
-  fillDisc(ctx, x - r * 0.25, cy - r * 0.35, r * 0.18, '#fde1ec');
-  fillDisc(ctx, x + r * 0.35, cy - r * 0.1, r * 0.14, '#fde1ec');
+  paintCanopyTree(ctx, [x, base], size, { puffs: ['#f9bfd6', '#f6a8c8'], light: '#fde1ec' });
 }
 
 /**
@@ -1300,6 +1312,1453 @@ function bgIdol(ctx: CanvasRenderingContext2D, w: number, h: number, t: number):
   paintIdolValance(ctx, w, u);
 }
 
+// ---------------------------------------------------------------------------
+// 背景（キラキラ系の追加 8種: 水族館・夜桜・雪のイルミネーション・おかしの国・夏の海・おとぎのお城・パステルカフェ・ゆめの銀河）
+// ---------------------------------------------------------------------------
+
+/**
+ * またたく星を散らす（ときどき4方向のきらめき）。
+ * @param ctx 描画先
+ * @param area x・y・幅・高さ
+ * @param t 経過秒
+ * @param opts 個数・大きさ・種
+ */
+function paintStarField(ctx: CanvasRenderingContext2D, area: readonly [number, number, number, number], t: number, opts: { readonly count: number; readonly size: number; readonly seed: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [ax, ay, aw, ah] = area;
+  for (let i = 0; i < opts.count; i++) {
+    const x = ax + aw * rand01(i, opts.seed);
+    const y = ay + ah * rand01(i, opts.seed + 1);
+    const r = opts.size * (0.5 + rand01(i, opts.seed + 2));
+    withAlpha(ctx, 0.35 + 0.65 * Math.abs(Math.sin(t * 1.2 + i * 2.1)), () => {
+      if (rand01(i, opts.seed + 3) > 0.84) paintSparkle(ctx, x, y, r * 2.6, pick(GLITTER_COLORS, i));
+      else fillDisc(ctx, x, y, r, '#ffffff');
+    });
+  }
+}
+
+/**
+ * 流れ星（周期ごとに1回、指定の位置から斜めに流れる）を描く。
+ * @param ctx 描画先
+ * @param start 流れはじめの X・Y
+ * @param t 経過秒
+ * @param opts 位相・周期（秒）・流れる距離・細部の倍率
+ */
+function paintShootingStarAt(ctx: CanvasRenderingContext2D, start: Pt, t: number, opts: { readonly phase: number; readonly period: number; readonly dist: number; readonly u: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const p = wrap(t + opts.phase, opts.period);
+  if (p > 1) return;
+  const hx = start[0] + opts.dist * p;
+  const hy = start[1] + opts.dist * p * 0.4;
+  const tail = 40 * opts.u;
+  const g = ctx.createLinearGradient(hx, hy, hx - tail, hy - tail * 0.4);
+  g.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+  g.addColorStop(1, 'rgba(201, 162, 255, 0)');
+  ctx.strokeStyle = g;
+  ctx.lineWidth = Math.max(0.6, 1.6 * opts.u);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(hx, hy);
+  ctx.lineTo(hx - tail, hy - tail * 0.4);
+  ctx.stroke();
+  paintSparkle(ctx, hx, hy, 3 * opts.u, '#ffffff');
+}
+
+/**
+ * 空を飛ぶ鳥（V の字・羽ばたき）を描く。
+ * @param ctx 描画先
+ * @param size 幅・高さ
+ * @param t 経過秒
+ * @param opts 色・羽数・細部の倍率
+ */
+function paintFlyingBirds(ctx: CanvasRenderingContext2D, size: { readonly w: number; readonly h: number }, t: number, opts: { readonly color: string; readonly count: number; readonly u: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { w, h } = size;
+  const { u } = opts;
+  for (let i = 0; i < opts.count; i++) {
+    const bx = wrap(t * 10 * u + i * w * 0.33, w + 40 * u) - 20 * u;
+    const by = h * (0.14 + i * 0.06) + Math.sin(t * 3 + i) * 2 * u;
+    const flap = (2.2 + Math.sin(t * 6 + i) * 1.3) * u;
+    strokeLine(ctx, [[bx - 4.5 * u, by - flap], [bx, by], [bx + 4.5 * u, by - flap]], opts.color, 1.2 * u);
+  }
+}
+
+/** 水族館の魚（色・高さの割合・大きさ・速さ。速さの符号が向き） */
+const AQUA_FISH: readonly (readonly [string, number, number, number])[] = [
+  ['#ffb6d9', 0.22, 9, 14], ['#ffe58a', 0.36, 7, -18], ['#a7f3d0', 0.5, 8, 11],
+  ['#d9c8ff', 0.14, 6, -9], ['#bdebff', 0.44, 11, 8], ['#ffd6ec', 0.58, 6, -15],
+];
+
+/**
+ * パステルの魚（しっぽを振る・つやのある体・目）を描く。
+ * @param ctx 描画先
+ * @param c 中心 X・Y・大きさ
+ * @param color 体の色
+ * @param dir 向き（正なら右向き、負なら左向き）
+ * @param t 経過秒
+ */
+function paintFish(ctx: CanvasRenderingContext2D, c: readonly [number, number, number], color: string, dir: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [x, y, s] = c;
+  if (s <= 0) return;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(dir < 0 ? -1 : 1, 1);
+  const wag = Math.sin(t * 6 + x * 0.05) * s * 0.18;
+  fillPoly(ctx, [[-s * 0.8, 0], [-s * 1.55, -s * 0.55 + wag], [-s * 1.45, s * 0.55 + wag]], mixColors(color, '#7a3b8f', 0.12));
+  fillOval(ctx, [0, 0, s, s * 0.58], color);
+  fillPoly(ctx, [[-s * 0.1, -s * 0.5], [s * 0.3, -s * 0.95], [s * 0.45, -s * 0.45]], mixColors(color, '#ffffff', 0.3));
+  fillOval(ctx, [-s * 0.05, -s * 0.24, s * 0.55, s * 0.13], 'rgba(255, 255, 255, 0.6)');
+  fillDisc(ctx, s * 0.55, -s * 0.12, s * 0.17, '#ffffff');
+  fillDisc(ctx, s * 0.59, -s * 0.12, s * 0.09, '#4a2350');
+  ctx.restore();
+}
+
+/**
+ * 上へのぼる泡（白い輪と照り）を描く。
+ * @param ctx 描画先
+ * @param area x・y・幅・高さ
+ * @param t 経過秒
+ * @param opts 個数・大きさ・種
+ */
+function paintBubbles(ctx: CanvasRenderingContext2D, area: readonly [number, number, number, number], t: number, opts: { readonly count: number; readonly size: number; readonly seed: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [ax, ay, aw, ah] = area;
+  for (let i = 0; i < opts.count; i++) {
+    const r = opts.size * (0.6 + rand01(i, opts.seed + 2) * 0.9);
+    const y = ay + ah - wrap(rand01(i, opts.seed + 1) * ah + t * (0.12 + rand01(i, opts.seed + 3) * 0.1) * ah, ah);
+    const x = ax + aw * rand01(i, opts.seed) + Math.sin(t * 2 + i) * r;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+    ctx.lineWidth = Math.max(0.5, opts.size * 0.35);
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    fillDisc(ctx, x - r * 0.35, y - r * 0.35, r * 0.28, 'rgba(255, 255, 255, 0.9)');
+  }
+}
+
+/**
+ * 水面から差す光のゆらめき（波打つ白い筋）を描く。
+ * @param ctx 描画先
+ * @param w 幅
+ * @param bandH ゆらめきを描く上からの高さ
+ * @param t 経過秒
+ * @param u 細部の倍率
+ */
+function paintCaustics(ctx: CanvasRenderingContext2D, w: number, bandH: number, t: number, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  for (let k = 0; k < 6; k++) {
+    const y0 = bandH * (0.1 + k * 0.15);
+    const pts: Pt[] = [];
+    for (let i = 0; i <= 12; i++) pts.push([(i / 12) * w, y0 + Math.sin(i * 1.3 + t * 1.2 + k * 1.7) * 4 * u]);
+    strokeLine(ctx, pts, 'rgba(255, 255, 255, 0.3)', 2.2 * u);
+  }
+}
+
+/**
+ * 水族館のトンネルの枠（アーチの骨組み・ガラスの継ぎ目・照り）を描く。
+ * @param ctx 描画先
+ * @param w 幅
+ * @param hor 床の線の Y（アーチの中心）
+ * @param u 細部の倍率
+ */
+function paintTunnelArch(ctx: CanvasRenderingContext2D, w: number, hor: number, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const cx = w / 2;
+  ctx.lineCap = 'butt';
+  for (const [r, lw, color] of [[w * 0.62, 14, '#eef7ff'], [w * 0.5, 7, 'rgba(230, 244, 255, 0.85)']] as const) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(1, lw * u);
+    ctx.beginPath();
+    ctx.arc(cx, hor, r, Math.PI, Math.PI * 2);
+    ctx.stroke();
+  }
+  for (let i = 1; i < 6; i++) {
+    const a = Math.PI + (Math.PI * i) / 6;
+    strokeLine(ctx, [[cx + Math.cos(a) * w * 0.5, hor + Math.sin(a) * w * 0.5], [cx + Math.cos(a) * w * 0.62, hor + Math.sin(a) * w * 0.62]], 'rgba(230, 244, 255, 0.7)', 2 * u);
+  }
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.lineWidth = Math.max(0.6, 3 * u);
+  ctx.beginPath();
+  ctx.arc(cx, hor, w * 0.56, Math.PI * 1.15, Math.PI * 1.4);
+  ctx.stroke();
+}
+
+/**
+ * ゆれる海藻（太い折れ線）を描く。
+ * @param ctx 描画先
+ * @param x 根元の X
+ * @param base 根元の Y
+ * @param height 高さ
+ * @param opts 経過秒・細部の倍率・色
+ */
+function paintSeaweed(ctx: CanvasRenderingContext2D, x: number, base: number, height: number, opts: { readonly t: number; readonly u: number; readonly color: string }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const pts: Pt[] = [];
+  for (let k = 0; k <= 6; k++) pts.push([x + Math.sin(opts.t * 1.4 + k * 0.8 + x) * k * 0.9 * opts.u, base - (k * height) / 6]);
+  strokeLine(ctx, pts, opts.color, 4.5 * opts.u);
+}
+
+/**
+ * 背景「水族館のトンネル」：青い水・ゆらめく光・泳ぐパステルの魚・のぼる泡・アーチの枠・海藻とサンゴ・光る床。
+ * @param ctx 描画先
+ * @param w 幅
+ * @param h 高さ
+ * @param t 経過秒
+ */
+function bgAquarium(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const u = unitOf(w, h);
+  const hor = h * 0.72;
+  paintSky(ctx, [0, 0, w, hor], ['#5aaee8', '#c4ebff']);
+  paintCaustics(ctx, w, h * 0.34, t, u);
+  withAlpha(ctx, 0.16, () => paintFish(ctx, [wrap(w * 0.75 - t * 5 * u, w + 140 * u) - 70 * u, h * 0.3, 30 * u], '#2f6fb0', -1, t * 0.3));
+  AQUA_FISH.forEach(([color, fy, s, speed], i) => {
+    const span = w + 60 * u;
+    const x = wrap(rand01(i, 131) * span + t * speed * u, span) - 30 * u;
+    paintFish(ctx, [x, h * fy + Math.sin(t * 1.2 + i) * 3 * u, s * u], color, speed, t);
+  });
+  paintBubbles(ctx, [0, 0, w, hor], t, { count: 14, size: 2.6 * u, seed: 141 });
+  paintTunnelArch(ctx, w, hor, u);
+  paintSky(ctx, [0, hor, w, h - hor], ['#dcefff', '#c6dcff']);
+  fillBox(ctx, [0, hor, w, Math.max(1, 2.5 * u)], '#ffffff');
+  for (let i = 1; i <= 4; i++) fillBox(ctx, [0, hor + (h - hor) * Math.pow(i / 5, 1.3), w, Math.max(0.6, u)], 'rgba(255, 255, 255, 0.5)');
+  for (const fx of [0.14, 0.86]) withAlpha(ctx, 0.4 + 0.2 * Math.sin(t * 1.5 + fx * 9), () => fillOval(ctx, [w * fx, h * 0.86, w * 0.08, h * 0.02], '#ffffff'));
+  for (const [fx, color, hh] of [[0.04, '#a7f3d0', 0.3], [0.1, '#7fe0c0', 0.22], [0.92, '#a7f3d0', 0.26], [0.97, '#7fe0c0', 0.34]] as const) {
+    paintSeaweed(ctx, w * fx, hor + 4 * u, h * hh, { t, u, color });
+  }
+  for (const [fx, color] of [[0.18, '#ffb6d9'], [0.8, '#d9c8ff']] as const) {
+    fillDisc(ctx, w * fx, hor + 2 * u, 7 * u, color);
+    fillDisc(ctx, w * fx + 6 * u, hor - 3 * u, 5 * u, mixColors(color, '#ffffff', 0.3));
+    fillDisc(ctx, w * fx - 6 * u, hor - u, 4.5 * u, color);
+  }
+}
+
+/**
+ * ぼんぼり（灯りのともる紙の灯籠）を描く。
+ * @param ctx 描画先
+ * @param x 中心 X
+ * @param base 足元の Y
+ * @param opts 細部の倍率・経過秒
+ */
+function paintBonbori(ctx: CanvasRenderingContext2D, x: number, base: number, opts: { readonly u: number; readonly t: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { u } = opts;
+  paintGlow(ctx, [x, base - 26 * u, 18 * u], '#ffe58a', 0.45 + 0.08 * Math.sin(opts.t * 3 + x));
+  fillBox(ctx, [x - 1.2 * u, base - 20 * u, 2.4 * u, 20 * u], '#c79a6b');
+  fillBox(ctx, [x - 5 * u, base - 32 * u, 10 * u, 12 * u], '#fff4d6', 2 * u);
+  fillBox(ctx, [x - 5 * u, base - 28 * u, 10 * u, u], '#ffb6d9');
+  fillPoly(ctx, [[x - 7 * u, base - 32 * u], [x + 7 * u, base - 32 * u], [x, base - 37 * u]], '#8a5a8c');
+}
+
+/**
+ * 背景「夜桜」：藍色の夜空・月と星・下から照らされた桜の木・ぼんぼり・提灯の列・舞う花びら。
+ * @param ctx 描画先
+ * @param w 幅
+ * @param h 高さ
+ * @param t 経過秒
+ */
+function bgYozakura(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const u = unitOf(w, h);
+  const hor = h * 0.7;
+  paintSky(ctx, [0, 0, w, hor], ['#1e1b4b', '#5b3f95']);
+  paintStarField(ctx, [0, 0, w, hor * 0.6], t, { count: 18, size: 1.1 * u, seed: 151 });
+  paintGlow(ctx, [w * 0.74, h * 0.17, h * 0.22], '#fff3d6', 0.45);
+  fillDisc(ctx, w * 0.74, h * 0.17, h * 0.062, '#fff8e6');
+  fillDisc(ctx, w * 0.725, h * 0.155, h * 0.014, '#f6e9c8');
+  for (let i = 0; i < 9; i++) fillDisc(ctx, ((i + 0.5) * w) / 9, hor - 2 * u, (14 + rand01(i, 152) * 10) * u, '#3a2c7a');
+  paintSky(ctx, [0, hor, w, h - hor], ['#3d3170', '#2a2457']);
+  for (const [fx, size] of [[0.3, 0.42], [0.68, 0.38], [0.07, 0.95], [0.94, 0.85]] as const) {
+    const base = size > 0.5 ? h * 0.94 : hor + 4 * u;
+    paintGlow(ctx, [w * fx, base - h * size * 0.62, h * size * 0.42], '#ff9ccc', 0.4);
+    paintSakuraTree(ctx, w * fx, base, h * size);
+  }
+  for (const fx of [0.2, 0.8]) paintBonbori(ctx, w * fx, h * 0.9, { u, t });
+  paintLanternString(ctx, { w, h }, t, u);
+  paintFallingPetals(ctx, [0, 0, w, h], t, { count: 18, size: 2.4 * u, seed: 155 });
+}
+
+/**
+ * 雪の積もった遠くの街並み（灯りのともる窓）を描く。
+ * @param ctx 描画先
+ * @param size 幅・高さ
+ * @param hor 地面の線の Y
+ * @param u 細部の倍率
+ */
+function paintSnowTown(ctx: CanvasRenderingContext2D, size: { readonly w: number; readonly h: number }, hor: number, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { w, h } = size;
+  const n = 6;
+  const bw = w / n;
+  for (let i = 0; i < n; i++) {
+    const bh = h * (0.16 + rand01(i, 171) * 0.16);
+    const x = i * bw + bw * 0.06;
+    const top = hor - bh;
+    const ww = bw * 0.88;
+    fillBox(ctx, [x, top, ww, bh], i % 2 === 0 ? '#4b5aa6' : '#5967b8');
+    fillBox(ctx, [x - 1.5 * u, top - 2.5 * u, ww + 3 * u, 4 * u], '#f5f7ff', 2 * u);
+    const rows = Math.max(1, Math.floor(bh / (14 * u + 1)));
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < 3; c++) {
+        if (hash2(i * 31 + r, c) % 3 === 0) continue;
+        fillBox(ctx, [x + ww * (0.12 + c * 0.29), top + 6 * u + r * 14 * u, ww * 0.18, 7 * u], '#ffe58a', u);
+      }
+    }
+  }
+}
+
+/** イルミネーションの電球の色 */
+const BULB_COLORS: readonly string[] = ['#ffe58a', '#ff8cc6', '#9adfff', '#a7f3d0', '#c9a2ff', '#ffffff'];
+
+/**
+ * イルミネーションの木（3段のミントの木・雪・またたく電球・てっぺんの星）を描く。
+ * @param ctx 描画先
+ * @param x 幹の X
+ * @param base 足元の Y
+ * @param height 高さ
+ * @param opts 経過秒・細部の倍率
+ */
+function paintLitTree(ctx: CanvasRenderingContext2D, x: number, base: number, height: number, opts: { readonly t: number; readonly u: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { t, u } = opts;
+  const tiers: readonly (readonly [number, number, number])[] = [[0.12, 0.55, 0.26], [0.4, 0.78, 0.2], [0.64, 0.98, 0.14]];
+  fillBox(ctx, [x - 3 * u, base - height * 0.14, 6 * u, height * 0.14], '#a0785a');
+  for (const [b, tp, hw] of tiers) {
+    const by = base - height * b;
+    const ty = base - height * tp;
+    fillPoly(ctx, [[x - height * hw, by], [x + height * hw, by], [x, ty]], '#7fd6b4');
+    fillPoly(ctx, [[x, ty], [x + height * hw, by], [x, by]], '#5fc29e');
+    fillBox(ctx, [x - height * hw * 0.95, by - 2.5 * u, height * hw * 1.9, 3 * u], '#ffffff', 1.5 * u);
+  }
+  for (let i = 0; i < 16; i++) {
+    const tier = tiers[i % 3] ?? [0.12, 0.55, 0.26];
+    const by = base - height * tier[0];
+    const ty = base - height * tier[1];
+    const y = ty + (by - ty) * (0.3 + rand01(i, 181) * 0.65);
+    const half = height * tier[2] * ((y - ty) / (by - ty));
+    const lx = x + (rand01(i, 182) * 2 - 1) * half * 0.8;
+    const color = pick(BULB_COLORS, i);
+    withAlpha(ctx, 0.45 + 0.55 * Math.abs(Math.sin(t * 2.2 + i * 1.3)), () => {
+      paintGlow(ctx, [lx, y, 6 * u], color, 0.7);
+      fillDisc(ctx, lx, y, 1.8 * u, color);
+    });
+  }
+  const top = base - height * 0.98;
+  paintGlow(ctx, [x, top, 18 * u], '#ffe58a', 0.55 + 0.15 * Math.sin(t * 2));
+  paintStar5(ctx, x, top, 7 * u, '#ffe58a');
+}
+
+/**
+ * 上に張った電球の列（たるんだ線・またたく色とりどりの電球）を描く。
+ * @param ctx 描画先
+ * @param size 幅・高さ
+ * @param t 経過秒
+ * @param u 細部の倍率
+ */
+function paintTwinkleString(ctx: CanvasRenderingContext2D, size: { readonly w: number; readonly h: number }, t: number, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { w, h } = size;
+  /**
+   * 線の高さ。
+   * @param x 横の位置
+   * @returns 線の Y
+   */
+  const ropeY = (x: number): number => h * 0.07 + h * 0.09 * 4 * (x / w) * (1 - x / w);
+  const rope: Pt[] = [];
+  for (let i = 0; i <= 16; i++) rope.push([(i / 16) * w, ropeY((i / 16) * w)]);
+  strokeLine(ctx, rope, 'rgba(255, 255, 255, 0.55)', Math.max(0.6, u));
+  const n = 14;
+  for (let i = 0; i < n; i++) {
+    const x = ((i + 0.5) * w) / n;
+    const y = ropeY(x) + 2.5 * u;
+    const color = pick(BULB_COLORS, i);
+    withAlpha(ctx, 0.5 + 0.5 * Math.abs(Math.sin(t * 2 + i * 1.3)), () => {
+      paintGlow(ctx, [x, y, 7 * u], color, 0.7);
+      fillDisc(ctx, x, y, 2.2 * u, color);
+    });
+  }
+}
+
+/**
+ * 舞い落ちる雪（白い粒・ときどききらめき）を描く。
+ * @param ctx 描画先
+ * @param area x・y・幅・高さ
+ * @param t 経過秒
+ * @param opts 個数・大きさ・種
+ */
+function paintSnowfall(ctx: CanvasRenderingContext2D, area: readonly [number, number, number, number], t: number, opts: { readonly count: number; readonly size: number; readonly seed: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [ax, ay, aw, ah] = area;
+  for (let i = 0; i < opts.count; i++) {
+    const speed = 0.08 + rand01(i, opts.seed + 1) * 0.08;
+    const y = ay + wrap(rand01(i, opts.seed + 2) * ah + t * speed * ah, ah);
+    const x = ax + aw * rand01(i, opts.seed) + Math.sin(t * 0.9 + i * 1.7) * opts.size * 4;
+    const r = opts.size * (0.6 + rand01(i, opts.seed + 3) * 0.9);
+    if (rand01(i, opts.seed + 4) > 0.86) paintSparkle(ctx, x, y, r * 2.4, '#ffffff');
+    else withAlpha(ctx, 0.9, () => fillDisc(ctx, x, y, r, '#ffffff'));
+  }
+}
+
+/**
+ * 背景「雪のイルミネーション」：雪の夜の街・イルミネーションの木・電球の列・街灯・積もった雪・舞う雪。
+ * @param ctx 描画先
+ * @param w 幅
+ * @param h 高さ
+ * @param t 経過秒
+ */
+function bgSnowlight(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const u = unitOf(w, h);
+  const hor = h * 0.68;
+  paintSky(ctx, [0, 0, w, hor], ['#2c3a86', '#93a3e6']);
+  paintStarField(ctx, [0, 0, w, hor * 0.4], t, { count: 10, size: u, seed: 175 });
+  paintSnowTown(ctx, { w, h }, hor, u);
+  paintSky(ctx, [0, hor, w, h - hor], ['#f5f7ff', '#e2e8ff']);
+  fillBox(ctx, [0, hor, w, Math.max(1, 2 * u)], '#ffffff');
+  for (const [fx, r] of [[0.04, 26], [0.22, 15], [0.97, 22]] as const) {
+    fillDisc(ctx, w * fx + r * 0.25 * u, h * 0.99 + 2 * u, r * u, '#e3e8ff');
+    fillDisc(ctx, w * fx, h * 0.98, r * u, '#ffffff');
+  }
+  paintObject(ctx, 'lamp', w * 0.12, h * 0.92, 0.95 * u, t);
+  paintLitTree(ctx, w * 0.84, h * 0.92, h * 0.62, { t, u });
+  paintTwinkleString(ctx, { w, h }, t, u);
+  paintSnowfall(ctx, [0, 0, w, h], t, { count: 40, size: 1.7 * u, seed: 177 });
+}
+
+/** トッピングのカラースプレーの色 */
+const SPRINKLE_COLORS: readonly string[] = ['#ff5fa2', '#9adfff', '#ffe58a', '#a7f3d0', '#c9a2ff', '#ffffff'];
+
+/**
+ * カップケーキの丘（クリームの3段・たれ・さくらんぼ・カラースプレー）を描く。
+ * @param ctx 描画先
+ * @param c 丘の中心 X・地面の Y・半径
+ * @param cream クリームの色
+ */
+function paintCupcakeHill(ctx: CanvasRenderingContext2D, c: readonly [number, number, number], cream: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [cx, base, r] = c;
+  const layers: readonly (readonly [number, number, number])[] = [[0, 1, 0], [0.35, 0.68, 0.18], [0.62, 0.4, 0.32]];
+  for (const [dy, k, light] of layers) {
+    ctx.fillStyle = mixColors(cream, '#ffffff', light);
+    ctx.beginPath();
+    ctx.arc(cx, base - r * dy, r * k, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+  }
+  for (let k = 0; k < 5; k++) fillBox(ctx, [cx - r * 0.8 + k * r * 0.36, base - r * 0.12, r * 0.14, r * (0.2 + (k % 2) * 0.12)], cream, r * 0.07);
+  for (let i = 0; i < 7; i++) {
+    const a = Math.PI * (1.1 + rand01(i, 191) * 0.8);
+    const rr = r * (0.45 + rand01(i, 192) * 0.45);
+    fillOval(ctx, [cx + Math.cos(a) * rr, base + Math.sin(a) * rr, r * 0.06, r * 0.022], pick(SPRINKLE_COLORS, i), a);
+  }
+  strokeLine(ctx, [[cx, base - r * 1.1], [cx + r * 0.08, base - r * 1.25]], '#7cbf6a', Math.max(0.6, r * 0.03));
+  fillDisc(ctx, cx, base - r * 1.04, r * 0.12, '#ff5fa2');
+  fillDisc(ctx, cx - r * 0.04, base - r * 1.08, r * 0.035, '#ffffff');
+}
+
+/**
+ * ペロペロキャンディの木（白い棒・うずまき・つや・リボン）を描く。うずまきはゆっくり回る。
+ * @param ctx 描画先
+ * @param at 棒の根元 X・Y
+ * @param height 高さ
+ * @param opts 経過秒・本体と縞の色・細部の倍率
+ */
+function paintLollipop(ctx: CanvasRenderingContext2D, at: Pt, height: number, opts: { readonly t: number; readonly color: string; readonly stripe: string; readonly u: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [x, base] = at;
+  const cy = base - height;
+  const r = height * 0.28;
+  fillBox(ctx, [x - 1.6 * opts.u, cy, 3.2 * opts.u, height], '#ffffff', 1.6 * opts.u);
+  fillDisc(ctx, x, cy, r, opts.color);
+  const pts: Pt[] = [];
+  for (let i = 0; i <= 28; i++) {
+    const a = opts.t * 0.5 + i * 0.45;
+    pts.push([x + Math.cos(a) * r * (i / 28), cy + Math.sin(a) * r * (i / 28)]);
+  }
+  strokeLine(ctx, pts, opts.stripe, r * 0.16);
+  fillOval(ctx, [x - r * 0.4, cy - r * 0.45, r * 0.28, r * 0.14], 'rgba(255, 255, 255, 0.75)', -0.6);
+  fillPoly(ctx, [[x, cy + r * 1.1], [x - r * 0.4, cy + r * 0.9], [x - r * 0.4, cy + r * 1.3]], '#ff8cc6');
+  fillPoly(ctx, [[x, cy + r * 1.1], [x + r * 0.4, cy + r * 0.9], [x + r * 0.4, cy + r * 1.3]], '#ff8cc6');
+}
+
+/**
+ * 包み紙のキャンディ（両端のひねり・縞・つや）を描く。
+ * @param ctx 描画先
+ * @param c 中心 X・Y・大きさ
+ * @param color 色
+ * @param rot 回転
+ */
+function paintWrappedCandy(ctx: CanvasRenderingContext2D, c: readonly [number, number, number], color: string, rot: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [x, y, s] = c;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  const end = mixColors(color, '#ffffff', 0.35);
+  fillPoly(ctx, [[-s * 0.9, 0], [-s * 1.6, -s * 0.55], [-s * 1.6, s * 0.55]], end);
+  fillPoly(ctx, [[s * 0.9, 0], [s * 1.6, -s * 0.55], [s * 1.6, s * 0.55]], end);
+  fillOval(ctx, [0, 0, s, s * 0.7], color);
+  fillBox(ctx, [-s * 0.35, -s * 0.66, s * 0.22, s * 1.32], 'rgba(255, 255, 255, 0.55)');
+  fillOval(ctx, [-s * 0.4, -s * 0.32, s * 0.3, s * 0.13], 'rgba(255, 255, 255, 0.85)', -0.4);
+  ctx.restore();
+}
+
+/**
+ * クッキーの飛び石（左手前から奥へ。中央の足元は通らない）を描く。
+ * @param ctx 描画先
+ * @param size 幅・高さ
+ * @param hor 地面の線の Y
+ * @param u 細部の倍率
+ */
+function paintCookiePath(ctx: CanvasRenderingContext2D, size: { readonly w: number; readonly h: number }, hor: number, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { w, h } = size;
+  for (let i = 6; i >= 0; i--) {
+    const p = i / 6;
+    const x = w * (0.08 + 0.34 * p) + Math.sin(p * 3) * w * 0.04;
+    const y = h * 0.95 - (h * 0.95 - hor - 6 * u) * p;
+    const r = (13 - p * 8) * u;
+    fillOval(ctx, [x, y + r * 0.12, r, r * 0.55], '#d39a5e');
+    fillOval(ctx, [x, y, r, r * 0.52], '#efc184');
+    for (let k = 0; k < 3; k++) {
+      fillDisc(ctx, x + (rand01(i * 3 + k, 201) - 0.5) * r * 1.2, y + (rand01(i * 3 + k, 202) - 0.5) * r * 0.5, r * 0.12, '#8a5a3c');
+    }
+  }
+}
+
+/**
+ * 地面に散らしたカラースプレー（中央の足元はあける）を描く。
+ * @param ctx 描画先
+ * @param area x・y・幅・高さ
+ * @param opts 個数・大きさ・種
+ */
+function paintSprinkles(ctx: CanvasRenderingContext2D, area: readonly [number, number, number, number], opts: { readonly count: number; readonly size: number; readonly seed: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [ax, ay, aw, ah] = area;
+  for (let i = 0; i < opts.count; i++) {
+    const x = ax + aw * rand01(i, opts.seed);
+    if (Math.abs(x - (ax + aw / 2)) < aw * 0.2) continue;
+    const y = ay + ah * (0.1 + rand01(i, opts.seed + 1) * 0.85);
+    fillOval(ctx, [x, y, opts.size, opts.size * 0.38], pick(SPRINKLE_COLORS, i), rand01(i, opts.seed + 2) * Math.PI);
+  }
+}
+
+/**
+ * 背景「おかしの国」：パステルの空・わたあめの雲・浮かぶキャンディ・カップケーキの丘・クリームの地面・クッキーの道・ペロペロキャンディの木。
+ * @param ctx 描画先
+ * @param w 幅
+ * @param h 高さ
+ * @param t 経過秒
+ */
+function bgCandy(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const u = unitOf(w, h);
+  const hor = h * 0.66;
+  paintSky(ctx, [0, 0, w, hor], ['#ffe0f1', '#e0f4ff']);
+  paintPuffyCloud(ctx, wrap(w * 0.1 + t * 3 * u, w + 80 * u) - 70 * u, h * 0.24, 0.9 * u);
+  paintPuffyCloud(ctx, wrap(w * 0.66 + t * 2 * u, w + 80 * u) - 70 * u, h * 0.14, 0.7 * u);
+  for (let i = 0; i < 3; i++) {
+    const y = h * (0.12 + (i % 2) * 0.12) + Math.sin(t * 1.3 + i) * 3 * u;
+    paintWrappedCandy(ctx, [w * (0.2 + i * 0.3), y, 5 * u], pick(BOKEH_COLORS, i), Math.sin(t * 0.8 + i) * 0.3);
+  }
+  paintCupcakeHill(ctx, [w * 0.22, hor, h * 0.2], '#ffb6d9');
+  paintCupcakeHill(ctx, [w * 0.55, hor, h * 0.14], '#c4b5fd');
+  paintCupcakeHill(ctx, [w * 0.86, hor, h * 0.23], '#a7f3d0');
+  paintSky(ctx, [0, hor, w, h - hor], ['#ffd6ea', '#ffc4df']);
+  const step = Math.max(4, 14 * u);
+  for (let x = 0, i = 0; x < w + step; x += step, i++) {
+    fillDisc(ctx, x, hor, step * 0.55, '#fff0f7');
+    if (i % 3 === 0) fillBox(ctx, [x - step * 0.12, hor, step * 0.24, step * (0.6 + (i % 2) * 0.4)], '#fff0f7', step * 0.12);
+  }
+  paintCookiePath(ctx, { w, h }, hor, u);
+  paintSprinkles(ctx, [0, hor, w, h - hor], { count: 30, size: 2.6 * u, seed: 205 });
+  paintLollipop(ctx, [w * 0.7, hor + 6 * u], h * 0.22, { t, color: '#ffe58a', stripe: '#ff8cc6', u });
+  paintLollipop(ctx, [w * 0.08, h * 0.98], h * 0.5, { t, color: '#ffb6d9', stripe: '#ffffff', u });
+  paintLollipop(ctx, [w * 0.92, h * 0.96], h * 0.44, { t: t + 2, color: '#9adfff', stripe: '#fff5fb', u });
+  paintFloatingCharms(ctx, [0, 0, w, hor * 0.8], t, { count: 6, size: 3.5 * u, seed: 209 });
+}
+
+/**
+ * ビーチパラソル（ピンクと白の縞・波形のふち・金のつまみ）を描く。
+ * @param ctx 描画先
+ * @param at 柄の根元 X・Y
+ * @param height 高さ
+ * @param u 細部の倍率
+ */
+function paintParasol(ctx: CanvasRenderingContext2D, at: Pt, height: number, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [x, base] = at;
+  const tx = x + height * 0.12;
+  const ty = base - height * 0.72;
+  const r = height * 0.42;
+  strokeLine(ctx, [[x, base], [tx, ty - r * 0.9]], '#f4a6c8', 2.4 * u);
+  for (let k = 0; k < 6; k++) {
+    ctx.fillStyle = k % 2 === 0 ? '#ff8cc6' : '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.arc(tx, ty, r, Math.PI + (k * Math.PI) / 6, Math.PI + ((k + 1) * Math.PI) / 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(tx - r + (k + 0.5) * (r / 3), ty, r / 6, 0, Math.PI);
+    ctx.fill();
+  }
+  fillPoly(ctx, [[tx - r * 0.5, ty - r * 0.6], [tx - r * 0.2, ty - r * 0.92], [tx - r * 0.1, ty - r * 0.85], [tx - r * 0.42, ty - r * 0.52]], 'rgba(255, 255, 255, 0.45)');
+  fillDisc(ctx, tx, ty - r, 2.4 * u, '#ffe58a');
+}
+
+/**
+ * ヤシの木（ふしのある幹・ゆれる葉・ココナッツ）を描く。
+ * @param ctx 描画先
+ * @param at 幹の根元 X・Y
+ * @param height 高さ
+ * @param opts 経過秒・細部の倍率
+ */
+function paintPalm(ctx: CanvasRenderingContext2D, at: Pt, height: number, opts: { readonly t: number; readonly u: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [x, base] = at;
+  const { u } = opts;
+  for (let k = 0; k < 8; k++) {
+    const p = k / 8;
+    fillOval(ctx, [x - Math.sin(p * 1.2) * height * 0.18, base - p * height, 5 * u * (1 - p * 0.3), 4.4 * u], k % 2 === 0 ? '#d7a97a' : '#c4935f');
+  }
+  const top: Pt = [x - Math.sin(1.2) * height * 0.18, base - height];
+  const sway = Math.sin(opts.t * 1.1) * 0.06;
+  const leaves = [-2.75, -2.2, -1.6, -0.95, -0.35, 0.2];
+  leaves.forEach((a, i) => {
+    const len = height * (0.36 + (i % 2) * 0.06);
+    ctx.save();
+    ctx.translate(top[0], top[1]);
+    ctx.rotate(a + sway);
+    fillPoly(ctx, [[0, 0], [len * 0.5, -len * 0.14], [len, len * 0.2], [len * 0.5, len * 0.05]], i % 2 === 0 ? '#5fd3a0' : '#7fe0b8');
+    ctx.restore();
+  });
+  for (const dx of [-3, 2, 6]) fillDisc(ctx, top[0] + dx * u, top[1] + 4 * u, 3 * u, '#c79a7a');
+}
+
+/**
+ * 砂浜の貝がら（扇の形・すじ）を描く。
+ * @param ctx 描画先
+ * @param c 中心 X・Y・大きさ
+ * @param color 色
+ */
+function paintShell(ctx: CanvasRenderingContext2D, c: readonly [number, number, number], color: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [x, y, s] = c;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y + s * 0.6);
+  ctx.arc(x, y + s * 0.6, s * 1.2, Math.PI * 1.2, Math.PI * 1.8);
+  ctx.closePath();
+  ctx.fill();
+  for (let k = 1; k < 5; k++) {
+    const a = Math.PI * (1.2 + k * 0.12);
+    strokeLine(ctx, [[x, y + s * 0.6], [x + Math.cos(a) * s * 1.1, y + s * 0.6 + Math.sin(a) * s * 1.1]], mixColors(color, '#8a4f7d', 0.25), s * 0.12);
+  }
+}
+
+/**
+ * 背景「夏の海」：明るい空と太陽・雲・ヨット・きらめく海・寄せる波・砂浜・パラソル・ヤシの木・貝とヒトデ・カモメ。
+ * @param ctx 描画先
+ * @param w 幅
+ * @param h 高さ
+ * @param t 経過秒
+ */
+function bgBeach(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const u = unitOf(w, h);
+  const seaTop = h * 0.42;
+  const shore = h * 0.6;
+  paintSky(ctx, [0, 0, w, seaTop], ['#7fd0ff', '#e8f8ff']);
+  paintGlow(ctx, [w * 0.15, h * 0.12, h * 0.22], '#fff3b0', 0.65);
+  fillDisc(ctx, w * 0.15, h * 0.12, h * 0.055, '#fff7c2');
+  paintPuffyCloud(ctx, wrap(w * 0.45 + t * 3 * u, w + 80 * u) - 70 * u, h * 0.22, 0.8 * u);
+  paintSky(ctx, [0, seaTop, w, shore - seaTop], ['#56c6f2', '#a6e9ff']);
+  fillBox(ctx, [0, seaTop, w, Math.max(1, 1.5 * u)], 'rgba(255, 255, 255, 0.7)');
+  const bx = wrap(w * 0.62 + t * 4 * u, w + 40 * u) - 20 * u;
+  fillPoly(ctx, [[bx - 7 * u, seaTop + 3 * u], [bx + 7 * u, seaTop + 3 * u], [bx + 5 * u, seaTop + 6 * u], [bx - 5 * u, seaTop + 6 * u]], '#ffffff');
+  fillPoly(ctx, [[bx, seaTop + 2 * u], [bx, seaTop - 12 * u], [bx + 7 * u, seaTop + 2 * u]], '#ffd6ec');
+  for (let i = 0; i < 16; i++) {
+    const sx = wrap(rand01(i, 221) * w + t * (4 + (i % 3) * 3) * u, w + 20 * u) - 10 * u;
+    const sy = seaTop + (shore - seaTop) * (0.15 + rand01(i, 222) * 0.75);
+    if (i % 2 === 0) fillBox(ctx, [sx, sy, (8 + rand01(i, 223) * 10) * u, Math.max(0.6, 1.4 * u)], 'rgba(255, 255, 255, 0.6)');
+    else withAlpha(ctx, Math.abs(Math.sin(t * 2.5 + i)), () => paintSparkle(ctx, sx, sy, 3 * u, '#ffffff'));
+  }
+  paintSky(ctx, [0, shore, w, h - shore], ['#fff1c9', '#ffe0a3']);
+  fillBox(ctx, [0, shore, w, h * 0.035], '#ffe7b8');
+  const step = Math.max(3, 12 * u);
+  for (let x = 0, i = 0; x < w + step; x += step, i++) fillDisc(ctx, x + Math.sin(t * 1.2 + i) * 2 * u, shore, step * 0.46, '#ffffff');
+  paintParasol(ctx, [w * 0.12, h * 0.94], h * 0.5, u);
+  paintPalm(ctx, [w * 0.9, h * 0.93], h * 0.62, { t, u });
+  paintStar5(ctx, w * 0.27, h * 0.93, 6 * u, '#ff9eb5');
+  fillDisc(ctx, w * 0.27, h * 0.93, 1.4 * u, '#ffd6ec');
+  paintShell(ctx, [w * 0.75, h * 0.95, 5 * u], '#ffd6ec');
+  paintShell(ctx, [w * 0.8, h * 0.88, 4 * u], '#d9c8ff');
+  paintFlyingBirds(ctx, { w, h }, t, { color: '#8a4f7d', count: 3, u });
+}
+
+/**
+ * おとぎのお城の塔（壁・窓・とんがり屋根・はためく旗）を描く。
+ * @param ctx 描画先
+ * @param b 塔の範囲
+ * @param colors 壁・屋根・旗の色
+ * @param opts 経過秒・細部の倍率
+ */
+function paintCastleTower(ctx: CanvasRenderingContext2D, b: ArtBox, colors: { readonly wall: string; readonly roof: string; readonly flag: string }, opts: { readonly t: number; readonly u: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { u } = opts;
+  const top = b.base - b.h;
+  fillBox(ctx, [b.x, top, b.w, b.h], colors.wall);
+  fillBox(ctx, [b.x + b.w * 0.7, top, b.w * 0.3, b.h], mixColors(colors.wall, '#7a3b8f', 0.08));
+  fillBox(ctx, [b.x + b.w * 0.33, top + b.h * 0.2, b.w * 0.34, b.h * 0.22], '#9adfff', b.w * 0.17);
+  const tipX = b.x + b.w / 2;
+  const tipY = top - b.w * 1.3;
+  fillPoly(ctx, [[b.x - b.w * 0.15, top], [b.x + b.w * 1.15, top], [tipX, tipY]], colors.roof);
+  fillPoly(ctx, [[tipX, tipY], [b.x + b.w * 1.15, top], [tipX, top]], mixColors(colors.roof, '#7a3b8f', 0.15));
+  strokeLine(ctx, [[tipX, tipY], [tipX, tipY - 9 * u]], '#c9a2ff', Math.max(0.6, u));
+  const wave = Math.sin(opts.t * 3 + b.x) * 1.5 * u;
+  fillPoly(ctx, [[tipX, tipY - 9 * u], [tipX + 8 * u, tipY - 7 * u + wave], [tipX, tipY - 4.5 * u]], colors.flag);
+}
+
+/**
+ * おとぎのお城（パステルの本丸・左右の塔・真ん中の高い塔・門・ハート）を描く。
+ * @param ctx 描画先
+ * @param cx 中心 X
+ * @param base 足元の Y
+ * @param opts 高さ・経過秒・細部の倍率
+ */
+function paintCastle(ctx: CanvasRenderingContext2D, cx: number, base: number, opts: { readonly height: number; readonly t: number; readonly u: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { height } = opts;
+  const keepW = height * 0.42;
+  const tw = height * 0.16;
+  const side = { wall: '#efe6ff', roof: '#c9a2ff', flag: '#ffe58a' };
+  paintCastleTower(ctx, { x: cx - keepW * 0.5 - tw * 0.7, base, w: tw, h: height * 0.55 }, side, opts);
+  paintCastleTower(ctx, { x: cx + keepW * 0.5 - tw * 0.3, base, w: tw, h: height * 0.55 }, side, opts);
+  const keepTop = base - height * 0.42;
+  fillBox(ctx, [cx - keepW / 2, keepTop, keepW, height * 0.42], '#ffe3f1');
+  for (let k = 0; k < 5; k++) fillBox(ctx, [cx - keepW / 2 + k * keepW * 0.22, keepTop - height * 0.04, keepW * 0.12, height * 0.045], '#ffe3f1');
+  paintCastleTower(ctx, { x: cx - height * 0.1, base: keepTop + 1, w: height * 0.2, h: height * 0.3 }, { wall: '#fff0f7', roof: '#ff8cc6', flag: '#a7f3d0' }, opts);
+  fillBox(ctx, [cx - keepW * 0.14, base - height * 0.2, keepW * 0.28, height * 0.2], '#f4a6c8', keepW * 0.14);
+  fillBox(ctx, [cx - keepW * 0.36, keepTop + height * 0.08, keepW * 0.12, height * 0.09], '#9adfff', keepW * 0.06);
+  fillBox(ctx, [cx + keepW * 0.24, keepTop + height * 0.08, keepW * 0.12, height * 0.09], '#9adfff', keepW * 0.06);
+  fillHeart(ctx, [cx, base - height * 0.29, height * 0.035], '#ff8cc6');
+}
+
+/**
+ * 背景「おとぎのお城」：パステルの空・虹・雲・丘の上のお城・きらめき・花の野原。
+ * @param ctx 描画先
+ * @param w 幅
+ * @param h 高さ
+ * @param t 経過秒
+ */
+function bgCastle(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const u = unitOf(w, h);
+  const hor = h * 0.7;
+  paintSky(ctx, [0, 0, w, hor], ['#cde7ff', '#ffe6f3']);
+  paintSoftRainbow(ctx, [w * 0.3, hor, Math.max(w, h) * 0.42], Math.max(1, 6 * u));
+  paintPuffyCloud(ctx, wrap(w * 0.05 + t * 3 * u, w + 80 * u) - 70 * u, h * 0.2, 0.85 * u);
+  paintPuffyCloud(ctx, wrap(w * 0.7 + t * 2 * u, w + 80 * u) - 70 * u, h * 0.12, 0.6 * u);
+  ctx.fillStyle = '#d3f5e0';
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.1, hor);
+  ctx.quadraticCurveTo(w * 0.2, hor - h * 0.16, w * 0.5, hor);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#bfeccf';
+  ctx.beginPath();
+  ctx.moveTo(w * 0.3, hor);
+  ctx.quadraticCurveTo(w * 0.72, hor - h * 0.3, w * 1.1, hor);
+  ctx.closePath();
+  ctx.fill();
+  paintCastle(ctx, w * 0.72, hor - h * 0.13, { height: h * 0.42, t, u });
+  for (let i = 0; i < 6; i++) {
+    const a = 0.4 + 0.6 * Math.abs(Math.sin(t * 1.8 + i * 1.7));
+    withAlpha(ctx, a, () => paintSparkle(ctx, w * (0.56 + rand01(i, 231) * 0.36), h * (0.08 + rand01(i, 232) * 0.4), (2.5 + a * 2) * u, pick(GLITTER_COLORS, i)));
+  }
+  paintSky(ctx, [0, hor, w, h - hor], ['#ccf7df', '#b3eccb']);
+  for (let i = 0; i < 18; i++) {
+    const x = w * rand01(i, 233);
+    if (Math.abs(x - w / 2) < w * 0.18) continue;
+    fillDisc(ctx, x, hor + (h - hor) * (0.1 + rand01(i, 234) * 0.85), 2.2 * u, pick(['#ffb6d9', '#ffe58a', '#ffffff', '#c9a2ff'], i));
+  }
+  paintFloatingCharms(ctx, [0, 0, w * 0.5, hor * 0.7], t, { count: 5, size: 3.5 * u, seed: 239 });
+}
+
+/**
+ * カフェの窓（空と雲・縞の日よけ・窓台の鉢植え）を描く。
+ * @param ctx 描画先
+ * @param r 窓の x・y・幅・高さ
+ * @param t 経過秒
+ * @param u 細部の倍率
+ */
+function paintCafeWindow(ctx: CanvasRenderingContext2D, r: readonly [number, number, number, number], t: number, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [x, y, ww, wh] = r;
+  fillBox(ctx, [x - 4 * u, y - 4 * u, ww + 8 * u, wh + 8 * u], '#ffffff', 4 * u);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, ww, wh);
+  ctx.clip();
+  paintSky(ctx, [x, y, ww, wh], ['#bfe8ff', '#fff0f7']);
+  paintCloud(ctx, x + wrap(t * 5 * u + ww * 0.3, ww + 50 * u) - 30 * u, y + wh * 0.5, 26 * u);
+  ctx.restore();
+  fillBox(ctx, [x + ww / 2 - 1.5 * u, y, 3 * u, wh], '#ffffff');
+  fillBox(ctx, [x, y + wh * 0.55, ww, 3 * u], '#ffffff');
+  const n = 6;
+  for (let k = 0; k < n; k++) {
+    const color = k % 2 === 0 ? '#ff8cc6' : '#ffffff';
+    fillBox(ctx, [x - 6 * u + (k * (ww + 12 * u)) / n, y - 12 * u, (ww + 12 * u) / n, 9 * u], color);
+    fillDisc(ctx, x - 6 * u + ((k + 0.5) * (ww + 12 * u)) / n, y - 3 * u, (ww + 12 * u) / n / 2, color);
+  }
+  fillBox(ctx, [x - 6 * u, y + wh + 4 * u, ww + 12 * u, 4 * u], '#ffe3f0', u);
+  for (const fx of [0.2, 0.7]) {
+    fillBox(ctx, [x + ww * fx, y + wh - 4 * u, 8 * u, 8 * u], '#a7f3d0', 2 * u);
+    fillDisc(ctx, x + ww * fx + 4 * u, y + wh - 7 * u, 4 * u, '#ffb6d9');
+  }
+}
+
+/**
+ * カフェの棚（カップ・ガラスのびん・ケーキスタンド）を描く。
+ * @param ctx 描画先
+ * @param r 棚の x・y・幅・高さ
+ * @param u 細部の倍率
+ */
+function paintCafeShelf(ctx: CanvasRenderingContext2D, r: readonly [number, number, number, number], u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [x, y, sw, sh] = r;
+  const boards = [y + sh * 0.45, y + sh];
+  boards.forEach((by, row) => {
+    for (let k = 0; k < 4; k++) {
+      const cx = x + sw * (0.12 + k * 0.25);
+      const color = pick(BOKEH_COLORS, k + row);
+      if ((k + row) % 2 === 0) {
+        fillBox(ctx, [cx - 5 * u, by - 8 * u, 10 * u, 8 * u], color, 2.5 * u);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(0.6, 1.6 * u);
+        ctx.beginPath();
+        ctx.arc(cx + 5.5 * u, by - 4 * u, 2.4 * u, -Math.PI / 2, Math.PI / 2);
+        ctx.stroke();
+      } else {
+        fillBox(ctx, [cx - 4.5 * u, by - 13 * u, 9 * u, 13 * u], 'rgba(224, 244, 255, 0.9)', 2 * u);
+        fillBox(ctx, [cx - 3.5 * u, by - 7 * u, 7 * u, 6 * u], color, u);
+        fillBox(ctx, [cx - 5 * u, by - 15 * u, 10 * u, 3 * u], '#f4a6c8', u);
+      }
+    }
+    fillBox(ctx, [x, by, sw, 4 * u], '#f4c9dd', u);
+  });
+}
+
+/**
+ * 吊り下げの照明（コード・パステルのかさ・灯り。ゆっくり揺れる）を描く。
+ * @param ctx 描画先
+ * @param size 幅・高さ
+ * @param t 経過秒
+ * @param u 細部の倍率
+ */
+function paintPendantLights(ctx: CanvasRenderingContext2D, size: { readonly w: number; readonly h: number }, t: number, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { w, h } = size;
+  [0.26, 0.5, 0.74].forEach((fx, i) => {
+    const len = h * (0.12 + (i % 2) * 0.04);
+    ctx.save();
+    ctx.translate(w * fx, 0);
+    ctx.rotate(Math.sin(t * 0.9 + i * 1.4) * 0.04);
+    strokeLine(ctx, [[0, 0], [0, len]], '#c9a2ff', Math.max(0.6, u));
+    paintGlow(ctx, [0, len + 6 * u, 22 * u], '#ffe58a', 0.45);
+    ctx.fillStyle = pick(['#ffb6d9', '#a7f3d0', '#c9a2ff'], i);
+    ctx.beginPath();
+    ctx.arc(0, len + 6 * u, 9 * u, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+    fillDisc(ctx, 0, len + 7 * u, 3 * u, '#fff7d6');
+    fillOval(ctx, [-4 * u, len + 2 * u, 2.4 * u, 1.2 * u], 'rgba(255, 255, 255, 0.7)', -0.5);
+    ctx.restore();
+  });
+}
+
+/**
+ * 上に飾った三角の旗（ガーランド）を描く。
+ * @param ctx 描画先
+ * @param size 幅・高さ
+ * @param u 細部の倍率
+ */
+function paintBunting(ctx: CanvasRenderingContext2D, size: { readonly w: number; readonly h: number }, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { w, h } = size;
+  /**
+   * ひもの高さ。
+   * @param x 横の位置
+   * @returns ひもの Y
+   */
+  const ropeY = (x: number): number => h * 0.03 + h * 0.05 * 4 * (x / w) * (1 - x / w);
+  const rope: Pt[] = [];
+  for (let i = 0; i <= 16; i++) rope.push([(i / 16) * w, ropeY((i / 16) * w)]);
+  strokeLine(ctx, rope, '#f4a6c8', Math.max(0.6, u));
+  const n = 11;
+  for (let i = 0; i < n; i++) {
+    const x0 = (i * w) / n + 2 * u;
+    const x1 = ((i + 1) * w) / n - 2 * u;
+    const xm = (x0 + x1) / 2;
+    fillPoly(ctx, [[x0, ropeY(x0)], [x1, ropeY(x1)], [xm, ropeY(xm) + 12 * u]], pick(BOKEH_COLORS, i));
+  }
+}
+
+/**
+ * ケーキのショーケース（ミントの台・ガラスの棚・いちごのショートケーキ・つや）を描く。
+ * @param ctx 描画先
+ * @param at 左端の X・足元の Y
+ * @param size 幅・高さ
+ * @param u 細部の倍率
+ */
+function paintCakeCase(ctx: CanvasRenderingContext2D, at: Pt, size: { readonly w: number; readonly h: number }, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [x, base] = at;
+  const { w: cw, h: ch } = size;
+  fillBox(ctx, [x, base - ch * 0.45, cw, ch * 0.45], '#c9f2e3', 3 * u);
+  for (let k = 1; k < 4; k++) fillBox(ctx, [x + (k * cw) / 4, base - ch * 0.4, Math.max(0.6, u), ch * 0.36], '#ffffff');
+  fillBox(ctx, [x + cw * 0.05, base - ch, cw * 0.9, ch * 0.55], 'rgba(224, 244, 255, 0.9)', 4 * u);
+  for (let k = 0; k < 3; k++) {
+    const cx = x + cw * (0.22 + k * 0.28);
+    const cy = base - ch * 0.5;
+    const s = ch * 0.16;
+    fillPoly(ctx, [[cx - s, cy], [cx + s, cy], [cx + s * 0.2, cy - s * 0.9], [cx - s * 0.2, cy - s * 0.9]], '#fff1c9');
+    fillBox(ctx, [cx - s * 0.82, cy - s * 0.5, s * 1.64, s * 0.14], pick(['#ffb6d9', '#c9a2ff', '#a7f3d0'], k));
+    fillBox(ctx, [cx - s * 0.3, cy - s * 1.02, s * 0.6, s * 0.16], '#ffffff', s * 0.08);
+    fillDisc(ctx, cx, cy - s * 1.12, s * 0.2, '#ff5fa2');
+  }
+  fillBox(ctx, [x + cw * 0.05, base - ch * 0.47, cw * 0.9, 2 * u], '#ffffff');
+  fillPoly(ctx, [[x + cw * 0.12, base - ch * 0.98], [x + cw * 0.24, base - ch * 0.98], [x + cw * 0.12, base - ch * 0.5], [x + cw * 0.06, base - ch * 0.5]], 'rgba(255, 255, 255, 0.55)');
+  fillBox(ctx, [x + cw * 0.03, base - ch - 2 * u, cw * 0.94, 3 * u], '#f4a6c8', 1.5 * u);
+}
+
+/**
+ * 背景「パステルカフェ」：ストライプの壁・腰板・窓と日よけ・棚・ガーランド・吊り照明・市松の床・ケーキのショーケース・鉢植え。
+ * @param ctx 描画先
+ * @param w 幅
+ * @param h 高さ
+ * @param t 経過秒
+ */
+function bgCafe(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const u = unitOf(w, h);
+  const wallBottom = h * 0.64;
+  fillBox(ctx, [0, 0, w, wallBottom], '#fff0f6');
+  const step = Math.max(4, 18 * u);
+  for (let x = step / 2; x < w; x += step) fillBox(ctx, [x, 0, Math.max(1, 6 * u), wallBottom], '#ffe4ef');
+  fillBox(ctx, [0, wallBottom - h * 0.12, w, h * 0.12], '#d3f3e6');
+  fillBox(ctx, [0, wallBottom - h * 0.12, w, Math.max(1, 2.5 * u)], '#ffffff');
+  for (let x = step; x < w; x += step * 2) fillBox(ctx, [x, wallBottom - h * 0.1, Math.max(0.6, u), h * 0.08], '#b9e9d6');
+  paintCafeWindow(ctx, [w * 0.07, h * 0.16, w * 0.26, h * 0.28], t, u);
+  paintCafeShelf(ctx, [w * 0.66, h * 0.14, w * 0.28, h * 0.32], u);
+  paintBunting(ctx, { w, h }, u);
+  paintPendantLights(ctx, { w, h }, t, u);
+  const rows = 5;
+  const cols = 9;
+  for (let r = 0; r < rows; r++) {
+    const y0 = wallBottom + (h - wallBottom) * Math.pow(r / rows, 1.2);
+    const y1 = wallBottom + (h - wallBottom) * Math.pow((r + 1) / rows, 1.2);
+    for (let c = 0; c < cols; c++) fillBox(ctx, [(c * w) / cols, y0, w / cols + 0.5, y1 - y0 + 0.5], (r + c) % 2 === 0 ? '#ffe3f0' : '#ffffff');
+  }
+  fillBox(ctx, [0, wallBottom, w, Math.max(1, 2.5 * u)], '#f4c9dd');
+  paintCakeCase(ctx, [w * 0.02, h * 0.95], { w: w * 0.3, h: h * 0.32 }, u);
+  paintObject(ctx, 'plant', w * 0.9, h * 0.95, 1.1 * u, t);
+}
+
+/**
+ * 輪のある惑星（後ろの輪・本体と縞・つや・前の輪・まわる小さな月）を描く。
+ * @param ctx 描画先
+ * @param c 中心 X・Y・半径
+ * @param colors 本体・縞・輪の色
+ * @param t 経過秒
+ */
+function paintRingedPlanet(ctx: CanvasRenderingContext2D, c: readonly [number, number, number], colors: { readonly body: string; readonly band: string; readonly ring: string }, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [x, y, r] = c;
+  /**
+   * 輪の半分を描く。
+   * @param from 開始角
+   * @param to 終了角
+   */
+  const ring = (from: number, to: number): void => { // audit-ignore: fnlog-missing 毎フレーム描画
+    ctx.strokeStyle = colors.ring;
+    ctx.lineWidth = Math.max(0.8, r * 0.2);
+    ctx.beginPath();
+    ctx.ellipse(x, y, r * 1.75, r * 0.45, -0.3, from, to);
+    ctx.stroke();
+  };
+  ring(Math.PI, Math.PI * 2);
+  fillDisc(ctx, x, y, r, colors.body);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.clip();
+  fillBox(ctx, [x - r, y - r * 0.2, r * 2, r * 0.22], colors.band);
+  fillBox(ctx, [x - r, y + r * 0.35, r * 2, r * 0.14], colors.band);
+  fillDisc(ctx, x + r * 0.35, y + r * 0.35, r * 0.95, 'rgba(122, 59, 143, 0.16)');
+  ctx.restore();
+  fillOval(ctx, [x - r * 0.4, y - r * 0.45, r * 0.32, r * 0.16], 'rgba(255, 255, 255, 0.75)', -0.6);
+  ring(0, Math.PI);
+  const a = t * 0.6;
+  fillDisc(ctx, x + Math.cos(a) * r * 2.3, y + Math.sin(a) * r * 0.8, r * 0.18, '#fff6d8');
+}
+
+/**
+ * 背景「ゆめの銀河」：紫と青の星雲・天の川・たくさんの星・輪のある惑星と小さな惑星・流れ星・星くずの床。
+ * @param ctx 描画先
+ * @param w 幅
+ * @param h 高さ
+ * @param t 経過秒
+ */
+function bgGalaxy(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const u = unitOf(w, h);
+  const hor = h * 0.74;
+  paintSky(ctx, [0, 0, w, hor], ['#140c3d', '#43309a']);
+  const pulse = 0.04 * Math.sin(t * 0.7);
+  paintGlow(ctx, [w * 0.22, h * 0.32, h * 0.38], '#ff8cc6', 0.36 + pulse);
+  paintGlow(ctx, [w * 0.78, h * 0.26, h * 0.34], '#9adfff', 0.3 - pulse);
+  paintGlow(ctx, [w * 0.5, h * 0.1, h * 0.3], '#c9a2ff', 0.38);
+  withAlpha(ctx, 0.14, () => fillPoly(ctx, [[0, h * 0.56], [w * 0.2, h * 0.62], [w, h * 0.1], [w * 0.8, 0]], '#e9ddff'));
+  paintStarField(ctx, [0, 0, w, hor], t, { count: 60, size: u, seed: 241 });
+  paintRingedPlanet(ctx, [w * 0.8, h * 0.2, h * 0.075], { body: '#ffb6d9', band: '#ff8cc6', ring: '#d9c8ff' }, t);
+  fillDisc(ctx, w * 0.14, h * 0.16, h * 0.042, '#9adfff');
+  fillDisc(ctx, w * 0.13, h * 0.15, h * 0.01, '#7cc6ec');
+  fillDisc(ctx, w * 0.155, h * 0.175, h * 0.007, '#7cc6ec');
+  fillOval(ctx, [w * 0.125, h * 0.145, h * 0.012, h * 0.006], 'rgba(255, 255, 255, 0.8)', -0.6);
+  fillDisc(ctx, w * 0.32, h * 0.5, h * 0.022, '#a7f3d0');
+  paintShootingStarAt(ctx, [w * 0.1, h * 0.06], t, { phase: 0.5, period: 5, dist: w * 0.5, u });
+  paintShootingStarAt(ctx, [w * 0.5, h * 0.02], t, { phase: 3.2, period: 7, dist: w * 0.4, u });
+  paintSky(ctx, [0, hor, w, h - hor], ['#4a37a8', '#291c6a']);
+  withAlpha(ctx, 0.7, () => fillBox(ctx, [0, hor, w, Math.max(1, 2 * u)], '#c9a2ff'));
+  for (let i = 0; i < 22; i++) {
+    const x = w * rand01(i, 251);
+    if (Math.abs(x - w / 2) < w * 0.18) continue;
+    withAlpha(ctx, 0.3 + 0.7 * Math.abs(Math.sin(t * 2 + i)), () => paintSparkle(ctx, x, hor + (h - hor) * (0.15 + rand01(i, 252) * 0.8), (1.4 + rand01(i, 253) * 2) * u, pick(GLITTER_COLORS, i)));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 背景（土地・季節: 今昔館の江戸の町・中崎町のレトロ路地・天神祭の夜・紅葉の公園）
+// ---------------------------------------------------------------------------
+
+/**
+ * 今昔館の天井に描かれた「空」（夕方の空・平たい雲・天井の梁・ゆっくり変わる明るさ）を描く。
+ * @param ctx 描画先
+ * @param size 幅・高さ
+ * @param t 経過秒
+ * @param u 細部の倍率
+ */
+function paintPaintedCeiling(ctx: CanvasRenderingContext2D, size: { readonly w: number; readonly h: number }, t: number, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { w, h } = size;
+  const bottom = h * 0.4;
+  paintSky(ctx, [0, 0, w, bottom], ['#ffd9c2', '#efe1ff']);
+  const bands: readonly (readonly [number, number, number])[] = [[0.06, 0.13, 0.34], [0.52, 0.08, 0.3], [0.3, 0.24, 0.26], [0.76, 0.2, 0.22]];
+  for (const [fx, fy, fw] of bands) {
+    const bh = Math.max(2, 7 * u);
+    fillBox(ctx, [w * fx, h * fy, w * fw, bh], '#fff6ee', bh / 2);
+    fillBox(ctx, [w * fx + w * fw * 0.2, h * fy - bh * 0.7, w * fw * 0.45, bh], '#fff6ee', bh / 2);
+  }
+  withAlpha(ctx, 0.1 + 0.06 * Math.sin(t * 0.4), () => fillBox(ctx, [0, 0, w, bottom], '#ffe58a'));
+  fillBox(ctx, [0, 0, w, Math.max(1.5, 4 * u)], '#c49a78');
+  for (let x = 0; x < w; x += Math.max(8, 60 * u)) fillBox(ctx, [x, 0, Math.max(1, 3 * u), Math.max(2, 9 * u)], '#c49a78');
+}
+
+/**
+ * 火の見櫓（淡い藤色のシルエット・はしごの段・すじかい・屋根と半鐘）を描く。
+ * @param ctx 描画先
+ * @param x 中心 X
+ * @param base 足元の Y
+ * @param height 高さ
+ * @param u 細部の倍率
+ */
+function paintWatchtower(ctx: CanvasRenderingContext2D, x: number, base: number, height: number, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const c = '#b9a9dc';
+  const top = base - height;
+  const half = height * 0.12;
+  /**
+   * k 段目の高さと半幅。
+   * @param k 段（0=足元）
+   * @returns Y と半幅
+   */
+  const rung = (k: number): readonly [number, number] => [base - (height * 0.85 * k) / 5, half - (half * 0.55 * k) / 5]; // audit-ignore: fnlog-missing 毎フレーム描画
+  strokeLine(ctx, [[x - half, base], [x - half * 0.45, top + height * 0.12]], c, 2.4 * u);
+  strokeLine(ctx, [[x + half, base], [x + half * 0.45, top + height * 0.12]], c, 2.4 * u);
+  for (let k = 0; k < 5; k++) {
+    const [y0, hw0] = rung(k);
+    const [y1, hw1] = rung(k + 1);
+    strokeLine(ctx, [[x - hw1, y1], [x + hw1, y1]], c, 1.4 * u);
+    strokeLine(ctx, [[x - hw0, y0], [x + hw1, y1]], c, 0.9 * u);
+  }
+  fillBox(ctx, [x - half * 0.7, top + height * 0.1, half * 1.4, height * 0.05], c);
+  fillPoly(ctx, [[x - half * 0.75, top + height * 0.1], [x + half * 0.75, top + height * 0.1], [x, top]], c);
+  fillDisc(ctx, x, top + height * 0.075, height * 0.025, '#ffe58a');
+}
+
+/** 江戸の町家ののれんの色 */
+const MACHIYA_NOREN: readonly string[] = ['#8aa0e6', '#ff9ccc', '#7fd6b4', '#c9a2ff'];
+
+/**
+ * 江戸の町家の建物（瓦屋根・2階の虫籠窓・ひさし・1階の格子と店の入口）を描く。
+ * @param ctx 描画先
+ * @param b 範囲
+ * @param u 細部の倍率
+ */
+function paintMachiya(ctx: CanvasRenderingContext2D, b: ArtBox, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const top = b.base - b.h;
+  const midY = top + b.h * 0.42;
+  fillBox(ctx, [b.x, top + b.h * 0.08, b.w, midY - top - b.h * 0.08], '#fff3e6');
+  fillBox(ctx, [b.x + b.w * 0.2, top + b.h * 0.16, b.w * 0.6, b.h * 0.14], '#e8d2b8', u);
+  for (let k = 0; k < 7; k++) fillBox(ctx, [b.x + b.w * (0.22 + k * 0.08), top + b.h * 0.16, Math.max(0.8, b.w * 0.035), b.h * 0.14], '#b98a62');
+  fillBox(ctx, [b.x - 2 * u, top, b.w + 4 * u, b.h * 0.09], '#857fa8', u);
+  for (let x = b.x; x < b.x + b.w; x += Math.max(3, 8 * u)) fillBox(ctx, [x, top + b.h * 0.02, Math.max(0.6, u), b.h * 0.06], '#a49fc7');
+  fillPoly(ctx, [[b.x - 4 * u, midY], [b.x + b.w + 4 * u, midY], [b.x + b.w + u, midY - b.h * 0.06], [b.x - u, midY - b.h * 0.06]], '#857fa8');
+  fillBox(ctx, [b.x - 3 * u, midY - b.h * 0.06, b.w + 6 * u, Math.max(0.6, 1.2 * u)], '#a49fc7');
+  fillBox(ctx, [b.x, midY, b.w, b.base - midY], '#e3b88c');
+  fillBox(ctx, [b.x + b.w * 0.04, midY + b.h * 0.06, b.w * 0.5, b.base - midY - b.h * 0.08], '#f6dfc2');
+  for (let x = b.x + b.w * 0.05; x < b.x + b.w * 0.54; x += Math.max(2, 4.5 * u)) fillBox(ctx, [x, midY + b.h * 0.06, Math.max(0.6, 1.4 * u), b.base - midY - b.h * 0.08], '#b07d55');
+  fillBox(ctx, [b.x + b.w * 0.6, midY + b.h * 0.04, b.w * 0.34, b.base - midY - b.h * 0.04], '#ffe2b0');
+  fillBox(ctx, [b.x, midY, Math.max(1, 2.5 * u), b.base - midY], '#b07d55');
+  fillBox(ctx, [b.x + b.w - Math.max(1, 2.5 * u), midY, Math.max(1, 2.5 * u), b.base - midY], '#b07d55');
+}
+
+/**
+ * 町家の店先（入口の灯り・ゆれるのれん・吊り看板）を描く。
+ * @param ctx 描画先
+ * @param b 範囲（paintMachiya と同じ）
+ * @param opts 模様の種・のれんの色・経過秒・細部の倍率
+ */
+function paintMachiyaShop(ctx: CanvasRenderingContext2D, b: ArtBox, opts: { readonly seed: number; readonly color: string; readonly t: number; readonly u: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { u, t } = opts;
+  const midY = b.base - b.h + b.h * 0.42;
+  const nx = b.x + b.w * 0.6;
+  const nw = b.w * 0.34;
+  paintGlow(ctx, [nx + nw / 2, midY + b.h * 0.3, b.w * 0.4], '#ffe58a', 0.4 + 0.06 * Math.sin(t * 2.4 + opts.seed));
+  for (let k = 0; k < 3; k++) {
+    const sway = Math.sin(t * 1.4 + k + opts.seed) * 1.2 * u;
+    const x0 = nx + (k * nw) / 3 + 0.5 * u;
+    const x1 = nx + ((k + 1) * nw) / 3 - 0.5 * u;
+    fillPoly(ctx, [[x0, midY + u], [x1, midY + u], [x1 + sway, midY + b.h * 0.24], [x0 + sway, midY + b.h * 0.24]], opts.color);
+  }
+  fillDisc(ctx, nx + nw / 2, midY + b.h * 0.12, Math.max(0.8, b.w * 0.04), '#ffffff');
+  ctx.save();
+  ctx.translate(b.x + b.w * 0.28, midY + 2 * u);
+  ctx.rotate(Math.sin(t * 1.1 + opts.seed) * 0.06);
+  strokeLine(ctx, [[-b.w * 0.08, 0], [-b.w * 0.08, b.h * 0.03]], '#8a6a52', Math.max(0.5, 0.8 * u));
+  strokeLine(ctx, [[b.w * 0.08, 0], [b.w * 0.08, b.h * 0.03]], '#8a6a52', Math.max(0.5, 0.8 * u));
+  fillBox(ctx, [-b.w * 0.14, b.h * 0.03, b.w * 0.28, b.h * 0.1], '#f5e2c4', u);
+  fillBox(ctx, [-b.w * 0.1, b.h * 0.055, b.w * 0.2, Math.max(0.6, 1.2 * u)], '#a77f68');
+  fillBox(ctx, [-b.w * 0.07, b.h * 0.09, b.w * 0.14, Math.max(0.6, 1.2 * u)], '#a77f68');
+  ctx.restore();
+}
+
+/**
+ * 背景「今昔館の江戸の町」：天井に描かれた空・火の見櫓・瓦屋根の町家の並び・のれん・吊り看板・店先の灯り・土の道・ぼんぼり。
+ * @param ctx 描画先
+ * @param w 幅
+ * @param h 高さ
+ * @param t 経過秒
+ */
+function bgEdo(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const u = unitOf(w, h);
+  const hor = h * 0.66;
+  paintPaintedCeiling(ctx, { w, h }, t, u);
+  paintWatchtower(ctx, w * 0.64, hor - h * 0.2, h * 0.42, u);
+  const n = 4;
+  const hw = w / n;
+  for (let i = 0; i < n; i++) {
+    const b: ArtBox = { x: i * hw + hw * 0.03, base: hor, w: hw * 0.94, h: h * (0.44 + (i % 2) * 0.04) };
+    paintMachiya(ctx, b, u);
+    paintMachiyaShop(ctx, b, { seed: i, color: pick(MACHIYA_NOREN, i), t, u });
+  }
+  paintSky(ctx, [0, hor, w, h - hor], ['#f4e2c8', '#ead2b0']);
+  fillBox(ctx, [0, hor, w, h * 0.025], '#d9c2a2');
+  for (let x = 0, i = 0; x < w; x += Math.max(4, 16 * u), i++) fillBox(ctx, [x, hor + h * 0.006, Math.max(2, 12 * u), h * 0.013], i % 2 === 0 ? '#cdb594' : '#c4aa86', u);
+  paintBonbori(ctx, w * 0.08, h * 0.95, { u, t });
+  paintBonbori(ctx, w * 0.92, h * 0.95, { u, t });
+}
+
+/** 中崎町の路地の左右の壁の色 */
+const ALLEY_WALLS: readonly { readonly wall: string; readonly plank: string; readonly awning: string }[] = [
+  { wall: '#f6dcc4', plank: '#e2bd9c', awning: '#ff9ccc' },
+  { wall: '#e9e0f7', plank: '#cfc2ea', awning: '#7fd6b4' },
+];
+
+/**
+ * 路地の壁の上の点（遠近。奥の端は画面の中央寄りに縮む）。
+ * @param size 幅・高さ
+ * @param side 左なら -1、右なら 1
+ * @param s 奥行き（0=手前の端、1=奥の端）
+ * @param v 壁の上端 0〜下端 1
+ * @returns 点
+ */
+function alleyPt(size: { readonly w: number; readonly h: number }, side: -1 | 1, s: number, v: number): Pt { // audit-ignore: fnlog-missing 毎フレーム描画
+  const x = size.w * 0.36 * s;
+  const top = size.h * (0.06 + 0.3 * s);
+  const bottom = size.h * (0.94 - 0.28 * s);
+  return [side < 0 ? x : size.w - x, top + (bottom - top) * v];
+}
+
+/**
+ * 路地の壁の上の四角（奥行き s0〜s1、高さ v0〜v1）を塗る。
+ * @param ctx 描画先
+ * @param size 幅・高さ
+ * @param side 左なら -1、右なら 1
+ * @param r s0・s1・v0・v1
+ * @param fill 塗り色
+ */
+function fillAlleyQuad(ctx: CanvasRenderingContext2D, size: { readonly w: number; readonly h: number }, side: -1 | 1, r: readonly [number, number, number, number], fill: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [s0, s1, v0, v1] = r;
+  fillPoly(ctx, [alleyPt(size, side, s0, v0), alleyPt(size, side, s1, v0), alleyPt(size, side, s1, v1), alleyPt(size, side, s0, v1)], fill);
+}
+
+/**
+ * 路地の片側の古い木の家（板張り・ひさし・灯りの窓・カフェのドア・日よけ・鉢植え）を描く。
+ * @param ctx 描画先
+ * @param size 幅・高さ
+ * @param side 左なら -1、右なら 1
+ * @param u 細部の倍率
+ */
+function paintAlleyWall(ctx: CanvasRenderingContext2D, size: { readonly w: number; readonly h: number }, side: -1 | 1, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const colors = ALLEY_WALLS[side < 0 ? 0 : 1] ?? { wall: '#f6dcc4', plank: '#e2bd9c', awning: '#ff9ccc' };
+  fillAlleyQuad(ctx, size, side, [0, 1, 0, 1], colors.wall);
+  for (let k = 1; k < 9; k++) strokeLine(ctx, [alleyPt(size, side, 0, k / 9), alleyPt(size, side, 1, k / 9)], colors.plank, Math.max(0.5, u));
+  fillAlleyQuad(ctx, size, side, [0, 1, -0.07, 0.02], '#9b7d8e');
+  fillAlleyQuad(ctx, size, side, [0.18, 0.42, 0.2, 0.46], '#ffffff');
+  fillAlleyQuad(ctx, size, side, [0.2, 0.4, 0.23, 0.43], '#ffe9b8');
+  fillAlleyQuad(ctx, size, side, [0.55, 0.75, 0.45, 1], '#b48a6e');
+  fillAlleyQuad(ctx, size, side, [0.58, 0.72, 0.5, 0.72], '#ffe9b8');
+  for (let k = 0; k < 6; k++) fillAlleyQuad(ctx, size, side, [0.08 + k * 0.07, 0.15 + k * 0.07, 0.5, 0.58], k % 2 === 0 ? colors.awning : '#ffffff');
+  for (const s of [0.05, 0.3, 0.5, 0.82]) {
+    const [px, py] = alleyPt(size, side, s, 1);
+    const ps = (14 - s * 9) * u;
+    const cx = px + side * -ps * 0.6;
+    fillPoly(ctx, [[cx - ps * 0.5, py - ps * 0.7], [cx + ps * 0.5, py - ps * 0.7], [cx + ps * 0.38, py], [cx - ps * 0.38, py]], '#e58357');
+    fillDisc(ctx, cx - ps * 0.2, py - ps * 0.95, ps * 0.42, '#5fd3a0');
+    fillDisc(ctx, cx + ps * 0.22, py - ps * 1.05, ps * 0.38, '#7fe0b8');
+    fillDisc(ctx, cx, py - ps * 1.3, ps * 0.16, pick(['#ff8cc6', '#ffe58a', '#ffffff', '#c9a2ff'], Math.round(s * 10)));
+  }
+}
+
+/**
+ * 路地の奥の家（板壁・屋根・灯りの窓）と、路地の石畳を描く。
+ * @param ctx 描画先
+ * @param size 幅・高さ
+ * @param u 細部の倍率
+ */
+function paintAlleyEndAndFloor(ctx: CanvasRenderingContext2D, size: { readonly w: number; readonly h: number }, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { w, h } = size;
+  fillBox(ctx, [w * 0.36, h * 0.38, w * 0.28, h * 0.28], '#fbe9dc');
+  fillBox(ctx, [w * 0.34, h * 0.35, w * 0.32, h * 0.04], '#9b7d8e', u);
+  fillBox(ctx, [w * 0.42, h * 0.43, w * 0.07, h * 0.08], '#ffe9b8', u);
+  fillBox(ctx, [w * 0.53, h * 0.46, w * 0.07, h * 0.2], '#b48a6e', u);
+  fillBox(ctx, [w * 0.41, h * 0.52, w * 0.09, h * 0.02], '#ff9ccc', u);
+  fillPoly(ctx, [[w * 0.36, h * 0.66], [w * 0.64, h * 0.66], [w, h * 0.94], [w, h], [0, h], [0, h * 0.94]], '#efe2d0');
+  for (let k = 0; k <= 6; k++) strokeLine(ctx, [[w * (0.36 + (0.28 * k) / 6), h * 0.66], [w * (-0.3 + (1.6 * k) / 6), h]], '#ded0bb', Math.max(0.5, u));
+  for (let i = 1; i <= 4; i++) {
+    const p = Math.pow(i / 5, 1.3);
+    const y = h * 0.66 + h * 0.34 * p;
+    const half = w * (0.14 + 0.5 * p);
+    fillBox(ctx, [w / 2 - half, y, half * 2, Math.max(0.5, u)], '#ded0bb');
+  }
+}
+
+/**
+ * 路地に渡した電球の列（奥行きの違う3本・またたく）を描く。
+ * @param ctx 描画先
+ * @param size 幅・高さ
+ * @param t 経過秒
+ * @param u 細部の倍率
+ */
+function paintAlleyLights(ctx: CanvasRenderingContext2D, size: { readonly w: number; readonly h: number }, t: number, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  for (const d of [0.85, 0.5, 0.2]) {
+    const [xl, yl] = alleyPt(size, -1, d, 0.06);
+    const [xr, yr] = alleyPt(size, 1, d, 0.06);
+    const sag = size.h * (0.03 + (1 - d) * 0.05);
+    const pts: Pt[] = [];
+    for (let i = 0; i <= 12; i++) {
+      const p = i / 12;
+      pts.push([xl + (xr - xl) * p, yl + (yr - yl) * p + sag * 4 * p * (1 - p)]);
+    }
+    strokeLine(ctx, pts, 'rgba(155, 125, 142, 0.7)', Math.max(0.5, 0.8 * u));
+    pts.forEach(([x, y], i) => {
+      if (i === 0 || i === pts.length - 1) return;
+      const color = pick(BULB_COLORS, i + Math.round(d * 10));
+      withAlpha(ctx, 0.5 + 0.5 * Math.abs(Math.sin(t * 2 + i * 1.3 + d * 5)), () => {
+        paintGlow(ctx, [x, y + 2 * u, (7 - d * 3) * u], color, 0.7);
+        fillDisc(ctx, x, y + 2 * u, (2.4 - d) * u, color);
+      });
+    });
+  }
+}
+
+/**
+ * 路地の小物（突き出したレトロな看板・丸いホーロー看板・屋根の上のねこ）を描く。
+ * @param ctx 描画先
+ * @param size 幅・高さ
+ * @param t 経過秒
+ * @param u 細部の倍率
+ */
+function paintAlleyProps(ctx: CanvasRenderingContext2D, size: { readonly w: number; readonly h: number }, t: number, u: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [sx, sy] = alleyPt(size, -1, 0.3, 0.12);
+  strokeLine(ctx, [[sx, sy + 3 * u], [sx + 6 * u, sy + 3 * u]], '#9b7d8e', 1.2 * u);
+  fillBox(ctx, [sx + 5 * u, sy, 11 * u, 28 * u], '#ff8cc6', 2 * u);
+  fillBox(ctx, [sx + 6.5 * u, sy + 1.5 * u, 8 * u, 25 * u], '#fff5fb', 1.5 * u);
+  for (let k = 0; k < 3; k++) fillDisc(ctx, sx + 10.5 * u, sy + (6 + k * 7) * u, 2.4 * u, pick(['#ff8cc6', '#9adfff', '#ffe58a'], k));
+  const [ex, ey] = alleyPt(size, 1, 0.38, 0.3);
+  fillDisc(ctx, ex - 8 * u, ey, 7 * u, '#9adfff');
+  fillDisc(ctx, ex - 8 * u, ey, 5 * u, '#ffffff');
+  fillDisc(ctx, ex - 8 * u, ey, 3.2 * u, '#ffe58a');
+  const [cx, cy] = alleyPt(size, 1, 0.55, -0.07);
+  const tail = Math.sin(t * 1.6) * 3 * u;
+  strokeLine(ctx, [[cx + 4 * u, cy - 2 * u], [cx + 9 * u, cy - 4 * u], [cx + 10 * u + tail, cy - 10 * u]], '#f2c9a8', 1.8 * u);
+  fillOval(ctx, [cx, cy - 4 * u, 6 * u, 4.5 * u], '#fff3e6');
+  fillDisc(ctx, cx - 5 * u, cy - 9 * u, 3.6 * u, '#fff3e6');
+  fillPoly(ctx, [[cx - 8 * u, cy - 10 * u], [cx - 7.5 * u, cy - 14 * u], [cx - 5 * u, cy - 11.5 * u]], '#fff3e6');
+  fillPoly(ctx, [[cx - 4.5 * u, cy - 11.5 * u], [cx - 2.5 * u, cy - 14 * u], [cx - 2 * u, cy - 10 * u]], '#fff3e6');
+  fillOval(ctx, [cx + 2 * u, cy - 5 * u, 2.6 * u, 2 * u], '#f2c9a8');
+}
+
+/**
+ * 背景「中崎町のレトロ路地」：午後の金色の光・奥の家・石畳・古い木の家のカフェ・鉢植え・電球の列・レトロな看板・屋根のねこ。
+ * @param ctx 描画先
+ * @param w 幅
+ * @param h 高さ
+ * @param t 経過秒
+ */
+function bgNakazaki(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const u = unitOf(w, h);
+  paintSky(ctx, [0, 0, w, h * 0.5], ['#ffd8b0', '#fff0de']);
+  paintGlow(ctx, [w * 0.5, h * 0.16, h * 0.28], '#fff3c4', 0.7);
+  paintAlleyEndAndFloor(ctx, { w, h }, u);
+  paintAlleyWall(ctx, { w, h }, -1, u);
+  paintAlleyWall(ctx, { w, h }, 1, u);
+  paintAlleyProps(ctx, { w, h }, t, u);
+  paintAlleyLights(ctx, { w, h }, t, u);
+  withAlpha(ctx, 0.16 + 0.04 * Math.sin(t * 0.6), () => {
+    fillPoly(ctx, [[w * 0.12, 0], [w * 0.26, 0], [w * 0.5, h * 0.6], [w * 0.38, h * 0.6]], '#fff1c2');
+    fillPoly(ctx, [[w * 0.34, 0], [w * 0.4, 0], [w * 0.58, h * 0.5], [w * 0.52, h * 0.5]], '#fff1c2');
+  });
+}
+
+/**
+ * 天神祭の船（紫の船体・金の縁・屋形・提灯の列・川面に映る灯り。波でゆれる）を描く。
+ * @param ctx 描画先
+ * @param at 船の中心 X・水面の Y
+ * @param s 大きさ（1 で幅約 70px）
+ * @param opts 経過秒・模様の種
+ */
+function paintFestivalBoat(ctx: CanvasRenderingContext2D, at: Pt, s: number, opts: { readonly t: number; readonly seed: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { t, seed } = opts;
+  const x = at[0];
+  const y = at[1] + Math.sin(t * 1.2 + seed) * 1.5 * s;
+  for (let k = 0; k < 6; k++) {
+    const len = (8 + Math.abs(Math.sin(t * 2 + k + seed)) * 10) * s;
+    withAlpha(ctx, 0.35, () => fillBox(ctx, [x - 26 * s + k * 10.4 * s - 1.2 * s, y + 4 * s, 2.4 * s, len], k % 2 === 0 ? '#ffb070' : '#ffe58a'));
+  }
+  fillPoly(ctx, [[x - 34 * s, y - 6 * s], [x + 34 * s, y - 6 * s], [x + 28 * s, y + 4 * s], [x - 30 * s, y + 4 * s]], '#7e6bc4');
+  fillBox(ctx, [x - 33 * s, y - 7 * s, 66 * s, 2 * s], '#ffd86b');
+  fillBox(ctx, [x - 16 * s, y - 20 * s, 32 * s, 14 * s], '#ffe3f1', 2 * s);
+  fillBox(ctx, [x - 12 * s, y - 17 * s, 24 * s, 6 * s], '#ffe58a', s);
+  fillPoly(ctx, [[x - 20 * s, y - 20 * s], [x + 20 * s, y - 20 * s], [x + 14 * s, y - 27 * s], [x - 14 * s, y - 27 * s]], '#ff8cc6');
+  strokeLine(ctx, [[x - 27 * s, y - 6 * s], [x - 27 * s, y - 36 * s]], '#c9a2ff', 1.2 * s);
+  strokeLine(ctx, [[x + 27 * s, y - 6 * s], [x + 27 * s, y - 36 * s]], '#c9a2ff', 1.2 * s);
+  for (let k = 0; k < 7; k++) {
+    const p = k / 6;
+    const lx = x - 27 * s + 54 * s * p;
+    const ly = y - 34 * s + 6 * s * 4 * p * (1 - p);
+    const color = k % 2 === 0 ? '#ff7a6b' : '#ffe58a';
+    paintGlow(ctx, [lx, ly + 3 * s, 7 * s], color, 0.55);
+    fillOval(ctx, [lx, ly + 3 * s, 2.4 * s, 3.2 * s], color);
+  }
+  fillPoly(ctx, [[x - 27 * s, y - 36 * s], [x - 19 * s, y - 34 * s], [x - 27 * s, y - 32 * s]], '#a7f3d0');
+  fillPoly(ctx, [[x + 27 * s, y - 36 * s], [x + 35 * s, y - 34 * s], [x + 27 * s, y - 32 * s]], '#9adfff');
+}
+
+/**
+ * 背景「天神祭の夜」：夜空と星・打ち上げ花火・向こう岸の街と橋・花火の映る大川・提灯をともした船渡御の船・川岸の遊歩道とぼんぼり。
+ * @param ctx 描画先
+ * @param w 幅
+ * @param h 高さ
+ * @param t 経過秒
+ */
+function bgTenjinMatsuri(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const u = unitOf(w, h);
+  const bank = h * 0.5;
+  const shore = h * 0.76;
+  paintSky(ctx, [0, 0, w, bank], ['#1d1b55', '#5b3f95']);
+  paintStarField(ctx, [0, 0, w, bank * 0.5], t, { count: 12, size: u, seed: 261 });
+  const bursts: readonly (readonly [number, number, number, string, number])[] = [[0.22, 0.2, 0.55, '#ff8cc6', 1], [0.72, 0.15, 0.15, '#ffe58a', 1], [0.5, 0.3, 0.8, '#9adfff', 0.8], [0.88, 0.32, 0.35, '#a7f3d0', 0.7]];
+  for (const [fx, fy, offset, color, k] of bursts) paintSkyBurst(ctx, [w * fx, h * fy], t, { offset, color, u: u * k });
+  paintFarSkyline(ctx, { from: 0, to: w }, { base: bank, offset: 0, color: '#2e2a6b', minH: h * 0.06, maxH: h * 0.2, seed: 263, unit: Math.max(6, 20 * u) });
+  for (let i = 0; i < 20; i++) fillBox(ctx, [w * rand01(i, 264), bank - h * (0.015 + rand01(i, 265) * 0.035), Math.max(0.8, 2 * u), Math.max(0.8, 2 * u)], 'rgba(255, 229, 138, 0.85)');
+  fillBox(ctx, [0, bank - h * 0.04, w * 0.42, Math.max(1, 2.5 * u)], '#4b4594');
+  ctx.strokeStyle = '#4b4594';
+  ctx.lineWidth = Math.max(0.8, 2 * u);
+  for (let k = 0; k < 3; k++) {
+    ctx.beginPath();
+    ctx.arc(w * (0.07 + k * 0.14), bank, w * 0.065, Math.PI, 0);
+    ctx.stroke();
+  }
+  paintSky(ctx, [0, bank, w, shore - bank], ['#2b3484', '#1c2160']);
+  for (const [fx, , , color] of bursts) paintGlow(ctx, [w * fx, bank + h * 0.07, h * 0.12], color, 0.16);
+  for (let i = 0; i < 14; i++) {
+    const sx = wrap(rand01(i, 266) * w + t * (5 + (i % 3) * 3) * u, w + 20 * u) - 10 * u;
+    fillBox(ctx, [sx, bank + (shore - bank) * (0.1 + rand01(i, 267) * 0.85), (8 + rand01(i, 268) * 12) * u, Math.max(0.6, 1.3 * u)], 'rgba(255, 214, 236, 0.45)');
+  }
+  for (let i = 0; i < 3; i++) {
+    const x = wrap(w * (0.15 + i * 0.4) + t * (5 + i * 2) * u, w + 140 * u) - 70 * u;
+    paintFestivalBoat(ctx, [x, bank + (shore - bank) * (0.36 + (i % 2) * 0.32)], u * (0.72 + (i % 2) * 0.22), { t, seed: i * 1.7 });
+  }
+  paintSky(ctx, [0, shore, w, h - shore], ['#4a3f7a', '#362d66']);
+  fillBox(ctx, [0, shore - 8 * u, w, Math.max(1, 1.8 * u)], '#6f62a8');
+  for (let x = 4 * u; x < w; x += Math.max(5, 26 * u)) fillBox(ctx, [x, shore - 8 * u, Math.max(1, 1.8 * u), 8 * u], '#6f62a8');
+  paintBonbori(ctx, w * 0.08, h * 0.97, { u, t });
+  paintBonbori(ctx, w * 0.92, h * 0.97, { u, t });
+}
+
+/** 紅葉の色（赤・橙・黄・薄紅。パステル寄り） */
+const MAPLE_COLORS: readonly string[] = ['#ff7a6b', '#ffa45c', '#ffd36b', '#ff9b85'];
+
+/**
+ * もみじの葉（5つにとがった葉と軸）を描く。
+ * @param ctx 描画先
+ * @param c 中心 X・Y・大きさ
+ * @param rot 回転
+ * @param color 色
+ */
+function paintMapleLeaf(ctx: CanvasRenderingContext2D, c: readonly [number, number, number], rot: number, color: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [x, y, s] = c;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  paintStar5(ctx, 0, 0, s, color);
+  strokeLine(ctx, [[0, s * 0.2], [0, s * 1.05]], mixColors(color, '#7a3b2e', 0.3), Math.max(0.4, s * 0.14));
+  ctx.restore();
+}
+
+/**
+ * 背景「紅葉の公園」：やわらかな金色の空と太陽・遠くの丘・紅葉の並木・芝生と両脇の小道・落ち葉・舞い落ちるもみじ。
+ * @param ctx 描画先
+ * @param w 幅
+ * @param h 高さ
+ * @param t 経過秒
+ */
+function bgMomiji(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const u = unitOf(w, h);
+  const hor = h * 0.66;
+  paintSky(ctx, [0, 0, w, hor], ['#ffd6a8', '#fff3dc']);
+  paintGlow(ctx, [w * 0.8, h * 0.12, h * 0.24], '#fff1b8', 0.55);
+  fillDisc(ctx, w * 0.8, h * 0.12, h * 0.05, '#fff7d0');
+  paintPuffyCloud(ctx, wrap(w * 0.12 + t * 3 * u, w + 80 * u) - 70 * u, h * 0.22, 0.8 * u);
+  for (const [x0, peak, x1, color] of [[-0.1, 0.16, 0.6, '#ffcfa6'], [0.4, 0.2, 1.1, '#f8bd95']] as const) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(w * x0, hor);
+    ctx.quadraticCurveTo(w * (x0 + x1) / 2, hor - h * peak, w * x1, hor);
+    ctx.closePath();
+    ctx.fill();
+  }
+  for (let i = 0; i < 10; i++) fillDisc(ctx, ((i + 0.5) * w) / 10, hor - 3 * u, (10 + rand01(i, 271) * 8) * u, pick(MAPLE_COLORS, i));
+  paintSky(ctx, [0, hor, w, h - hor], ['#f6e6b4', '#ecd59a']);
+  for (const side of [-1, 1] as const) {
+    /**
+     * 左側の X を、右側なら鏡に映した X にする。
+     * @param fx 左側の X の割合
+     * @returns 実際の X
+     */
+    const mx = (fx: number): number => (side < 0 ? w * fx : w - w * fx);
+    ctx.fillStyle = '#f3d6b8';
+    ctx.beginPath();
+    ctx.moveTo(mx(0), h);
+    ctx.quadraticCurveTo(mx(0.12), h * 0.8, mx(0.3), hor + 2 * u);
+    ctx.lineTo(mx(0.34), hor + 2 * u);
+    ctx.quadraticCurveTo(mx(0.22), h * 0.82, mx(0.2), h);
+    ctx.closePath();
+    ctx.fill();
+  }
+  for (let i = 0; i < 24; i++) {
+    const x = w * rand01(i, 272);
+    if (Math.abs(x - w / 2) < w * 0.2) continue;
+    paintMapleLeaf(ctx, [x, hor + (h - hor) * (0.1 + rand01(i, 273) * 0.85), 3 * u], rand01(i, 274) * Math.PI * 2, pick(MAPLE_COLORS, i));
+  }
+  paintCanopyTree(ctx, [w * 0.27, hor + 4 * u], h * 0.4, { puffs: [pick(MAPLE_COLORS, 1), pick(MAPLE_COLORS, 2)], light: '#ffe9c2' });
+  paintCanopyTree(ctx, [w * 0.73, hor + 4 * u], h * 0.36, { puffs: [pick(MAPLE_COLORS, 2), pick(MAPLE_COLORS, 3)], light: '#ffe9c2' });
+  paintCanopyTree(ctx, [w * 0.07, h * 0.95], h * 0.92, { puffs: [pick(MAPLE_COLORS, 0), pick(MAPLE_COLORS, 1)], light: '#ffe9c2' });
+  paintCanopyTree(ctx, [w * 0.94, h * 0.92], h * 0.82, { puffs: [pick(MAPLE_COLORS, 3), pick(MAPLE_COLORS, 0)], light: '#ffe9c2' });
+  for (let i = 0; i < 18; i++) {
+    const speed = 0.16 + rand01(i, 276) * 0.14;
+    const y = wrap(rand01(i, 277) * h + t * speed * h, h);
+    const x = rand01(i, 275) * w + Math.sin(t * 1.2 + i * 1.7) * 9 * u;
+    paintMapleLeaf(ctx, [x, y, (2.6 + rand01(i, 278) * 1.6) * u], t * 1.5 + i, pick(MAPLE_COLORS, i));
+  }
+}
+
 /** 背景の種類 → 描く関数 */
 const BACKGROUND_PAINTERS: Readonly<Record<BackgroundStyle, BackgroundPainter>> = {
   plain: bgPlain,
@@ -1314,6 +2773,18 @@ const BACKGROUND_PAINTERS: Readonly<Record<BackgroundStyle, BackgroundPainter>> 
   starry: bgStarry,
   dreamy: bgDreamy,
   idol: bgIdol,
+  aquarium: bgAquarium,
+  yozakura: bgYozakura,
+  snowlight: bgSnowlight,
+  candy: bgCandy,
+  beach: bgBeach,
+  castle: bgCastle,
+  cafe: bgCafe,
+  galaxy: bgGalaxy,
+  edo: bgEdo,
+  nakazaki: bgNakazaki,
+  tenjinMatsuri: bgTenjinMatsuri,
+  momiji: bgMomiji,
 };
 
 /** 描ける背景の種類（表の順） */

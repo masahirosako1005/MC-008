@@ -4,7 +4,7 @@
 import { resolve, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveStaticPath } from '@/infrastructure/server/http/staticFiles';
-import { DEFAULT_SERVER_OPTIONS, parseServerArgs } from '@/infrastructure/server/serverOptions';
+import { DEFAULT_SERVER_OPTIONS, isLoopbackHost, parseServerArgs } from '@/infrastructure/server/serverOptions';
 
 describe('parseServerArgs', () => {
   it('何も無ければ既定（自分の PC だけ・8787）', () => {
@@ -17,6 +17,28 @@ describe('parseServerArgs', () => {
     const parsed = parseServerArgs(['--port', '9000', '--host', '0.0.0.0', '--static', 'dist-backend']);
     expect(parsed.ok && parsed.value).toMatchObject({ port: 9000, host: '0.0.0.0', staticDir: 'dist-backend' });
     for (const bad of [['--x', '1'], ['--port'], ['--port', '70000'], ['--host', 'a b'], ['--db', ' ']]) expect(parseServerArgs(bad).ok).toBe(false);
+  });
+
+  it('本番向けの項目：CMS の別ポート・TLS・中継・許可するホスト名（TLS は証明書と鍵の両方）', () => {
+    const parsed = parseServerArgs(['--cms-static', 'dist-cms', '--cms-port', '8788', '--tls-cert', 'a.crt', '--tls-key', 'a.key', '--trust-proxy', '--allowed-hosts', 'App.Example.jp, admin.example.jp']);
+    expect(parsed.ok && parsed.value).toMatchObject({ cmsStaticDir: 'dist-cms', cmsPort: 8788, tlsCert: 'a.crt', tlsKey: 'a.key', trustProxy: true, allowedHosts: ['app.example.jp', 'admin.example.jp'] });
+    expect(parseServerArgs(['--tls-cert', 'a.crt']).ok).toBe(false);
+    expect(parseServerArgs(['--allowed-hosts', 'bad host']).ok).toBe(false);
+    expect(parseServerArgs(['--cms-port', '99999']).ok).toBe(false);
+  });
+
+  it('環境変数でも渡せ、コマンドラインが優先する', () => {
+    const parsed = parseServerArgs(['--port', '9001'], { PORT: '9000', HOST: '0.0.0.0', TRUST_PROXY: '1', ALLOWED_HOSTS: 'app.example.jp', DB_PATH: '/var/lib/kayoimachi/cms.sqlite' });
+    expect(parsed.ok && parsed.value).toMatchObject({ port: 9001, host: '0.0.0.0', trustProxy: true, allowedHosts: ['app.example.jp'], dbPath: '/var/lib/kayoimachi/cms.sqlite' });
+    expect(parseServerArgs([], { PORT: 'abc' }).ok).toBe(false);
+  });
+
+  it('ループバックの判定', () => {
+    expect(isLoopbackHost('127.0.0.1')).toBe(true);
+    expect(isLoopbackHost('LOCALHOST')).toBe(true);
+    expect(isLoopbackHost('::1')).toBe(true);
+    expect(isLoopbackHost('0.0.0.0')).toBe(false);
+    expect(isLoopbackHost('192.168.0.10')).toBe(false);
   });
 });
 

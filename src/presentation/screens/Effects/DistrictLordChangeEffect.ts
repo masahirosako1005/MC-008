@@ -6,8 +6,10 @@
 import { createLogger } from '@/Common/logging/logger';
 import { beginFrame } from '@/Common/ui/canvas/CanvasBase';
 import type { CanvasSize } from '@/Common/ui/canvas/CanvasBase';
+import { mixColors, toRgba } from '@/Common/ui/canvas/colorUtils';
 import { drawCircle, drawPolygon } from '@/Common/ui/canvas/drawUtils';
 import { h } from '@/Common/ui/dom';
+import { PALETTE } from '@/Common/ui/theme/palette';
 import { drawConfetti, drawSparkle } from '@/presentation/screens/Effects/effectArt';
 import { startCanvasAnimation } from '@/presentation/screens/Effects/EffectFrame';
 import type { CanvasAnimationHandle, EffectView } from '@/presentation/screens/Effects/EffectFrame';
@@ -26,9 +28,9 @@ export interface LordChangeEffectModel {
   readonly travelerCount: number;
 }
 
-/** 王冠の線の色（金。白いカードの上でも見える濃さ）と、線が描き終わった後のごく淡い塗り */
-const CROWN_STROKE = '#f59e0b';
-const CROWN_FILL = '#fef3c7';
+/** 王冠の線の色（地区の主の金＝PALETTE.gold）と、線が描き終わった後のごく淡い塗り（金を白へ 8 割寄せた色） */
+const CROWN_STROKE = PALETTE.gold;
+const CROWN_FILL = mixColors(PALETTE.gold, PALETTE.white, 0.8);
 
 /** きらめきの数 */
 const SPARKLE_COUNT = 6;
@@ -67,8 +69,8 @@ function drawCrownFrame(ctx: CanvasRenderingContext2D, size: CanvasSize, progres
   const s = Math.min(size.width, size.height);
   const center = { x: size.width / 2, y: size.height * 0.52 };
   const pop = Math.max(0, easeOutBack(clamp01(progress / 0.4)));
-  drawCircle(ctx, center, s * 0.4 * pop, { fill: '#ffede7' });
-  drawCircle(ctx, center, s * 0.46 * pop, { stroke: 'rgba(255, 90, 54, 0.25)', lineWidth: 1.5 });
+  drawCircle(ctx, center, s * 0.4 * pop, { fill: PALETTE.brandSoft });
+  drawCircle(ctx, center, s * 0.46 * pop, { stroke: toRgba(PALETTE.brand, 0.25), lineWidth: 1.5 });
   drawConfetti(ctx, confettiFor('lord', 16), { center, radius: s * 0.55 }, progress);
   const pts = crownPoints(center.x, center.y + s * 0.02, s * 0.46);
   const draw = easeOutCubic(clamp01((progress - 0.12) / 0.5));
@@ -93,7 +95,7 @@ function drawCrownFrame(ctx: CanvasRenderingContext2D, size: CanvasSize, progres
   for (let i = 0; i < SPARKLE_COUNT && t > 0; i++) {
     const a = -Math.PI / 2 + ((i - (SPARKLE_COUNT - 1) / 2) * Math.PI) / (SPARKLE_COUNT + 1);
     const r = s * (0.36 + 0.06 * t);
-    drawSparkle(ctx, { x: center.x + Math.cos(a) * r, y: center.y + Math.sin(a) * r }, s * (i % 2 === 0 ? 0.035 : 0.025) * easeOutBack(t), i % 2 === 0 ? '#f5b700' : '#ff5a36');
+    drawSparkle(ctx, { x: center.x + Math.cos(a) * r, y: center.y + Math.sin(a) * r }, s * (i % 2 === 0 ? 0.035 : 0.025) * easeOutBack(t), i % 2 === 0 ? PALETTE.metalGold : PALETTE.brand);
   }
 }
 
@@ -115,7 +117,7 @@ export function lordChangeText(model: Pick<LordChangeEffectModel, 'fromName' | '
 export function createDistrictLordChangeEffect(model: LordChangeEffectModel): EffectView {
   const log = logger.fn('createDistrictLordChangeEffect', { reclaimed: model.reclaimed, travelerCount: model.travelerCount });
   const canvasBox = h('div', { class: 'fx__canvas' });
-  const title = `${model.districtName}の主になりました`;
+  const title = `${model.districtName}の領主になりました`;
   const element = h('div', { class: 'fx__content' }, [
     canvasBox,
     h('h2', { class: 'fx__title', text: title }),

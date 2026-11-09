@@ -17,7 +17,7 @@ export interface VisitButtonState {
 }
 
 /** 訪問できるときのボタン文言（80m は VISIT_RADIUS_M（仮）＝地図の円と同じ。2026-11-09 に 40m から変更。presentation は文言で持つ） */
-export const VISIT_ENABLED_LABEL = 'チェックインする（80m以内）';
+export const VISIT_ENABLED_LABEL = 'クエスト達成（80m以内）';
 
 /** クーポン・イベントの種類の表示名 */
 export const SHOP_EVENT_KIND_LABELS: Readonly<Record<ShopEventDto['kind'], string>> = { coupon: 'クーポン', event: 'イベント' };
@@ -100,12 +100,12 @@ export function nextCardLabel(nextCard: SpotDetailDto['nextCard']): string | und
 /**
  * 訪問後のトースト文言（基本ポイントとおかえりボーナス）。
  * @param summary 演出のまとめ
- * @returns 例 '訪問を記録しました +15pt（おかえりボーナス +7）'
+ * @returns 例 'クエスト達成！ +15EXP（おかえりボーナス +7）'
  */
 export function visitToastMessage(summary: Pick<EffectSummary, 'points' | 'bonusPoints'>): string {
   const log = logger.fn('visitToastMessage', { points: summary.points, bonusPoints: summary.bonusPoints });
   const bonus = summary.bonusPoints > 0 ? `（おかえりボーナス +${summary.bonusPoints}）` : '';
-  return log.exit(`訪問を記録しました +${summary.points}pt${bonus}`);
+  return log.exit(`クエスト達成！ +${summary.points}EXP${bonus}`);
 }
 
 /**

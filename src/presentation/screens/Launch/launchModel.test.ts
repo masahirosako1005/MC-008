@@ -19,7 +19,7 @@ import {
 function rankOf(over: Partial<RankStatusDto> = {}): RankStatusDto {
   return {
     nickname: 'ハル',
-    rank: { name: '常連', index: 2, nextName: '顔なじみ', nextAt: 500, remaining: 135 },
+    rank: { name: 'ベテラン冒険者', index: 2, nextName: '街の英雄', nextAt: 500, remaining: 135 },
     steps: [],
     points: 365,
     totalVisits: 29,
@@ -97,7 +97,7 @@ describe('launchDistrictsOf', () => {
 });
 
 describe('buildLaunchModel', () => {
-  it('通い慣れた人: WELCOME BACK・呼び名・ランク／通った回数／ポイント（数え上げる数）・いちばん強い再訪理由', () => {
+  it('通い慣れた人: WELCOME BACK・呼び名・ランク／通った回数／EXP（数え上げる数）・いちばん強い再訪理由', () => {
     const model = buildLaunchModel({
       status: { today: '2026-11-09', dateLabel: '2026/11/09（月）', timeLabel: '20:15', isDemo: true, travelerProfile: 'regular' },
       rank: rankOf(),
@@ -110,24 +110,24 @@ describe('buildLaunchModel', () => {
     expect(model.isFirst).toBe(false);
     expect(model.sky).toBe('night');
     expect([model.eyebrow, model.headline]).toEqual(['WELCOME BACK', 'ハル']);
-    expect(model.chips.map((c) => c.value)).toEqual(['常連', '29回', '365pt']);
-    expect(model.chips.map((c) => [c.count, c.unit])).toEqual([[undefined, undefined], [29, '回'], [365, 'pt']]);
+    expect(model.chips.map((c) => c.value)).toEqual(['ベテラン冒険者', '29回', '365EXP']);
+    expect(model.chips.map((c) => [c.count, c.unit])).toEqual([[undefined, undefined], [29, '回'], [365, 'EXP']]);
     expect(model.reason).toEqual({ kind: 'fade', label: '色あせ', title: '大川があと3日で色あせ' });
     expect(model.lordCount).toBe(1);
-    expect(model.cta).toBe('出かける');
+    expect(model.cta).toBe('クエストへ');
   });
 
   it('はじめての人（訪問0回）: WELCOME・はじめまして・ステータスなし（手順の説明も出さない）', () => {
     const model = buildLaunchModel({ rank: rankOf({ totalVisits: 0, points: 0, travelDays: undefined }) });
     expect(model.isFirst).toBe(true);
-    expect([model.eyebrow, model.headline, model.cta]).toEqual(['WELCOME', 'はじめまして', 'はじめる']);
+    expect([model.eyebrow, model.headline, model.cta]).toEqual(['WELCOME', 'はじめまして', '冒険に出る']);
     expect(model.chips).toEqual([]);
     expect(model.reason).toBeUndefined();
   });
 
   it('何も取れなくても組み立てられる（昼・旅人・ステータスなし）', () => {
     const model = buildLaunchModel({});
-    expect([model.sky, model.isFirst, model.headline, model.chips.length, model.districts.length]).toEqual(['day', false, '旅人', 0, 5]);
+    expect([model.sky, model.isFirst, model.headline, model.chips.length, model.districts.length]).toEqual(['day', false, '冒険者', 0, 5]);
   });
 
   it('ランクが取れなくても、ステータスがはじめての人ならはじめまして', () => {

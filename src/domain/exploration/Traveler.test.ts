@@ -87,7 +87,7 @@ describe('Traveler.create', () => {
   });
   it('ニックネームを正規化する（制御文字除去・空なら既定名・長さ制限）', () => {
     expect(Traveler.create(TRAVELER_ID, ' タロウ\n', 'user').nickname).toBe('タロウ');
-    expect(Traveler.create(TRAVELER_ID, '   ', 'user').nickname).toBe('旅人');
+    expect(Traveler.create(TRAVELER_ID, '   ', 'user').nickname).toBe('冒険者');
     expect(Array.from(Traveler.create(TRAVELER_ID, 'あ'.repeat(50), 'user').nickname)).toHaveLength(20);
   });
   it('保存形は凍結されている', () => {

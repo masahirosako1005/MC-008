@@ -9,6 +9,7 @@ import { createLogger } from '@/Common/logging/logger';
 import type { CanvasSize } from '@/Common/ui/canvas/CanvasBase';
 import { beginFrame } from '@/Common/ui/canvas/CanvasBase';
 import { mixColors, toRgba } from '@/Common/ui/canvas/colorUtils';
+import { PALETTE } from '@/Common/ui/theme/palette';
 import { CANVAS_FONT_FAMILY } from '@/Common/ui/canvas/drawUtils';
 import { FADE_ICON } from '@/Common/ui/canvas/fadeStyle';
 import type { AvatarSprite } from '@/presentation/shared/avatarSprite';
@@ -210,7 +211,7 @@ export function planLaunchScene(districts: readonly LaunchDistrictArt[], sky: Sk
     pins.push({
       x: tower.x + tower.w * 0.5,
       y: base - towerH - 6,
-      color: d.level === 0 || d.faded ? '#9ca3af' : d.color,
+      color: d.level === 0 || d.faded ? PALETTE.unknown : d.color,
       glyph: d.level === 0 ? '?' : d.faded ? 'fade' : 'dot',
       lord: d.isLordMe,
       at: SCENE_TIMING.pinStart + i * SCENE_TIMING.pinStagger,
@@ -577,7 +578,7 @@ function paintPinGlyph(ctx: CanvasRenderingContext2D, pin: ScenePin, x: number, 
  * @param y 下端 Y
  */
 function paintCrown(ctx: CanvasRenderingContext2D, x: number, y: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  ctx.fillStyle = '#f5b700';
+  ctx.fillStyle = PALETTE.metalGold;
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -675,10 +676,10 @@ function paintTraveler(ctx: CanvasRenderingContext2D, plan: ScenePlan, frame: Sc
     ctx.drawImage(avatar.image, -avatar.footX, -avatar.footY, avatar.width, avatar.height);
     ctx.restore();
   } else {
-    fillDisc(ctx, x, y - 30, 9, '#ff5a36');
-    fillBox(ctx, [x - 8, y - 20, 16, 20], '#ff5a36', 6);
+    fillDisc(ctx, x, y - 30, 9, PALETTE.brand);
+    fillBox(ctx, [x - 8, y - 20, 16, 20], PALETTE.brand, 6);
   }
-  if (hop > 10) paintSparkle(ctx, x + 16, y - 52, 5, '#f5b700');
+  if (hop > 10) paintSparkle(ctx, x + 16, y - 52, 5, PALETTE.metalGold);
 }
 
 /**
@@ -711,7 +712,7 @@ function paintFootprints(ctx: CanvasRenderingContext2D, fromX: number, toX: numb
 function paintRadar(ctx: CanvasRenderingContext2D, x: number, y: number, p: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
   const rx = 16 + p * 78;
   ctx.save();
-  ctx.strokeStyle = `rgba(255, 90, 54, ${((1 - p) * 0.7).toFixed(3)})`;
+  ctx.strokeStyle = toRgba(PALETTE.brand, (1 - p) * 0.7);
   ctx.lineWidth = 2;
   ctx.setLineDash([5, 4]);
   ctx.beginPath();

@@ -41,6 +41,7 @@ node scripts/audit/static-audit.mjs --json > docs/audit/$(date +%Y%m%d)_static.j
 | `todo-stale` | 担当・条件の無い `TODO` | 04 §1.4 |
 | `long-function` | 50 行超の関数 | 03 §3 |
 | `magic-radius` | `80` / `40` のリテラルが domain/exploration/constants.ts 以外にある | 01 §3-9 |
+| `color-literal`（warn） | CSS の色の直書き（`#hex`・`rgb()`・`hsl()`）。白・黒・`--ink` の透過は可。`tokens.css`・`splash.css` は対象外。除外は `/* audit-ignore: color-literal <理由> */` | docs/10 |
 
 終了コード: 違反 0 件 → 0、`error` 違反あり → 1。CI ではこのコードで失敗させる。
 誤検知は行末に `// audit-ignore: <チェック名> <理由>` を書くと除外される（理由必須）。

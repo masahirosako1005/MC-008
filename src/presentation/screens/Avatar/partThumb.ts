@@ -9,9 +9,11 @@ import { h, setStyle } from '@/Common/ui/dom';
 import { equipPart, slotOfPartId } from '@/presentation/screens/Avatar/avatarScreenModel';
 import type { ThumbFocus } from '@/presentation/screens/Avatar/avatarScreenModel';
 import { avatarLookOfParts, splitPartId, stageLookOf } from '@/presentation/shared/avatar/avatarLook';
-import type { BackgroundStyle, ObjectStyle } from '@/presentation/shared/avatar/avatarLook';
+import type { AuraStyle, BackgroundStyle, EmoteStyle, ObjectStyle } from '@/presentation/shared/avatar/avatarLook';
 import { AVATAR_FOCUS, drawAvatar } from '@/presentation/shared/avatar/avatarPaint';
 import { STAGE_FLOOR_RATIO, paintBackground, paintObject } from '@/presentation/shared/avatar/stageArt';
+import { paintAura } from '@/presentation/screens/Avatar/stageAuras';
+import { EMOTES, paintEmoteBubble } from '@/presentation/screens/Avatar/stageEmotes';
 
 const logger = createLogger('presentation/screens/Avatar/partThumb');
 
@@ -27,7 +29,7 @@ export function focusOfPart(partId: string): ThumbFocus {
   const log = logger.fn('focusOfPart', { partId });
   const part = splitPartId(partId);
   if (part === undefined) return log.exit('full');
-  if (part.slot === 'hair' || part.slot === 'eyes' || part.slot === 'hat') return log.exit('head');
+  if (part.slot === 'hair' || part.slot === 'eyes' || part.slot === 'hat' || part.slot === 'body') return log.exit('head');
   if (part.slot === 'accessory') return log.exit(HEAD_ACCESSORIES.has(part.style) ? 'head' : 'full');
   if (part.slot === 'top') return log.exit('body');
   if (part.slot === 'bottom' || part.slot === 'shoes') return log.exit('legs');
@@ -70,6 +72,44 @@ function paintWearable(ctx: CanvasRenderingContext2D, partId: string, base: read
 }
 
 /**
+ * エモートのサムネイル（そのポーズのアバター＋吹き出し）を描く。
+ * @param ctx 描画先
+ * @param style エモート
+ * @param base いまの装い
+ * @param size 一辺（CSS px）
+ */
+function paintEmoteThumb(ctx: CanvasRenderingContext2D, style: EmoteStyle, base: readonly string[], size: number): void {
+  const log = logger.fn('paintEmoteThumb', { style });
+  const def = EMOTES[style];
+  const unit = size / 104;
+  const x = size * 0.44;
+  const y = size * 0.97;
+  const look = avatarLookOfParts(base.filter((id) => slotOfPartId(id) !== 'pet'));
+  drawAvatar(ctx, look, { x, y, scale: unit }, { pose: def.pose, t: 0.5 });
+  paintEmoteBubble(ctx, def, { x, y, unit, e: 0.6 });
+  log.exit(undefined);
+}
+
+/**
+ * オーラのサムネイル（オーラをまとったアバター）を描く。
+ * @param ctx 描画先
+ * @param style オーラ
+ * @param base いまの装い
+ * @param size 一辺（CSS px）
+ */
+function paintAuraThumb(ctx: CanvasRenderingContext2D, style: AuraStyle, base: readonly string[], size: number): void {
+  const log = logger.fn('paintAuraThumb', { style });
+  const unit = size / 96;
+  const x = size / 2 + 4 * unit;
+  const y = size * 0.95;
+  const look = avatarLookOfParts(base.filter((id) => slotOfPartId(id) !== 'pet'));
+  paintAura(ctx, style, { x, y, unit, t: 0.8, layer: 'back' });
+  drawAvatar(ctx, look, { x, y, scale: unit });
+  paintAura(ctx, style, { x, y, unit, t: 0.8, layer: 'front' });
+  log.exit(undefined);
+}
+
+/**
  * 部品のサムネイルを作る（色・称号はサムネイルを使わない）。
  * @param partId 部品ID
  * @param base いまの装い（身につける部品は、これに着せて描く）
@@ -85,7 +125,9 @@ export function createPartThumb(partId: string, base: readonly string[], size: n
   else if (part.slot === 'object') {
     const scale = (size * 0.7) / 70;
     paintObject(ctx, part.style as ObjectStyle, size / 2, size * 0.92, part.style === 'fireworks' ? scale * 0.85 : scale, 0);
-  } else paintWearable(ctx, partId, base, size);
+  } else if (part.slot === 'emote') paintEmoteThumb(ctx, part.style as EmoteStyle, base, size);
+  else if (part.slot === 'aura') paintAuraThumb(ctx, part.style as AuraStyle, base, size);
+  else paintWearable(ctx, partId, base, size);
   return log.exit(canvas);
 }
 
@@ -104,6 +146,8 @@ export function createOutfitThumb(partIds: readonly string[], width: number): HT
   const unit = (width * 0.62) / 70;
   const floor = width * STAGE_FLOOR_RATIO;
   stage.objects.slice(0, 2).forEach((o, i) => paintObject(ctx, o, i === 0 ? width * 0.16 : width * 0.85, floor, unit * 0.8, 0));
+  if (stage.aura !== undefined) paintAura(ctx, stage.aura, { x: width / 2 + 6 * unit, y: floor + 2 * unit, unit, t: 0.8, layer: 'back' });
   drawAvatar(ctx, stage.avatar, { x: width / 2 + 6 * unit, y: floor + 2 * unit, scale: unit });
+  if (stage.aura !== undefined) paintAura(ctx, stage.aura, { x: width / 2 + 6 * unit, y: floor + 2 * unit, unit, t: 0.8, layer: 'front' });
   return log.exit(canvas);
 }

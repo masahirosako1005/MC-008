@@ -51,7 +51,7 @@ export class SwitchTravelerUseCase implements UseCase<SwitchTravelerInput, Switc
     log.warn('デモ操作: 旅人切替', { profile: input.profile, enabled: this.enabled });
     if (!this.enabled) return log.fail(demoDisabled());
     const profile: unknown = input.profile;
-    if (!isDemoProfile(profile)) return log.fail(fail(AppError.of('INVALID_INPUT', '旅人の種類が正しくありません')));
+    if (!isDemoProfile(profile)) return log.fail(fail(AppError.of('INVALID_INPUT', '冒険者の種類が正しくありません')));
     const entrance = startEntranceOf(this.deps.spots);
     if (!entrance.ok) return log.fail(entrance);
     const reset = this.deps.demoControl.resetOffset();

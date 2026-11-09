@@ -12,6 +12,7 @@ import { mixColors } from '@/Common/ui/canvas/colorUtils';
 import { drawTextWithOutline } from '@/Common/ui/canvas/drawUtils';
 import { FADE_ICON } from '@/Common/ui/canvas/fadeStyle';
 import { h } from '@/Common/ui/dom';
+import { PALETTE } from '@/Common/ui/theme/palette';
 import { drawSparkle } from '@/presentation/screens/Effects/effectArt';
 import { startCanvasAnimation } from '@/presentation/screens/Effects/EffectFrame';
 import type { CanvasAnimationHandle, EffectView } from '@/presentation/screens/Effects/EffectFrame';
@@ -109,10 +110,10 @@ function drawRevivalFrame(ctx: CanvasRenderingContext2D, size: CanvasSize, model
     band.addColorStop(1, 'rgba(255, 255, 255, 0)');
     ctx.fillStyle = band;
     ctx.fillRect(wipe - 18, 0, 22, H);
-    drawSparkle(ctx, { x: wipe, y: H * 0.22 }, 6, '#ffffff');
-    drawSparkle(ctx, { x: wipe - 6, y: H * 0.56 }, 4, '#ffffff');
+    drawSparkle(ctx, { x: wipe, y: H * 0.22 }, 6, PALETTE.white);
+    drawSparkle(ctx, { x: wipe - 6, y: H * 0.56 }, 4, PALETTE.white);
   }
-  if (wipe < W - 34) drawTextWithOutline(ctx, FADE_ICON, { x: W - 16, y: 16 }, { sizePx: 16, scale: textScaleFactor(), color: '#6b7280', weight: 700 });
+  if (wipe < W - 34) drawTextWithOutline(ctx, FADE_ICON, { x: W - 16, y: 16 }, { sizePx: 16, scale: textScaleFactor(), color: PALETTE.sepiaInk, weight: 700 });
   ctx.restore();
 }
 
@@ -136,7 +137,7 @@ export function createRevivalEffect(model: RevivalEffectModel): EffectView {
   const bonus =
     model.multiplier === undefined
       ? undefined
-      : h('p', { class: 'fx__bonus', attrs: { 'data-testid': 'effect-bonus' }, text: `今日はこの地区の獲得ポイント ${multiplierLabel(model.multiplier)}倍` });
+      : h('p', { class: 'fx__bonus', attrs: { 'data-testid': 'effect-bonus' }, text: `今日はこの地区の獲得EXP ${multiplierLabel(model.multiplier)}倍` });
   const element = h('div', { class: 'fx__content' }, [
     canvasBox,
     h('h2', { class: 'fx__title', text: 'おかえり！' }),

@@ -29,6 +29,15 @@ export type CmsBackend = 'local' | 'server';
  */
 export const CMS_BACKEND: CmsBackend = import.meta.env['VITE_CMS_BACKEND'] === 'server' ? 'server' : 'local';
 
+/** オリジンの書式（https://名前[:ポート]。末尾の / は無し） */
+const ORIGIN_PATTERN = /^https?:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?$/;
+
+/**
+ * 店舗CMS から開く利用者アプリのオリジン（docs/09 §7.1。CMS を別オリジンに置くとき）。
+ * ビルド時の環境変数 VITE_APP_ORIGIN（例 'https://app.example.jp'）。無い・書式が違うときは ''（同じオリジン＝デモ）。
+ */
+export const APP_ORIGIN: string = ORIGIN_PATTERN.test(String(import.meta.env['VITE_APP_ORIGIN'] ?? '')) ? String(import.meta.env['VITE_APP_ORIGIN']) : '';
+
 /** アプリのバージョン（エクスポートデータ・ログに付ける） */
 export const APP_VERSION = '0.1.0';
 

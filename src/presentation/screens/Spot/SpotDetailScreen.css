@@ -30,7 +30,7 @@
   height: 15rem;
   margin: 0 calc(-1 * var(--gutter));
   overflow: hidden;
-  background: linear-gradient(180deg, #e8f1fb 0%, var(--g1) 100%);
+  background: linear-gradient(180deg, var(--brand-soft) 0%, var(--g1) 100%);
 }
 .spot-illust .canvas-surface { position: absolute; inset: 0; display: block; }
 /* 発見済み（まだ訪れていない）: 絵の左下に小さな黒いピル（情報の面に隠れない高さ） */
@@ -109,10 +109,10 @@
 .spot-event > .reason-icon { margin-top: 0.125rem; }
 .spot-event__upcoming { --reason-soft: var(--g1); --reason: var(--g5); }
 .spot-event__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.0625rem; }
-.spot-event__label { font-size: var(--fs-xs); font-weight: var(--fw-bold); letter-spacing: 0.04em; color: #be123c; line-height: 1.4; }
+.spot-event__label { font-size: var(--fs-xs); font-weight: var(--fw-bold); letter-spacing: 0.04em; color: var(--danger-ink); line-height: 1.4; }
 .spot-event[data-active="0"] .spot-event__label { color: var(--g4); }
 .spot-event__title { font-size: var(--fs-m); font-weight: var(--fw-bold); line-height: 1.4; }
-.spot-event__sub { font-size: var(--fs-xs); font-weight: var(--fw-bold); color: #be123c; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.spot-event__sub { font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--danger-ink); line-height: 1.5; font-variant-numeric: tabular-nums; }
 .spot-event[data-active="0"] .spot-event__sub { color: var(--g5); }
 .spot-event__desc { margin-top: 0.25rem; font-size: var(--fs-xs); color: var(--g4); line-height: 1.6; }
 
@@ -145,7 +145,7 @@
   letter-spacing: 0;
 }
 .spot-history__next { margin-left: 0; font-size: var(--fs-xs); letter-spacing: 0.01em; }
-.spot-history__next.tag--accent { background: #fef3c7; color: var(--gold-ink); }
+.spot-history__next.tag--accent { background: color-mix(in srgb, var(--metal-gold-light) 50%, #fff); color: var(--gold-ink); }
 .spot-gauge { display: block; height: 0.375rem; border-radius: var(--radius-pill); background: var(--g2); overflow: hidden; margin-top: 0.125rem; }
 .spot-gauge__bar {
   display: block;
@@ -154,8 +154,8 @@
   border-radius: inherit;
   background: var(--district, var(--brand));
 }
-.spot-gauge[data-rank="gold"] .spot-gauge__bar { background: linear-gradient(90deg, #f59e0b, #f5b700 70%, #fde68a); }
-.spot-gauge[data-rank="silver"] .spot-gauge__bar { background: linear-gradient(90deg, #9ca3af, #d1d5db 70%, #f3f4f6); }
+.spot-gauge[data-rank="gold"] .spot-gauge__bar { background: linear-gradient(90deg, color-mix(in srgb, var(--metal-gold) 80%, var(--metal-gold-edge)), var(--metal-gold) 70%, var(--metal-gold-light)); }
+.spot-gauge[data-rank="silver"] .spot-gauge__bar { background: linear-gradient(90deg, color-mix(in srgb, var(--metal-silver) 60%, var(--metal-silver-edge)), var(--metal-silver) 70%, var(--metal-silver-light)); }
 .spot-history__label { margin: 1rem 0 0.5rem; font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--g4); letter-spacing: 0.04em; }
 .spot-history__dates { display: flex; flex-wrap: wrap; gap: 0.375rem; margin: 0; padding: 0; list-style: none; font-size: var(--fs-xs); color: var(--g5); font-variant-numeric: tabular-nums; }
 .spot-history__dates li { padding: 0.25rem 0.75rem; border-radius: var(--radius-pill); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }

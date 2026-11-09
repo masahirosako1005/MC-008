@@ -1,10 +1,12 @@
 /**
  * @file 店舗CMS のクーポン・イベント（presentation/cms/screens/Events。docs/09 C04・C05、CMS-E01・E03・E04・E07・E09・E10）
  * 左：見え方（お店のページ｜地図）／右：「一覧」と「入力」を切り替える。説明文は置かない。
- * - 一覧：下書き → 掲載中 → 予定。行の右に「編集」「取り下げる」（下書きは「編集」「削除」）。終わったものは出さない。
+ * - 一覧：下書き → 掲載中 → 予定。行はホームと同じ「行全体を押すと開く」形（cmsUi の eventRowButton）。終わったものは出さない。
+ *   取り下げられないもの（店舗CMS で掲載したものでない）は押せない行にする。
  *   上限（SHOP_EVENT_MAX_OPEN_PER_SPOT 件）に達したときだけ、押せない［新規作成］の左に「3件まで」と出す
- * - 入力：種類・例文・題名・説明・期間。誤りは押したときに欄の下へ出し、最初の誤りまでスクロールする。出口は下端の「キャンセル」だけ
- * - 見え方：入力中は「クーポン・イベント」欄を破線で囲んでそこまで動かす。一覧では掲載中・予定があればその欄まで動かす（破線は掲載・保存した直後だけ）
+ * - 入力：種類・例文・題名・説明・期間。誤りは押したときに欄の下へ出し、最初の誤りまでスクロールする。出口は下端の「キャンセル」だけ。
+ *   壊す操作は下端のバーの左に置く（編集のときは「取り下げる」、中身のある下書きを開いたときは「削除」）
+ * - 見え方：入力中は「クーポン・イベント」欄を破線で囲んでそこまで動かす。一覧では掲載中・予定があればその欄まで動かす（破線は掲載・保存した直後の2秒だけ）
  * - 編集は「取り下げて同じ内容で掲載し直す」（掲載中のものは今日から）
  * 入力中の値は下書きとしてページを移っても残る（ctx.draft）。
  */
@@ -18,13 +20,16 @@ import { SHOP_EVENT_DESCRIPTION_MAX, SHOP_EVENT_TITLE_MAX } from '@/domain/revis
 import { createPreviewColumn, liveEventsOf } from '@/presentation/cms/cmsPhonePreview';
 import type { PreviewColumnHandle, PreviewEvent, PreviewMode } from '@/presentation/cms/cmsPhonePreview';
 import { EVENT_TEMPLATES, PERIOD_PRESETS, periodOfPreset } from '@/presentation/cms/cmsTemplates';
-import { actionBar, attachFieldError, badge, eventBadge, formSection, markDanger, mdDate, pageTitle, previewButton, slotLimit, textField, twoColumn } from '@/presentation/cms/cmsUi';
+import { actionBar, attachFieldError, eventRowButton, eventRowStatic, formSection, markDanger, pageTitle, previewButton, slotLimit, textField, twoColumn } from '@/presentation/cms/cmsUi';
 import type { CmsContext, CmsField } from '@/presentation/cms/cmsUi';
 import { captionOf, KIND_LABELS, noticeOf, PLACEHOLDERS, periodDays, problemsOf } from '@/presentation/cms/screens/Events/eventForm';
 import type { DraftProblems, EventDraft } from '@/presentation/cms/screens/Events/eventForm';
 import { newOperationId } from '@/presentation/shared/operation';
 
 const logger = createLogger('presentation/cms/screens/Events/CmsEventsScreen');
+
+/** 掲載・保存した直後の破線を外すまでの時間（一覧の行の光と同じ） */
+const POSTED_OUTLINE_MS = 2000;
 
 /** 右側の状態（一覧か入力か。編集中のもの・掲載したばかりのもの） */
 interface EventsView {
@@ -98,13 +103,13 @@ function previewEvents(ctx: CmsContext, view: EventsView, draft: EventDraft): { 
 }
 
 /**
- * 見え方を描き直す（「クーポン・イベント」欄まで動かす。入力中と、掲載・保存した直後は破線で囲む）。
+ * 見え方を描き直す（「クーポン・イベント」欄まで動かす。入力中と、掲載・保存した直後の2秒は破線で囲む）。
  * @param ctx 文脈
  * @param preview 見え方の列
  * @param view 右側の状態
  * @param draft 入力中の値
  * @param justPosted 掲載・保存した直後の描画か
- * @sideEffect 見え方を書き換える
+ * @sideEffect 見え方を書き換える。掲載・保存した直後は2秒後に破線を外すタイマーを置く
  */
 function paintPreview(ctx: CmsContext, preview: PreviewColumnHandle, view: EventsView, draft: EventDraft, justPosted = false): void {
   const log = logger.fn('paintPreview', { mode: view.mode, previewMode: view.previewMode, justPosted });
@@ -112,11 +117,12 @@ function paintPreview(ctx: CmsContext, preview: PreviewColumnHandle, view: Event
   preview.update({ hours: ctx.info.hoursText, amenities: ctx.info.amenities, events, ...(focus === undefined ? {} : { notice: noticeOf(ctx.info, focus) }) });
   preview.setCaption(captionOf(ctx.info, view.previewMode, focus));
   preview.highlight('events', { outline: view.mode === 'form' || justPosted });
+  if (justPosted) window.setTimeout(() => preview.highlight('events', { outline: false }), POSTED_OUTLINE_MS);
   log.exit(undefined);
 }
 
 /**
- * 一覧の1行を作る。
+ * 一覧の1行を作る（取り下げられるものは行全体を押すと編集を開く。それ以外は押せない行）。
  * @param ctx 文脈
  * @param event クーポン・イベント
  * @param flash 掲載したばかりか
@@ -124,19 +130,12 @@ function paintPreview(ctx: CmsContext, preview: PreviewColumnHandle, view: Event
  */
 function eventRow(ctx: CmsContext, event: CmsShopEventDto, flash: boolean): HTMLElement {
   const log = logger.fn('eventRow', { id: event.id, status: event.status });
-  const actions = event.canWithdraw ? [
-    h('button', { class: 'cms-textbtn', attrs: { type: 'button', 'data-testid': 'cms-event-edit' }, text: '編集', on: { click: () => startEdit(ctx, event) } }),
-    h('button', { class: 'cms-textbtn', attrs: { type: 'button', 'data-testid': 'cms-event-withdraw' }, text: '取り下げる', on: { click: () => confirmWithdraw(ctx, event) } }),
-  ] : [];
-  return log.exit(h('li', { class: ['cms-item', flash && 'cms-item--flash'], attrs: { 'data-testid': 'cms-event-row', 'data-event-id': event.id } }, [
-    eventBadge(event),
-    h('div', { class: 'cms-item__main' }, [h('span', { class: 'cms-item__title', text: event.title }), h('span', { class: 'cms-muted', text: `${KIND_LABELS[event.kind]}・${mdDate(event.start)}〜${mdDate(event.end)}` })]),
-    h('div', { class: 'cms-item__actions' }, actions),
-  ]));
+  const row = event.canWithdraw ? eventRowButton(event, () => startEdit(ctx, event), 'cms-event-edit') : eventRowStatic(event);
+  return log.exit(h('li', { class: [flash && 'cms-item--flash'], attrs: { 'data-testid': 'cms-event-row', 'data-event-id': event.id } }, [row]));
 }
 
 /**
- * 下書きの行を作る（題名が入っているときだけ）。
+ * 下書きの行を作る（題名が入っているときだけ。押すと入力を開く）。
  * @param ctx 文脈
  * @param draft 入力中の値
  * @returns 行（無ければ undefined）
@@ -144,14 +143,8 @@ function eventRow(ctx: CmsContext, event: CmsShopEventDto, flash: boolean): HTML
 function draftRow(ctx: CmsContext, draft: EventDraft): HTMLElement | undefined {
   const log = logger.fn('draftRow');
   if (draft.title.trim() === '' || viewOf(ctx).editingId !== undefined) return log.exit(undefined);
-  return log.exit(h('li', { class: 'cms-item', attrs: { 'data-testid': 'cms-draft-row' } }, [
-    badge('下書き', 'muted'),
-    h('div', { class: 'cms-item__main' }, [h('span', { class: 'cms-item__title', text: draft.title }), h('span', { class: 'cms-muted', text: `${KIND_LABELS[draft.kind]}・${mdDate(draft.start)}〜${mdDate(draft.end)}` })]),
-    h('div', { class: 'cms-item__actions' }, [
-      h('button', { class: 'cms-textbtn', attrs: { type: 'button', 'data-testid': 'cms-draft-edit' }, text: '編集', on: { click: () => openEventForm(ctx, undefined, true) } }),
-      h('button', { class: 'cms-textbtn', attrs: { type: 'button', 'data-testid': 'cms-draft-delete' }, text: '削除', on: { click: () => { ctx.discardDraft('event'); ctx.toast.show('削除しました'); ctx.update(ctx.info); } } }),
-    ]),
-  ]));
+  const row = eventRowButton({ draft: true, title: draft.title, start: draft.start, end: draft.end }, () => openEventForm(ctx, undefined, true), 'cms-draft-edit');
+  return log.exit(h('li', { attrs: { 'data-testid': 'cms-draft-row' } }, [row]));
 }
 
 /**
@@ -169,8 +162,8 @@ function renderList(ctx: CmsContext): HTMLElement {
   const rows = [draftRow(ctx, draftOf(ctx)), ...live.map((e) => eventRow(ctx, e, e.id === view.flashId))].filter((r): r is HTMLElement => r !== undefined);
   view.flashId = undefined;
   const body = !ctx.info.partner
-    ? h('p', { class: 'cms-muted', attrs: { 'data-testid': 'cms-not-partner' }, text: '協力店のみ掲載できます。運営者にご相談ください' })
-    : rows.length > 0 ? h('ul', { class: 'cms-items', attrs: { 'data-testid': 'cms-event-list' } }, rows) : h('p', { class: 'cms-muted', text: 'まだありません' });
+    ? h('p', { class: 'cms-muted', attrs: { 'data-testid': 'cms-not-partner' }, text: '協力店のみ掲載できます' })
+    : rows.length > 0 ? h('ul', { class: 'cms-rows', attrs: { 'data-testid': 'cms-event-list' } }, rows) : h('p', { class: 'cms-muted', text: 'まだありません' });
   return log.exit(h('div', { class: 'cms-panel', attrs: { 'data-testid': 'cms-screen-events' } }, [pageTitle('クーポン・イベント', aside), formSection(undefined, [body])]));
 }
 
@@ -332,6 +325,7 @@ function renderForm(ctx: CmsContext, preview: PreviewColumnHandle): HTMLElement 
   const kinds = kindSwitch(draft, () => { templates.replaceChildren(templateChips(draft, { title, description })); onChange(); });
   const cancel = createButton({ label: 'キャンセル', variant: 'ghost', testId: 'cms-event-cancel', onClick: () => { if (view.editingId !== undefined) ctx.discardDraft('event'); Object.assign(view, { mode: 'list', editingId: undefined }); ctx.update(ctx.info); } });
   const submitButton = createButton({ label: view.editingId === undefined ? '掲載する' : '保存', variant: 'primary', testId: 'cms-event-register', onClick: () => submit(ctx, draft, formParts) });
+  const danger = dangerAction(ctx, view, draft);
   refreshForm(ctx, draft, parts, repaint);
   return log.exit(h('div', { class: 'cms-panel', attrs: { 'data-testid': 'cms-event-form' } }, [
     pageTitle(view.editingId === undefined ? '新規作成' : '編集', previewButton(ctx)),
@@ -340,8 +334,31 @@ function renderForm(ctx: CmsContext, preview: PreviewColumnHandle): HTMLElement 
       h('div', { class: 'cms-field' }, [h('span', { class: 'cms-field__label', text: '例文' }), templates]),
       title.element, description.element, period.element,
     ]),
-    actionBar(undefined, [cancel, submitButton]),
+    actionBar(danger, [cancel, submitButton]),
   ]));
+}
+
+/**
+ * 入力の下端のバーの左に置く壊す操作を作る（白地に誤りの色の文字）。
+ * 編集のときは「取り下げる」（確認してから取り下げ、一覧へ戻る）。新規で、開いた時点で題名か説明に中身があるときは「削除」（下書きを捨てて一覧へ戻る）。
+ * @param ctx 文脈
+ * @param view 右側の状態
+ * @param draft 入力中の値
+ * @returns ボタン（どちらでもなければ undefined）
+ */
+function dangerAction(ctx: CmsContext, view: EventsView, draft: EventDraft): HTMLButtonElement | undefined {
+  const log = logger.fn('dangerAction', { editingId: view.editingId });
+  /** 一覧に戻す（入力中の値は捨てる） */
+  const backToList = (): void => { ctx.discardDraft('event'); Object.assign(view, { mode: 'list', editingId: undefined }); }; // audit-ignore: fnlog-missing 押したときに呼ぶ小さな中継
+  const editing = view.editingId === undefined ? undefined : ctx.info.events.find((e) => e.id === view.editingId);
+  const hasContent = draft.title.trim() !== '' || draft.description.trim() !== '';
+  const button = editing !== undefined
+    ? createButton({ label: '取り下げる', variant: 'secondary', testId: 'cms-event-withdraw', onClick: () => confirmWithdraw(ctx, editing, backToList) })
+    : view.editingId === undefined && hasContent
+      ? createButton({ label: '削除', variant: 'secondary', testId: 'cms-draft-delete', onClick: () => { backToList(); ctx.toast.show('削除しました'); ctx.update(ctx.info); } })
+      : undefined;
+  button?.classList.add('cms-btn-danger');
+  return log.exit(button);
 }
 
 /**
@@ -362,12 +379,13 @@ function startEdit(ctx: CmsContext, event: CmsShopEventDto): void {
 }
 
 /**
- * 取り下げの確認を出す（「取り下げる」は朱にせず、白地に誤りの色の文字）。
+ * 取り下げの確認を出す（「取り下げる」はブランド色にせず、白地に誤りの色の文字）。
  * @param ctx 文脈
  * @param event クーポン・イベント
+ * @param onWithdrawn 取り下げた後、描き直す前に呼ぶ処理（入力を閉じて一覧へ戻すなど）
  * @sideEffect 確認のモーダルを開き、取り下げたら描き直す
  */
-function confirmWithdraw(ctx: CmsContext, event: CmsShopEventDto): void {
+function confirmWithdraw(ctx: CmsContext, event: CmsShopEventDto, onWithdrawn?: () => void): void {
   const log = logger.fn('confirmWithdraw', { id: event.id });
   const modal = openModal({
     title: '取り下げますか？', body: event.title, testId: 'cms-withdraw-modal',
@@ -378,6 +396,7 @@ function confirmWithdraw(ctx: CmsContext, event: CmsShopEventDto): void {
         onClick: (): void => {
           void ctx.services.withdrawShopEvent.execute({ spotId: ctx.info.id, shopEventId: event.id, operationId: newOperationId() }).then((result) => {
             if (!result.ok) return ctx.toast.show('取り下げられませんでした', 'error');
+            onWithdrawn?.();
             ctx.toast.show('取り下げました');
             ctx.update(result.value);
           });

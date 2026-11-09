@@ -73,7 +73,7 @@ export function formatDemoDate(today: string): string {
  * @returns 'おまいり番長が天満地区の主を奪う'
  */
 export function rivalButtonLabel(districtName: string): string {
-  return `${DEFAULT_RIVAL_NAME}が${districtName}の主を奪う`;
+  return `${DEFAULT_RIVAL_NAME}が${districtName}の領主を奪う`;
 }
 
 /**
@@ -83,8 +83,8 @@ export function rivalButtonLabel(districtName: string): string {
  */
 export function rivalResultMessage(output: SimulateRivalOutput): string {
   const log = logger.fn('rivalResultMessage', { districtId: output.districtId, changed: output.changed });
-  if (output.changed) return log.exit(`${output.rivalName}が${output.districtName}の主になりました`);
-  return log.exit(`${output.rivalName}が${output.districtName}を訪れました（主は変わりません）`);
+  if (output.changed) return log.exit(`${output.rivalName}が${output.districtName}の領主になりました`);
+  return log.exit(`${output.rivalName}が${output.districtName}を訪れました（領主は変わりません）`);
 }
 
 /**

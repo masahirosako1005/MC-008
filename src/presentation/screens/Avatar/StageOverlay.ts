@@ -43,6 +43,8 @@ export interface StageOverlayInput {
   readonly onPose: (pose: AvatarPose) => void;
   readonly onUndo: () => void;
   readonly onRandom: () => void;
+  /** 撮影 */
+  readonly onPhoto: () => void;
 }
 
 /** 上に重ねる表示の操作 */
@@ -51,7 +53,7 @@ export interface StageOverlayHandle {
   readonly element: HTMLElement;
   /** ステージの下の操作の列 */
   readonly actions: HTMLElement;
-  update(outfit: readonly string[], tryOnId: string | undefined, parts: readonly AvatarPartDto[]): void;
+  update(outfit: readonly string[], tryOnId: string | undefined, parts: readonly AvatarPartDto[], setName?: string): void;
   setSaveState(state: SaveState): void;
 }
 
@@ -68,7 +70,7 @@ function createNamePlate(closet: AvatarClosetDto, parts: readonly AvatarPartDto[
   return log.exit(h('div', { class: 'avatar-plate', attrs: { 'data-testid': 'avatar-plate' } }, [
     title === undefined ? undefined : h('span', { class: ['avatar-plate__title', `avatar-plate__title--${title.rarity.toLowerCase()}`] }, [h('span', { class: 'avatar-plate__title-text', text: title.name })]),
     h('b', { class: 'avatar-plate__name', text: closet.nickname }),
-    h('span', { class: 'avatar-plate__rank', text: `${closet.rankName}・${closet.points.toLocaleString('ja-JP')}pt` }),
+    h('span', { class: 'avatar-plate__rank', text: `${closet.rankName}・${closet.points.toLocaleString('ja-JP')}EXP` }),
   ]));
 }
 
@@ -91,10 +93,14 @@ function createMeta(parts: readonly AvatarPartDto[]): HTMLElement {
  * 試着中の帯を作る。
  * @param parts すべての部品
  * @param tryOnId 試着中の部品
+ * @param setName 試着中のセット（部品より先に出す）
  * @returns 要素（試着していなければ undefined）
  */
-function createTryOnRibbon(parts: readonly AvatarPartDto[], tryOnId: string | undefined): HTMLElement | undefined {
-  const log = logger.fn('createTryOnRibbon', { tryOnId });
+function createTryOnRibbon(parts: readonly AvatarPartDto[], tryOnId: string | undefined, setName?: string): HTMLElement | undefined {
+  const log = logger.fn('createTryOnRibbon', { tryOnId, setName });
+  if (setName !== undefined && tryOnId === undefined) {
+    return log.exit(h('div', { class: 'avatar-tryon', attrs: { role: 'status' } }, [h('div', { class: 'avatar-tryon__row' }, [h('b', { text: '試着中' }), h('span', { text: setName })])]));
+  }
   const part = parts.find((p) => p.id === tryOnId);
   if (part === undefined) return log.exit(undefined);
   const left = remainingTextOf(part);
@@ -181,24 +187,24 @@ export function createStageOverlay(input: StageOverlayInput): StageOverlayHandle
    * @param handler 押したとき
    * @returns ボタン
    */
-  const action = (icon: 'undo' | 'random', label: string, handler: () => void): HTMLElement => { // audit-ignore: fnlog-missing 2回だけ呼ぶボタンの組み立て
+  const action = (icon: 'undo' | 'random' | 'photo', label: string, handler: () => void): HTMLElement => { // audit-ignore: fnlog-missing 2回だけ呼ぶボタンの組み立て
     const b = h('button', { class: ['avatar-action', icon === 'random' ? 'avatar-action--primary' : undefined], attrs: { type: 'button', 'data-testid': `avatar-action-${label}` } }, [createAvatarIcon(icon, 20), label]);
     b.addEventListener('click', handler);
     return b;
   };
-  const actions = h('div', { class: 'avatar-actions' }, [action('undo', '元に戻す', input.onUndo), action('random', 'おまかせ', input.onRandom), status]);
+  const actions = h('div', { class: 'avatar-actions' }, [action('undo', '戻す', input.onUndo), action('random', 'おまかせ', input.onRandom), action('photo', '撮影', input.onPhoto), status]);
   /**
    * 表示を装いに合わせる。
    * @param outfit 表示している装い
    * @param tryOnId 試着中の部品
    * @param parts すべての部品
    */
-  const update = (outfit: readonly string[], tryOnId: string | undefined, parts: readonly AvatarPartDto[]): void => {
+  const update = (outfit: readonly string[], tryOnId: string | undefined, parts: readonly AvatarPartDto[], setName?: string): void => {
     const updateLog = logger.fn('update', { tryOnId });
     top.replaceChildren(createNamePlate(input.closet, parts, outfit));
     meta.replaceChildren(createMeta(parts));
     poses.draw(stageLookOf(outfit).avatar);
-    const r = createTryOnRibbon(parts, tryOnId);
+    const r = createTryOnRibbon(parts, tryOnId, setName);
     ribbon.replaceChildren(...(r === undefined ? [] : [r]));
     updateLog.exit(undefined);
   };

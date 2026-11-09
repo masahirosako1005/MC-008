@@ -64,6 +64,11 @@ export interface DemoServices {
 /** presentation が受け取るサービス一覧 */
 export interface AppServices {
   readonly isDemo: boolean;
+  /**
+   * 店舗CMS の登録内容が変わったとき（連携サーバーから新しい版が届いたとき・デモで別タブの cms.html が保存したとき）に呼ぶ関数を登録する。
+   * 戻り値は登録解除の関数。無いときは CMS の反映なし（docs/09 §7.3）
+   */
+  readonly onCatalogChanged?: (listener: () => void) => () => void;
   /** ドメインイベントの購読（演出・地図パルス用） */
   readonly events: EventSubscriber;
   readonly status: UseCase<void, AppStatusDto>;

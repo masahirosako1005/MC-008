@@ -261,7 +261,7 @@ function drawOtherPerson(ctx: CanvasRenderingContext2D, person: PlacedPerson, in
   if (facesLeft(person.traveler.key)) ctx.scale(-1, 1);
   ctx.drawImage(sprite.image, -sprite.footX, -sprite.footY, sprite.width, sprite.height);
   ctx.restore();
-  if (input.zoom === 'near') drawNameTag(ctx, person.traveler.name.replace(/^旅人/, ''), { x: at.x, y: at.y + 12 }, { fill: PALETTE.white, text: color, scale: input.textScale });
+  if (input.zoom === 'near') drawNameTag(ctx, person.traveler.name.replace(/^(冒険者|旅人)/, ''), { x: at.x, y: at.y + 12 }, { fill: PALETTE.white, text: color, scale: input.textScale });
 }
 
 /**
@@ -292,7 +292,7 @@ function drawOtherBadge(ctx: CanvasRenderingContext2D, person: PlacedPerson, inp
   ctx.fillText(person.traveler.initial, at.x, at.y + r * 0.06);
   ctx.restore();
   if (person.traveler.isLord) drawCrown(ctx, { x: at.x, y: at.y - r - (input.zoom === 'wide' ? 3 : 4) }, input.zoom === 'wide' ? 10 : 14);
-  if (input.zoom === 'near') drawNameTag(ctx, person.traveler.name.replace(/^旅人/, ''), { x: at.x, y: at.y + r + 9 }, { fill: PALETTE.white, text: color, scale: input.textScale });
+  if (input.zoom === 'near') drawNameTag(ctx, person.traveler.name.replace(/^(冒険者|旅人)/, ''), { x: at.x, y: at.y + r + 9 }, { fill: PALETTE.white, text: color, scale: input.textScale });
 }
 
 /**

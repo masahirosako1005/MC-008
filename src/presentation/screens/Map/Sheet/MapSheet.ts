@@ -125,7 +125,7 @@ class MapSheetController {
     this.ctx = ctx;
     this.sheet = new BottomSheet({
       initial: ctx.ui.sheetState,
-      label: '近くのスポットと次に訪れる理由',
+      label: '近くのスポットとクエスト',
       onStateChange: (state): void => {
         ctx.ui.sheetState = state;
       },
@@ -294,7 +294,7 @@ function buildPeek(data: SheetData, deps: RenderDeps): HTMLElement {
   const reason = strongestReason(data.reasons);
   const reasonView =
     reason === undefined
-      ? h('p', { class: ['hint', 'map-sheet__empty'], text: 'いまは急ぎの理由はありません' })
+      ? h('p', { class: ['hint', 'map-sheet__empty'], text: 'いまは急ぎのクエストはありません' })
       : createReasonCardFor(reason, { compact: true, onTarget: (target): void => deps.goTarget(target) });
   return log.exit(h('div', { class: 'map-sheet__peek' }, [buildNearestRow(nearestSpot(data.nearby), deps), reasonView]));
 }
@@ -321,7 +321,7 @@ function buildNearestRow(spot: NearbySpotDto | undefined, deps: RenderDeps): HTM
       h('span', { class: 'map-sheet__nearest-sub', text: lines.sub }),
     ]),
   ]);
-  const visit = spot.canVisit ? createButton({ label: 'チェックイン', variant: 'primary', testId: 'sheet-visit', onClick: (): void => deps.goSpot(spotId) }) : undefined;
+  const visit = spot.canVisit ? createButton({ label: 'クエスト達成', variant: 'primary', testId: 'sheet-visit', onClick: (): void => deps.goSpot(spotId) }) : undefined;
   const attrs = {
     'data-testid': 'sheet-nearest',
     'data-spot-id': spotId,
@@ -344,7 +344,7 @@ function buildHalf(data: SheetData, deps: RenderDeps): HTMLElement {
     h('div', { class: 'map-sheet__half' }, [
       h('h2', { class: 'sheet-section-title', text: '近くのスポット' }),
       createNearbySpotList(data.nearby, { onSpot: (spotId): void => deps.goSpot(spotId), onUnknown: (): void => deps.onUnknown() }),
-      h('h2', { class: 'sheet-section-title', text: 'また行きたくなる理由' }),
+      h('h2', { class: 'sheet-section-title', text: 'クエスト' }),
       createRevisitReasonList(data.reasons, (target): void => deps.goTarget(target)),
     ]),
   );

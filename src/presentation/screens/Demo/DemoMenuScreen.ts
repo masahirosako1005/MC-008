@@ -114,7 +114,7 @@ class DemoMenuController {
     const deps: DemoPanelDeps = { ctx: this.ctx, demo, runner: this.runner, onStatusChanged: (): Promise<void> => this.refreshStatus() };
     const districts = districtsOf(town);
     body.append(
-      h('div', { class: 'demo-info' }, [createInfoRow('デモ日付', this.dateValue), createInfoRow('旅人', this.profileValue)]),
+      h('div', { class: 'demo-info' }, [createInfoRow('デモ日付', this.dateValue), createInfoRow('冒険者', this.profileValue)]),
       createDateAdvancePanel(deps),
       createRivalActionPanel(deps, districts),
       createTravelerSwitchPanel(deps, status.ok ? status.value.travelerProfile : undefined),

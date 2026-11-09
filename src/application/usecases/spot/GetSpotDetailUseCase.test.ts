@@ -38,7 +38,7 @@ describe('GetSpotDetailUseCase', () => {
     await seedTraveler(tw, { discovered: ['l_jo01'] });
     standNear(tw, 'l_jo01', 110);
     const detail = must(await new GetSpotDetailUseCase(tw).execute({ spotId: 'l_jo01' }));
-    expect(detail).toMatchObject({ meters: 110, canVisit: false, metersToVisit: 30, visitBlockedReason: 'あと30m近づくと訪問できます' });
+    expect(detail).toMatchObject({ meters: 110, canVisit: false, metersToVisit: 30, visitBlockedReason: 'あと30m近づくと達成できます' });
   });
 
   it('位置が取れないと meters なし・canVisit=false・「現在地を取得できません」で詳細は返す', async () => {

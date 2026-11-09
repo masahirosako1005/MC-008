@@ -130,8 +130,8 @@ export function nearestSpotLines(spot: NearbySpotDto): { readonly title: string;
  */
 export function lordLabelOf(district: Pick<DistrictCardDto, 'lordName' | 'isLordMe'>): string | undefined {
   const log = logger.fn('lordLabelOf', { isLordMe: district.isLordMe, hasLord: district.lordName !== undefined });
-  if (district.isLordMe) return log.exit('主：あなた');
-  return log.exit(district.lordName === undefined || district.lordName.length === 0 ? undefined : `主：${district.lordName}`);
+  if (district.isLordMe) return log.exit('領主：あなた');
+  return log.exit(district.lordName === undefined || district.lordName.length === 0 ? undefined : `領主：${district.lordName}`);
 }
 
 /**

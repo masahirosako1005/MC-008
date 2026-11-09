@@ -20,7 +20,7 @@ export type SpotCardStatus = 'unknown' | 'discovered' | 'visited';
 export const SPOT_STATUS_ICONS: Readonly<Record<SpotCardStatus, { readonly icon: IconName; readonly name: string }>> = {
   unknown: { icon: 'question', name: '未発見' },
   discovered: { icon: 'pin', name: '発見済み' },
-  visited: { icon: 'check', name: '訪問済み' },
+  visited: { icon: 'check', name: '達成済み' },
 };
 
 /** 未発見スポットの名前の代わりに出す文言 */

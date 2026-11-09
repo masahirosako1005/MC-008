@@ -30,7 +30,7 @@ export const KIND_LABELS: Readonly<Record<SpotKindDto, string>> = { landmark: '�
 export const STATUS_LABELS: Readonly<Record<SpotStatusDto, string>> = {
   unknown: '未発見',
   discovered: 'まだ行っていない',
-  visited: '訪問済み',
+  visited: '達成済み',
 };
 
 /** 成長段階の説明（CLAUDE.md 4.3） */

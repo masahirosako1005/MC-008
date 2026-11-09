@@ -5,6 +5,8 @@
  */
 import { createLogger } from '@/Common/logging/logger';
 import { spotKindOfId } from '@/Common/types/Id';
+import { seasonOf } from '@/Common/utils/date';
+import type { Season } from '@/Common/utils/date';
 import type { VisitRecord } from '@/domain/exploration/VisitRecord';
 import { AVATAR_CATALOG, AVATAR_SLOTS, DEFAULT_PART_IDS, MAX_OBJECTS, OPTIONAL_SLOTS, avatarPartOf } from '@/domain/avatar/AvatarCatalog';
 import type { AvatarPartDef, AvatarSlot, AvatarUnlock } from '@/domain/avatar/AvatarCatalog';
@@ -28,6 +30,18 @@ export interface AvatarProgress {
   readonly goldCards: number;
   /** 手に入れたアイテムID（domain/reward/ItemPolicy） */
   readonly itemIds: ReadonlySet<string>;
+  /** 季節（と地区）ごとに通った回数。キーは 'spring' や 'spring:d_okawa' */
+  readonly seasonVisits: ReadonlyMap<string, number>;
+}
+
+/**
+ * 季節ごとの回数のキーを作る。
+ * @param season 季節
+ * @param districtId 地区ID（省略で全地区）
+ * @returns キー
+ */
+export function seasonKeyOf(season: Season, districtId?: string): string {
+  return districtId === undefined ? season : `${season}:${districtId}`;
 }
 
 /** avatarProgressOf の入力 */
@@ -58,8 +72,11 @@ export function avatarProgressOf(input: AvatarProgressInput): AvatarProgress {
   const days = new Set<string>();
   const shops = new Set<string>();
   const landmarks = new Set<string>();
+  const seasonVisits = new Map<string, number>();
   for (const v of input.visits) {
     districtVisits.set(v.districtId, (districtVisits.get(v.districtId) ?? 0) + 1);
+    const season = seasonOf(v.localDate);
+    for (const key of [seasonKeyOf(season), seasonKeyOf(season, v.districtId)]) seasonVisits.set(key, (seasonVisits.get(key) ?? 0) + 1);
     days.add(v.localDate);
     (spotKindOfId(v.spotId) === 'landmark' ? landmarks : shops).add(v.spotId);
   }
@@ -73,6 +90,7 @@ export function avatarProgressOf(input: AvatarProgressInput): AvatarProgress {
     silverCards: input.silverCards,
     goldCards: input.goldCards,
     itemIds: new Set(input.itemIds),
+    seasonVisits,
   }));
 }
 
@@ -94,6 +112,7 @@ function valuesOf(unlock: AvatarUnlock, p: AvatarProgress): readonly [number, nu
     case 'silverCards': return [p.silverCards, unlock.count];
     case 'goldCards': return [p.goldCards, unlock.count];
     case 'item': return [p.itemIds.has(unlock.itemId) ? 1 : 0, 1];
+    case 'seasonVisits': return [p.seasonVisits.get(seasonKeyOf(unlock.season, unlock.districtId)) ?? 0, unlock.count];
   }
 }
 

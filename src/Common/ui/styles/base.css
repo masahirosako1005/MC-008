@@ -2,7 +2,7 @@
  * @file 基本スタイルとアプリの骨組み（Common/ui/styles）
  * スマホ枠（幅 500px 以上は 390×844 の枠を中央に、狭い画面は全画面）、ステータスバー、画面領域、上部バー、歯車、下部タブ。
  * トーンは「都会の生活アプリ」（docs/08 §10）: 白とクールグレーの面、細い線（hairline）、ニュートラルな影、余白で階層を作る。
- * アクセントはブランド色（コーラル）1色。選択中タブ・主要ボタン・現在地だけに使う。
+ * アクセントはブランド色（ロイヤルブルー）1色。選択中タブ・主要ボタン・現在地だけに使う。
  */
 *,
 *::before,
@@ -90,7 +90,7 @@ button:disabled { cursor: default; }
 @media (min-width: 500px) {
   .app-viewport {
     padding: 1.25rem;
-    background: radial-gradient(120% 80% at 50% 0%, #f3f5f8 0%, var(--page-bg) 60%);
+    background: radial-gradient(120% 80% at 50% 0%, var(--paper) 0%, var(--page-bg) 60%);
   }
   .phone {
     width: 390px;

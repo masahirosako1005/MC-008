@@ -20,6 +20,8 @@ import type {
   WithdrawShopEventInput,
 } from '@/application/dto/CmsDto';
 import { API_PATHS, cmsShopPath, cmsWithdrawPath, DEMO_OFFSET_HEADER } from '@/infrastructure/api/apiRoutes';
+import { createHttpCmsAuthServices } from '@/infrastructure/api/HttpCmsAuthServices';
+import type { HttpCmsAuthServicesOptions } from '@/infrastructure/api/HttpCmsAuthServices';
 import { requestApi } from '@/infrastructure/api/requestApi';
 import type { ApiClientDeps, ApiRequest } from '@/infrastructure/api/requestApi';
 import { CMS_SHOP_INFO_SHAPE, CMS_SHOP_LIST_SHAPE, CMS_VISIT_STATS_SHAPE } from '@/infrastructure/api/schema/cmsApiShapes';
@@ -33,6 +35,8 @@ const logger = createLogger('infrastructure/api/HttpCmsServices');
 export interface HttpCmsServicesDeps extends Omit<ApiClientDeps, 'headers'> {
   /** デモの日付のずらし日数（デモの CMS だけが渡す） */
   readonly demoOffsetDays?: () => number;
+  /** ログイン・アカウントも作る（連携サーバーにつなぐ CMS はいつも渡す。demo ならデモのログインも） */
+  readonly auth?: HttpCmsAuthServicesOptions;
 }
 
 /**
@@ -123,5 +127,6 @@ export function createHttpCmsServices(deps: HttpCmsServicesDeps = {}): CmsServic
     }), info),
     visitStats: apiUseCase<CmsShopInput, CmsVisitStatsDto>(client, (i) => ({ method: 'GET', path: cmsShopPath(i.spotId, 'visit-stats') }), byShape(CMS_VISIT_STATS_SHAPE, 'CmsVisitStatsDto')),
     resetDemo: apiUseCase<void, void>(client, () => ({ method: 'POST', path: API_PATHS.cmsDemoReset, body: {} }), parseVoid),
+    ...(deps.auth === undefined ? {} : { auth: createHttpCmsAuthServices(client.deps, deps.auth) }),
   }));
 }

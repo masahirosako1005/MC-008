@@ -50,7 +50,7 @@ describe('GetRankStatusUseCase', () => {
     ]);
     const status = must(await new GetRankStatusUseCase(tw).execute());
     expect(status.points).toBe(60);
-    expect(status.rank).toMatchObject({ name: '旅人', index: 1, nextName: '常連', nextAt: 150, remaining: 90 });
+    expect(status.rank).toMatchObject({ name: '冒険者', index: 1, nextName: 'ベテラン冒険者', nextAt: 150, remaining: 90 });
     expect(status.steps.map((s) => s.state)).toEqual(['reached', 'current', 'locked', 'locked', 'locked']);
     expect(status.steps.map((s) => s.min)).toEqual([...status.steps.map((s) => s.min)].sort((a, b) => a - b));
     expect(status).toMatchObject({ totalVisits: 5, visitedSpots: 3, silverCards: 1, goldCards: 0 });
