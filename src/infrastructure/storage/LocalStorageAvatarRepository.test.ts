@@ -39,3 +39,22 @@ describe('LocalStorageAvatarRepository', () => {
     expect(must(await repo.load(TRAVELER_ID))).toEqual({});
   });
 });
+
+describe('LocalStorageAvatarRepository（着せ替えの部品）', () => {
+  it('部品・マイコーデ・見た部品を保存して読み込める', async () => {
+    const repo = new LocalStorageAvatarRepository({ store: new InMemoryKeyValueStore(), prefix: PREFIX });
+    const state = { partIds: ['hair.bob', 'object.bench'], coords: [null, ['hair.long']], seenPartIds: ['hair.bun'] };
+    must(await repo.save(TRAVELER_ID, state));
+    expect(must(await repo.load(TRAVELER_ID))).toEqual(state);
+  });
+
+  it('部品ID の形式違反・数の上限超えは退避して STORAGE_FAILED（DI-01）', async () => {
+    for (const data of [{ partIds: ['<img src=x>'] }, { partIds: 'hair.bob' }, { coords: [['a']] }, { seenPartIds: Array.from({ length: 600 }, () => 'hair.bob') }]) {
+      const store = new InMemoryKeyValueStore({ [KEY]: JSON.stringify({ schemaVersion: 1, version: 1, data }) });
+      const repo = new LocalStorageAvatarRepository({ store, prefix: PREFIX });
+      const result = await repo.load(TRAVELER_ID);
+      expect(result.ok ? undefined : result.error.code).toBe('STORAGE_FAILED');
+      expect(must(await repo.load(TRAVELER_ID))).toEqual({});
+    }
+  });
+});

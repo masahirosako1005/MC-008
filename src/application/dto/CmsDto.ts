@@ -48,12 +48,16 @@ export interface CmsBusinessHoursDto {
   readonly close: string;
   /** 0=月 … 6=日 */
   readonly closedDays: readonly number[];
+  /** 補足（例「土曜は15時まで」。無ければ空文字か省略） */
+  readonly note?: string;
 }
 
 /** 店舗の情報（CMS の各画面で使う） */
 export interface CmsShopInfoDto {
   readonly id: string;
   readonly name: string;
+  /** 地区ID（アプリでの見え方を描くときの地区色に使う） */
+  readonly districtId: string;
   readonly districtName: string;
   readonly category: string;
   readonly description: string;
@@ -114,6 +118,8 @@ export interface CmsCountDto {
   readonly value?: number;
   /** 少数のため秘匿したか */
   readonly suppressed: boolean;
+  /** 数値の代わりに出す説明（例「定休日」「まだ出していません」。あれば value は無い） */
+  readonly note?: string;
 }
 
 /** 来訪データ（フェーズ1はダミー＝docs/09 CMS-D08） */
@@ -130,7 +136,7 @@ export interface CmsVisitStatsDto {
   readonly revisitRatePct: number;
   /** 初めての人の割合（%） */
   readonly firstTimerPct: number;
-  /** 週ごとの訪問数（古い週 → 今週。8週） */
+  /** 7日ごとの来店数（古い → 直近7日。8つ） */
   readonly weekly: readonly CmsCountDto[];
   /** 曜日別の訪問数（月〜日） */
   readonly byWeekday: readonly CmsCountDto[];

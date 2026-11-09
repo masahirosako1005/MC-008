@@ -1,56 +1,63 @@
 /*
  * @file 図鑑画面のスタイル（presentation/screens/Zukan）
- * 地区タブ＋地区の見出し（地区の色の帯）＋収集カード風の3列格子（wireframes/05_zukan）。サイズは rem、タップ領域は最小 44px。
+ * 最上部の絞り込み（地区・状態。スクロールしても上に残る）＋地区で絞ったときの地区の見出し＋収集カード風の3列格子（wireframes/05_zukan）。サイズは rem、タップ領域は最小 44px。
  * カードの状態は「絵の色・枠線（実線／破線／太線／二重）・帯・星・文言」の重ねがけで示す（色覚配慮）。
  * 地区の色は帯と丸だけに使い、ほかはグレースケール＋アクセント1色（tokens.css）。動きは prefers-reduced-motion で止める。
  */
 .zukan__body { padding-top: 0.75rem; padding-bottom: 1rem; }
 
-/* ---- 地区タブ ---- */
-.zukan-tabs {
+/* ---- 絞り込み（地区・状態の2段。スクロールしても上に残る） ---- */
+/* top は本文の上余白（.zukan__body の padding-top 0.75rem）を打ち消す値（sticky はスクロール領域の余白の内側で止まるため） */
+.zukan-filter {
+  position: sticky;
+  top: -0.75rem;
+  z-index: 6;
   display: flex;
-  gap: 0.25rem;
-  padding: 0.25rem;
-  border-radius: 0.875rem;
-  background: var(--g1);
-  border: 1px solid var(--g2);
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: -0.75rem calc(-1 * var(--gutter)) 0.5rem;
+  padding: 0.5rem var(--gutter);
+  background: var(--paper);
+  box-shadow: 0 1px 0 var(--hairline);
 }
-.zukan-tabs__tab {
+.zukan-filter__row { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.zukan-filter__title { flex: none; width: 2rem; font-size: 0.6875rem; font-weight: 700; color: var(--g4); letter-spacing: 0.04em; }
+.zukan-filter__choices {
   flex: 1;
   min-width: 0;
+  display: flex;
+  gap: 0.125rem;
+  padding: 0.1875rem;
+  border-radius: 0.875rem;
+  background: var(--g2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.zukan-filter__choices::-webkit-scrollbar { display: none; }
+.zukan-filter__choice {
+  flex: 1 0 auto;
   min-height: var(--tap);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
-  padding: 0 0.125rem;
+  gap: 0.1875rem;
+  padding: 0 0.25rem;
   border: 0;
-  border-radius: 0.625rem;
+  border-radius: 0.6875rem;
   background: transparent;
   color: var(--g5);
   font: inherit;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   white-space: nowrap;
   cursor: pointer;
   transition: background var(--motion-fast), color var(--motion-fast);
 }
-.zukan-tabs__tab[aria-selected="true"] {
-  background: var(--g0);
-  color: var(--ink);
-  font-weight: 700;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), inset 0 -3px 0 var(--accent);
-}
-.zukan-tabs__tab:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.zukan-tabs__dot {
-  flex: none;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--district, var(--g3));
-}
-.zukan-tabs__dot[data-fade="fading"] { background: transparent; border: 1.5px dashed var(--district, var(--g4)); }
-.zukan-tabs__dot[data-fade="never"] { background: transparent; border: 1.5px solid var(--g3); }
-.zukan-tabs__label { overflow: hidden; text-overflow: ellipsis; }
+.zukan-filter__choice[aria-checked="true"] { background: var(--g0); color: var(--ink); font-weight: 700; box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12); }
+.zukan-filter__choice:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.zukan-filter__dot { flex: none; width: 0.4375rem; height: 0.4375rem; border-radius: 50%; background: var(--district, var(--g3)); }
+.zukan-filter__dot[data-fade="fading"] { background: transparent; border: 1.5px dashed var(--district, var(--g4)); }
+.zukan-filter__dot[data-fade="never"] { background: transparent; border: 1.5px solid var(--g4); }
+.zukan__empty { margin: 2.5rem 0; }
 
 /* ---- 地区の見出し ---- */
 .zukan-hero {
@@ -192,11 +199,35 @@
 }
 .zukan-card__caption { display: block; font-size: 0.625rem; line-height: 1.3; color: var(--g4); }
 
+/* カードの地区札（すべての地区を混ぜて並べるとき。地区で絞ったときは出さない） */
+.zukan-card__district {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1875rem;
+  max-width: calc(100% - 3.25rem);
+  padding: 0 0.375rem 0 0.25rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 0 0 1px var(--hairline);
+  color: var(--g5);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.zukan-card__district-dot { flex: none; width: 0.375rem; height: 0.375rem; border-radius: 50%; background: var(--district, var(--g4)); }
+.zukan__body[data-district-id] .zukan-card__district { display: none; }
+
 /* 絵の上の小物（canvas は後から差し込まれるので重なり順を明示する） */
 .zukan-card__ribbon,
 .zukan-card__today,
-.zukan-card__count,
-.zukan-card__mystery { z-index: 1; }
+.zukan-card__count { z-index: 1; }
 .zukan-card__ribbon {
   position: absolute;
   top: 0.25rem;
@@ -282,37 +313,33 @@
 .zukan-card[data-status="discovered"] { border-color: var(--g3); }
 .zukan-card[data-status="discovered"] .zukan-card__name { color: var(--g5); }
 
-/* 未発見＝霧の「？」 */
+/* 未発見＝同じ絵のシルエットを霧ごしに薄く（2026-11-09「？ではなくすべて表示」）。破線の枠と「未発見」の札でも示す */
 .zukan-card[data-status="unknown"] { border-style: dashed; border-color: var(--g3); background: var(--g1); box-shadow: none; }
 .zukan-card[data-status="unknown"] .zukan-card__art {
+  outline: 1.5px dashed var(--g3);
+  outline-offset: -1.5px;
   background:
     radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.9), transparent 45%),
     radial-gradient(circle at 75% 80%, rgba(255, 255, 255, 0.7), transparent 40%),
     repeating-linear-gradient(45deg, var(--g1) 0 0.375rem, var(--g2) 0.375rem 0.4375rem);
 }
-.zukan-card__mystery {
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 2rem;
-  height: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: 1.5px dashed var(--g4);
-  background: rgba(255, 255, 255, 0.85);
+.zukan-card[data-status="unknown"] .zukan-card__canvas { filter: grayscale(1) contrast(0.85); opacity: 0.45; }
+.zukan-card[data-status="unknown"] .zukan-card__name { color: var(--g4); font-weight: 500; }
+.zukan-card[data-status="unknown"] .zukan-card__caption {
+  align-self: center;
+  padding: 0 0.375rem;
+  border-radius: var(--radius-pill);
+  border: 1px dashed var(--g3);
   color: var(--g4);
-  font-size: 1rem;
-  font-weight: 800;
 }
-.zukan-card[data-status="unknown"] .zukan-card__name { color: var(--g4); letter-spacing: 0.15em; font-weight: 400; }
 
-/* 色あせ中の地区＝カラーの絵を薄く（見た目だけ。回数・なじみ度は変えない）。見出しの「◌ 色あせ中」と併せて示す */
-.zukan__body[data-fade="fading"] .zukan-card[data-status="visited"] { border-style: dashed; }
+/*
+ * 色あせ中の地区（見た目だけ。回数・なじみ度は変えない）。地区の「◌ 色あせ中」と併せて示す。
+ * すべての地区を並べるときは獲得したカードをカラーのまま見せ（2026-11-09「グレーではなく獲得したものを見せて」）、破線の枠だけで示す。
+ * 絵を薄くするのは、その地区で絞り込んだときだけ。
+ */
+.zukan-card[data-fade="fading"][data-status="visited"] { border-style: dashed; }
 .zukan__body[data-fade="fading"] .zukan-card[data-status="visited"] .zukan-card__canvas { filter: saturate(0.3); opacity: 0.7; }
-
-.zukan__footnote { margin: 1rem 0 0.5rem; font-size: 0.75rem; color: var(--g4); text-align: center; }
 
 @keyframes zukan-card-in {
   from { opacity: 0; transform: translateY(0.375rem) scale(0.97); }
@@ -329,3 +356,49 @@
 
 /* 未発見カードの見つけ方（格子の上に1回だけ） */
 .zukan-unknown-hint { margin: 0 0 0.75rem; }
+
+/*
+ * ---- 写真（2026-11-09 ユーザー指示「リアル写真風な、場所がしっかり思い出せるデザインに」） ----
+ * 名所は実写、店舗はカテゴリのイメージ写真（「イメージ」の札）。訪問済み＝カラー、発見済み＝モノクロ、未発見＝モノクロを霧ごしに薄く。
+ * 写真が読めないときは街なみイラスト（canvas）に切り替わり、上のイラスト用の指定が効く。
+ */
+.zukan-card[data-status="discovered"] .spot-photo__img { filter: grayscale(1) contrast(0.95) brightness(1.06); }
+.zukan-card[data-status="unknown"] .spot-photo__img { filter: grayscale(1) contrast(0.85) blur(0.5px); opacity: 0.45; }
+.zukan__body[data-fade="fading"] .zukan-card[data-status="visited"] .spot-photo__img { filter: saturate(0.3); opacity: 0.75; }
+.zukan-card__art .spot-photo__badge {
+  top: auto;
+  bottom: 0.25rem;
+  left: 0.25rem;
+  padding: 0 0.3125rem;
+  font-size: 0.5rem;
+  letter-spacing: 0.04em;
+}
+
+/* 拡大プレビューの写真（大きなカードの上）とクレジット（カードの下） */
+.card-preview__photo {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  margin-bottom: 0.375rem;
+  border-radius: var(--radius-s);
+  overflow: hidden;
+  background: var(--g1);
+}
+.card-preview__photo .spot-photo__badge { top: 0.375rem; left: 0.375rem; font-size: 0.625rem; }
+.card-preview__card[data-status="discovered"] .card-preview__photo .spot-photo__img { filter: grayscale(1) contrast(0.95) brightness(1.06); }
+.card-preview__card[data-status="unknown"] .card-preview__photo .spot-photo__img { filter: grayscale(1) contrast(0.85); opacity: 0.55; }
+.card-preview__card:has(.card-preview__photo) { padding-top: 2rem; }
+.card-preview .spot-photo__credit {
+  position: static;
+  max-width: none;
+  justify-content: center;
+  margin: -0.25rem 0 0;
+  padding: 0;
+  background: none;
+  color: var(--g4);
+  font-size: 0.625rem;
+}
+.card-preview .spot-photo__credit-text { white-space: normal; text-align: center; }
+.card-preview .spot-photo__credit-link { color: var(--g5); }

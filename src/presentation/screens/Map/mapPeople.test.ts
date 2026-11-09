@@ -24,7 +24,7 @@ const CAMERA: Camera = fitBounds({ south: 34.69, west: 135.5, north: 34.71, east
  */
 function traveler(key: string, isLord = false): OtherTravelerDto {
   const districtId = key.split(':')[1] ?? 'd_a';
-  return { key, name: '旅人タロウ', initial: 'タ', districtId, isLord };
+  return { key, name: 'おまいり番長', initial: 'タ', districtId, isLord };
 }
 
 describe('placeTravelers', () => {
@@ -83,8 +83,8 @@ describe('hitTestPerson', () => {
 
 describe('personMessageOf', () => {
   it('主かどうかで文言を変える', () => {
-    expect(personMessageOf(traveler('r_taro:d_a', true), '南森町・天満宮地区')).toBe('旅人タロウ：南森町・天満宮地区の主です');
-    expect(personMessageOf(traveler('r_taro:d_a'), undefined)).toBe('旅人タロウ：この地区によく来ています');
+    expect(personMessageOf(traveler('r_taro:d_a', true), '南森町・天満宮地区')).toBe('おまいり番長：南森町・天満宮地区の主です');
+    expect(personMessageOf(traveler('r_taro:d_a'), undefined)).toBe('おまいり番長：この地区によく来ています');
   });
 });
 

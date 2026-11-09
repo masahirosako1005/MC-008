@@ -39,7 +39,7 @@ MC-008/
 
 ## 2. presentation（画面遷移＝フォルダ階層）
 
-下部タブ4つ（地図／図鑑／マイ街／ランキング）＋スポット詳細＋全画面演出＋歯車メニュー（設定／デモ）。
+下部タブ5つ（地図／図鑑／アバター／ランキング／ランク）＋スポット詳細＋全画面演出＋歯車メニュー（設定／デモ）。ランクは 2026-11-09 に追加（CLAUDE.md 6.1）。
 **ルートパスとフォルダパスを一致させる**（例: `/spot/:id` → `screens/Spot/`）。
 
 ```
@@ -70,13 +70,19 @@ src/presentation/
 │   │   ├── ZukanScreen.ts
 │   │   ├── DistrictTabs.ts            # 地区別タブ
 │   │   └── SpotGrid.ts                # ？／シルエット／カラー＋通った回数。達成率は出さない
-│   ├── MyTown/                        # /mytown [06_mytown] マイ街（アバター・カード・アイテム・ランクを統合）
+│   ├── Avatar/                        # /avatar [06_mytown] アバター（モバゲー風の着せ替え。旧マイ街を 2026-11-09 に置き換え）
 │   │   ├── MyTownScreen.ts
 │   │   ├── TownOverviewCanvas.ts      # 5地区の成長・色あせの全景
 │   │   ├── AvatarPanel.ts
 │   │   ├── CardShelf.ts               # 銀・金カード
 │   │   ├── ItemList.ts
 │   │   └── RankPanel.ts
+│   ├── Rank/                          # /rank  下部タブ「ランク」（2026-11-09 追加。ワイヤーフレームなし）
+│   │   ├── RankScreen.ts              # 画面の組立て（ステータスパネル＋ステータス・リーグのメダル・ポイント・設定のカード）と動きの開始・後始末
+│   │   ├── rankHero.ts                # ステータスパネル（紋章の舞台・登場演出の飾り・ランクロードを歩くアバター）
+│   │   ├── rankFx.ts                  # 動きの部品（数え上げ・ポインタで3Dに傾く・スクロールで出現）
+│   │   ├── rankEmblem.ts              # 段の紋章（SVG。面取り・彫り・宝石・翼。段の色は CSS の data-tier）
+│   │   └── rankModel.ts               # 表示用の純粋関数（ロード上の位置・メダルの色・設定のマス）
 │   ├── Ranking/                       # /ranking [07_ranking]
 │   │   ├── RankingScreen.ts
 │   │   ├── PodiumCanvas.ts            # 表彰台（上位3名）
@@ -109,8 +115,7 @@ src/presentation/
 | 下シート | 地区カードタップ | 地図（地区ズーム） | `screens/Map/` | 03→01 |
 | 図鑑 | スポットタップ | スポット詳細 | `screens/Spot/` | 05→04 |
 | スポット詳細 | 訪問 | 演出 → スポット詳細 | `screens/Effects/` | 04→08 |
-| タブ | 図鑑／マイ街／ランキング | 各画面 | `screens/Zukan|MyTown|Ranking/` | 05/06/07 |
-| マイ街 | ランキングへ | ランキング | `screens/Ranking/` | 06→07 |
+| タブ | 図鑑／アバター／ランキング | 各画面 | `screens/Zukan|Avatar|Ranking/` | 05/06/07 |
 | 歯車 | タップ | 設定 | `screens/Settings/` | 10 |
 | 歯車 | 長押し | デモメニュー | `screens/Demo/` | 09 |
 
@@ -169,7 +174,9 @@ src/infrastructure/
 │   ├── LocalStorageTravelerRepository.ts
 │   ├── IndexedDbPointLedgerRepository.ts
 │   └── schema/                     # storageSchema.ts, migrations.ts（保存形式のバージョン管理）
-├── api/                            # 将来の REST 実装（HttpClient, ApiTravelerRepository）
+├── api/                            # 連携サーバーの呼び出し（ブラウザ側）と、サーバーと共有する契約（道筋・JSON の形）。docs/09 §7.3
+│                                   #   HttpCmsServices（CMS の HTTP 版）, CmsSnapshotSync（公開スナップショットの受け取り）。将来 ApiTravelerRepository も
+├── server/                         # 連携サーバー（Node だけで動く。node:http・node:sqlite）。http/（API・SSE・画面の配信）, sqlite/（DB・変更履歴）
 ├── master/MasterDataLoader.ts      # public/master/*.json を JSON Schema 検証して読込
 ├── geo/                            # BrowserGeoProvider（本番GPS）, DemoGeoProvider（地図タップ移動・位置リセット）
 ├── time/                           # SystemClock（実時刻）, DemoClock（日付進行）
@@ -183,7 +190,7 @@ src/infrastructure/
 ```
 src/Common/
 ├── ui/                             # 共通UI。特定画面の知識を持たない
-│   ├── TabBar.ts                   # 下部タブ（地図／図鑑／マイ街／ランキング）
+│   ├── TabBar.ts                   # 下部タブ（地図／図鑑／アバター／ランキング／ランク）
 │   ├── BottomSheet.ts              # 下シート基盤（つまみ／半分／全画面）
 │   ├── cards/                      # RevisitReasonCard.ts, DistrictCard.ts, SpotCard.ts
 │   ├── Button.ts, Modal.ts, Toast.ts, Chip.ts
@@ -219,4 +226,4 @@ CLAUDE.md 8 章の共通部品（下部タブ・下シート・再訪理由カ�
 | ポート実装 | `<技術><ポート名>.ts` | `DemoClock.ts` |
 | テスト | `<対象>.test.ts`（同フォルダ） | `DiscoveryRule.test.ts` |
 | 定数 | `constants.ts`（機能フォルダ直下） | `domain/exploration/constants.ts` |
-| 用語の英語名 | 旅人=Traveler, 地区=District, スポット=Spot, 名所=Landmark, 店舗=Shop, 図鑑=Zukan, マイ街=MyTown, 地区の主=DistrictLord, 色あせ=Fade, 復活=Revival, 取り返し=Reclaim | — |
+| 用語の英語名 | 旅人=Traveler, 地区=District, スポット=Spot, 名所=Landmark, 店舗=Shop, 図鑑=Zukan, アバター（着せ替え）=Avatar, 地区の主=DistrictLord, 色あせ=Fade, 復活=Revival, 取り返し=Reclaim | — |

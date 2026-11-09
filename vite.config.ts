@@ -27,10 +27,29 @@ function buildInputs(mode: string): Record<string, string> {
   return inputs;
 }
 
+/**
+ * dev サーバの自動リロード（HMR・ページの読み込み直し）。既定はオフ。
+ * 複数のセッションが同時に編集するため、オンだと保存のたびにページが読み込み直され、地図の表示やデモ位置が初期状態に戻る。
+ * ファイルの監視は残すので、手動で再読み込み（F5）すれば最新のコードになる。`VITE_LIVE_RELOAD=1` で起動するとオンに戻る。
+ */
+const LIVE_RELOAD = process.env['VITE_LIVE_RELOAD'] === '1';
+
+/**
+ * 連携サーバー（店舗CMS とアプリをつなぐ。docs/09 §7.3）への中継先。`CMS_API_PROXY=http://127.0.0.1:8787` のときだけ
+ * dev サーバの /api をそこへ中継する（scripts/dev/backend.mjs が付ける）。Host を書き換えない（サーバーが Origin と照らし合わせるため）。
+ */
+const CMS_API_PROXY = process.env['CMS_API_PROXY'];
+
 export default defineConfig(({ mode }) => ({
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   build: { sourcemap: false, target: 'es2022', rollupOptions: { input: buildInputs(mode) } },
-  server: { port: 5173, strictPort: true, headers: { 'X-Content-Type-Options': 'nosniff' } },
+  server: {
+    port: 5173,
+    strictPort: true,
+    headers: { 'X-Content-Type-Options': 'nosniff' },
+    ...(LIVE_RELOAD ? {} : { hmr: false, ws: false as const }),
+    ...(CMS_API_PROXY ? { proxy: { '/api': { target: CMS_API_PROXY, changeOrigin: false } } } : {}),
+  },
   preview: { port: 4173, strictPort: true, headers: SECURITY_HEADERS },
   test: {
     include: ['src/**/*.test.ts', 'scripts/**/*.test.mjs'],

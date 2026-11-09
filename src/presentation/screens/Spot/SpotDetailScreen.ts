@@ -1,6 +1,6 @@
 /**
  * @file スポット詳細画面（presentation/screens/Spot 層。ルート '#/spot/:spotId'）
- * スポット情報（街なみ絵・説明・便利情報・営業時間）、現在地からの距離、訪問ボタン（40m 以内で有効）、
+ * スポット情報（写真＝名所は実写・店舗はイメージ写真、無ければ街なみ絵・説明・便利情報・営業時間）、現在地からの距離、訪問ボタン（80m 以内で有効）、
  * クーポン・イベント、自分の訪問履歴を出す（CLAUDE.md 6.4、wireframes/04_spot）。基準 A・C。
  * 訪問フロー: 演出のため込み開始 → visit → 演出を再生（復活・カード・主交代）→ トースト → 地区ズームの地図へ。
  */
@@ -13,8 +13,8 @@ import type { AppContext } from '@/presentation/App/AppContext';
 import type { Screen } from '@/presentation/App/Screen';
 import { createCouponEventList } from '@/presentation/screens/Spot/CouponEventList';
 import { createMyVisitHistory } from '@/presentation/screens/Spot/MyVisitHistory';
-import { createSpotIllustration } from '@/presentation/screens/Spot/SpotIllustrationCanvas';
 import type { SpotIllustrationHandle } from '@/presentation/screens/Spot/SpotIllustrationCanvas';
+import { createSpotVisual } from '@/presentation/screens/Spot/SpotPhotoView';
 import { createSpotInfo } from '@/presentation/screens/Spot/SpotInfo';
 import { growthToastMessage, visitToastMessage } from '@/presentation/screens/Spot/spotDetailModel';
 import { createVisitButton } from '@/presentation/screens/Spot/VisitButton';
@@ -134,7 +134,8 @@ class SpotDetailController {
     this.top?.querySelector('.top-bar__title')?.replaceChildren(dto.name);
     this.body.replaceChildren();
     this.body.dataset.districtId = dto.districtId;
-    this.illustration = createSpotIllustration(this.body, { seed: dto.id, kind: dto.kind, category: dto.category, status: dto.status, name: dto.name, districtId: dto.districtId });
+    // 写真があれば写真（2026-11-09「リアル写真風に」）、無いか読めなければ街なみイラスト
+    this.illustration = createSpotVisual(this.body, { seed: dto.id, kind: dto.kind, category: dto.category, status: dto.status, name: dto.name, districtId: dto.districtId });
     const events = createCouponEventList(dto.shopEvents);
     this.body.append(createSpotInfo(dto), ...(events === undefined ? [] : [events]), createMyVisitHistory(dto));
     this.body.dataset.load = 'ready';

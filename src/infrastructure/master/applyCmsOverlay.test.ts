@@ -11,6 +11,7 @@ import type { OperationId, ShopEventId, SpotId } from '@/Common/types/Id';
 import type { Instant, LocalDate } from '@/Common/utils/date';
 import type { CmsOverlayData, CmsShopEventRecord } from '@/application/ports/CmsOverlayRepository';
 import { SHOP_EVENT_DESCRIPTION_MAX, SHOP_EVENT_TITLE_MAX } from '@/domain/revisit/constants';
+import { HOURS_TEXT_MAX } from '@/domain/spot/BusinessHours';
 import { applyCmsOverlay } from '@/infrastructure/master/applyCmsOverlay';
 import { MasterDataLoader } from '@/infrastructure/master/MasterDataLoader';
 import { TEXT_LIMITS } from '@/infrastructure/master/masterRecordParsers';
@@ -53,6 +54,7 @@ describe('applyCmsOverlay', () => {
   it('CMS の字数の上限はマスタの検証（TEXT_LIMITS）と同じ値（規則を1か所に）', () => {
     expect(SHOP_EVENT_TITLE_MAX).toBe(TEXT_LIMITS.eventTitle);
     expect(SHOP_EVENT_DESCRIPTION_MAX).toBe(TEXT_LIMITS.eventDescription);
+    expect(HOURS_TEXT_MAX).toBe(TEXT_LIMITS.hours);
   });
 
   it('協力店の営業時間・便利情報とクーポンを重ね、地区はスポットから決める', () => {

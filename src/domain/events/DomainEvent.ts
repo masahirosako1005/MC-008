@@ -25,7 +25,7 @@ export interface SpotDiscovered extends EventMeta {
   readonly districtId: DistrictId;
 }
 
-/** スポットを訪問した（40m 以内で訪問操作。訪問記録は保存済み） */
+/** スポットを訪問した（80m 以内で訪問操作。訪問記録は保存済み） */
 export interface SpotVisited extends EventMeta {
   readonly type: 'SpotVisited';
   readonly spotId: SpotId;

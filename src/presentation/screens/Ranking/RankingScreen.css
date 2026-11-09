@@ -565,3 +565,697 @@
 /* あなたの顔は線の星アイコン（★の文字はやめる） */
 .podium__face .icon { width: 1.375rem; height: 1.375rem; stroke-width: 2; }
 .podium__face .icon path { fill: currentColor; }
+
+/*
+ * ---- ラウンド5: アバター・リーグの違い・報酬（2026-11-09 フィードバック対応） ----
+ * リーグごとに色を持たせ（かよい＝紫／はじめまして＝青緑／ルーキー＝若葉）、タブ・説明カード・比較表・報酬の縁に使う。
+ * 色だけに頼らないよう、タブには「何で競うか」の一言、説明カードには文字で違いを書く。あなたの強調は従来どおりコーラル。
+ */
+.ranking [data-league="kayoi"], .ranking[data-league="kayoi"] { --league: #7c3aed; --league-ink: #5b21b6; --league-soft: #f3efff; }
+.ranking [data-league="hajimete"], .ranking[data-league="hajimete"] { --league: #0d9488; --league-ink: #115e59; --league-soft: #e6f7f5; }
+.ranking [data-league="rookie"], .ranking[data-league="rookie"] { --league: #65a30d; --league-ink: #3f6212; --league-soft: #f0f8e2; }
+
+/* 締め帯: 期間を2行目に、「報酬を見る」はタップしやすいボタンに */
+.finale { padding: 0.25rem 0.375rem 0.25rem 0.875rem; }
+.finale__body { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35; }
+.finale__text { flex: none; }
+.finale__period { font-size: 0.6875rem; color: var(--g5); }
+.finale__prize {
+  border: 0;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  min-height: var(--tap);
+  padding: 0 0.5rem 0 0.75rem;
+  background: #fef3c7;
+  color: #92400e;
+  box-shadow: none;
+  cursor: pointer;
+}
+.finale__prize .icon { width: 0.875rem; height: 0.875rem; }
+.finale__prize:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* リーグタブ: 上端にリーグの色、名前の下に「何で競うか」 */
+.ranking .league-tab[data-league] { padding-top: 0.5rem; gap: 0.0625rem; }
+.ranking .league-tab[data-league]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: auto;
+  left: 0.75rem;
+  right: 0.75rem;
+  height: 0.1875rem;
+  border-radius: 0 0 0.1875rem 0.1875rem;
+  background: var(--league);
+}
+.league-tab__hint { font-size: 0.625rem; line-height: 1.2; color: var(--g5); white-space: nowrap; }
+.ranking .league-tab[data-league][aria-selected="true"] { background: var(--league-soft); color: var(--league-ink); box-shadow: inset 0 0 0 2px var(--league); }
+.ranking .league-tab[data-league][aria-selected="true"] .league-tab__rank,
+.ranking .league-tab[data-league][aria-selected="true"] .league-tab__hint { color: var(--league-ink); }
+.ranking .league-tab[data-league][aria-selected="true"] .league-tab__name .icon { color: var(--league); }
+
+/* リーグの説明カード */
+.league-guide {
+  margin: 0 0 0.75rem;
+  padding: 0.625rem 0.75rem 0 0.875rem;
+  background: var(--surface);
+  border-radius: var(--radius-m);
+  box-shadow: 0 0 0 1px var(--hairline), var(--shadow-1);
+  border-left: 4px solid var(--league);
+}
+.league-guide__head { margin: 0; display: flex; align-items: center; gap: 0.375rem; color: var(--league-ink); font-size: 0.9375rem; }
+.league-guide__icon { display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--league-soft); color: var(--league); }
+.league-guide__name { font-family: var(--font-display); font-weight: 800; }
+.league-guide__tagline { margin: 0.125rem 0 0.5rem; font-size: 0.75rem; color: var(--g5); }
+.league-guide__facts { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 0.75rem; margin: 0 0 0.375rem; font-size: 0.75rem; }
+.league-guide__facts dt { color: var(--g5); white-space: nowrap; }
+.league-guide__facts dd { margin: 0; color: var(--ink); font-weight: 700; }
+.league-compare { border-top: 1px solid var(--hairline); }
+.league-compare__summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--league-ink);
+  cursor: pointer;
+  list-style: none;
+}
+.league-compare__summary::-webkit-details-marker { display: none; }
+.league-compare__summary::after { content: "＋"; margin-left: auto; font-weight: 800; }
+.league-compare[open] > .league-compare__summary::after { content: "－"; }
+.league-compare__table { margin: 0 -0.375rem 0.625rem 0; }
+.league-compare__row {
+  display: grid;
+  grid-template-columns: 5.25rem 1fr 1fr;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.375rem 0.375rem 0.375rem 0.5rem;
+  border: 0;
+  border-left: 3px solid var(--league, transparent);
+  border-top: 1px solid var(--hairline);
+  background: none;
+  font: inherit;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+.league-compare__row--head { min-height: 0; padding-block: 0.25rem; border-top: 0; border-left-color: transparent; color: var(--g5); font-weight: 700; cursor: default; }
+.league-compare__row[aria-current="true"] { background: var(--league-soft); }
+.league-compare__row:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.league-compare__name { display: flex; flex-direction: column; }
+.league-compare__name strong { color: var(--league-ink); font-size: 0.75rem; }
+.league-compare__name small { color: var(--g5); font-size: 0.625rem; }
+
+/* アバター（マイ街・地図と同じ絵。画像の下端が足元） */
+.rk-avatar { display: inline-flex; justify-content: center; align-items: flex-end; flex: none; }
+.rk-avatar img { display: block; max-width: none; }
+
+/* バトルカード: あなたのアバターを順位の左に */
+.battle__me { display: flex; align-items: flex-end; gap: 0.375rem; }
+.battle__me .rk-avatar { margin-bottom: -0.125rem; }
+.battle__avatar-badge { display: inline-flex; align-items: center; justify-content: center; width: 3rem; height: 3rem; border-radius: 50%; background: var(--brand); color: #ffffff; font-size: 1.25rem; }
+.battle__reward {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: var(--tap);
+  margin-top: 0.625rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.625rem;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.battle__reward:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.battle__reward-icon { display: inline-flex; color: #fde68a; font-size: 1.125rem; }
+.battle__reward-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.75rem; color: var(--g2); }
+.battle__reward-line strong { color: #fde68a; }
+.battle__reward-line--keep { display: flex; flex-direction: column; gap: 0.25rem; color: #fde68a; font-weight: 700; }
+.battle__reward-chevron { display: inline-flex; color: var(--g3); }
+
+/* 表彰台: アバターが台の上に立つ */
+.podium__slot .rk-avatar { position: relative; z-index: 1; margin: 0.125rem 0 -0.4375rem; }
+.podium__slot--me .rk-avatar img { filter: drop-shadow(0 0 0.375rem rgba(255, 90, 54, 0.45)); }
+.podium__you { margin-bottom: 0.125rem; }
+
+/* リスト: 順位の右に小さなアバター */
+.ranking-row .rk-avatar { width: 2.125rem; height: 2.5rem; overflow: visible; }
+.ranking-row__badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--g1);
+  color: var(--g5);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.ranking-row--me .ranking-row__badge { background: var(--brand); color: #ffffff; }
+
+/* 今月の報酬 */
+.rewards {
+  margin-top: 1.25rem;
+  padding: 0.875rem 0.75rem 0.25rem;
+  background: var(--surface);
+  border-radius: var(--radius-l);
+  box-shadow: 0 0 0 1px var(--hairline), var(--shadow-1);
+  border-top: 4px solid var(--league);
+  scroll-margin-top: 0.75rem;
+}
+.rewards__title { display: flex; align-items: center; gap: 0.375rem; margin: 0; font-family: var(--font-display); font-size: 1rem; font-weight: 800; color: var(--ink); }
+.rewards__title > .icon { color: var(--gold); width: 1.125rem; height: 1.125rem; }
+.rewards__league { margin-left: auto; padding: 0.125rem 0.5rem; border-radius: var(--radius-pill); background: var(--league-soft); color: var(--league-ink); font-size: 0.6875rem; font-weight: 700; white-space: nowrap; }
+.rewards__period { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 0.625rem; margin: 0.5rem 0 0; padding: 0.5rem 0.625rem; border-radius: var(--radius-m); background: var(--g1); font-size: 0.75rem; line-height: 1.45; }
+.rewards__period dt { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--g5); white-space: nowrap; }
+.rewards__period dd { margin: 0; color: var(--ink); font-weight: 700; }
+
+.rewards__period-icon { display: inline-flex; color: var(--g4); }
+.rewards__note { margin: 0.5rem 0 0; font-size: 0.75rem; color: var(--g5); }
+.rewards__block { margin-top: 0.875rem; }
+.rewards__sub { display: flex; flex-direction: column; gap: 0.0625rem; margin: 0 0 0.375rem; font-size: 0.8125rem; font-weight: 800; color: var(--ink); }
+.rewards__sub small { font-size: 0.6875rem; font-weight: 400; color: var(--g5); }
+.reward-tiers, .keeps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.375rem; }
+.reward-tier { display: grid; grid-template-columns: 3.75rem 1fr; gap: 0.5rem; align-items: center; padding: 0.4375rem 0.5rem; border-radius: var(--radius-m); background: var(--g1); }
+.reward-tier--mine { background: var(--brand-soft); box-shadow: inset 0 0 0 1.5px var(--brand); }
+.reward-tier__rank { display: flex; flex-direction: column; align-items: flex-start; gap: 0.0625rem; }
+.reward-tier__rank strong { font-family: var(--font-display); font-size: 0.875rem; font-variant-numeric: tabular-nums; color: var(--ink); }
+.reward-tier__rank small { font-size: 0.5625rem; color: var(--g5); line-height: 1.2; }
+.reward-tier__mine { padding: 0 0.375rem; border-radius: var(--radius-pill); background: var(--brand-ink); color: #ffffff; font-size: 0.5625rem; font-weight: 800; }
+.reward-tier__prizes { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.prize {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem 0.125rem 0.1875rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.prize__medal, .prize__icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 1.25rem; height: 1.25rem; border-radius: 50%; font-size: 0.625rem; font-weight: 800; }
+.prize__medal[data-medal="gold"] { background: #f5c542; color: #4a3500; box-shadow: inset 0 0 0 1.5px #b9850c; }
+.prize__medal[data-medal="silver"] { background: #d7dce3; color: #2f3640; box-shadow: inset 0 0 0 1.5px #8f9aa8; }
+.prize__medal[data-medal="bronze"] { background: #e2a877; color: #3d2108; box-shadow: inset 0 0 0 1.5px #9c5f33; }
+.prize__icon { background: var(--league-soft); color: var(--league-ink); }
+.prize__icon .icon { width: 0.8125rem; height: 0.8125rem; }
+.prize[data-kind="title"] .prize__icon, .prize[data-kind="trophy"] .prize__icon { background: #fef3c7; color: #b45309; }
+.keep { display: grid; grid-template-columns: auto 1fr auto; gap: 0.5rem; align-items: center; min-height: var(--tap); padding: 0.375rem 0.5rem; border-radius: var(--radius-m); background: var(--g1); }
+.keep > .prize { padding: 0; background: none; box-shadow: none; }
+.keep > .prize .prize__name { display: none; }
+.keep > .prize .prize__icon { width: 1.75rem; height: 1.75rem; }
+.keep > .prize .prize__icon .icon { width: 1rem; height: 1rem; }
+.keep__body { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; font-size: 0.75rem; line-height: 1.4; color: var(--ink); }
+.keep__status { font-size: 0.6875rem; font-weight: 800; color: var(--g4); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.keep[data-state="keeping"] { background: #fff8e1; box-shadow: inset 0 0 0 1.5px var(--gold); }
+.keep[data-state="keeping"] .keep__text { font-weight: 700; }
+.keep[data-state="keeping"] .keep__status { color: #b45309; }
+.keep[data-state="achieved"] { background: #ecfdf5; }
+.keep[data-state="achieved"] .keep__status { color: #047857; }
+.keep-bar { position: relative; display: block; height: 0.375rem; border-radius: var(--radius-pill); background: rgba(17, 24, 39, 0.1); overflow: hidden; }
+.keep-bar__fill { position: absolute; inset: 0 auto 0 0; width: var(--keep, 0%); border-radius: inherit; background: var(--gold); }
+.battle .keep-bar { background: rgba(255, 255, 255, 0.16); }
+.rewards .ranking__rule { margin: 0.75rem 0 0.625rem; }
+
+/*
+ * ---- ラウンド6: 上部ステージ「ランキングどどーん！」（2026-11-09 フィードバック: 上部が文字ばかり → 動きで見せる） ----
+ * 暗いステージにリーグ色のスポットライト。金・銀・銅の台がせり上がり、アバターが着地（1位は最後に「どーん」と揺れて衝撃の輪）。
+ * 頭の上のエモートが順番にポンと出る。下段はあなた帯（大きな順位・レース・出かける）。文字は最小限。
+ * 動きは prefers-reduced-motion: no-preference のときだけ（下の @media）。動きが無くてもすべて見える状態が基本。
+ */
+.ranking .league-tabs { margin-bottom: 0.5rem; }
+.ranking .league-tab[data-league] { padding-top: 0.4375rem; }
+
+.stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 0 0 0.875rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border-radius: 1.25rem;
+  background: radial-gradient(120% 75% at 50% 8%, color-mix(in srgb, var(--league) 62%, #0b1020) 0%, #0b1020 72%);
+  color: #ffffff;
+  box-shadow: 0 14px 30px rgba(11, 16, 32, 0.35);
+}
+.stage__rays {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  z-index: -1;
+  width: 220%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--league) 45%, transparent) 0deg 7deg, transparent 7deg 20deg);
+  -webkit-mask: radial-gradient(circle, #000 0 16%, transparent 50%);
+  mask: radial-gradient(circle, #000 0 16%, transparent 50%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.stage__sparks { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.stage__spark {
+  position: absolute;
+  width: 0.625rem;
+  height: 0.625rem;
+  background: #fde68a;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  opacity: 0.6;
+}
+.stage__head { display: flex; align-items: center; justify-content: space-between; }
+.stage__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2rem;
+  padding: 0 0.625rem;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.stage__chip strong { margin: 0 0.0625rem; font-family: var(--font-display); font-size: 1.125rem; color: #fde68a; }
+.stage__chip .icon { width: 0.9375rem; height: 0.9375rem; }
+.stage__chip--prize { min-height: var(--tap); padding: 0 0.875rem; background: #fde68a; color: #3d2a00; font-weight: 800; cursor: pointer; box-shadow: 0 3px 0 #c99a12; }
+.stage__chip--prize:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.stage__title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  margin: 0.125rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  text-shadow: 0 3px 0 color-mix(in srgb, var(--league) 70%, #000000), 0 0 22px color-mix(in srgb, var(--league) 80%, transparent);
+}
+.stage__title-icon { display: inline-flex; color: #fde68a; }
+.stage__title-icon .icon { width: 1.5rem; height: 1.5rem; }
+.stage__hint {
+  width: fit-content;
+  margin: 0.3125rem auto 0;
+  padding: 0.125rem 0.625rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--league) 50%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+/* 表彰台 */
+.stage-podium { display: flex; align-items: flex-end; justify-content: center; gap: 0.375rem; margin: 1.125rem 0 0; padding: 0; list-style: none; }
+.stage-slot { position: relative; flex: 1; max-width: 7.25rem; display: flex; flex-direction: column; align-items: center; }
+.stage-slot__figure { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: center; margin-bottom: -0.5rem; }
+.stage-slot__figure .rk-avatar img { filter: drop-shadow(0 6px 5px rgba(0, 0, 0, 0.4)); }
+.stage-slot--me .stage-slot__figure .rk-avatar img { filter: drop-shadow(0 0 0.5rem rgba(255, 90, 54, 0.9)); }
+.stage-slot .emote { top: -0.25rem; right: -0.625rem; }
+.stage-slot__you {
+  position: absolute;
+  top: 0.25rem;
+  left: -0.375rem;
+  z-index: 2;
+  padding: 0 0.375rem;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: #ffffff;
+  font-size: 0.5625rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.stage-slot__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  margin-bottom: 0.75rem;
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+.stage-slot__shock {
+  position: absolute;
+  left: 50%;
+  bottom: 0.25rem;
+  width: 5.5rem;
+  height: 1.5rem;
+  border: 3px solid #fde68a;
+  border-radius: 50%;
+  transform: translateX(-50%) scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+.stage-block {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.625rem 0.25rem 0.375rem;
+  border-radius: 0.75rem 0.75rem 0.25rem 0.25rem;
+  box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.45), inset 0 -6px 0 rgba(0, 0, 0, 0.12);
+  transform-origin: bottom center;
+}
+.stage-slot[data-place="first"] .stage-block { height: 7.5rem; background: #f5b700; color: #3d2a00; }
+.stage-slot[data-place="second"] .stage-block { height: 6.375rem; background: #cfd6df; color: #1f2937; }
+.stage-slot[data-place="third"] .stage-block { height: 5.75rem; background: #d38a52; color: #2b1405; }
+.stage-slot--me .stage-block { box-shadow: 0 0 0 3px var(--brand), inset 0 4px 0 rgba(255, 255, 255, 0.45), inset 0 -6px 0 rgba(0, 0, 0, 0.12); }
+.stage-block__rank { font-family: var(--font-display); font-size: 1.875rem; font-weight: 900; line-height: 1; text-shadow: 0 2px 0 rgba(255, 255, 255, 0.5); }
+.stage-slot[data-place="first"] .stage-block__rank { font-size: 2.75rem; }
+.stage-block__name { max-width: 100%; margin-top: 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.6875rem; font-weight: 800; line-height: 1.2; }
+.stage-block__count { font-size: 0.625rem; font-weight: 700; opacity: 0.75; font-variant-numeric: tabular-nums; }
+
+/* エモート（白い吹き出し） */
+.emote {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+.emote::after {
+  content: "";
+  position: absolute;
+  left: 0.1875rem;
+  bottom: -0.1875rem;
+  width: 0.625rem;
+  height: 0.625rem;
+  background: #ffffff;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+.emote svg { width: 1.25rem; height: 1.25rem; }
+.emote[data-emote="note"] svg { fill: #7c3aed; }
+.emote[data-emote="exclaim"] svg { fill: #ef4444; }
+.emote[data-emote="fire"] svg { fill: #f97316; }
+.emote[data-emote="sweat"] svg { fill: #38bdf8; }
+.emote[data-emote="sparkle"] svg { fill: #f5b700; }
+.emote[data-emote="heart"] svg { fill: #ec4899; }
+
+/* あなた帯 */
+.me-strip {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "fig rank go" "race race race";
+  align-items: end;
+  column-gap: 0.5rem;
+  row-gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+.me-strip__figure { grid-area: fig; position: relative; display: flex; align-items: flex-end; }
+.me-strip__figure .emote { top: -0.375rem; right: -0.875rem; }
+.me-strip__badge { display: inline-flex; align-items: center; justify-content: center; width: 3rem; height: 3rem; border-radius: 50%; background: var(--brand); color: #ffffff; }
+.me-strip__rank { grid-area: rank; display: flex; align-items: baseline; gap: 0.125rem; margin: 0; padding-left: 0.375rem; line-height: 1; }
+.me-strip__num { display: inline-block; font-family: var(--font-display); font-size: 3.25rem; font-weight: 900; letter-spacing: -0.03em; color: #ff6a47; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.3); font-variant-numeric: tabular-nums; }
+.me-strip--podium .me-strip__num { color: #fde68a; }
+.me-strip__unit { font-size: 1.125rem; font-weight: 800; }
+.me-strip__change { align-self: center; margin-left: 0.375rem; padding: 0.125rem 0.5rem; border-radius: var(--radius-pill); font-family: var(--font-display); font-size: 0.875rem; font-weight: 900; }
+.me-strip__change[data-kind="up"] { background: #22c55e; color: #ffffff; }
+.me-strip__change[data-kind="down"] { background: rgba(255, 255, 255, 0.18); color: #ffffff; }
+.me-strip__guest { grid-area: rank; margin: 0 0 0.5rem; padding-left: 0.375rem; font-size: 1.25rem; }
+.me-strip--guest { grid-template-areas: "fig rank go"; }
+.me-strip__go {
+  grid-area: go;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: var(--tap);
+  padding: 0 1rem;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: #f2512e;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #b8361a;
+}
+.me-strip__go:active { transform: translateY(2px); box-shadow: 0 2px 0 #b8361a; }
+.me-strip__go:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.me-strip__go .icon { width: 1.125rem; height: 1.125rem; }
+
+/* レース（すぐ上のライバルまで） */
+.race { grid-area: race; display: flex; flex-direction: column; gap: 0.375rem; }
+.race__track { position: relative; display: block; height: 0.75rem; margin: 0.875rem 1.5rem 0 0; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.14); }
+.race__fill { position: absolute; inset: 0 auto 0 0; width: var(--race, 0%); border-radius: inherit; background: linear-gradient(90deg, #f2512e, #fbbf24); }
+.race__fill::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -0.4375rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px #f2512e, 0 0 12px #fbbf24;
+  transform: translateY(-50%);
+}
+.race__goal { position: absolute; right: -1.625rem; bottom: -0.375rem; display: flex; align-items: flex-end; }
+.race__crown { display: inline-flex; color: #fde68a; }
+.race__crown .icon { width: 1.5rem; height: 1.5rem; }
+.race__badge { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: #ffffff; color: var(--ink); font-size: 0.75rem; font-weight: 800; }
+.race__label { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; margin: 0; font-size: 0.875rem; }
+.race__label strong { font-weight: 900; }
+.race__chip { padding: 0.0625rem 0.5rem; border-radius: var(--radius-pill); font-size: 0.6875rem; font-weight: 800; }
+.race__chip--hot { background: #ef4444; color: #ffffff; }
+.race__chip--keep { background: #fde68a; color: #3d2a00; }
+
+/* 表彰台の下に移したリーグの説明 */
+.ranking .league-guide { margin-top: 1rem; }
+
+/* ---- 動き ---- */
+@media (prefers-reduced-motion: no-preference) {
+  .stage { animation: st-shake 0.35s ease-out 1.55s both; }
+  .stage__rays { animation: st-spin 40s linear infinite; }
+  .stage__spark { animation: st-twinkle 2.4s ease-in-out calc(var(--spark-i) * 0.3s) infinite both; }
+  .stage__title { animation: st-slam 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) 0.05s both; }
+  .stage__hint { animation: st-fade 0.4s ease-out 0.4s both; }
+  .stage-block { animation: st-rise 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) calc(0.15s + var(--land-i) * 0.15s) both; }
+  .stage-slot__figure { animation: st-drop 0.6s cubic-bezier(0.3, 1.4, 0.5, 1) calc(0.55s + var(--land-i) * 0.3s) both; }
+  .stage-slot[data-place="first"] .stage-slot__figure { animation: st-drop 0.6s cubic-bezier(0.3, 1.4, 0.5, 1) 1.15s both, st-victory 3s ease-in-out 2.4s infinite; }
+  .stage-slot:not([data-place="first"]) .stage-slot__figure .rk-avatar { animation: st-bob 2.2s ease-in-out calc(1.8s + var(--land-i) * 0.5s) infinite; }
+  .stage-slot__shock { animation: st-shock 0.7s ease-out 1.55s both; }
+  .emote { animation: st-emote 4.4s ease-in-out calc(2s + var(--emote-i) * 1s) infinite both; }
+  .me-strip { animation: st-slide 0.5s ease-out 1.7s both; }
+  .race__fill { animation: st-grow 1s cubic-bezier(0.2, 0.8, 0.2, 1) 2.1s both; }
+  .me-strip__num--pop { animation: rk-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .me-strip__change[data-kind="up"] { animation: rk-pulse 1.2s ease-in-out 2.3s 3; }
+  .race__chip--hot { animation: rk-pulse 1s ease-in-out infinite; }
+  .me-strip__go { animation: st-nudge 3.2s ease-in-out 3s infinite; }
+}
+
+@keyframes st-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+@keyframes st-twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.5); }
+  50% { opacity: 1; transform: scale(1.15) rotate(45deg); }
+}
+@keyframes st-slam {
+  0% { opacity: 0; transform: scale(2.2); }
+  60% { opacity: 1; transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+@keyframes st-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes st-rise {
+  from { transform: scaleY(0.05); }
+  to { transform: scaleY(1); }
+}
+@keyframes st-drop {
+  0% { opacity: 0; transform: translateY(-160%); }
+  55% { opacity: 1; transform: translateY(6%); }
+  75% { transform: translateY(-6%); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes st-victory {
+  0%, 70%, 100% { transform: none; }
+  78% { transform: translateY(-12%) scale(1.04); }
+  86% { transform: none; }
+  92% { transform: translateY(-7%); }
+}
+@keyframes st-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes st-shake {
+  0%, 100% { transform: none; }
+  20% { transform: translate(-3px, 2px); }
+  40% { transform: translate(3px, -2px); }
+  60% { transform: translate(-2px, 1px); }
+  80% { transform: translate(2px, 0); }
+}
+@keyframes st-shock {
+  0% { opacity: 0.9; transform: translateX(-50%) scale(0.2); }
+  100% { opacity: 0; transform: translateX(-50%) scale(2.2); }
+}
+@keyframes st-emote {
+  0% { opacity: 0; transform: scale(0); }
+  6% { opacity: 1; transform: scale(1.25); }
+  10% { transform: scale(1); }
+  35% { transform: translateY(-3px); }
+  60% { opacity: 1; transform: translateY(0); }
+  68% { opacity: 0; transform: scale(0.3); }
+  100% { opacity: 0; transform: scale(0); }
+}
+@keyframes st-slide {
+  from { opacity: 0; transform: translateY(1rem); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes st-grow {
+  from { width: 0; }
+  to { width: var(--race, 0%); }
+}
+@keyframes st-nudge {
+  0%, 86%, 100% { transform: none; }
+  90% { transform: rotate(-3deg) scale(1.05); }
+  95% { transform: rotate(3deg) scale(1.05); }
+}
+
+/*
+ * ---- ラウンド7: 全体の情報量を減らす（2026-11-09 フィードバック: とくにリーグ説明以降） ----
+ * リスト: 主タグ・ライバル札の文字をやめ、王冠（アバター）とエモートで示す。★も外す。
+ * 報酬: メダル＋順位＋景品の1行ずつ。キープ報酬は「条件 → 景品」。期間の表・補足文はなくす。
+ * 地区の主: 5地区を小さなタイルの列に。リーグのルールは一番下にたたむ。
+ */
+.rk-podium-line { display: flex; align-items: center; gap: 0.25rem; margin: 0 0 0.375rem; padding: 0 0.25rem; font-size: 0.75rem; font-weight: 700; color: var(--g5); }
+.rk-podium-line .icon { width: 0.875rem; height: 0.875rem; color: var(--brand); }
+.ranking-row[data-mark="target"] { background: none; }
+.ranking-row--me .ranking-row__name::before { content: none; }
+.ranking-row__emote { flex: none; display: inline-flex; }
+.ranking-row__emote .emote { position: relative; width: 1.5rem; height: 1.5rem; animation: none; box-shadow: 0 1px 4px rgba(17, 24, 39, 0.2); }
+.ranking-row__emote .emote::after { display: none; }
+.ranking-row__emote .emote svg { width: 1rem; height: 1rem; }
+
+/* 報酬・地区の主の白いカード */
+.rk-card {
+  margin-top: 1rem;
+  padding: 0.75rem 0.75rem 0.5rem;
+  background: var(--surface);
+  border-radius: var(--radius-l);
+  box-shadow: 0 0 0 1px var(--hairline), var(--shadow-1);
+  scroll-margin-top: 0.75rem;
+}
+.rk-card__title { display: flex; align-items: center; gap: 0.375rem; margin: 0 0 0.375rem; font-family: var(--font-display); font-size: 1rem; font-weight: 800; color: var(--ink); }
+.rk-card__title > .icon { width: 1.125rem; height: 1.125rem; color: var(--gold); }
+.rk-card__note { margin-left: auto; font-size: 0.6875rem; font-weight: 700; color: var(--g5); }
+.rk-card__muted { margin: 0 0 0.375rem; font-size: 0.75rem; color: var(--g5); }
+.rk-rows { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.rk-rows--keep { margin-top: 0.375rem; padding-top: 0.375rem; border-top: 1px dashed rgba(17, 24, 39, 0.14); }
+.rk-row { display: flex; align-items: center; gap: 0.625rem; min-height: 2.75rem; padding: 0.25rem 0.5rem; border-radius: var(--radius-m); font-size: 0.8125rem; color: var(--ink); }
+.rk-row--mine { background: var(--brand-soft); box-shadow: inset 0 0 0 1.5px var(--brand); }
+.rk-mark {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--league-soft, var(--g1));
+  color: var(--league-ink, var(--ink));
+  font-size: 0.6875rem;
+  font-weight: 900;
+}
+.rk-mark .icon { width: 1rem; height: 1rem; }
+.rk-mark[data-medal="gold"] { background: #f5c542; color: #4a3500; box-shadow: inset 0 0 0 2px #b9850c; }
+.rk-mark[data-medal="silver"] { background: #d7dce3; color: #2f3640; box-shadow: inset 0 0 0 2px #8f9aa8; }
+.rk-mark[data-medal="bronze"] { background: #e2a877; color: #3d2108; box-shadow: inset 0 0 0 2px #9c5f33; }
+.rk-mark[data-kind="stamp"] { background: var(--g1); color: var(--g5); }
+.rk-mark[data-kind="trophy"] { background: #fef3c7; color: #b45309; }
+.rk-row__rank { flex: none; width: 2.75rem; font-family: var(--font-display); font-size: 0.9375rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+.rk-row__text { flex: 1; min-width: 0; line-height: 1.4; }
+.rk-row__mine { flex: none; padding: 0.0625rem 0.5rem; border-radius: var(--radius-pill); background: var(--brand-ink); color: #ffffff; font-size: 0.625rem; font-weight: 800; }
+.rk-row__keep { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.rk-row__arrow { color: var(--g4); }
+.rk-row--keep .rk-row__text strong { font-weight: 800; }
+.rk-row--keep[data-state="not-yet"] .rk-row__text { color: var(--g5); }
+.rk-row__status { flex: none; font-size: 0.6875rem; font-weight: 800; color: var(--g5); white-space: nowrap; }
+.rk-row--keep[data-state="keeping"] { background: #fff8e1; }
+.rk-row--keep[data-state="keeping"] .rk-row__status { color: #b45309; }
+.rk-row--keep[data-state="achieved"] .rk-row__status { color: #047857; }
+
+/* 地区の主タイル */
+.rk-lords { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.375rem; padding-bottom: 0.25rem; }
+.rk-lord {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  min-height: 6rem;
+  padding: 0.375rem 0.125rem;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: var(--g1);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.rk-lord:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.rk-lord__district { font-size: 0.6875rem; font-weight: 800; white-space: nowrap; }
+.rk-lord__figure { display: flex; align-items: flex-end; justify-content: center; height: 2.75rem; }
+.rk-lord__empty, .rk-lord__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: 0.25rem;
+  border-radius: 50%;
+  color: var(--g4);
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+.rk-lord__empty { border: 2px dashed var(--g3); }
+.rk-lord__badge { background: var(--surface); }
+.rk-lord__status { padding: 0.0625rem 0.375rem; border-radius: var(--radius-pill); background: var(--surface); color: var(--g5); font-size: 0.625rem; font-weight: 800; white-space: nowrap; }
+.rk-lord[data-tone="me"] { background: #fff8e1; box-shadow: inset 0 0 0 1.5px var(--gold); }
+.rk-lord[data-tone="me"] .rk-lord__status { background: var(--gold); color: #3d2a00; }
+.rk-lord[data-tone="lost"] { box-shadow: inset 0 0 0 1.5px #ef4444; }
+.rk-lord[data-tone="lost"] .rk-lord__status { background: #ef4444; color: #ffffff; }
+
+/* リーグのルール（一番下にたたむ） */
+.rk-rules { margin-top: 1rem; padding: 0 0.75rem; border-radius: var(--radius-l); background: var(--surface); box-shadow: 0 0 0 1px var(--hairline); }
+.rk-rules__summary { display: flex; align-items: center; gap: 0.375rem; min-height: var(--tap); font-size: 0.8125rem; font-weight: 700; color: var(--g5); cursor: pointer; list-style: none; }
+.rk-rules__summary::-webkit-details-marker { display: none; }
+.rk-rules__summary::after { content: "＋"; margin-left: auto; font-weight: 800; }
+.rk-rules[open] > .rk-rules__summary::after { content: "－"; }
+.rk-rules__summary .icon { width: 1rem; height: 1rem; }
+.rk-rules .league-compare__table { margin: 0 -0.375rem 0.5rem 0; }
+.rk-rules__note { margin: 0 0 0.75rem; font-size: 0.75rem; color: var(--g5); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ranking-row__emote .emote { animation: st-bob 2s ease-in-out infinite; }
+}

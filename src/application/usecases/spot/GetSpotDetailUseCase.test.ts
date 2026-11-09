@@ -23,7 +23,7 @@ describe('GetSpotDetailUseCase', () => {
     expect(JSON.stringify(result)).not.toContain('丸岡和菓子店');
   });
 
-  it('40m 以内で今日まだ訪問していなければ canVisit=true で理由なし', async () => {
+  it('80m 以内で今日まだ訪問していなければ canVisit=true で理由なし', async () => {
     const tw = createTestWorld();
     await seedTraveler(tw, { discovered: ['l_jo01'] });
     standNear(tw, 'l_jo01', 20);
@@ -33,12 +33,12 @@ describe('GetSpotDetailUseCase', () => {
     expect(detail.metersToVisit).toBeUndefined();
   });
 
-  it('40m より遠いと canVisit=false で、あと何 m 近づけばよいかを返す', async () => {
+  it('80m より遠いと canVisit=false で、あと何 m 近づけばよいかを返す', async () => {
     const tw = createTestWorld();
     await seedTraveler(tw, { discovered: ['l_jo01'] });
-    standNear(tw, 'l_jo01', 70);
+    standNear(tw, 'l_jo01', 110);
     const detail = must(await new GetSpotDetailUseCase(tw).execute({ spotId: 'l_jo01' }));
-    expect(detail).toMatchObject({ meters: 70, canVisit: false, metersToVisit: 30, visitBlockedReason: 'あと30m近づくと訪問できます' });
+    expect(detail).toMatchObject({ meters: 110, canVisit: false, metersToVisit: 30, visitBlockedReason: 'あと30m近づくと訪問できます' });
   });
 
   it('位置が取れないと meters なし・canVisit=false・「現在地を取得できません」で詳細は返す', async () => {

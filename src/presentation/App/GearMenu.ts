@@ -5,7 +5,7 @@
  */
 import { createLogger, setCorrelationId } from '@/Common/logging/logger';
 import { h, setStyle } from '@/Common/ui/dom';
-import { createIcon } from '@/Common/ui/icons';
+import { createAppIcon } from '@/presentation/App/appIconArt';
 
 const logger = createLogger('presentation/App/GearMenu');
 
@@ -63,7 +63,7 @@ export function createGearMenu(opts: GearMenuOptions): GearMenuHandle {
   const label = opts.isDemo ? '設定（長押しでデモメニュー）' : '設定';
   const element = h('button', { class: 'gear', attrs: { type: 'button', 'data-testid': 'gear', 'aria-label': label, title: label } }, [
     h('span', { class: 'gear__ring', attrs: { 'aria-hidden': 'true' } }),
-    h('span', { class: 'gear__face', attrs: { 'aria-hidden': 'true' } }, [createIcon('gear')]),
+    h('span', { class: 'gear__face', attrs: { 'aria-hidden': 'true' } }, [createAppIcon('gear', 22)]),
   ]);
   const controller = new GearPressController(element, opts);
   return log.exit({ element, destroy: (): void => controller.destroy() });

@@ -66,7 +66,7 @@ describe('standingOf（地区の主の状況）', () => {
     await seedLordship(tw, [{ districtId: 'd_honmachi', holder: 'r_taro', lost: true }]);
     await addRivalAction(tw, { rivalId: 'r_taro', districtId: 'd_honmachi', count: 4 });
     const standing = standingOf(await load(tw), HONMACHI);
-    expect(standing).toMatchObject({ lordName: '旅人タロウ', isMe: false, lostByTraveler: true, lordCount: 4, myCount: 3, needed: 2 });
+    expect(standing).toMatchObject({ lordName: 'おまいり番長', isMe: false, lostByTraveler: true, lordCount: 4, myCount: 3, needed: 2 });
     expect(standing.holder).toEqual(rivalHolder(testRivalId('r_taro')));
   });
 
@@ -98,7 +98,7 @@ describe('standingOf（地区の主の状況）', () => {
     const expected = countRivalVisits({ rival: taro, actions: [], districtId: JOKA, ...lordWindow(world.today) });
     const standing = standingOf(world, JOKA);
     expect(expected).toBeGreaterThan(0);
-    expect(standing).toMatchObject({ lordName: '旅人タロウ', lordCount: expected, lostByTraveler: false, needed: expected + 1 });
+    expect(standing).toMatchObject({ lordName: 'おまいり番長', lordCount: expected, lostByTraveler: false, needed: expected + 1 });
   });
 });
 
@@ -118,7 +118,7 @@ describe('standingsOf / lordshipSnapshotsOf', () => {
     await addRivalAction(tw, { rivalId: 'r_taro', districtId: 'd_honmachi', count: 5 });
     const world = await load(tw);
     const snapshot = toLordshipSnapshot(standingOf(world, HONMACHI));
-    expect(snapshot).toEqual({ districtId: HONMACHI, lordName: '旅人タロウ', isMe: false, lostByTraveler: true, lordCount: 5, myCount: 2 });
+    expect(snapshot).toEqual({ districtId: HONMACHI, lordName: 'おまいり番長', isMe: false, lostByTraveler: true, lordCount: 5, myCount: 2 });
     const reasons = collect({
       today: world.today,
       spots: world.spots.allSpots(),
@@ -129,7 +129,7 @@ describe('standingsOf / lordshipSnapshotsOf', () => {
       lordships: lordshipSnapshotsOf(world),
     });
     const reclaim = reasons.find((r) => r.kind === 'reclaim');
-    expect(reclaim).toMatchObject({ districtId: HONMACHI, lordName: '旅人タロウ', lordCount: 5, myCount: 2, needed: standingOf(world, HONMACHI).needed });
+    expect(reclaim).toMatchObject({ districtId: HONMACHI, lordName: 'おまいり番長', lordCount: 5, myCount: 2, needed: standingOf(world, HONMACHI).needed });
   });
 
   it('自分が主の地区のスナップショットは isMe=true で「取り返し」理由にならない', async () => {
@@ -146,7 +146,7 @@ describe('lordNameOf', () => {
     const tw = createTestWorld();
     const rivals = tw.rivals.allRivals();
     expect(lordNameOf(TRAVELER_HOLDER, rivals)).toBe('あなた');
-    expect(lordNameOf(rivalHolder(testRivalId('r_hana')), rivals)).toBe('旅人ハナ');
+    expect(lordNameOf(rivalHolder(testRivalId('r_hana')), rivals)).toBe('花見は毎日派');
     expect(lordNameOf(undefined, rivals)).toBeUndefined();
     expect(lordNameOf(rivalHolder(testRivalId('r_nobody')), rivals)).toBeUndefined();
   });

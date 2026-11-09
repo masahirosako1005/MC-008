@@ -1,6 +1,6 @@
 /**
  * @file 準備中画面（presentation/screens/Placeholder 層）
- * PoC で後回しにした画面（マイ街・ランキング・設定）の代わりに、何の画面か・何を見せる予定かを1行で示す（docs/08 §8）。
+ * PoC で後回しにした画面（ランキング・設定）の代わりに、何の画面か・何を見せる予定かを1行で示す（docs/08 §8）。
  */
 import { createLogger } from '@/Common/logging/logger';
 import { createButton } from '@/Common/ui/Button';
@@ -12,7 +12,7 @@ import type { Screen, ScreenFactory } from '@/presentation/App/Screen';
 const logger = createLogger('presentation/screens/Placeholder/PlaceholderScreen');
 
 /** 準備中にしている画面の種類 */
-export type PlaceholderKind = 'mytown' | 'ranking' | 'settings';
+export type PlaceholderKind = 'ranking' | 'settings';
 
 /** 準備中画面の文言 */
 interface PlaceholderInfo {
@@ -25,7 +25,6 @@ interface PlaceholderInfo {
 
 /** 種類ごとの文言（CLAUDE.md 6.5〜6.7・8.1） */
 export const PLACEHOLDER_INFO: Readonly<Record<PlaceholderKind, PlaceholderInfo>> = {
-  mytown: { title: 'マイ街', plan: '5地区の成長と色あせの全景、アバター・カード・アイテム・ランクをまとめて見られます。', criteria: 'C 再訪動機' },
   ranking: { title: 'ランキング', plan: '今月の通った回数の表彰台と、各地区の主を見られます。', criteria: 'C 再訪動機' },
   settings: { title: '設定', plan: '文字の大きさ（標準／大／特大）を切り替えられます。', criteria: 'A 初回満足度' },
 };

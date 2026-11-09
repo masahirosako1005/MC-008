@@ -16,7 +16,7 @@ describe('GetRevisitReasonsUseCase', () => {
       'unvisited:d_joka',
     ]);
     expect(reasons[0]).toMatchObject({ title: '丸岡和菓子店のクーポン、あと3日', subtitle: 'どら焼き1個サービス', spotId: 's_jo02', shopEventId: 'c_jo01' });
-    expect(reasons[1]?.title).toBe('本町地区の主を旅人タロウに奪われた');
+    expect(reasons[1]?.title).toBe('本町地区の主をおまいり番長に奪われた');
     expect(reasons[2]?.title).toBe('色あせ中：湯の里地区');
     expect(reasons[2]?.calendar).toBeUndefined();
     expect(reasons[3]).toMatchObject({ title: 'そろそろ色あせ：みなと地区 あと5日', calendar: { districtName: 'みなと地区', fadeStartDate: '2026-11-14' } });

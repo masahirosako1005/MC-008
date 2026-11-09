@@ -27,14 +27,23 @@ export const RARITY_CODES: Readonly<Record<RarityDto, string>> = { 1: 'N', 2: 'R
 const RARITY_FALLBACK_NAMES: Readonly<Record<RarityDto, string>> = { 1: 'ノーマル', 2: 'レア', 3: 'スーパーレア', 4: 'レジェンド' };
 
 /**
- * カードのピクトグラム（未発見は出さない）。
+ * カードのピクトグラム（2026-11-09「アイコンが？になっているけどすべて表示」で未発見でも出す）。
  * @param tile タイル
- * @returns 絵文字（未発見は undefined）
+ * @returns 絵文字（カテゴリに無いものは種別の既定）
  */
-export function categoryIconOf(tile: ZukanTileDto): string | undefined {
+export function categoryIconOf(tile: ZukanTileDto): string {
   const log = logger.fn('categoryIconOf', { status: tile.status, category: tile.category });
-  if (tile.status === 'unknown') return log.exit(undefined);
   return log.exit((tile.category === undefined ? undefined : CATEGORY_ICONS[tile.category]) ?? KIND_ICONS[tile.kind]);
+}
+
+/**
+ * 獲得した最上位（SSR 級＝★4 レジェンド）のカードか。キラキラの演出を付ける（2026-11-09 ユーザー指示）。
+ * @param tile タイル
+ * @returns 訪問済みの ★4 なら true
+ */
+export function isShinyCard(tile: ZukanTileDto): boolean {
+  const log = logger.fn('isShinyCard', { status: tile.status, rarity: tile.rarity });
+  return log.exit(tile.status === 'visited' && tile.rarity === 4);
 }
 
 /** カードに出すレア度の表示 */
@@ -60,15 +69,3 @@ export function rarityViewOf(tile: ZukanTileDto): RarityView {
   return log.exit({ rarity, stars: '★'.repeat(rarity), code: tile.awakened === true ? '極' : RARITY_CODES[rarity], name: tile.awakened === true ? `極・${base}` : base });
 }
 
-/**
- * 未発見カードの煽り文句（レア度が高いほど期待させる。位置は教えない＝B）。
- * @param rarity レア度
- * @returns 文言
- */
-export function mysteryTeaserOf(rarity: RarityDto): string {
-  const log = logger.fn('mysteryTeaserOf', { rarity });
-  if (rarity === 4) return log.exit('この地区の象徴が眠っている…');
-  if (rarity === 3) return log.exit('名所が見つかるのを待っている');
-  if (rarity === 2) return log.exit('特典のあるお店かも');
-  return log.exit('まだ知らないお店');
-}

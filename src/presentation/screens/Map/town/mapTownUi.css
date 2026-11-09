@@ -1,0 +1,524 @@
+/*
+ * @file 地図の上に重ねる DOM 部品のスタイル（presentation/screens/Map/town）
+ * フィルタのチップ列（上端）・好みパネル・お店カード（下シートのつまみの上）・陣地の札（左下）。
+ * 地図の上の部品は白い面＋細い枠＋小さな影で読みやすくする（tokens.css のトーン。フラット・角丸）。
+ * 見た目の高さは小さくても、タップ領域は 44px（--tap）を透明の余白で確保する。ドット絵の canvas は pixelated で拡大する。
+ */
+
+/* ---- ドット絵の canvas（にじませない） ---- */
+.map-ui-icon,
+.map-filter-bar__icon,
+.spot-card__thumb-canvas,
+.spot-card__want-icon,
+.spot-card__amenity-icon,
+.spot-card__today-icon,
+.map-prefs__heading-icon,
+.map-prefs__want-icon,
+.map-territory-hud__icon {
+  display: block;
+  flex: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ---- フィルタのチップ列（地図の上端。横スクロール） ---- */
+.map-filter-bar {
+  position: absolute;
+  top: 0.5rem;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.map-filter-bar__track {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 0.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  pointer-events: auto;
+}
+
+.map-filter-bar__track::-webkit-scrollbar { display: none; }
+
+.map-filter-bar__prefs,
+.map-filter-chip {
+  position: relative;
+  z-index: 0;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.3125rem;
+  min-height: var(--tap);
+  padding: 0 0.75rem 0 0.4375rem;
+  border: 0;
+  background: transparent;
+  color: var(--g5);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 見た目のピル（高さ 34px）。ボタン本体は 44px の透明な当たり */
+.map-filter-bar__prefs::before,
+.map-filter-chip::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2.125rem;
+  transform: translateY(-50%);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 0 0 1px var(--hairline-strong), 0 2px 6px rgba(17, 24, 39, 0.1);
+  z-index: -1;
+  transition: background var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+.map-filter-bar__prefs { color: var(--brand-ink); font-weight: var(--fw-bold); padding-right: 0.875rem; }
+.map-filter-bar__prefs::before { box-shadow: inset 0 0 0 1.5px var(--brand), 0 2px 6px rgba(17, 24, 39, 0.1); }
+
+/* アイコンは白い丸の台座に載せる（選択中の濃い地でも絵が読める） */
+.map-filter-chip__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--g1);
+}
+
+.map-filter-chip__count {
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 0.3125rem;
+  border-radius: var(--radius-pill);
+  background: var(--g2);
+  color: var(--g5);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  line-height: 1.125rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-filter-chip__count[hidden] { display: none; }
+
+.map-filter-chip[data-empty="1"]:not([aria-pressed="true"]) { color: var(--g4); }
+.map-filter-chip[data-empty="1"]:not([aria-pressed="true"]) .map-filter-chip__badge { opacity: 0.6; }
+
+/* 選択中: コーラルの地に白文字（件数の札は白地に濃い文字） */
+.map-filter-chip[aria-pressed="true"] { color: #ffffff; font-weight: var(--fw-bold); }
+.map-filter-chip[aria-pressed="true"]::before { background: var(--brand-ink); box-shadow: 0 2px 8px rgba(214, 61, 31, 0.32); }
+.map-filter-chip[aria-pressed="true"] .map-filter-chip__badge { background: #ffffff; }
+.map-filter-chip[aria-pressed="true"] .map-filter-chip__count { background: #ffffff; color: var(--brand-ink); }
+
+/* 「今日だけ」は入っていなくても少し目立たせる（黄色の台座） */
+.map-filter-chip[data-filter="today"] .map-filter-chip__badge { background: #fff4c2; }
+
+.map-filter-bar__prefs:focus-visible,
+.map-filter-chip:focus-visible {
+  outline: none;
+}
+
+.map-filter-bar__prefs:focus-visible::before,
+.map-filter-chip:focus-visible::before { box-shadow: var(--focus-ring); }
+
+.map-filter-bar__prefs:active::before,
+.map-filter-chip:active::before { transform: translateY(-50%) scale(0.97); }
+
+/* ---- お店カード（下シートのつまみの上に浮かぶ） ---- */
+.spot-card {
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: calc(var(--map-sheet-peek, 9.5rem) + 0.5rem);
+  z-index: 4;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 0.75rem 0.75rem 0.75rem;
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--hairline-strong), 0 8px 24px rgba(17, 24, 39, 0.16);
+  color: var(--ink);
+  animation: spot-card-in var(--motion) ease-out;
+}
+
+.spot-card[hidden] { display: none; }
+
+@keyframes spot-card-in {
+  from { opacity: 0; transform: translateY(0.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.spot-card__close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--tap);
+  height: var(--tap);
+  border: 0;
+  background: transparent;
+  color: var(--g4);
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.spot-card__close:focus-visible { outline: 2px solid var(--ink); outline-offset: -4px; border-radius: var(--radius-control); }
+
+.spot-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding-right: 2rem;
+}
+
+.spot-card__thumb {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: var(--radius-control);
+  background: var(--g1);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+.spot-card[data-status="visited"] .spot-card__thumb { background: var(--brand-soft); }
+.spot-card[data-kind="toilet"] .spot-card__thumb { background: #e0f2fe; }
+
+.spot-card__titles { flex: 1; min-width: 0; }
+
+.spot-card__eyebrow {
+  margin: 0;
+  color: var(--g4);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spot-card__name {
+  margin: 0.0625rem 0 0;
+  font-size: var(--fs-l);
+  font-weight: var(--fw-bold);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.spot-card[data-status="unknown"] .spot-card__name { color: var(--g4); }
+
+.spot-card__goods {
+  margin: 0.125rem 0 0;
+  color: var(--brand-ink);
+  font-size: var(--fs-s);
+  font-weight: var(--fw-bold);
+}
+
+.spot-card[data-status="unknown"] .spot-card__goods { color: var(--g4); font-weight: var(--fw-medium); }
+
+.spot-card__want {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap);
+  height: var(--tap);
+  margin: -0.375rem -0.25rem 0 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.spot-card__want::before {
+  content: "";
+  position: absolute;
+  inset: 0.375rem;
+  border-radius: 50%;
+  background: var(--g1);
+  z-index: -1;
+}
+
+.spot-card__want { z-index: 0; }
+.spot-card__want[aria-pressed="true"]::before { background: var(--brand-soft); }
+.spot-card__want:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+
+/* 今日の情報（今日だけ＝黄色の強調帯、期間ものは淡い朱） */
+.spot-card__today {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0.625rem 0 0;
+  padding: 0.4375rem 0.625rem;
+  border-radius: var(--radius-s);
+  background: #fff4c2;
+  box-shadow: inset 0 0 0 1px #f5d65c;
+  font-size: var(--fs-s);
+  line-height: 1.4;
+}
+
+.spot-card__today[hidden] { display: none; }
+.spot-card__today[data-tag="period"] { background: var(--deadline-soft); box-shadow: inset 0 0 0 1px rgba(225, 29, 72, 0.22); }
+
+.spot-card__today-tag {
+  flex: none;
+  padding: 0.0625rem 0.4375rem;
+  border-radius: var(--radius-pill);
+  background: var(--gold-ink);
+  color: #ffffff;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+}
+
+.spot-card__today[data-tag="period"] .spot-card__today-tag { background: var(--deadline); }
+.spot-card__today-title { min-width: 0; font-weight: var(--fw-bold); color: var(--ink); overflow-wrap: anywhere; }
+
+.spot-card__amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.375rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.spot-card__amenities[hidden] { display: none; }
+
+.spot-card__amenity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem 0.125rem 0.3125rem;
+  border-radius: var(--radius-pill);
+  background: var(--g1);
+  color: var(--g5);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+}
+
+.spot-card__meta {
+  margin: 0.375rem 0 0;
+  color: var(--g4);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.spot-card__meta[hidden] { display: none; }
+
+.spot-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.625rem;
+}
+
+.spot-card__actions[hidden] { display: none; }
+.spot-card__checkin { flex: 1 1 auto; min-width: 0; white-space: normal; }
+.spot-card__detail { flex: none; }
+.spot-card__detail[hidden] { display: none; }
+
+/* チェックインできるときは主ボタンを少しだけ弾ませて気づかせる */
+.spot-card__checkin[data-state="ready"] { animation: spot-card-ready 1.6s ease-in-out 2; }
+.spot-card__checkin[data-state="done"] { background: var(--g1); color: var(--d-leaf-ink); }
+
+@keyframes spot-card-ready {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+/* ---- 好みパネル（Modal の中身） ---- */
+.map-prefs-layer .modal { max-height: calc(100% - 2rem); display: flex; flex-direction: column; }
+.map-prefs { overflow-y: auto; min-height: 0; }
+
+.map-prefs__lead {
+  margin: 0;
+  color: var(--g5);
+  font-size: var(--fs-s);
+  line-height: 1.6;
+}
+
+.map-prefs__heading {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0.875rem 0 0.375rem;
+  font-size: var(--fs-s);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+}
+
+.map-prefs__chips { display: flex; flex-wrap: wrap; gap: 0 0.375rem; }
+
+.map-prefs__chip {
+  position: relative;
+  z-index: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: var(--tap);
+  padding: 0 0.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--g5);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+}
+
+.map-prefs__chip::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2.125rem;
+  transform: translateY(-50%);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  z-index: -1;
+}
+
+.map-prefs__chip[aria-pressed="true"] { color: #ffffff; font-weight: var(--fw-bold); }
+.map-prefs__chip[aria-pressed="true"]::before { background: var(--brand-ink); box-shadow: none; }
+.map-prefs__chip:focus-visible { outline: none; }
+.map-prefs__chip:focus-visible::before { box-shadow: var(--focus-ring); }
+.map-prefs__emoji { font-size: 1rem; line-height: 1; }
+
+.map-prefs__wants { margin: 0; padding: 0; list-style: none; }
+
+.map-prefs__want {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--tap);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.map-prefs__want-name { flex: 1; min-width: 0; font-size: var(--fs-s); overflow-wrap: anywhere; }
+
+.map-prefs__remove {
+  flex: none;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0 0.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--brand-ink);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+}
+
+.map-prefs__remove:focus-visible { outline: 2px solid var(--ink); outline-offset: -4px; border-radius: var(--radius-control); }
+
+.map-prefs__empty {
+  padding: 0.5rem 0;
+  color: var(--g4);
+  font-size: var(--fs-s);
+  line-height: 1.6;
+}
+
+/* ---- 陣地の札（地図の左下・つまみの上。DOM は MapScreen が作る） ---- */
+.map-territory-hud {
+  position: absolute;
+  left: 0.5rem;
+  bottom: calc(var(--map-sheet-peek, 9.5rem) + 0.5rem);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.625rem 0.25rem 0.4375rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 0 0 1px var(--hairline-strong), 0 2px 8px rgba(17, 24, 39, 0.1);
+  color: var(--ink);
+  font-size: var(--fs-s);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  transition: opacity var(--motion);
+}
+
+.map-territory-hud__label { color: var(--g5); font-weight: var(--fw-medium); font-size: var(--fs-xs); }
+.map-territory-hud__count { color: var(--brand-ink); }
+
+/* 増えた分（+24）。data-bump="1" の間だけ弾んで出る */
+.map-territory-hud__delta {
+  display: none;
+  padding: 0 0.375rem;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: #ffffff;
+  font-size: var(--fs-xs);
+}
+
+.map-territory-hud[data-bump="1"] { animation: territory-bump 0.9s ease-out; }
+.map-territory-hud[data-bump="1"] .map-territory-hud__delta { display: inline-block; animation: territory-delta 1.6s ease-out forwards; }
+
+@keyframes territory-bump {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.14); }
+  60% { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+@keyframes territory-delta {
+  0% { opacity: 0; transform: translateY(0.375rem); }
+  15% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-0.25rem); }
+}
+
+/* カードを出している間は陣地の札を隠す（重ならないように） */
+.map-area:has(.spot-card[data-open="1"]) .map-territory-hud { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spot-card,
+  .spot-card__checkin[data-state="ready"],
+  .map-territory-hud[data-bump="1"],
+  .map-territory-hud[data-bump="1"] .map-territory-hud__delta { animation: none; }
+}
+
+/* 現在地ボタン（表示範囲の切替のすぐ上、右下。GPS の現在地ボタンと同じ丸いボタン。追いかけている間は朱色） */
+.map-locate {
+  position: absolute;
+  right: 0.5rem;
+  bottom: calc(9.5rem + 2.875rem);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--g5, #4b5563);
+  box-shadow: 0 0 0 1px var(--hairline, rgba(17, 24, 39, 0.1)), 0 2px 8px rgba(17, 24, 39, 0.12);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.map-locate::after { content: ""; position: absolute; inset: -0.25rem; }
+.map-locate svg { width: 1.25rem; height: 1.25rem; transform: rotate(45deg); }
+.map-locate[data-active="1"] { color: var(--accent, #e8513a); }
+.map-locate[data-active="1"] svg { fill: currentColor; }
+.map-locate:focus-visible { outline: 2px solid var(--accent, #e8513a); outline-offset: 2px; }
+.map-area:has(.spot-card[data-open="1"]) .map-locate { opacity: 0; pointer-events: none; }

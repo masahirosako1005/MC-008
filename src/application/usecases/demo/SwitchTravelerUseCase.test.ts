@@ -20,7 +20,7 @@ describe('SwitchTravelerUseCase', () => {
     expect(tw.session.current.activeTravelerId).toBe(REGULAR_ID);
     const traveler = must(await tw.travelers.findById(REGULAR_ID));
     expect(traveler?.visits.map((v) => v.localDate).at(-1)).toBe('2026-11-07');
-    expect(must(await tw.ledgers.find(REGULAR_ID)).balance()).toBe(255);
+    expect(must(await tw.ledgers.find(REGULAR_ID)).balance()).toBe(600);
     expect(tw.demo.positions.at(-1)).toEqual(districtOf(tw.spots, 'd_minamimori').entrance);
   });
 
@@ -40,7 +40,7 @@ describe('SwitchTravelerUseCase', () => {
     must(await demo.simulateRival.execute({ operationId: testOperationId(1) }));
     must(await demo.switchTraveler.execute({ profile: 'regular' }));
     expect(must(await tw.rivalActions.list(REGULAR_ID))).toEqual([]);
-    expect(must(await tw.ledgers.find(REGULAR_ID)).balance()).toBe(255);
+    expect(must(await tw.ledgers.find(REGULAR_ID)).balance()).toBe(600);
     const board = must(await tw.lordships.find(REGULAR_ID));
     expect(board.entries.find((e) => e.districtId === 'd_tenma')).toMatchObject({ holder: { type: 'traveler' }, lostByTraveler: false });
     expect(board.version).toBe(1);
@@ -51,7 +51,7 @@ describe('SwitchTravelerUseCase', () => {
     const demo = createDemoUseCases(tw, { enabled: true });
     must(await demo.switchTraveler.execute({ profile: 'regular' }));
     must(await demo.switchTraveler.execute({ profile: 'first' }));
-    expect(must(await tw.travelers.findById(REGULAR_ID))?.visits).toHaveLength(21);
+    expect(must(await tw.travelers.findById(REGULAR_ID))?.visits).toHaveLength(45);
     expect(tw.session.current.activeTravelerId).toBe(FIRST_ID);
   });
 

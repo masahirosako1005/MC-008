@@ -1,284 +1,117 @@
 /**
- * @file 店舗CMS のクーポン・イベント画面（presentation/cms/screens/Events。docs/09 C04・C05、CMS-E01・E03・E04・E09・E10）
- * 初めての人でも迷わないように、登録を 1 種類 → 2 内容 → 3 期間 → 4 見え方を確かめて掲載 の順に並べる。
- * - 文面の例・よく使う期間を選ぶだけで形になる（白紙から考えなくてよい）
- * - 掲載に必要なもの（題名・説明・期間）がそろっているかを、ボタンのそばに常に出す
- * - 掲載したら「アプリで見る」へ案内する。取り下げは確認してから行う
- * 入力中の値はページを移っても残る（ctx.draft）。登録すると、アプリの地図の期限カードとお店のページにすぐ出る。
+ * @file 店舗CMS のクーポン・イベント（presentation/cms/screens/Events。docs/09 C04・C05、CMS-E01・E03・E04・E07・E09・E10）
+ * 左：見え方（お店のページ｜地図）／右：「一覧」と「入力」を切り替える。説明文は置かない。
+ * - 一覧：下書き → 掲載中 → 予定。行の右に「編集」「取り下げる」（下書きは「編集」「削除」）。終わったものは出さない。
+ *   上限（SHOP_EVENT_MAX_OPEN_PER_SPOT 件）に達したときだけ、押せない［新規作成］の左に「3件まで」と出す
+ * - 入力：種類・例文・題名・説明・期間。誤りは押したときに欄の下へ出し、最初の誤りまでスクロールする。出口は下端の「キャンセル」だけ
+ * - 見え方：入力中は「クーポン・イベント」欄を破線で囲んでそこまで動かす。一覧では掲載中・予定があればその欄まで動かす（破線は掲載・保存した直後だけ）
+ * - 編集は「取り下げて同じ内容で掲載し直す」（掲載中のものは今日から）
+ * 入力中の値は下書きとしてページを移っても残る（ctx.draft）。
  */
 import type { CmsShopEventDto } from '@/application/dto/CmsDto';
 import { createLogger } from '@/Common/logging/logger';
+import { compareLocalDate, parseLocalDate } from '@/Common/utils/date';
 import { createButton } from '@/Common/ui/Button';
-import { createChip, setChipSelected } from '@/Common/ui/Chip';
 import { h } from '@/Common/ui/dom';
 import { openModal } from '@/Common/ui/Modal';
-import { SHOP_EVENT_DESCRIPTION_MAX, SHOP_EVENT_MAX_DAYS, SHOP_EVENT_MAX_OPEN_PER_SPOT, SHOP_EVENT_TITLE_MAX } from '@/domain/revisit/constants';
+import { SHOP_EVENT_DESCRIPTION_MAX, SHOP_EVENT_TITLE_MAX } from '@/domain/revisit/constants';
+import { createPreviewColumn, liveEventsOf } from '@/presentation/cms/cmsPhonePreview';
+import type { PreviewColumnHandle, PreviewEvent, PreviewMode } from '@/presentation/cms/cmsPhonePreview';
 import { EVENT_TEMPLATES, PERIOD_PRESETS, periodOfPreset } from '@/presentation/cms/cmsTemplates';
-import { appLink, attachFieldError, cmsBadge, cmsErrorLine, cmsSection, cmsTextField, eventStatusText, pageHeader, shortDate } from '@/presentation/cms/cmsUi';
+import { actionBar, attachFieldError, badge, eventBadge, formSection, markDanger, mdDate, pageTitle, previewButton, slotLimit, textField, twoColumn } from '@/presentation/cms/cmsUi';
 import type { CmsContext, CmsField } from '@/presentation/cms/cmsUi';
-import { KIND_LABELS, periodSummary, problemsOf, renderEventPreview } from '@/presentation/cms/screens/Events/eventForm';
+import { captionOf, KIND_LABELS, noticeOf, PLACEHOLDERS, periodDays, problemsOf } from '@/presentation/cms/screens/Events/eventForm';
 import type { DraftProblems, EventDraft } from '@/presentation/cms/screens/Events/eventForm';
 import { newOperationId } from '@/presentation/shared/operation';
 
 const logger = createLogger('presentation/cms/screens/Events/CmsEventsScreen');
 
-/** 種別ごとの説明 */
-const KIND_HINTS = { coupon: '値引き・1品サービスなど', event: '試食会・限定メニューなど' } as const;
-
-/** 直前に掲載したもの（成功の案内に使う） */
-interface PostedNote {
-  last?: string;
+/** 右側の状態（一覧か入力か。編集中のもの・掲載したばかりのもの） */
+interface EventsView {
+  mode: 'list' | 'form';
+  editingId?: string;
+  flashId?: string;
+  previewMode: PreviewMode;
 }
 
-/** フォームの部品（入力のたびに更新するもの） */
+/** 入力の部品 */
 interface FormParts {
   readonly title: CmsField<HTMLInputElement | HTMLTextAreaElement>;
   readonly description: CmsField<HTMLInputElement | HTMLTextAreaElement>;
   readonly periodError: (message: string) => void;
-  readonly periodText: HTMLElement;
-  readonly previewHost: HTMLElement;
-  readonly checklist: HTMLElement;
-  /** 掲載を押したあとか（押す前は誤りを欄の下に出さない） */
+  readonly days: HTMLElement;
+  readonly presets: readonly { readonly id: string; readonly el: HTMLElement }[];
   attempted: boolean;
 }
 
 /**
- * 掲載枠のメーター（●●○ あと1件）を作る。
- * @param remaining あと何件登録できるか
- * @returns 要素
- */
-function slotMeter(remaining: number): HTMLElement {
-  const log = logger.fn('slotMeter', { remaining });
-  const used = SHOP_EVENT_MAX_OPEN_PER_SPOT - remaining;
-  const dots = Array.from({ length: SHOP_EVENT_MAX_OPEN_PER_SPOT }, (_, i) => h('span', { class: ['cms-meter__dot', i < used && 'cms-meter__dot--used'] }));
-  return log.exit(h('div', { class: 'cms-meter', attrs: { 'data-testid': 'cms-slots', 'aria-label': `同時に出せる${SHOP_EVENT_MAX_OPEN_PER_SPOT}件のうち${used}件を使用中` } }, [
-    h('span', { class: 'cms-meter__dots', attrs: { 'aria-hidden': 'true' } }, dots),
-    h('span', { class: 'cms-meter__text', text: remaining > 0 ? `あと${remaining}件出せます` : '上限まで出しています' }),
-  ]));
-}
-
-/**
- * 種類（クーポン／イベント）の選択を作る。
- * @param draft 入力中の値
- * @param onChange 変わったときの処理
- * @returns 選択の要素
- */
-function kindOptions(draft: EventDraft, onChange: () => void): HTMLElement {
-  const log = logger.fn('kindOptions', { kind: draft.kind });
-  const buttons = (['coupon', 'event'] as const).map((kind) => h('button', {
-    class: 'cms-option', attrs: { type: 'button', 'aria-pressed': draft.kind === kind ? 'true' : 'false', 'data-testid': `cms-kind-${kind}` },
-  }, [h('span', { class: 'cms-option__title', text: KIND_LABELS[kind] }), h('span', { class: 'cms-option__hint', text: KIND_HINTS[kind] })]));
-  for (const [index, button] of buttons.entries()) {
-    button.addEventListener('click', () => {
-      draft.kind = index === 0 ? 'coupon' : 'event';
-      for (const [i, other] of buttons.entries()) other.setAttribute('aria-pressed', i === index ? 'true' : 'false');
-      onChange();
-    });
-  }
-  return log.exit(h('div', { class: 'cms-options', attrs: { role: 'group', 'aria-label': '種類' } }, buttons));
-}
-
-/**
- * 文面の例のボタンを作る（押すと題名と説明に入る）。
- * @param draft 入力中の値
- * @param parts フォームの部品
- * @returns ボタンの並び
- */
-function templateChips(draft: EventDraft, parts: Pick<FormParts, 'title' | 'description'>): HTMLElement {
-  const log = logger.fn('templateChips', { kind: draft.kind });
-  const chips = EVENT_TEMPLATES[draft.kind].map((template) => createButton({
-    label: template.label, variant: 'secondary', testId: 'cms-template',
-    onClick: () => {
-      parts.title.input.value = template.title;
-      parts.description.input.value = template.description;
-      parts.title.input.dispatchEvent(new Event('input'));
-      parts.description.input.dispatchEvent(new Event('input'));
-      parts.title.input.focus();
-    },
-  }));
-  return log.exit(h('div', { class: 'cms-templates' }, [h('span', { class: 'cms-field__label', text: '例から選ぶ（あとで書きかえられます）' }), h('div', { class: 'cms-chips' }, chips)]));
-}
-
-/**
- * 期間の入力（よく使う期間＋日付）を作る。
+ * 右側の状態を取り出す。
  * @param ctx 文脈
- * @param draft 入力中の値
- * @param onChange 変わったときの処理
- * @returns 要素と、誤りを出す関数
+ * @returns 状態（書き換えると残る）
  */
-function periodInputs(ctx: CmsContext, draft: EventDraft, onChange: () => void): { readonly element: HTMLElement; readonly setError: (message: string) => void } {
-  const log = logger.fn('periodInputs', { start: draft.start, end: draft.end });
-  /** 日付の入力欄を作る（今日より前は選べない） */
-  const dateInput = (id: string, value: string): HTMLInputElement => h('input', { class: 'cms-input cms-input--date', attrs: { type: 'date', id, value, min: ctx.info.today, 'data-testid': id } });
-  const start = dateInput('cms-start', draft.start);
-  const end = dateInput('cms-end', draft.end);
-  const chips = PERIOD_PRESETS.map((preset) => ({ id: preset.id, chip: createChip({ label: preset.label, selected: draft.preset === preset.id, testId: `cms-preset-${preset.id}` }) }));
-  for (const { id, chip } of chips) {
-    chip.addEventListener('click', () => {
-      const period = periodOfPreset(id, ctx.info.today);
-      Object.assign(draft, { start: period.start, end: period.end, preset: id });
-      start.value = period.start;
-      end.value = period.end;
-      for (const other of chips) setChipSelected(other.chip, other.id === id);
-      onChange();
-    });
-  }
-  for (const [input, key] of [[start, 'start'], [end, 'end']] as const) {
-    input.addEventListener('change', () => {
-      draft[key] = input.value;
-      draft.preset = undefined;
-      for (const other of chips) setChipSelected(other.chip, false);
-      onChange();
-    });
-  }
-  const error = attachFieldError(end, 'cms-period-error');
-  /** 日付の入力欄にラベルを付ける */
-  const label = (id: string, text: string): HTMLElement => h('label', { class: 'cms-field cms-field--inline' }, [h('span', { class: 'cms-field__label', text }), id === 'cms-start' ? start : end]);
-  return log.exit({
-    element: h('div', { class: 'cms-stack-s' }, [h('div', { class: 'cms-chips', attrs: { role: 'group', 'aria-label': 'よく使う期間' } }, chips.map((c) => c.chip)), h('div', { class: 'cms-row' }, [label('cms-start', '開始日'), h('span', { class: 'cms-row__sep', attrs: { 'aria-hidden': 'true' }, text: '〜' }), label('cms-end', '終了日')]), error.element]),
-    setError: error.setError,
-  });
+function viewOf(ctx: CmsContext): EventsView {
+  return ctx.draft<EventsView>('eventsView', () => ({ mode: 'list', previewMode: 'page' }));
 }
 
 /**
- * 掲載に必要なものの確認リスト（✓ 題名 ✓ 説明 ✓ 期間）を描く。
- * @param host 描く先
- * @param problems 欄ごとの誤り
- * @sideEffect host の中身を置き換える
+ * 入力中の値を取り出す（無ければ「1週間」で作る）。
+ * @param ctx 文脈
+ * @returns 入力中の値
  */
-function renderChecklist(host: HTMLElement, problems: DraftProblems): void {
-  const log = logger.fn('renderChecklist');
-  const items = [['題名', problems.title], ['説明', problems.description], ['期間', problems.period]] as const;
-  host.replaceChildren(...items.map(([name, problem]) => h('li', { class: ['cms-ready__item', problem === undefined && 'cms-ready__item--ok'] }, [
-    h('span', { class: 'cms-ready__mark', attrs: { 'aria-hidden': 'true' }, text: problem === undefined ? '✓' : '・' }),
-    problem === undefined ? `${name}` : `${name}：${problem}`,
-  ])));
+function draftOf(ctx: CmsContext): EventDraft {
+  const log = logger.fn('draftOf');
+  const week = periodOfPreset('week', ctx.info.today);
+  return log.exit(ctx.draft<EventDraft>('event', () => ({ kind: 'coupon', title: '', description: '', start: week.start, end: week.end, preset: 'week' })));
+}
+
+/**
+ * 入力を開く（ほかの画面からも使う。日付を指定できる）。
+ * @param ctx 文脈
+ * @param period 開始日・終了日（任意）
+ * @param stay いまクーポン・イベントの画面にいるか（いれば描き直すだけ）
+ * @sideEffect 右側を入力にして、クーポン・イベントの画面を出す
+ */
+export function openEventForm(ctx: CmsContext, period?: { readonly start: string; readonly end: string }, stay = false): void {
+  const log = logger.fn('openEventForm', { start: period?.start });
+  const draft = draftOf(ctx);
+  if (period !== undefined) Object.assign(draft, { start: period.start, end: period.end, preset: undefined });
+  Object.assign(viewOf(ctx), { mode: 'form', editingId: undefined });
+  if (stay) ctx.update(ctx.info);
+  else ctx.go('events');
   log.exit(undefined);
 }
 
 /**
- * 入力のたびに、見え方・期間のまとめ・確認リスト・（押したあとは）欄の誤りを更新する。
+ * 見え方に出す中身（入力中は下書きを足す）。
  * @param ctx 文脈
+ * @param view 右側の状態
  * @param draft 入力中の値
- * @param parts フォームの部品
- * @sideEffect DOM を書き換え、保存していない入力の有無を CmsApp に知らせる
+ * @returns 中身と、枠の下の1行に使うもの
  */
-function refreshForm(ctx: CmsContext, draft: EventDraft, parts: FormParts): void {
-  const log = logger.fn('refreshForm', { attempted: parts.attempted });
-  const problems = problemsOf(draft, ctx.info.today);
-  parts.previewHost.replaceChildren(renderEventPreview(ctx.info, draft));
-  parts.periodText.textContent = periodSummary(draft);
-  renderChecklist(parts.checklist, problems);
-  parts.title.setError(parts.attempted ? problems.title ?? '' : '');
-  parts.description.setError(parts.attempted ? problems.description ?? '' : '');
-  parts.periodError(parts.attempted || draft.preset === undefined ? problems.period ?? '' : '');
-  ctx.setDirty('event', draft.title.trim() !== '' || draft.description.trim() !== '');
-  log.exit(undefined);
+function previewEvents(ctx: CmsContext, view: EventsView, draft: EventDraft): { readonly events: readonly PreviewEvent[]; readonly focus?: PreviewEvent } {
+  const log = logger.fn('previewEvents', { mode: view.mode });
+  const live = liveEventsOf(ctx.info.events).filter((e) => e.id !== view.editingId);
+  if (view.mode !== 'form') return log.exit({ events: live, focus: live[0] });
+  const empty = draft.title.trim() === '' && draft.description.trim() === '';
+  const current: PreviewEvent = { id: 'draft', kind: draft.kind, title: draft.title.trim() || PLACEHOLDERS.title, description: draft.description.trim() || PLACEHOLDERS.description, start: draft.start, end: draft.end, placeholder: empty };
+  return log.exit({ events: [current, ...live], focus: current });
 }
 
 /**
- * 掲載する（足りないものがあれば、その欄に移って知らせる）。
+ * 見え方を描き直す（「クーポン・イベント」欄まで動かす。入力中と、掲載・保存した直後は破線で囲む）。
  * @param ctx 文脈
+ * @param preview 見え方の列
+ * @param view 右側の状態
  * @param draft 入力中の値
- * @param parts フォームの部品
- * @param showError 失敗の説明を出す関数
- * @sideEffect 店舗CMS の登録内容を保存し、利用者アプリに反映させる
+ * @param justPosted 掲載・保存した直後の描画か
+ * @sideEffect 見え方を書き換える
  */
-async function register(ctx: CmsContext, draft: EventDraft, parts: FormParts, showError: (message: string) => void): Promise<void> {
-  const log = logger.fn('register', { spotId: ctx.info.id, kind: draft.kind });
-  parts.attempted = true;
-  refreshForm(ctx, draft, parts);
-  const problems = problemsOf(draft, ctx.info.today);
-  if (Object.keys(problems).length > 0) {
-    showError('まだ入っていない項目があります。赤い説明のところを直してください');
-    (problems.title ? parts.title.input : problems.description ? parts.description.input : document.getElementById('cms-end'))?.focus();
-    return log.exit(undefined, 'incomplete');
-  }
-  const { kind, title, description, start, end } = draft;
-  const result = await ctx.services.registerShopEvent.execute({ spotId: ctx.info.id, kind, title, description, start, end, operationId: newOperationId() });
-  if (!result.ok) {
-    showError(`掲載できませんでした：${result.error.message}`);
-    return log.fail(undefined, result.error.code);
-  }
-  ctx.discardDraft('event');
-  ctx.draft<PostedNote>('posted', () => ({})).last = title.trim();
-  ctx.toast.show(`${KIND_LABELS[kind]}を掲載しました`, { kind: 'success' });
-  ctx.update(result.value);
-  return log.exit(undefined);
-}
-
-/**
- * 登録フォーム（1〜4の手順）を作る。
- * @param ctx 文脈
- * @returns 要素
- */
-function renderForm(ctx: CmsContext): HTMLElement {
-  const log = logger.fn('renderForm', { remaining: ctx.info.remainingSlots });
-  const initial = periodOfPreset('week', ctx.info.today);
-  const draft = ctx.draft<EventDraft>('event', () => ({ kind: 'coupon', title: '', description: '', start: initial.start, end: initial.end, preset: 'week' }));
-  let parts: FormParts | undefined;
-  /** 入力が変わるたびに部品を更新する */
-  const onChange = (): void => { if (parts) refreshForm(ctx, draft, parts); }; // audit-ignore: fnlog-missing 入力のたびに呼ぶ中継（ログは refreshForm が出す）
-  const title = cmsTextField({ label: '題名', hint: 'アプリで大きく出る一言です', max: SHOP_EVENT_TITLE_MAX, value: draft.title, placeholder: '例：メロンパン1個おまけ', testId: 'cms-event-title', onInput: (v) => { draft.title = v; onChange(); } });
-  const description = cmsTextField({ label: '説明', hint: '使い方（例：レジで画面を見せる）も書くと親切です', max: SHOP_EVENT_DESCRIPTION_MAX, multiline: true, value: draft.description, placeholder: '例：お会計のときにアプリの画面を見せてください。1会計につき1回。', testId: 'cms-event-description', onInput: (v) => { draft.description = v; onChange(); } });
-  const templateHost = h('div', {}, [templateChips(draft, { title, description })]);
-  const period = periodInputs(ctx, draft, onChange);
-  const error = cmsErrorLine();
-  parts = { title, description, periodError: period.setError, periodText: h('p', { class: 'cms-period-summary', attrs: { 'data-testid': 'cms-period-summary' } }), previewHost: h('div'), checklist: h('ul', { class: 'cms-ready', attrs: { 'aria-label': '掲載に必要なもの' } }), attempted: false };
-  const formParts = parts;
-  const kinds = kindOptions(draft, () => { templateHost.replaceChildren(templateChips(draft, { title, description })); onChange(); });
-  const button = createButton({ label: 'この内容で掲載する', variant: 'primary', size: 'large', testId: 'cms-event-register', onClick: () => register(ctx, draft, formParts, error.show) });
-  refreshForm(ctx, draft, parts);
-  return log.exit(h('div', { class: 'cms-stack', attrs: { 'data-testid': 'cms-event-form' } }, [
-    cmsSection('種類を選ぶ', [kinds], { step: 1 }),
-    cmsSection('内容を書く', [templateHost, title.element, description.element], { step: 2, lead: '景品表示法にそって、実際より得に見える書き方（「全品無料」など）はしないでください。' }),
-    cmsSection('期間を決める', [period.element, parts.periodText], { step: 3, lead: `今日から選べます。長さは${SHOP_EVENT_MAX_DAYS}日まで。` }),
-    cmsSection('アプリでの見え方を確かめて掲載する', [parts.previewHost, h('p', { class: 'cms-field__label', text: '掲載に必要なもの' }), parts.checklist, error.element, button], { step: 4 }),
-  ]));
-}
-
-/**
- * 掲載したあとの案内を作る（直前に掲載したものがあるときだけ）。
- * @param ctx 文脈
- * @returns 要素（無ければ undefined）
- */
-function renderPosted(ctx: CmsContext): HTMLElement | undefined {
-  const log = logger.fn('renderPosted');
-  const note = ctx.draft<PostedNote>('posted', () => ({}));
-  if (note.last === undefined) return log.exit(undefined);
-  const another = createButton({ label: '続けてもう1件出す', variant: 'secondary', testId: 'cms-post-another', onClick: () => { ctx.discardDraft('posted'); ctx.update(ctx.info); } });
-  return log.exit(h('div', { class: 'cms-success', attrs: { role: 'status', 'data-testid': 'cms-posted' } }, [
-    h('p', { class: 'cms-success__title', text: `✓「${note.last}」を掲載しました` }),
-    h('p', { class: 'cms-note', text: 'アプリのお店のページにすぐ出ています。終わりの7日前からは、このお店を図鑑で見つけている人の地図にも「期限カード」として出ます。' }),
-    h('div', { class: 'cms-actions' }, [appLink('アプリで見る', `#/spot/${ctx.info.id}`, 'cms-posted-open-app'), ctx.info.remainingSlots > 0 ? another : undefined]),
-  ]));
-}
-
-/**
- * 取り下げの確認を出して、よければ取り下げる。
- * @param ctx 文脈
- * @param event クーポン・イベント
- * @sideEffect 確認のモーダルを開き、取り下げたら登録内容を保存する
- */
-function confirmWithdraw(ctx: CmsContext, event: CmsShopEventDto): void {
-  const log = logger.fn('confirmWithdraw', { id: event.id });
-  openModal({
-    title: `「${event.title}」を取り下げますか？`, testId: 'cms-withdraw-modal',
-    body: 'アプリからすぐに消えます。期間中に来てくれたお客さんの記録やアイテムは消えません。取り下げたあとで、新しく出し直すこともできます。',
-    actions: [
-      { label: 'やめる', variant: 'secondary', testId: 'cms-withdraw-cancel', onClick: (): void => undefined },
-      {
-        label: '取り下げる', variant: 'primary', testId: 'cms-withdraw-confirm',
-        onClick: (): void => {
-          void ctx.services.withdrawShopEvent.execute({ spotId: ctx.info.id, shopEventId: event.id, operationId: newOperationId() }).then((result) => {
-            if (!result.ok) return ctx.toast.show(`取り下げられませんでした：${result.error.message}`, { kind: 'error' });
-            ctx.toast.show('取り下げました', { kind: 'success' });
-            ctx.update(result.value);
-          });
-        },
-      },
-    ],
-  });
+function paintPreview(ctx: CmsContext, preview: PreviewColumnHandle, view: EventsView, draft: EventDraft, justPosted = false): void {
+  const log = logger.fn('paintPreview', { mode: view.mode, previewMode: view.previewMode, justPosted });
+  const { events, focus } = previewEvents(ctx, view, draft);
+  preview.update({ hours: ctx.info.hoursText, amenities: ctx.info.amenities, events, ...(focus === undefined ? {} : { notice: noticeOf(ctx.info, focus) }) });
+  preview.setCaption(captionOf(ctx.info, view.previewMode, focus));
+  preview.highlight('events', { outline: view.mode === 'form' || justPosted });
   log.exit(undefined);
 }
 
@@ -286,33 +119,274 @@ function confirmWithdraw(ctx: CmsContext, event: CmsShopEventDto): void {
  * 一覧の1行を作る。
  * @param ctx 文脈
  * @param event クーポン・イベント
- * @returns 行の要素
+ * @param flash 掲載したばかりか
+ * @returns 行
  */
-function renderEventRow(ctx: CmsContext, event: CmsShopEventDto): HTMLElement {
-  const log = logger.fn('renderEventRow', { id: event.id, status: event.status });
-  const tone = event.status === 'active' ? 'deadline' : event.status === 'scheduled' ? 'ink' : 'muted';
-  const withdraw = event.canWithdraw ? createButton({ label: '取り下げる', variant: 'ghost', testId: 'cms-event-withdraw', onClick: () => confirmWithdraw(ctx, event) }) : undefined;
-  return log.exit(h('li', { class: ['cms-event', `cms-event--${event.status}`], attrs: { 'data-testid': 'cms-event-row', 'data-event-id': event.id } }, [
-    h('div', { class: 'cms-event__head' }, [cmsBadge(KIND_LABELS[event.kind], 'brand'), cmsBadge(eventStatusText(event), tone), event.source === 'master' ? cmsBadge('最初から登録済み', 'muted') : undefined]),
-    h('p', { class: 'cms-event__title', text: event.title }),
-    h('p', { class: 'cms-event__desc', text: event.description }),
-    h('p', { class: 'cms-event__period', text: `${shortDate(event.start)}〜${shortDate(event.end)}` }),
-    withdraw,
+function eventRow(ctx: CmsContext, event: CmsShopEventDto, flash: boolean): HTMLElement {
+  const log = logger.fn('eventRow', { id: event.id, status: event.status });
+  const actions = event.canWithdraw ? [
+    h('button', { class: 'cms-textbtn', attrs: { type: 'button', 'data-testid': 'cms-event-edit' }, text: '編集', on: { click: () => startEdit(ctx, event) } }),
+    h('button', { class: 'cms-textbtn', attrs: { type: 'button', 'data-testid': 'cms-event-withdraw' }, text: '取り下げる', on: { click: () => confirmWithdraw(ctx, event) } }),
+  ] : [];
+  return log.exit(h('li', { class: ['cms-item', flash && 'cms-item--flash'], attrs: { 'data-testid': 'cms-event-row', 'data-event-id': event.id } }, [
+    eventBadge(event),
+    h('div', { class: 'cms-item__main' }, [h('span', { class: 'cms-item__title', text: event.title }), h('span', { class: 'cms-muted', text: `${KIND_LABELS[event.kind]}・${mdDate(event.start)}〜${mdDate(event.end)}` })]),
+    h('div', { class: 'cms-item__actions' }, actions),
   ]));
 }
 
 /**
- * 一覧（いま出しているもの・終わったもの）を作る。
+ * 下書きの行を作る（題名が入っているときだけ）。
  * @param ctx 文脈
- * @returns 区画
+ * @param draft 入力中の値
+ * @returns 行（無ければ undefined）
+ */
+function draftRow(ctx: CmsContext, draft: EventDraft): HTMLElement | undefined {
+  const log = logger.fn('draftRow');
+  if (draft.title.trim() === '' || viewOf(ctx).editingId !== undefined) return log.exit(undefined);
+  return log.exit(h('li', { class: 'cms-item', attrs: { 'data-testid': 'cms-draft-row' } }, [
+    badge('下書き', 'muted'),
+    h('div', { class: 'cms-item__main' }, [h('span', { class: 'cms-item__title', text: draft.title }), h('span', { class: 'cms-muted', text: `${KIND_LABELS[draft.kind]}・${mdDate(draft.start)}〜${mdDate(draft.end)}` })]),
+    h('div', { class: 'cms-item__actions' }, [
+      h('button', { class: 'cms-textbtn', attrs: { type: 'button', 'data-testid': 'cms-draft-edit' }, text: '編集', on: { click: () => openEventForm(ctx, undefined, true) } }),
+      h('button', { class: 'cms-textbtn', attrs: { type: 'button', 'data-testid': 'cms-draft-delete' }, text: '削除', on: { click: () => { ctx.discardDraft('event'); ctx.toast.show('削除しました'); ctx.update(ctx.info); } } }),
+    ]),
+  ]));
+}
+
+/**
+ * 一覧を作る。
+ * @param ctx 文脈
+ * @returns パネル
  */
 function renderList(ctx: CmsContext): HTMLElement {
   const log = logger.fn('renderList', { count: ctx.info.events.length });
-  const live = ctx.info.events.filter((e) => e.status === 'active' || e.status === 'scheduled');
-  const past = ctx.info.events.filter((e) => e.status === 'ended' || e.status === 'withdrawn');
-  const liveList = live.length > 0 ? h('ul', { class: 'cms-events' }, live.map((e) => renderEventRow(ctx, e))) : h('p', { class: 'cms-note', text: 'いま出しているものはありません。' });
-  const pastList = past.length > 0 ? h('details', { class: 'cms-details' }, [h('summary', { text: `終わったもの（${past.length}件）` }), h('ul', { class: 'cms-events' }, past.map((e) => renderEventRow(ctx, e)))]) : undefined;
-  return log.exit(cmsSection(`いま出しているもの（${live.length}件）`, [liveList, pastList], { testId: 'cms-event-list' }));
+  const view = viewOf(ctx);
+  const live = ctx.info.events.filter((e) => e.status === 'active' || e.status === 'scheduled').sort((a, b) => (a.status === b.status ? a.start.localeCompare(b.start) : a.status === 'active' ? -1 : 1));
+  const full = ctx.info.remainingSlots <= 0;
+  const create = createButton({ label: '新規作成', variant: 'primary', testId: 'cms-event-new', disabled: full, onClick: () => openEventForm(ctx, undefined, true) });
+  const aside = ctx.info.partner ? [previewButton(ctx), full && slotLimit(), create] : [previewButton(ctx)];
+  const rows = [draftRow(ctx, draftOf(ctx)), ...live.map((e) => eventRow(ctx, e, e.id === view.flashId))].filter((r): r is HTMLElement => r !== undefined);
+  view.flashId = undefined;
+  const body = !ctx.info.partner
+    ? h('p', { class: 'cms-muted', attrs: { 'data-testid': 'cms-not-partner' }, text: '協力店のみ掲載できます。運営者にご相談ください' })
+    : rows.length > 0 ? h('ul', { class: 'cms-items', attrs: { 'data-testid': 'cms-event-list' } }, rows) : h('p', { class: 'cms-muted', text: 'まだありません' });
+  return log.exit(h('div', { class: 'cms-panel', attrs: { 'data-testid': 'cms-screen-events' } }, [pageTitle('クーポン・イベント', aside), formSection(undefined, [body])]));
+}
+
+/**
+ * 種類の切り替え（クーポン｜イベント）を作る。
+ * @param draft 入力中の値
+ * @param onChange 変わったときの処理
+ * @returns 要素
+ */
+function kindSwitch(draft: EventDraft, onChange: () => void): HTMLElement {
+  const log = logger.fn('kindSwitch', { kind: draft.kind });
+  const kinds = ['coupon', 'event'] as const;
+  const buttons = kinds.map((kind) => h('button', { class: 'cms-seg__item', attrs: { type: 'button', 'aria-pressed': draft.kind === kind ? 'true' : 'false', 'data-testid': `cms-kind-${kind}` }, text: KIND_LABELS[kind] }));
+  buttons.forEach((button, i) => button.addEventListener('click', () => {
+    draft.kind = kinds[i] ?? 'coupon';
+    buttons.forEach((b, j) => b.setAttribute('aria-pressed', i === j ? 'true' : 'false'));
+    onChange();
+  }));
+  return log.exit(h('div', { class: 'cms-seg', attrs: { role: 'group', 'aria-label': '種類' } }, buttons));
+}
+
+/**
+ * 例文のチップを作る（押すと題名と説明を置き換える）。
+ * @param draft 入力中の値
+ * @param parts 入力の部品
+ * @returns チップの並び
+ */
+function templateChips(draft: EventDraft, parts: Pick<FormParts, 'title' | 'description'>): HTMLElement {
+  const log = logger.fn('templateChips', { kind: draft.kind });
+  return log.exit(h('div', { class: 'cms-chips' }, EVENT_TEMPLATES[draft.kind].map((t) => h('button', {
+    class: 'cms-chip', attrs: { type: 'button', 'data-testid': 'cms-template' }, text: t.label,
+    on: { click: () => { parts.title.input.value = t.title; parts.description.input.value = t.description; parts.title.input.dispatchEvent(new Event('input')); parts.description.input.dispatchEvent(new Event('input')); } },
+  }))));
+}
+
+/**
+ * 期間の入力（チップ＋日付＋日数）を作る。
+ * @param ctx 文脈
+ * @param draft 入力中の値
+ * @param onChange 変わったときの処理
+ * @returns 要素と部品
+ */
+function periodField(ctx: CmsContext, draft: EventDraft, onChange: () => void): { readonly element: HTMLElement; readonly setError: (m: string) => void; readonly days: HTMLElement; readonly presets: FormParts['presets'] } {
+  const log = logger.fn('periodField', { start: draft.start, end: draft.end });
+  /** 日付の入力欄を作る */
+  const dateInput = (id: string, value: string, label: string): HTMLInputElement => h('input', { class: 'cms-input cms-input--date', attrs: { type: 'date', id, value, min: ctx.info.today, 'data-testid': id, 'aria-label': label } });
+  const start = dateInput('cms-start', draft.start, '開始日');
+  const end = dateInput('cms-end', draft.end, '終了日');
+  const presets = PERIOD_PRESETS.map((p) => ({ id: p.id, el: h('button', { class: 'cms-chip', attrs: { type: 'button', 'data-testid': `cms-preset-${p.id}` }, text: p.label }) }));
+  for (const { id, el } of presets) {
+    el.addEventListener('click', () => {
+      const period = periodOfPreset(id as Parameters<typeof periodOfPreset>[0], ctx.info.today);
+      Object.assign(draft, { start: period.start, end: period.end, preset: id });
+      start.value = period.start;
+      end.value = period.end;
+      onChange();
+    });
+  }
+  for (const [input, key] of [[start, 'start'], [end, 'end']] as const) input.addEventListener('change', () => { draft[key] = input.value; draft.preset = undefined; onChange(); });
+  const error = attachFieldError(end, 'cms-period-error');
+  const days = h('span', { class: 'cms-muted', attrs: { 'data-testid': 'cms-period-days' } });
+  return log.exit({
+    element: h('div', { class: 'cms-field' }, [h('span', { class: 'cms-field__label', text: '期間' }), h('div', { class: 'cms-chips' }, presets.map((p) => p.el)), h('div', { class: 'cms-inline' }, [start, h('span', { class: 'cms-muted', text: '〜' }), end, days]), error.element]),
+    setError: error.setError, days, presets,
+  });
+}
+
+/**
+ * 入力のたびに、見え方・日数・期間チップの選択・（押したあとは）誤りを更新する。
+ * @param ctx 文脈
+ * @param draft 入力中の値
+ * @param parts 入力の部品
+ * @param repaint 見え方を描き直す関数
+ * @sideEffect DOM を書き換える
+ */
+function refreshForm(ctx: CmsContext, draft: EventDraft, parts: FormParts, repaint: () => void): void {
+  const log = logger.fn('refreshForm', { attempted: parts.attempted });
+  const problems = problemsOf(draft, ctx.info.today);
+  parts.days.textContent = periodDays(draft);
+  for (const p of parts.presets) {
+    const period = periodOfPreset(p.id as Parameters<typeof periodOfPreset>[0], ctx.info.today);
+    p.el.setAttribute('aria-pressed', period.start === draft.start && period.end === draft.end ? 'true' : 'false');
+  }
+  showProblems(parts, parts.attempted ? problems : {});
+  repaint();
+  log.exit(undefined);
+}
+
+/**
+ * 欄の下に誤りを出す（空なら消す）。
+ * @param parts 入力の部品
+ * @param problems 欄ごとの誤り
+ * @sideEffect 誤りの文を書き換える
+ */
+function showProblems(parts: FormParts, problems: DraftProblems): void {
+  const log = logger.fn('showProblems');
+  parts.title.setError(problems.title ?? '');
+  parts.description.setError(problems.description ?? '');
+  parts.periodError(problems.period ?? '');
+  log.exit(undefined);
+}
+
+/**
+ * 掲載する（編集のときは取り下げてから掲載し直す）。
+ * @param ctx 文脈
+ * @param draft 入力中の値
+ * @param parts 入力の部品
+ * @sideEffect 登録内容を保存し、一覧に戻る
+ */
+async function submit(ctx: CmsContext, draft: EventDraft, parts: FormParts): Promise<void> {
+  const log = logger.fn('submit', { kind: draft.kind });
+  const view = viewOf(ctx);
+  parts.attempted = true;
+  const problems = problemsOf(draft, ctx.info.today);
+  showProblems(parts, problems);
+  if (Object.keys(problems).length > 0) {
+    const first = problems.title ? parts.title.input : problems.description ? parts.description.input : document.getElementById('cms-start');
+    first?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    first?.focus({ preventScroll: true });
+    return log.exit(undefined, 'incomplete');
+  }
+  if (view.editingId !== undefined) {
+    const withdrawn = await ctx.services.withdrawShopEvent.execute({ spotId: ctx.info.id, shopEventId: view.editingId, operationId: newOperationId() });
+    if (!withdrawn.ok) return log.fail(ctx.toast.show('保存できませんでした', 'error'), withdrawn.error.code);
+  }
+  const editing = view.editingId !== undefined;
+  const before = new Set(ctx.info.events.map((e) => e.id));
+  const { kind, title, description, start, end } = draft;
+  const result = await ctx.services.registerShopEvent.execute({ spotId: ctx.info.id, kind, title, description, start, end, operationId: newOperationId() });
+  if (!result.ok) return log.fail(ctx.toast.show('掲載できませんでした', 'error'), result.error.code);
+  ctx.discardDraft('event');
+  Object.assign(view, { mode: 'list', editingId: undefined, flashId: result.value.events.find((e) => !before.has(e.id))?.id });
+  ctx.toast.show(editing ? '保存しました' : '掲載しました');
+  ctx.update(result.value);
+  return log.exit(undefined);
+}
+
+/**
+ * 入力を作る。
+ * @param ctx 文脈
+ * @param preview 見え方の列
+ * @returns パネル
+ */
+function renderForm(ctx: CmsContext, preview: PreviewColumnHandle): HTMLElement {
+  const log = logger.fn('renderForm');
+  const view = viewOf(ctx);
+  const draft = draftOf(ctx);
+  let parts: FormParts | undefined;
+  /** 見え方を描き直す */
+  const repaint = (): void => paintPreview(ctx, preview, view, draft); // audit-ignore: fnlog-missing 入力のたびに呼ぶ中継
+  /** 入力が変わるたびに部品を更新する */
+  const onChange = (): void => { if (parts) refreshForm(ctx, draft, parts, repaint); }; // audit-ignore: fnlog-missing 入力のたびに呼ぶ中継
+  const title = textField({ label: '題名', max: SHOP_EVENT_TITLE_MAX, value: draft.title, placeholder: PLACEHOLDERS.title.replace('例：', ''), testId: 'cms-event-title', onInput: (v) => { draft.title = v; onChange(); } });
+  const description = textField({ label: '説明', max: SHOP_EVENT_DESCRIPTION_MAX, multiline: true, value: draft.description, placeholder: PLACEHOLDERS.description.replace('例：', ''), testId: 'cms-event-description', onInput: (v) => { draft.description = v; onChange(); } });
+  const templates = h('div', {}, [templateChips(draft, { title, description })]);
+  const period = periodField(ctx, draft, onChange);
+  parts = { title, description, periodError: period.setError, days: period.days, presets: period.presets, attempted: false };
+  const formParts = parts;
+  const kinds = kindSwitch(draft, () => { templates.replaceChildren(templateChips(draft, { title, description })); onChange(); });
+  const cancel = createButton({ label: 'キャンセル', variant: 'ghost', testId: 'cms-event-cancel', onClick: () => { if (view.editingId !== undefined) ctx.discardDraft('event'); Object.assign(view, { mode: 'list', editingId: undefined }); ctx.update(ctx.info); } });
+  const submitButton = createButton({ label: view.editingId === undefined ? '掲載する' : '保存', variant: 'primary', testId: 'cms-event-register', onClick: () => submit(ctx, draft, formParts) });
+  refreshForm(ctx, draft, parts, repaint);
+  return log.exit(h('div', { class: 'cms-panel', attrs: { 'data-testid': 'cms-event-form' } }, [
+    pageTitle(view.editingId === undefined ? '新規作成' : '編集', previewButton(ctx)),
+    formSection(undefined, [
+      h('div', { class: 'cms-field' }, [h('span', { class: 'cms-field__label', text: '種類' }), kinds]),
+      h('div', { class: 'cms-field' }, [h('span', { class: 'cms-field__label', text: '例文' }), templates]),
+      title.element, description.element, period.element,
+    ]),
+    actionBar(undefined, [cancel, submitButton]),
+  ]));
+}
+
+/**
+ * 編集を始める（同じ内容を入力に入れる。掲載中のものは開始日を今日にする）。
+ * @param ctx 文脈
+ * @param event クーポン・イベント
+ * @sideEffect 下書きを書き換えて入力を開く
+ */
+function startEdit(ctx: CmsContext, event: CmsShopEventDto): void {
+  const log = logger.fn('startEdit', { id: event.id });
+  const start = parseLocalDate(event.start);
+  const today = parseLocalDate(ctx.info.today);
+  const from = start.ok && today.ok && compareLocalDate(start.value, today.value) < 0 ? ctx.info.today : event.start;
+  Object.assign(draftOf(ctx), { kind: event.kind, title: event.title, description: event.description, start: from, end: event.end, preset: undefined });
+  Object.assign(viewOf(ctx), { mode: 'form', editingId: event.id });
+  ctx.update(ctx.info);
+  log.exit(undefined);
+}
+
+/**
+ * 取り下げの確認を出す（「取り下げる」は朱にせず、白地に誤りの色の文字）。
+ * @param ctx 文脈
+ * @param event クーポン・イベント
+ * @sideEffect 確認のモーダルを開き、取り下げたら描き直す
+ */
+function confirmWithdraw(ctx: CmsContext, event: CmsShopEventDto): void {
+  const log = logger.fn('confirmWithdraw', { id: event.id });
+  const modal = openModal({
+    title: '取り下げますか？', body: event.title, testId: 'cms-withdraw-modal',
+    actions: [
+      { label: 'やめる', variant: 'secondary', testId: 'cms-withdraw-cancel', onClick: (): void => undefined },
+      {
+        label: '取り下げる', variant: 'secondary', testId: 'cms-withdraw-confirm',
+        onClick: (): void => {
+          void ctx.services.withdrawShopEvent.execute({ spotId: ctx.info.id, shopEventId: event.id, operationId: newOperationId() }).then((result) => {
+            if (!result.ok) return ctx.toast.show('取り下げられませんでした', 'error');
+            ctx.toast.show('取り下げました');
+            ctx.update(result.value);
+          });
+        },
+      },
+    ],
+  });
+  markDanger(modal, 'cms-withdraw-confirm');
+  log.exit(undefined);
 }
 
 /**
@@ -321,10 +395,15 @@ function renderList(ctx: CmsContext): HTMLElement {
  * @returns 画面の要素
  */
 export function renderCmsEventsScreen(ctx: CmsContext): HTMLElement {
-  const log = logger.fn('renderCmsEventsScreen', { spotId: ctx.info.id, events: ctx.info.events.length });
-  const header = pageHeader('クーポン・イベント', '期間限定の特典やイベントを出すと、アプリの地図に「期限カード」が出て、もう一度来てもらうきっかけになります。', ctx.info.partner ? slotMeter(ctx.info.remainingSlots) : undefined);
-  const locked = cmsSection('協力店になると出せます', [h('p', { class: 'cms-note', text: 'クーポン・イベントは協力店だけが出せます。協力店になると、図鑑で「★2 レア」として目立って表示されます。運営者に相談してください。' })], { testId: 'cms-event-form' });
-  const full = cmsSection('いまは新しく出せません', [h('p', { class: 'cms-note', text: `同時に出せるのは${SHOP_EVENT_MAX_OPEN_PER_SPOT}件までです。終わるのを待つか、下の一覧から取り下げると出せるようになります。` })], { testId: 'cms-event-form' });
-  const body = !ctx.info.partner ? locked : ctx.info.remainingSlots <= 0 ? full : renderForm(ctx);
-  return log.exit(h('div', { class: 'cms-stack', attrs: { 'data-testid': 'cms-screen-events' } }, [header, renderPosted(ctx), body, renderList(ctx)]));
+  const log = logger.fn('renderCmsEventsScreen', { spotId: ctx.info.id });
+  const view = viewOf(ctx);
+  if (!ctx.info.partner || (view.mode === 'form' && view.editingId === undefined && ctx.info.remainingSlots <= 0)) view.mode = 'list';
+  const draft = draftOf(ctx);
+  const preview = createPreviewColumn(ctx.info, { withMap: true, onMode: (mode) => { view.previewMode = mode; paintPreview(ctx, preview, view, draft); } });
+  preview.setMode(view.previewMode);
+  // renderList の中で flashId が消えるので、先に「掲載・保存した直後か」を取っておく
+  const justPosted = view.flashId !== undefined;
+  const panel = view.mode === 'form' ? renderForm(ctx, preview) : renderList(ctx);
+  if (view.mode === 'list') paintPreview(ctx, preview, view, draft, justPosted);
+  return log.exit(twoColumn(preview.element, panel));
 }

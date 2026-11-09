@@ -50,8 +50,8 @@ export function districtsOfRival(rival: Rival, lords: ReadonlyMap<DistrictId, st
 
 /**
  * 表示名から、アイコンに描く1文字を返す（「旅人」の接頭辞は除く）。
- * @param name 表示名（例: 旅人タロウ）
- * @returns 1文字（例: タ）。取れなければ「？」
+ * @param name 表示名（例: おまいり番長）
+ * @returns 1文字（例: お）。取れなければ「？」
  */
 export function initialOf(name: string): string {
   const log = logger.fn('initialOf');

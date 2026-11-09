@@ -1,0 +1,714 @@
+/*
+ * @file ランク画面のスタイル（presentation/screens/Rank）
+ * 画面全体を暗いゲームの UI にする（上部バーも暗く）。上は画面幅いっぱいのステータスパネル、下は半透明のガラスのカード。
+ * 段の色（銅→銀→金→白金→伝説）で紋章・光・粒を染める。登場の演出：光が集まる→紋章が落ちる→衝撃波・横一文字の光・閃光・揺れ・火花
+ * →名前の押印→★→数え上げ→歩き（約1.8秒。盤のタップで .is-skip）。その後もゆらゆら3D・つや・ホログラム・きらめき・道を流れる光。
+ * 言葉は短いラベルだけ（2026-11-09 ユーザー指示）。段の状態は色に加えて ✓／鍵／大きさでも示す。
+ * 動きは prefers-reduced-motion: no-preference のときだけ。基本の姿＝演出の最後の姿なので、動きが無くても全部見える。
+ */
+
+/* ---- 画面（暗いゲームの UI。上部バーも暗くする） ---- */
+.screen[data-route="rank"] { background: #070b17; }
+.screen[data-route="rank"] .top-bar { background: #070b17; box-shadow: none; color: #ffffff; }
+.screen[data-route="rank"] .top-bar__title { color: #ffffff; letter-spacing: 0.06em; }
+.rank {
+  --rk-text: #f1f5f9;
+  --rk-sub: #94a3b8;
+  --rk-line: rgba(255, 255, 255, 0.09);
+  --rk-hot: #ff8a6b;
+  background: #070b17;
+  color: var(--rk-text);
+}
+
+/* ---- 段の色（紋章とステータスパネルの光） ---- */
+.rank [data-tier="0"] { --t: #e0965f; --t-edge: #8f5524; --t-light: #fbe0c8; --t-ink: #4a2508; }
+.rank [data-tier="1"] { --t: #c9d1dc; --t-edge: #5b6472; --t-light: #ffffff; --t-ink: #1f2937; }
+.rank [data-tier="2"] { --t: #ffc21a; --t-edge: #a16207; --t-light: #fff3b0; --t-ink: #451a03; }
+.rank [data-tier="3"] { --t: #3cc8ff; --t-edge: #0369a1; --t-light: #e6f8ff; --t-ink: #082f49; }
+.rank [data-tier="4"] { --t: #cf8cff; --t-edge: #6b21a8; --t-light: #f8edff; --t-ink: #3b0764; }
+.rank [data-tier="locked"] { --t: #2b3445; --t-edge: #4b5563; --t-light: #3d4757; --t-ink: #9ca3af; }
+
+/* ---- 紋章（SVG。内側は金属のグラデーション、縁は面取り） ---- */
+.rank-emblem { display: block; overflow: visible; }
+.rank-emblem__outer { fill: var(--t-edge); }
+.rank-emblem__rim-light { fill: #ffffff; opacity: 0.28; }
+.rank-emblem__rim-dark { fill: #000000; opacity: 0.28; }
+.rank-emblem__stop-light { stop-color: var(--t-light); }
+.rank-emblem__stop-mid { stop-color: var(--t); }
+.rank-emblem__stop-deep { stop-color: color-mix(in srgb, var(--t) 55%, var(--t-edge)); }
+.rank-emblem__engrave { fill: none; stroke: #ffffff; stroke-opacity: 0.45; stroke-width: 1.5; }
+.rank-emblem__shine { fill: #ffffff; opacity: 0.35; }
+.rank-emblem__wing { fill: var(--t-light); stroke: var(--t-edge); stroke-width: 3; stroke-linejoin: round; }
+.rank-emblem__num { fill: var(--t-ink); font-family: var(--font-display); font-size: 46px; font-weight: 700; }
+.rank-emblem__num-shadow { fill: #ffffff; opacity: 0.45; font-family: var(--font-display); font-size: 46px; font-weight: 700; }
+.rank-emblem__gem { fill: #ffffff; stroke: var(--t-edge); stroke-width: 2; filter: drop-shadow(0 0 3px var(--t-light)); }
+.rank-emblem__lock path { fill: none; stroke: var(--t-ink); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---- ステータスパネル（画面幅いっぱい） ---- */
+.rank-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: -1rem calc(-1 * var(--gutter)) 0;
+  padding: 1.25rem 1rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: #ffffff;
+}
+.rank-hero::after {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--t) 80%, transparent), transparent);
+  box-shadow: 0 0 12px var(--t);
+}
+.rank-hero__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 50% 24%, color-mix(in srgb, var(--t) 58%, transparent) 0, transparent 44%),
+    radial-gradient(ellipse at 50% 112%, color-mix(in srgb, var(--brand) 34%, transparent) 0, transparent 56%),
+    radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.5px) 0 0 / 14px 14px,
+    linear-gradient(180deg, #0c1328 0%, #070b17 100%);
+}
+.rank-motes { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.rank-mote { position: absolute; bottom: -0.5rem; left: var(--x); width: var(--s); height: var(--s); border-radius: 50%; background: var(--t-light); box-shadow: 0 0 8px var(--t); opacity: 0; }
+.rank-hero__keep {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(110, 231, 183, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(110, 231, 183, 0.35), 0 0 14px rgba(110, 231, 183, 0.25);
+  color: #6ee7b7;
+}
+.rank-hero__keep .icon { width: 1.25rem; height: 1.25rem; stroke-width: 2; }
+.rank-hero__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.45em;
+  color: var(--t);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--t) 70%, transparent);
+}
+.rank-hero__kicker::before,
+.rank-hero__kicker::after { content: ""; width: 2rem; height: 1px; background: linear-gradient(90deg, transparent, var(--t)); }
+.rank-hero__kicker::after { transform: scaleX(-1); margin-left: -0.45em; }
+
+/* ---- 紋章の舞台（飾りは中心に left/top で置く。回転のアニメーションと transform がぶつからないように） ---- */
+.rank-stage { position: relative; flex: none; width: 12rem; height: 9.1rem; margin: 0.75rem 0 0.375rem; }
+.rank-stage__rays {
+  position: absolute;
+  left: calc(50% - 13rem);
+  top: calc(50% - 13rem);
+  width: 26rem;
+  height: 26rem;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--t) 42%, transparent) 0deg 6deg, transparent 6deg 18deg);
+  -webkit-mask: radial-gradient(circle, #000 12%, transparent 62%);
+  mask: radial-gradient(circle, #000 12%, transparent 62%);
+}
+.rank-stage__aura { position: absolute; left: calc(50% - 6rem); top: calc(50% - 6rem); width: 12rem; height: 12rem; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--t) 70%, transparent) 0, transparent 66%); }
+.rank-stage__orbit { position: absolute; left: calc(50% - 5rem); top: calc(50% - 5rem); width: 10rem; height: 10rem; border-radius: 50%; border: 2px dashed color-mix(in srgb, var(--t) 55%, transparent); }
+.rank-charges, .rank-sparks { position: absolute; z-index: 2; left: 50%; top: 50%; width: 0; height: 0; }
+.rank-charge { position: absolute; left: -0.15rem; top: -0.15rem; width: 0.3rem; height: 0.3rem; border-radius: 50%; background: var(--t-light); box-shadow: 0 0 8px var(--t-light), 0 0 14px var(--t); opacity: 0; }
+.rank-spark {
+  position: absolute;
+  left: -0.1875rem;
+  top: -0.75rem;
+  width: 0.375rem;
+  height: 1.5rem;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(var(--t-light), color-mix(in srgb, var(--t) 60%, transparent));
+  transform: rotate(var(--a)) translateY(-6.5rem);
+  opacity: 0;
+}
+.rank-wave {
+  position: absolute;
+  left: calc(50% - 4rem);
+  top: calc(50% - 4rem);
+  width: 8rem;
+  height: 8rem;
+  border-radius: 50%;
+  border: 3px solid var(--t-light);
+  box-shadow: 0 0 24px var(--t), inset 0 0 18px var(--t);
+  opacity: 0;
+}
+.rank-stage__streak {
+  position: absolute;
+  z-index: 3;
+  left: calc(50% - 13rem);
+  top: calc(50% - 2px);
+  width: 26rem;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, transparent, var(--t-light) 30%, #ffffff 50%, var(--t-light) 70%, transparent);
+  box-shadow: 0 0 18px var(--t-light), 0 0 36px var(--t);
+  opacity: 0;
+}
+.rank-stage__emblem { position: absolute; z-index: 1; left: 0; top: 0; width: 12rem; aspect-ratio: 148 / 112; }
+.rank-stage__float { position: relative; width: 100%; height: 100%; }
+.rank-stage__tilt {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform: perspective(700px) rotateX(calc(var(--tilt-y, 0) * -16deg)) rotateY(calc(var(--tilt-x, 0) * 22deg));
+  transition: transform 0.25s ease-out;
+}
+.rank-stage__svg { width: 100%; height: 100%; filter: drop-shadow(0 12px 16px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 22px color-mix(in srgb, var(--t) 65%, transparent)); }
+.rank-stage__sheen,
+.rank-stage__holo {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  clip-path: polygon(50% 3.6%, 79.7% 25.9%, 79.7% 74.1%, 50% 96.4%, 20.3% 74.1%, 20.3% 25.9%);
+}
+.rank-stage__sheen::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: -45%;
+  width: 28%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  transform: skewX(-18deg);
+  opacity: 0;
+}
+/* ホログラム（3段目＝金から。傾きで虹色がずれる） */
+.rank-stage__holo { display: none; mix-blend-mode: overlay; opacity: 0.55; }
+.rank-hero:is([data-tier="2"], [data-tier="3"], [data-tier="4"]) .rank-stage__holo { display: block; }
+.rank-stage__holo::before {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background: linear-gradient(115deg, transparent 30%, #ff4fd8 40%, #4ff3ff 50%, #fff36b 60%, transparent 70%) 0 0 / 200% 200%;
+  transform: translate(calc(var(--tilt-x, 0) * 18%), calc(var(--tilt-y, 0) * 12%));
+  transition: transform 0.25s ease-out;
+}
+/* きらめき（十字の光） */
+.rank-glint {
+  position: absolute;
+  width: 1.375rem;
+  height: 1.375rem;
+  margin: -0.6875rem 0 0 -0.6875rem;
+  background:
+    radial-gradient(circle, #ffffff 0 12%, transparent 40%),
+    linear-gradient(transparent 46%, #ffffff 50%, transparent 54%),
+    linear-gradient(90deg, transparent 46%, #ffffff 50%, transparent 54%);
+  filter: drop-shadow(0 0 4px #ffffff);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- 名前・★・ポイント ---- */
+.rank-hero__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2.625rem;
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: 0.04em;
+  background:
+    linear-gradient(110deg, transparent 38%, rgba(255, 255, 255, 0.95) 50%, transparent 62%) 200% 0 / 250% 100% no-repeat,
+    linear-gradient(180deg, #ffffff 0%, var(--t-light) 40%, var(--t) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 var(--t-edge)) drop-shadow(0 0 16px color-mix(in srgb, var(--t) 55%, transparent));
+}
+.rank-hero__name--long { font-size: 1.875rem; letter-spacing: 0.02em; }
+.rank-pips { display: flex; justify-content: center; gap: 0.25rem; margin: 0.375rem 0 0.25rem; }
+.rank-pip { display: flex; color: rgba(255, 255, 255, 0.2); }
+.rank-pip .icon { width: 1.375rem; height: 1.375rem; stroke-width: 2; }
+.rank-pip--on { color: var(--t); filter: drop-shadow(0 0 6px var(--t)); }
+.rank-pip--on .icon path { fill: currentColor; }
+.rank-hero__points { margin: 0; display: flex; align-items: baseline; justify-content: center; gap: 0.375rem; }
+.rank-hero__num {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 3.25rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--t) 80%, transparent), 0 3px 0 var(--t-edge);
+}
+.rank-hero__pt { font-family: var(--font-display); font-size: 1rem; font-weight: 700; letter-spacing: 0.1em; color: var(--t); }
+.rank-hero__near {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0.5rem 0 0;
+  padding: 0.25rem 0.875rem;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, #ff5a36, #ff8a3d);
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  box-shadow: 0 0 0 3px rgba(255, 90, 54, 0.3), 0 0 18px rgba(255, 90, 54, 0.7);
+}
+.rank-hero__near .icon { width: 1rem; height: 1rem; stroke-width: 2.6; }
+.rank-hero__flash {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: radial-gradient(circle at 50% 24%, #ffffff 0, color-mix(in srgb, var(--t-light) 75%, transparent) 30%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- ランクロード ---- */
+.rank-road { --track-y: 6.75rem; position: relative; width: 100%; height: 10rem; margin-top: 0.25rem; text-align: left; }
+.rank-road__lane { position: absolute; inset: 0 1.75rem; }
+.rank-road__track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--track-y);
+  height: 0.375rem;
+  transform: translateY(-50%);
+  border-radius: var(--radius-pill);
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0 6px, transparent 6px 11px);
+}
+.rank-road__fill {
+  position: relative;
+  display: block;
+  width: var(--fill, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0 5px, transparent 5px 12px) 0 0 / 34px 100%,
+    linear-gradient(90deg, #ff5a36, #ffb36b);
+  box-shadow: 0 0 12px rgba(255, 90, 54, 0.9);
+}
+.rank-road__nodes { margin: 0; padding: 0; list-style: none; }
+.rank-road__node {
+  --eh: 2.25rem;
+  position: absolute;
+  left: var(--x);
+  top: calc(var(--track-y) - var(--eh) / 2);
+  width: 4.25rem;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.rank-road__node[data-state="current"] { --eh: 2.875rem; }
+.rank-road__emblem { width: calc(var(--eh) * 1.32); height: var(--eh); }
+.rank-road__node[data-state="current"] .rank-road__emblem { filter: drop-shadow(0 0 6px var(--t)); }
+/* 次の段の照準の輪 */
+.rank-road__node[data-next="true"]::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--eh) / 2 - 1.5rem);
+  left: calc(50% - 1.5rem);
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 90, 54, 0.85);
+  box-shadow: 0 0 12px rgba(255, 90, 54, 0.6);
+  opacity: 0.8;
+}
+.rank-road__name { margin-top: 0.125rem; font-size: 0.625rem; line-height: 1.25; text-align: center; color: rgba(255, 255, 255, 0.45); }
+.rank-road__node[data-state="reached"] .rank-road__name { color: rgba(255, 255, 255, 0.75); }
+.rank-road__node[data-state="current"] .rank-road__name { color: #ffffff; font-weight: 700; }
+.rank-road__walker {
+  position: absolute;
+  z-index: 2;
+  left: var(--x);
+  top: 0;
+  height: calc(var(--track-y) - 1.5rem);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+.rank-road__bubble {
+  position: relative;
+  margin-bottom: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, #ff5a36, #ff8a3d);
+  color: #ffffff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 12px rgba(255, 90, 54, 0.6);
+}
+.rank-road__bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -0.25rem;
+  border: 0.25rem solid transparent;
+  border-bottom: 0;
+  border-top-color: #ff7040;
+  transform: translateX(-50%);
+}
+.rank-road__avatar { position: relative; z-index: 1; display: block; width: auto; height: 3.5rem; }
+.rank-road__avatar-fallback { position: relative; z-index: 1; width: 2.5rem; height: 2.5rem; display: grid; place-items: center; border-radius: 50%; background: #ffffff; color: var(--ink); }
+.rank-road__avatar-fallback .icon { width: 1.5rem; height: 1.5rem; }
+.rank-road__shadow { width: 2.25rem; height: 0.375rem; margin-top: -0.25rem; border-radius: 50%; background: radial-gradient(rgba(255, 138, 107, 0.55), transparent 70%); }
+.rank-road__trail {
+  position: absolute;
+  right: 50%;
+  bottom: 0.25rem;
+  width: 5rem;
+  height: 0.25rem;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, transparent, rgba(255, 138, 107, 0.9));
+  box-shadow: 0 0 10px rgba(255, 90, 54, 0.8);
+  opacity: 0;
+}
+.rank-road__dot {
+  position: absolute;
+  top: 50%;
+  left: var(--fill, 0%);
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px var(--brand);
+  transform: translate(-50%, -50%);
+}
+
+/* ---- ガラスのカード（ステータス・リーグ・ポイント・設定） ---- */
+.rank-card {
+  margin-top: 0.875rem;
+  padding: 0.875rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025));
+  border: 1px solid var(--rk-line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+.rank-hero + .rank-card { margin-top: 1.125rem; }
+.rank-head { display: flex; align-items: center; gap: 0.5rem; min-height: 1.75rem; margin-bottom: 0.75rem; }
+.rank-head::after { content: ""; order: 1; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent); }
+.rank-head__icon { display: flex; color: var(--brand); filter: drop-shadow(0 0 6px rgba(255, 90, 54, 0.75)); }
+.rank-head__icon .icon { width: 1.125rem; height: 1.125rem; stroke-width: 2.1; }
+.rank-head__title { margin: 0; font-size: 0.875rem; font-weight: 700; letter-spacing: 0.1em; color: #ffffff; }
+.rank-head__pill {
+  order: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 90, 54, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 90, 54, 0.45);
+  color: #ffb4a1;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+.rank-head__pill .icon { width: 0.8125rem; height: 0.8125rem; color: var(--brand); stroke-width: 2.2; }
+.rank-head__gear {
+  order: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: var(--tap);
+  margin: -0.5rem -0.25rem -0.5rem 0;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rank-head__gear .icon { width: 1.125rem; height: 1.125rem; }
+.rank-head__gear:focus-visible, .rank-medal:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ステータスのマス */
+.rank-stats { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.rank-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.75rem 0.25rem 0.5rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.rank-stat[data-tone="brand"] { --tone: #ff7a59; }
+.rank-stat[data-tone="sea"] { --tone: #38bdf8; }
+.rank-stat[data-tone="silver"] { --tone: #cbd5e1; }
+.rank-stat[data-tone="gold"] { --tone: #fbbf24; }
+.rank-stat[data-tone="leaf"] { --tone: #34d399; }
+.rank-stat__icon {
+  width: 2.375rem;
+  height: 2.375rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 45%, transparent), 0 0 16px color-mix(in srgb, var(--tone) 35%, transparent);
+  color: var(--tone);
+}
+.rank-stat__icon .icon { width: 1.25rem; height: 1.25rem; stroke-width: 2; }
+.rank-stat__value { font-family: var(--font-display); font-size: 1.625rem; font-weight: 700; line-height: 1.15; color: #ffffff; font-variant-numeric: tabular-nums; }
+.rank-stat__value small { margin-left: 0.0625rem; font-size: 0.625rem; color: var(--rk-sub); }
+.rank-stat__label { font-size: 0.625rem; color: var(--rk-sub); }
+.rank-lords { display: flex; flex-wrap: wrap; gap: 0.375rem; margin: 0.625rem 0 0; }
+.rank-lord {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: var(--radius-pill);
+  background: rgba(251, 191, 36, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.45), 0 0 12px rgba(251, 191, 36, 0.2);
+  color: #fcd34d;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.rank-lord .icon { width: 0.875rem; height: 0.875rem; stroke-width: 2.2; }
+
+/* リーグのメダル */
+.rank-medals { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.rank-medal {
+  --m-bg: #1e2638; --m-edge: var(--brand); --m-ink: #ffffff; --m-r1: #ff5a36; --m-r2: #b4321a; --m-glow: rgba(255, 90, 54, 0.35);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.375rem 0.25rem 0.5rem;
+  border: 0;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  font: inherit;
+  cursor: pointer;
+}
+.rank-medal:active { transform: scale(0.97); }
+.rank-medal[data-medal="gold"] { --m-bg: radial-gradient(circle at 35% 30%, #fff7cc, #fbbf24 55%, #b7791f); --m-edge: #fde68a; --m-ink: #5b3604; --m-r1: #ef4444; --m-r2: #3b82f6; --m-glow: rgba(251, 191, 36, 0.6); }
+.rank-medal[data-medal="silver"] { --m-bg: radial-gradient(circle at 35% 30%, #ffffff, #cbd5e1 55%, #7b8597); --m-edge: #f1f5f9; --m-ink: #1f2937; --m-r1: #ef4444; --m-r2: #3b82f6; --m-glow: rgba(203, 213, 225, 0.5); }
+.rank-medal[data-medal="bronze"] { --m-bg: radial-gradient(circle at 35% 30%, #ffe3cc, #e0965f 55%, #8f5524); --m-edge: #fbe0c8; --m-ink: #3b1d06; --m-r1: #ef4444; --m-r2: #3b82f6; --m-glow: rgba(224, 150, 95, 0.5); }
+.rank-medal[data-medal="guest"] { --m-bg: transparent; --m-edge: rgba(255, 255, 255, 0.25); --m-ink: var(--rk-sub); --m-r1: #475569; --m-r2: #334155; --m-glow: transparent; }
+.rank-medal__ribbon { width: 1.75rem; height: 0.875rem; margin-bottom: -0.25rem; background: linear-gradient(90deg, var(--m-r1) 0 50%, var(--m-r2) 50% 100%); clip-path: polygon(0 0, 100% 0, 72% 100%, 28% 100%); }
+.rank-medal__disk {
+  position: relative;
+  overflow: hidden;
+  width: 3.5rem;
+  height: 3.5rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  padding-top: 0.75rem;
+  border-radius: 50%;
+  background: var(--m-bg);
+  color: var(--m-ink);
+  box-shadow: inset 0 0 0 2px var(--m-edge), 0 0 18px var(--m-glow);
+}
+.rank-medal__disk::after {
+  content: "";
+  position: absolute;
+  top: -30%;
+  bottom: -30%;
+  left: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  transform: skewX(-18deg);
+  opacity: 0;
+}
+.rank-medal__disk strong { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.rank-medal__disk small { font-size: 0.6875rem; font-weight: 700; }
+.rank-medal[data-medal="guest"] .rank-medal__disk { padding-top: 1.125rem; box-shadow: inset 0 0 0 2px var(--m-edge); border: 0; }
+.rank-medal__name { margin-top: 0.25rem; font-size: 0.6875rem; font-weight: 700; color: #ffffff; white-space: nowrap; }
+.rank-medal__count { font-size: 0.625rem; color: var(--rk-sub); font-variant-numeric: tabular-nums; }
+
+/* ポイント：もらい方の札と獲得ログ */
+.rank-rules { margin: 0 0 0.75rem; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.rank-rule {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0.25rem 0.375rem;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(255, 90, 54, 0.16), rgba(255, 90, 54, 0.04));
+  box-shadow: inset 0 0 0 1px rgba(255, 90, 54, 0.35);
+}
+.rank-rule__icon { display: flex; color: var(--rk-hot); filter: drop-shadow(0 0 6px rgba(255, 90, 54, 0.7)); }
+.rank-rule__icon .icon { width: 1.25rem; height: 1.25rem; stroke-width: 2; }
+.rank-rule__value { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: #ffffff; font-variant-numeric: tabular-nums; text-shadow: 0 0 12px rgba(255, 90, 54, 0.8); }
+.rank-rule__label { font-size: 0.625rem; color: var(--rk-sub); }
+.rank-log { margin: 0; padding: 0; list-style: none; }
+.rank-log__row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4375rem 0; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.rank-log__row:first-child { border-top: 0; }
+.rank-log__icon { flex: none; width: 1.75rem; height: 1.75rem; display: grid; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, 0.06); color: #cbd5e1; }
+.rank-log__icon .icon { width: 1rem; height: 1rem; stroke-width: 2; }
+.rank-log__row[data-kind="welcomeBack"] .rank-log__icon { background: rgba(255, 90, 54, 0.18); color: var(--rk-hot); box-shadow: 0 0 10px rgba(255, 90, 54, 0.35); }
+.rank-log__spot { flex: 1; min-width: 0; font-size: var(--fs-s); color: var(--rk-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-log__date { flex: none; font-size: 0.625rem; color: var(--rk-sub); font-variant-numeric: tabular-nums; }
+.rank-log__points { flex: none; min-width: 2.25rem; text-align: right; font-family: var(--font-display); font-size: var(--fs-m); color: var(--rk-hot); font-variant-numeric: tabular-nums; text-shadow: 0 0 10px rgba(255, 90, 54, 0.6); }
+.rank-log__empty { display: flex; align-items: center; gap: 0.375rem; margin: 0; font-size: var(--fs-s); color: var(--rk-sub); }
+.rank-log__empty .icon { width: 1.125rem; height: 1.125rem; }
+
+/* 設定のマス */
+.rank-settings { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.rank-setting {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0.625rem 0.25rem 0.5rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.rank-setting__icon {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.625rem;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.rank-setting__icon .icon { width: 1.125rem; height: 1.125rem; }
+.rank-setting__value { max-width: 100%; font-size: 0.75rem; font-weight: 700; color: #ffffff; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-setting__badge { position: absolute; top: 0.25rem; right: 0.25rem; padding: 0 0.3125rem; border-radius: var(--radius-pill); background: var(--brand); color: #ffffff; font-size: 0.5625rem; font-weight: 700; line-height: 1.5; }
+
+/* ---- 動き（登場の演出は1回。くり返しの動きはその後も続く） ---- */
+@media (prefers-reduced-motion: no-preference) {
+  /* 登場：集める → 落ちる → 衝撃 */
+  .rank-hero { animation: rank-shake 0.42s 0.46s ease-out both; }
+  .rank-hero__bg { animation: rank-ignite 0.9s 0.38s ease-out both; }
+  .rank-charge { animation: rank-charge 0.45s calc(var(--i, 0) * 0.012s) ease-in both; }
+  .rank-wave { animation: rank-wave 0.9s 0.45s ease-out both; }
+  .rank-wave.rank-wave--in { animation: rank-wave-in 0.45s ease-in both; }
+  .rank-wave.rank-wave--late { animation-delay: 0.62s; }
+  .rank-stage__streak { animation: rank-streak 0.8s 0.44s ease-out both; }
+  .rank-hero__flash { animation: rank-flash 0.7s 0.42s ease-out both; }
+  .rank-stage__emblem { animation: rank-slam 0.5s cubic-bezier(0.55, 0, 0.6, 1.5) both; }
+  .rank-spark { animation: rank-spark 0.75s 0.45s ease-out both; }
+  .rank-stage__rays { animation: rank-burst 0.7s 0.45s cubic-bezier(0.2, 1.3, 0.4, 1) both, rank-spin 30s linear infinite; }
+  .rank-stage__aura { animation: rank-appear 0.6s 0.45s ease-out both, rank-aura 2.4s 1.05s ease-in-out infinite; }
+  .rank-stage__orbit { animation: rank-appear 0.6s 0.6s ease-out both, rank-spin 14s linear infinite reverse; }
+  .rank-hero__kicker { animation: rank-drop 0.4s 0.62s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+  .rank-hero__name { animation: rank-stamp 0.45s 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) both, rank-shimmer 4.5s 1.6s ease-in-out infinite; }
+  .rank-pip { animation: rank-pip 0.35s calc(0.95s + var(--i, 0) * 0.08s) cubic-bezier(0.3, 1.8, 0.5, 1) both; }
+  .rank-hero__points { animation: rank-appear 0.3s 0.8s ease-out both; }
+  .rank-hero__num--done { animation: rank-num-pop 0.55s ease-out; }
+  .rank-hero__near { animation: rank-pop 0.4s 1.8s cubic-bezier(0.3, 1.8, 0.5, 1) both, rank-near 1.1s 2.2s ease-in-out infinite; }
+  .rank-road__fill { animation: rank-fill 1s 1.1s ease-out both, rank-flow 0.9s linear infinite; }
+  .rank-road__walker { animation: rank-walk 1s 1.1s ease-out both; }
+  .rank-road__trail { animation: rank-trail 1.2s 1.05s ease-out both; }
+  .rank-road__dot { animation: rank-dot 1s 1.1s ease-out both, rank-pulse 1.6s 2.1s ease-out infinite; }
+  .rank-road__avatar, .rank-road__avatar-fallback { animation: rank-bob 0.45s ease-in-out infinite alternate; }
+  .rank-road__node[data-state="current"] .rank-road__emblem { animation: rank-glow 2s ease-in-out infinite; }
+  .rank-road__node[data-next="true"]::before { animation: rank-target 1.6s 2s ease-out infinite; }
+
+  /* 登場の後も続く動き：ゆらゆら3D（ポインタで傾けている間は止める）・つや・ホログラム・きらめき・粒 */
+  .rank-stage__float { animation: rank-float 3.2s 1.4s ease-in-out infinite; }
+  .rank-stage__tilt:not(.is-tilting) { animation: rank-sway 7s 1.6s ease-in-out infinite; }
+  .rank-stage__sheen::before { animation: rank-sheen 3.6s 1.1s ease-in-out infinite; }
+  .rank-stage__holo::before { animation: rank-holo 5s ease-in-out infinite alternate; }
+  .rank-glint { animation: rank-glint 3.2s calc(1.3s + var(--i, 0) * 0.9s) ease-in-out infinite; }
+  .rank-mote { animation: rank-rise var(--dur, 5s) var(--d, 0s) linear infinite; }
+  .rank-medal__disk::after { animation: rank-sheen 4.2s calc(0.8s + var(--i, 0) * 0.35s) ease-in-out infinite; }
+
+  /* 下のまとまり：画面に入るとせり上がり、中身が順にはじける */
+  .rank-reveal { transition: opacity 0.55s ease-out, transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .rank-reveal:not(.is-in) { opacity: 0; transform: translateY(1.75rem); }
+  .rank-reveal.is-in :is(.rank-stat, .rank-medal, .rank-rule, .rank-setting, .rank-log__row) { animation: rank-pop 0.45s calc(0.12s + var(--i, 0) * 0.06s) cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+
+  /* 盤のタップで登場の演出を飛ばす（くり返しの動きだけ残す） */
+  .rank-hero.is-skip,
+  .rank-hero.is-skip :is(.rank-hero__bg, .rank-charge, .rank-wave, .rank-stage__streak, .rank-hero__flash, .rank-stage__emblem, .rank-spark, .rank-hero__kicker, .rank-pip, .rank-hero__points, .rank-road__walker, .rank-road__trail) { animation: none; }
+  .rank-hero.is-skip .rank-stage__rays { animation: rank-spin 30s linear infinite; }
+  .rank-hero.is-skip .rank-stage__aura { animation: rank-aura 2.4s ease-in-out infinite; }
+  .rank-hero.is-skip .rank-stage__orbit { animation: rank-spin 14s linear infinite reverse; }
+  .rank-hero.is-skip .rank-hero__name { animation: rank-shimmer 4.5s ease-in-out infinite; }
+  .rank-hero.is-skip .rank-hero__near { animation: rank-near 1.1s ease-in-out infinite; }
+  .rank-hero.is-skip .rank-road__fill { animation: rank-flow 0.9s linear infinite; }
+  .rank-hero.is-skip .rank-road__dot { animation: rank-pulse 1.6s ease-out infinite; }
+}
+@keyframes rank-charge {
+  0% { transform: rotate(var(--a)) translateY(-9.5rem); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: rotate(var(--a)) translateY(-0.25rem); opacity: 0; }
+}
+@keyframes rank-wave-in { 0% { transform: scale(2.6); opacity: 0; } 70% { opacity: 0.9; } 100% { transform: scale(0.3); opacity: 0; } }
+@keyframes rank-wave { 0% { transform: scale(0.3); opacity: 1; } 100% { transform: scale(3.4); opacity: 0; } }
+@keyframes rank-streak { 0% { transform: scaleX(0); opacity: 1; } 35% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1.2) scaleY(0.4); opacity: 0; } }
+@keyframes rank-ignite { from { opacity: 0.2; } }
+@keyframes rank-slam {
+  0% { transform: translateY(-2.5rem) scale(3.2) rotate(-14deg); opacity: 0; filter: blur(8px); }
+  60% { opacity: 1; filter: blur(0); }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes rank-shake {
+  0%, 100% { transform: none; }
+  15% { transform: translate(-6px, 4px); }
+  30% { transform: translate(5px, -5px); }
+  45% { transform: translate(-4px, 2px); }
+  60% { transform: translate(3px, -2px); }
+  80% { transform: translate(-1px, 1px); }
+}
+@keyframes rank-flash { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes rank-spark {
+  0% { transform: rotate(var(--a)) translateY(-1.5rem) scaleY(0.4); opacity: 1; }
+  100% { transform: rotate(var(--a)) translateY(-9.5rem) scaleY(1.2); opacity: 0; }
+}
+@keyframes rank-burst { from { opacity: 0; transform: scale(0.4); } }
+@keyframes rank-drop { from { transform: translateY(-0.75rem); opacity: 0; } }
+@keyframes rank-stamp { from { transform: scale(2.2); opacity: 0; letter-spacing: 0.4em; } }
+@keyframes rank-shimmer { 0% { background-position: 200% 0, 0 0; } 32%, 100% { background-position: -110% 0, 0 0; } }
+@keyframes rank-pip { from { transform: scale(0) rotate(-90deg); opacity: 0; } }
+@keyframes rank-appear { from { opacity: 0; } }
+@keyframes rank-num-pop { 0% { transform: scale(1.3); text-shadow: 0 0 30px var(--t-light), 0 3px 0 var(--t-edge); } 100% { transform: none; } }
+@keyframes rank-spin { to { transform: rotate(360deg); } }
+@keyframes rank-aura { 50% { transform: scale(1.14); opacity: 0.75; } }
+@keyframes rank-float { 50% { transform: translateY(-5px); } }
+@keyframes rank-sway {
+  0%, 100% { transform: perspective(700px) rotateY(-12deg) rotateX(4deg); }
+  50% { transform: perspective(700px) rotateY(12deg) rotateX(-4deg); }
+}
+@keyframes rank-sheen { 0% { left: -45%; opacity: 1; } 35% { left: 120%; opacity: 1; } 36%, 100% { left: 120%; opacity: 0; } }
+@keyframes rank-holo { from { background-position: 0 0; } to { background-position: 100% 100%; } }
+@keyframes rank-glint { 0%, 100% { transform: scale(0) rotate(0deg); opacity: 0; } 8% { transform: scale(1) rotate(45deg); opacity: 1; } 18% { transform: scale(0) rotate(90deg); opacity: 0; } }
+@keyframes rank-rise {
+  0% { transform: translateY(0); opacity: 0; }
+  12% { opacity: 0.9; }
+  100% { transform: translateY(-34rem); opacity: 0; }
+}
+@keyframes rank-near { 50% { transform: scale(1.06); box-shadow: 0 0 0 5px rgba(255, 90, 54, 0.25), 0 0 26px rgba(255, 90, 54, 0.9); } }
+@keyframes rank-fill { from { width: 0; } }
+@keyframes rank-flow { to { background-position: 34px 0, 0 0; } }
+@keyframes rank-walk { from { left: 0; } }
+@keyframes rank-trail { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes rank-dot { from { left: 0; } }
+@keyframes rank-bob { to { transform: translateY(-3px); } }
+@keyframes rank-pulse { 0% { box-shadow: 0 0 0 3px var(--brand), 0 0 0 3px rgba(255, 90, 54, 0.6); } 100% { box-shadow: 0 0 0 3px var(--brand), 0 0 0 12px rgba(255, 90, 54, 0); } }
+@keyframes rank-glow { 50% { filter: drop-shadow(0 0 12px var(--t)); } }
+@keyframes rank-target { 0% { transform: scale(0.75); opacity: 0.9; } 100% { transform: scale(1.35); opacity: 0; } }
+@keyframes rank-pop { from { opacity: 0; transform: scale(0.88); } }

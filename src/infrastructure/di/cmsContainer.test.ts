@@ -113,6 +113,16 @@ describe('店舗CMS（デモ）', () => {
     expect(a).toEqual(b);
     expect(a.isDummy).toBe(true);
     const all = [...a.weekly, ...a.byWeekday, ...a.byTimeBand, ...a.effects, a.visits30d, a.visitors30d];
-    for (const count of all) expect(count.suppressed ? count.value === undefined : (count.value ?? 0) >= 5).toBe(true);
+    for (const count of all) expect(count.suppressed || count.note !== undefined ? count.value === undefined : (count.value ?? 0) >= 5).toBe(true);
+  });
+
+  it('来店データ（ダミー）は店の事実と食い違わない（定休日・営業時間外・クーポン未掲載）', async () => {
+    const store = new InMemoryKeyValueStore();
+    const { cms } = await boot(store);
+    must(await cms.saveShopInfo.execute({ spotId: 's_mm04', hours: { open: '11:00', close: '17:00', closedDays: [6] }, amenities: [], operationId: uuid() }));
+    const stats = must(await cms.visitStats.execute({ spotId: 's_mm04' }));
+    expect(stats.byWeekday.find((c) => c.label === '日')).toMatchObject({ note: '定休日' });
+    expect(stats.byTimeBand.map((c) => c.label)).toEqual(['昼（11〜14時）', '午後（14〜17時）']);
+    expect(stats.effects.find((c) => c.label === 'クーポンを使った人')?.note).toBe('まだ出していません');
   });
 });

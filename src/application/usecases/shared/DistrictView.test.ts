@@ -37,7 +37,7 @@ function standing(patch: Partial<LordStanding> = {}): LordStanding {
   return { districtId: D, isMe: true, lostByTraveler: false, lordCount: 4, myCount: 4, needed: 0, lordName: 'あなた', ...patch };
 }
 
-const LOST: LordStanding = standing({ isMe: false, lostByTraveler: true, lordName: '旅人タロウ', lordCount: 6, myCount: 4, needed: 3 });
+const LOST: LordStanding = standing({ isMe: false, lostByTraveler: true, lordName: 'おまいり番長', lordCount: 6, myCount: 4, needed: 3 });
 const FADING: FadeState = { kind: 'fading', daysSinceVisit: 40, progress: 1 / 6, fadeStartDate: START };
 const SOON: FadeState = { kind: 'soon', daysSinceVisit: 25, daysUntilFade: 5, fadeStartDate: START };
 
@@ -76,7 +76,7 @@ describe('nextGoalText（地区カードの「次の目標」）の優先順', (
 
   it('主の状況が無い・取り返し中でないときは取り返しの文言を出さない', () => {
     expect(nextGoalText({ status: status() })).toBe('Lv3まであと3');
-    expect(nextGoalText({ status: status(), standing: standing({ isMe: false, lostByTraveler: false, lordName: '旅人ハナ', needed: 2 }) })).toBe('Lv3まであと3');
+    expect(nextGoalText({ status: status(), standing: standing({ isMe: false, lostByTraveler: false, lordName: '花見は毎日派', needed: 2 }) })).toBe('Lv3まであと3');
   });
 });
 
@@ -123,7 +123,7 @@ describe('districtViewsOf → toDistrictCardDto / toDistrictMapDto', () => {
     expect(minato?.nextGoalText).toBe('あと5日で色あせ');
 
     const yunosato = cards.get(testDistrictId('d_yunosato'));
-    expect(yunosato).toMatchObject({ lordName: '旅人ハナ', isLordMe: false, lordLost: true });
+    expect(yunosato).toMatchObject({ lordName: '花見は毎日派', isLordMe: false, lordLost: true });
     expect(yunosato?.nextGoalText).toMatch(/^取り返しまで：あと\d+回（直近30日）$/);
 
     const satoyama = cards.get(testDistrictId('d_satoyama'));

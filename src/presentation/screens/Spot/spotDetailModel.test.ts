@@ -16,7 +16,7 @@ import {
 } from '@/presentation/screens/Spot/spotDetailModel';
 
 describe('visitButtonState', () => {
-  it('訪問できるときは有効で「訪問する（40m以内）」', () => {
+  it('訪問できるときは有効で「チェックインする（80m以内）」', () => {
     expect(visitButtonState({ canVisit: true, visitedToday: false })).toEqual({ enabled: true, label: VISIT_ENABLED_LABEL });
   });
   it('離れているときは無効で「あと n m 近づくと訪問できます」', () => {

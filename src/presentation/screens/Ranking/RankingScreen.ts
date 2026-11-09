@@ -1,18 +1,18 @@
 /**
  * @file ランキング画面（presentation/screens/Ranking 層。ルート '#/ranking'）
  * 月間3リーグ（かよい／はじめまして／ルーキー）をタブで切り替え、表彰台（上位3名）＋リストを出す（CLAUDE.md 4.6・6.7、wireframes/07_ranking）。
- * 「競いたくなる」ための見せ方:
- * - 決着までのカウントダウンと、月末に表彰台の3名へメダル（金・銀・銅。色は 08 演出の金・銀カードとそろえる）
- * - あなたのバトルカード: 大きな順位、昨日からの順位変化（上がったら数字が入れ替わる演出）、すぐ上のライバルまでのゲージ、すぐ後ろの迫り具合
- * - 表彰台の王冠・せり上がり、リストの「表彰台ライン」と「ねらい目／追ってくる」札
- * 初めての人でも活躍できるよう、最初に開くタブは「あなたが一番上位のリーグ」。かよいリーグでは下段に地区の主を出す。基準 C。
+ * 見やすさのため、文字は最小限にして絵と動きで見せる:
+ * - 上部は「ランキングどどーん！」のステージ（rankingStage.ts）。表彰台・エモート・あなた帯（順位・レース・出かける）
+ * - リスト: 順位・アバター・名前・数だけ。すぐ上／すぐ後ろのライバルはエモート（！／炎）、地区の主はアバターの王冠で示す
+ * - 報酬: メダル＋順位＋景品の1行ずつと、キープ報酬（「表彰台を24時間キープ → 表彰台の旗」）
+ * - 地区の主（かよいリーグのみ）: 5地区を小さなタイルで（地区名・主のアバター・あなた／あと○回）
+ * - リーグのルール（3リーグの比較表）は一番下にたたんでおく
+ * 初めての人でも活躍できるよう、最初に開くタブは「あなたが一番上位のリーグ」。基準 C。
  * 動きは prefers-reduced-motion: no-preference のときだけ（CSS 側と、順位の入れ替え演出の両方で判定）。
  */
 import '@/presentation/screens/Ranking/RankingScreen.css';
-import type { LeagueDto, LeagueIdDto, RankingDto, RankingEntryDto, RankingLordDto } from '@/application/dto/Dto';
+import type { KeepRewardDto, LeagueDto, LeagueIdDto, RankingDto, RankingEntryDto, RankingLordDto, RewardPrizeDto, RewardTierDto } from '@/application/dto/Dto';
 import { createLogger } from '@/Common/logging/logger';
-import { createButton } from '@/Common/ui/Button';
-import { createReasonTag } from '@/Common/ui/cards/RevisitReasonCard';
 import { h, setStyle } from '@/Common/ui/dom';
 import { createIcon } from '@/Common/ui/icons';
 import type { IconName } from '@/Common/ui/icons';
@@ -21,21 +21,33 @@ import { userAction } from '@/Common/ui/userAction';
 import type { AppContext } from '@/presentation/App/AppContext';
 import type { Screen } from '@/presentation/App/Screen';
 import {
-  chaserTextOf,
   countLabel,
+  districtShortOf,
   gaugePercentOf,
+  hotLabelOf,
+  keepChipOf,
+  keepGoalTextOf,
+  keepPercentOf,
   listEntriesOf,
-  lordGoalText,
+  lordStatusOf,
+  metricShortOf,
+  myEmoteOf,
   myEntryOf,
-  podiumSlotsOf,
+  raceLabelOf,
   rankChangeOf,
   rivalMarkOf,
   tabRankLabel,
+  tierPrizeTextOf,
 } from '@/presentation/screens/Ranking/rankingModel';
-import type { PodiumSlot, RankChange } from '@/presentation/screens/Ranking/rankingModel';
+import type { RankChange } from '@/presentation/screens/Ranking/rankingModel';
+import { createEmote, createStage } from '@/presentation/screens/Ranking/rankingStage';
+import type { AvatarMaker } from '@/presentation/screens/Ranking/rankingStage';
+import { createAvatarImage } from '@/presentation/shared/avatarImage';
+import { avatarLookOfTown } from '@/presentation/shared/avatarSprite';
+import type { AvatarLook } from '@/presentation/shared/avatarSprite';
+import { personLookOf } from '@/presentation/shared/personLook';
 
 const logger = createLogger('presentation/screens/Ranking/RankingScreen');
-
 
 /** リーグの記号（文字の飾り）→ 線のアイコン（docs/08 §10.2：記号文字ではなく icons.ts の線アイコンを使う） */
 const LEAGUE_ICONS: Readonly<Record<string, IconName>> = { '♛': 'crown', '✦': 'compass', '❀': 'sparkle' };
@@ -49,14 +61,23 @@ function leagueIconName(glyph: string): IconName { // audit-ignore: fnlog-missin
   return LEAGUE_ICONS[glyph] ?? 'star';
 }
 
-/** 順位が上がったとき、昨日の順位を見せてから今日の順位に入れ替えるまでの時間（ms） */
-const RANK_SWAP_DELAY_MS = 700;
+/** 順位が上がったとき、昨日の順位を見せてから今日の順位に入れ替えるまでの時間（ms。ステージの着地が終わるころ） */
+const RANK_SWAP_DELAY_MS = 1600;
 
-/** 表彰台の順位ごとのメダル名 */
-const MEDAL_LABEL: Readonly<Record<PodiumSlot['place'], string>> = { first: '金', second: '銀', third: '銅' };
+/** アバターの拡大率（1 で高さ約 70px） */
+const AVATAR_SCALE = { row: 0.42, me: 0.72, rival: 0.34, lord: 0.46 } as const;
 
-/** 紙吹雪の粒の数（自分が表彰台・順位アップのとき） */
-const CONFETTI_COUNT = 14;
+/** メダルの頭文字 */
+const MEDAL_GLYPH: Readonly<Record<'gold' | 'silver' | 'bronze', string>> = { gold: '金', silver: '銀', bronze: '銅' };
+
+/** 景品の種類 → 線アイコン（メダルは丸い札、飾りはリーグごと） */
+const PRIZE_ICONS: Readonly<Record<'title' | 'stamp' | 'flag' | 'trophy', IconName>> = { title: 'crown', stamp: 'footprints', flag: 'flag', trophy: 'star' };
+
+/** リーグの飾り（表彰台の景品）の線アイコン */
+const ITEM_ICONS: Readonly<Record<LeagueIdDto, IconName>> = { kayoi: 'lantern', hajimete: 'flag', rookie: 'tree' };
+
+/** 報酬一覧の要素ID（「報酬」で飛ぶ先） */
+const REWARDS_ID = 'ranking-rewards';
 
 /**
  * ランキング画面を作る。
@@ -81,187 +102,149 @@ function prefersReducedMotion(): boolean {
 }
 
 /**
- * 「主：地区」タグを作る。
- * @param districts 地区の短い名前
- * @returns タグ要素の配列
+ * 景品の丸い印（メダルは金・銀・銅の色札、それ以外は線アイコン）を作る。
+ * @param prize 景品
+ * @param leagueId リーグ（飾りのアイコンを選ぶ）
+ * @returns 要素（飾り。読み上げない）
  */
-function lordTags(districts: readonly string[]): HTMLElement[] {
-  return districts.map((d) => h('span', { class: ['tag', 'tag--accent', 'ranking__lord-tag'], text: `主：${d}` }));
+function createPrizeMark(prize: RewardPrizeDto, leagueId: LeagueIdDto): HTMLElement { // audit-ignore: fnlog-missing 景品ごとに呼ぶ DOM 組立て（呼び出し側 createRewards でログ）
+  if (prize.kind === 'gold' || prize.kind === 'silver' || prize.kind === 'bronze') {
+    return h('span', { class: 'rk-mark', dataset: { medal: prize.kind }, attrs: { 'aria-hidden': 'true' }, text: MEDAL_GLYPH[prize.kind] });
+  }
+  return h('span', { class: 'rk-mark', dataset: { kind: prize.kind }, attrs: { 'aria-hidden': 'true' } }, [createIcon(prize.kind === 'item' ? ITEM_ICONS[leagueId] : PRIZE_ICONS[prize.kind])]);
 }
 
 /**
- * 紙吹雪（飾り。読み上げない）を作る。
- * @returns 要素
- */
-function createConfetti(): HTMLElement {
-  const log = logger.fn('createConfetti');
-  const pieces = Array.from({ length: CONFETTI_COUNT }, (_, i) =>
-    h('span', { class: 'confetti__piece', style: { '--i': String(i), '--x': `${((i * 37) % 100) - 50}`, '--r': `${(i * 53) % 360}deg` } }),
-  );
-  return log.exit(h('span', { class: 'confetti', attrs: { 'aria-hidden': 'true' } }, pieces));
-}
-
-/**
- * 決着までのカウントダウン帯を作る。
- * @param dto ランキング
- * @returns 要素
- */
-function createFinaleBanner(dto: RankingDto): HTMLElement {
-  const log = logger.fn('createFinaleBanner', { daysLeft: dto.daysLeft });
-  return log.exit(
-    h('div', { class: 'finale', attrs: { 'data-testid': 'ranking-finale' } }, [
-      h('span', { class: 'finale__flag', attrs: { 'aria-hidden': 'true' } }, [createIcon('flag')]),
-      h('span', { class: 'finale__text' }, [`${dto.monthLabel}の決着まで `, h('strong', { class: 'finale__days', text: `あと${dto.daysLeft}日` })]),
-      h('span', { class: 'finale__prize', text: '表彰台の3名にメダル' }),
-    ]),
-  );
-}
-
-/**
- * 順位変化のバッジを作る。
+ * 順位変化のバッジを作る（上がった・下がったときだけ。「昨日と同じ」は出さない）。
  * @param change 変化
- * @returns 要素（変化が無い・昨日の順位が無いときは undefined）
+ * @returns 要素（上下していなければ undefined）
  */
 function createChangeBadge(change: RankChange): HTMLElement | undefined {
   const log = logger.fn('createChangeBadge', { kind: change.kind, diff: change.diff });
-  if (change.kind === 'none') return log.exit(undefined);
-  const text = change.kind === 'up' ? `▲${change.diff} 順位アップ！` : change.kind === 'down' ? `▼${change.diff}` : '昨日と同じ';
-  return log.exit(h('span', { class: 'battle__change', dataset: { kind: change.kind }, attrs: { 'data-testid': 'ranking-change' }, text }));
-}
-
-/**
- * すぐ上のライバルまでのゲージ部分を作る。
- * @param league リーグ
- * @returns 要素
- */
-function createGauge(league: LeagueDto): HTMLElement {
-  const log = logger.fn('createGauge', { leagueId: league.id });
-  const above = league.rivalAbove;
-  const label =
-    above === undefined
-      ? h('span', { class: 'battle__target' }, [h('strong', { text: '1位を独走中！' }), ' このまま逃げ切ろう'])
-      : h('span', { class: 'battle__target' }, [
-          `${above.rank}位 ${above.name}（${countLabel(above.count, league.unit)}）まで `,
-          h('strong', { class: 'battle__gap', text: `あと${countLabel(above.gap, league.unit)}` }),
-        ]);
-  const fill = h('span', { class: 'gauge__fill' });
-  setStyle(fill, '--gauge', `${gaugePercentOf(league)}%`);
+  if (change.kind !== 'up' && change.kind !== 'down') return log.exit(undefined);
   return log.exit(
-    h('div', { class: 'battle__gauge-wrap' }, [
-      label,
-      h('span', { class: 'gauge', attrs: { role: 'img', 'aria-label': above === undefined ? '1位' : `${above.name}までの進み具合 ${gaugePercentOf(league)}%` } }, [fill]),
-    ]),
+    h('span', {
+      class: 'me-strip__change',
+      dataset: { kind: change.kind },
+      attrs: { 'data-testid': 'ranking-change', 'aria-label': `昨日から${change.diff}位${change.kind === 'up' ? '上がった' : '下がった'}` },
+      text: `${change.kind === 'up' ? '▲' : '▼'}${change.diff}`,
+    }),
   );
 }
 
 /**
- * 表彰台の1枠を作る。
- * @param slot 枠
- * @param unit 単位
+ * 進み具合の細いバーを作る（キープ報酬）。
+ * @param keep キープ報酬
  * @returns 要素
  */
-function podiumSlot(slot: PodiumSlot, unit: string): HTMLElement { // audit-ignore: fnlog-missing 表彰台の3枠ぶん呼ぶ DOM 組立て（呼び出し側 createPodium でログ）
-  const { entry } = slot;
-  return h('li', { class: ['podium__slot', entry.isMe ? 'podium__slot--me' : undefined], dataset: { place: slot.place, lordDistrict: entry.lordOf[0] }, attrs: { 'data-testid': 'podium-slot' } }, [
-    slot.place === 'first' ? h('span', { class: 'podium__crown', attrs: { 'aria-hidden': 'true' } }, [createIcon('crown')]) : undefined,
-    entry.isMe ? h('span', { class: 'podium__you', text: 'YOU' }) : undefined,
-    entry.isMe
-      ? h('span', { class: 'podium__face', attrs: { 'aria-hidden': 'true' } }, [createIcon('star')])
-      : h('span', { class: 'podium__face', attrs: { 'aria-hidden': 'true' }, text: entry.name.replace(/^旅人/, '').slice(0, 1) }),
-    h('span', { class: 'podium__name', text: entry.name }),
-    h('span', { class: 'podium__count', text: countLabel(entry.count, unit) }),
-    ...lordTags(entry.lordOf),
-    h('span', { class: 'podium__block', attrs: { 'aria-label': `${entry.rank}位・${MEDAL_LABEL[slot.place]}メダル` } }, [
-      h('span', { class: 'podium__medal', attrs: { 'aria-hidden': 'true' }, text: MEDAL_LABEL[slot.place] }),
-      h('span', { class: 'podium__rank', attrs: { 'aria-hidden': 'true' }, text: String(entry.rank) }),
-    ]),
-  ]);
+function createKeepBar(keep: KeepRewardDto): HTMLElement { // audit-ignore: fnlog-missing キープ報酬ごとに呼ぶ DOM 組立て（呼び出し側でログ）
+  const fill = h('span', { class: 'keep-bar__fill' });
+  setStyle(fill, '--keep', `${keepPercentOf(keep)}%`);
+  return h('span', { class: 'keep-bar', attrs: { role: 'img', 'aria-label': `${keep.hours}時間のうち${keep.heldHours}時間キープ` } }, [fill]);
 }
 
 /**
- * 表彰台を作る（あなたが乗っていれば紙吹雪）。
- * @param league リーグ
- * @returns 要素
- */
-function createPodium(league: LeagueDto): HTMLElement {
-  const log = logger.fn('createPodium', { leagueId: league.id });
-  const slots = podiumSlotsOf(league.entries);
-  const meOnPodium = slots.some((s) => s.entry.isMe);
-  return log.exit(
-    h('div', { class: 'podium-stage' }, [
-      meOnPodium ? createConfetti() : undefined,
-      h('ol', { class: 'podium', attrs: { 'aria-label': '表彰台（上位3名）', 'data-testid': 'podium' } }, slots.map((slot) => podiumSlot(slot, league.unit))),
-    ]),
-  );
-}
-
-/**
- * リストの1行を作る。
+ * リストの1行を作る（順位・アバター・名前・数。すぐ上は「！」、すぐ後ろは炎のエモート）。
  * @param entry 行
  * @param league リーグ
+ * @param avatar アバターを作る関数
  * @returns 要素
  */
-function rankingRow(entry: RankingEntryDto, league: LeagueDto): HTMLElement { // audit-ignore: fnlog-missing リストの行ごとに呼ぶ DOM 組立て（呼び出し側 render でログ）
+function rankingRow(entry: RankingEntryDto, league: LeagueDto, avatar: AvatarMaker): HTMLElement { // audit-ignore: fnlog-missing リストの行ごとに呼ぶ DOM 組立て（呼び出し側 render でログ）
   const mark = rivalMarkOf(entry, league);
+  const label = mark === 'target' ? 'すぐ上のライバル' : mark === 'chaser' ? 'すぐ後ろのライバル' : undefined;
   return h(
     'li',
-    { class: ['ranking-row', entry.isMe ? 'ranking-row--me' : undefined], dataset: { mark }, attrs: { 'data-testid': entry.isMe ? 'ranking-row-me' : 'ranking-row' } },
+    {
+      class: ['ranking-row', entry.isMe ? 'ranking-row--me' : undefined],
+      dataset: { mark },
+      attrs: { 'data-testid': entry.isMe ? 'ranking-row-me' : 'ranking-row', ...(label === undefined ? {} : { 'aria-label': `${entry.rank}位 ${entry.name}（${label}）` }) },
+    },
     [
       h('span', { class: 'ranking-row__rank', text: String(entry.rank) }),
+      avatar(entry, AVATAR_SCALE.row, 'ranking-row__badge'),
       h('span', { class: 'ranking-row__name', text: entry.name }),
-      mark === 'target' ? h('span', { class: ['tag', 'ranking-row__mark'], text: 'ねらい目' }) : undefined,
-      mark === 'chaser' ? h('span', { class: ['tag', 'ranking-row__mark'], text: '追ってくる' }) : undefined,
-      ...lordTags(entry.lordOf),
+      mark === undefined ? undefined : h('span', { class: 'ranking-row__emote' }, [createEmote(mark === 'target' ? 'exclaim' : 'fire', 0)]),
       h('span', { class: 'ranking-row__count', text: countLabel(entry.count, league.unit) }),
     ],
   );
 }
 
 /**
- * 表彰台より下のリストを作る（先頭に「表彰台ライン」とあと何回で乗れるか）。
+ * 表彰台より下のリストを作る（先頭に「表彰台まで あと○回」）。
  * @param league リーグ
+ * @param avatar アバターを作る関数
  * @returns 要素（4位以下がいなければ undefined）
  */
-function createList(league: LeagueDto): HTMLElement | undefined {
+function createList(league: LeagueDto, avatar: AvatarMaker): HTMLElement | undefined {
   const log = logger.fn('createList', { leagueId: league.id });
   const rows = listEntriesOf(league.entries);
   if (rows.length === 0) return log.exit(undefined);
   const gap = league.podiumGap;
-  const lineText = gap === undefined ? '表彰台ライン' : gap === 0 ? '表彰台ライン ── あなたは表彰台！' : `表彰台ライン ── あと${countLabel(gap, league.unit)}で乗れる`;
   return log.exit(
     h('div', { class: 'ranking-list-wrap' }, [
-      h('p', { class: 'podium-line', attrs: { 'data-testid': 'podium-line' } }, [h('span', { class: 'podium-line__icon', attrs: { 'aria-hidden': 'true' } }, [createIcon('arrowUp')]), lineText]),
-      h('ol', { class: 'ranking-list', attrs: { 'aria-label': '4位以下' } }, rows.map((e) => rankingRow(e, league))),
+      gap === undefined || gap === 0 ? undefined : h('p', { class: 'rk-podium-line', attrs: { 'data-testid': 'podium-line' } }, [createIcon('arrowUp'), `表彰台まで あと${countLabel(gap, league.unit)}`]),
+      h('ol', { class: 'ranking-list', attrs: { 'aria-label': '4位以下' } }, rows.map((e) => rankingRow(e, league, avatar))),
     ]),
   );
 }
 
 /**
- * 地区の主カードを作る（タップで地区ズームの地図へ）。
- * @param lord 地区の主の状況
- * @param onOpen タップ時の処理
+ * 順位報酬の1段（メダル・順位・景品の1行）を作る。
+ * @param tier 段
+ * @param leagueId リーグ
  * @returns 要素
  */
-function createLordCard(lord: RankingLordDto, onOpen: () => void): HTMLElement {
-  const log = logger.fn('createLordCard', { districtId: lord.districtId });
-  const card = h(
-    'button',
-    { class: ['card', 'lord-card', lord.isMe ? 'lord-card--me' : undefined], attrs: { type: 'button', 'data-testid': 'ranking-lord-card' }, on: { click: userAction('ranking-lord', onOpen) } },
-    [
-      h('span', { class: 'lord-card__crown', attrs: { 'aria-hidden': 'true' } }, [createIcon('crown')]),
-      h('span', { class: 'lord-card__body' }, [
-        h('span', { class: 'lord-card__title' }, [
-          h('strong', { text: lord.districtName }),
-          ` 主：${lord.lordName ?? 'なし'}`,
-          lord.lordName === undefined || lord.isMe ? '' : `（${lord.lordCount}回）`,
-        ]),
-        h('span', { class: 'lord-card__sub', text: lordGoalText(lord) }),
+function rewardTierRow(tier: RewardTierDto, leagueId: LeagueIdDto): HTMLElement { // audit-ignore: fnlog-missing 段ごとに呼ぶ DOM 組立て（呼び出し側 createRewards でログ）
+  const head = tier.prizes[0];
+  return h('li', { class: ['rk-row', tier.isMine ? 'rk-row--mine' : undefined], attrs: { 'data-testid': 'reward-tier' } }, [
+    head === undefined ? h('span', { class: 'rk-mark' }) : createPrizeMark(head, leagueId),
+    h('strong', { class: 'rk-row__rank', text: tier.label }),
+    h('span', { class: 'rk-row__text', text: tierPrizeTextOf(tier) }),
+    tier.isMine ? h('span', { class: 'rk-row__mine', text: 'いまココ' }) : undefined,
+  ]);
+}
+
+/**
+ * キープ報酬の1行（「表彰台を24時間キープ → 表彰台の旗」と状態）を作る。
+ * @param keep キープ報酬
+ * @param leagueId リーグ
+ * @returns 要素
+ */
+function keepRow(keep: KeepRewardDto, leagueId: LeagueIdDto): HTMLElement { // audit-ignore: fnlog-missing キープ報酬ごとに呼ぶ DOM 組立て（呼び出し側 createRewards でログ）
+  const status = keep.state === 'achieved' ? '獲得！' : keep.state === 'keeping' ? `あと${keep.remainingHours}時間` : undefined;
+  return h('li', { class: ['rk-row', 'rk-row--keep'], dataset: { state: keep.state }, attrs: { 'data-testid': `keep-${keep.id}` } }, [
+    createPrizeMark(keep.prize, leagueId),
+    h('span', { class: 'rk-row__keep' }, [
+      h('span', { class: 'rk-row__text' }, [keepGoalTextOf(keep), h('span', { class: 'rk-row__arrow', attrs: { 'aria-label': 'で' }, text: ' → ' }), h('strong', { text: keep.prize.name })]),
+      keep.state === 'keeping' ? createKeepBar(keep) : undefined,
+    ]),
+    status === undefined ? undefined : h('span', { class: 'rk-row__status', text: status }),
+  ]);
+}
+
+/**
+ * 今月の報酬（順位報酬とキープ報酬）を1枚のカードにまとめる。
+ * @param dto ランキング
+ * @param league リーグ
+ * @returns 要素（報酬が無ければ undefined）
+ */
+function createRewards(dto: RankingDto, league: LeagueDto): HTMLElement | undefined {
+  const log = logger.fn('createRewards', { leagueId: league.id });
+  const rewards = league.rewards;
+  if (rewards === undefined) return log.exit(undefined, '報酬なし');
+  return log.exit(
+    h('section', { class: 'rk-card', dataset: { league: league.id }, attrs: { id: REWARDS_ID, 'data-testid': 'ranking-rewards', 'aria-labelledby': `${REWARDS_ID}-title` } }, [
+      h('h3', { class: 'rk-card__title', attrs: { id: `${REWARDS_ID}-title` } }, [
+        createIcon('rank'),
+        '報酬',
+        dto.closeLabel === undefined ? undefined : h('span', { class: 'rk-card__note', attrs: { 'data-testid': 'ranking-period' }, text: `${dto.closeLabel} 締め` }),
       ]),
-      lord.lost ? createReasonTag('reclaim', 'small') : undefined,
-      h('span', { class: 'card-chevron', attrs: { 'aria-hidden': 'true' } }, [createIcon('chevronRight')]),
-    ],
+      league.joined ? undefined : h('p', { class: 'rk-card__muted', text: '見学中のため対象外' }),
+      h('ol', { class: 'rk-rows' }, rewards.tiers.map((t) => rewardTierRow(t, league.id))),
+      h('ul', { class: ['rk-rows', 'rk-rows--keep'], attrs: { 'aria-label': 'キープ報酬' } }, rewards.keeps.map((k) => keepRow(k, league.id))),
+    ]),
   );
-  return log.exit(card);
 }
 
 /** ランキング画面の読込・描画・タブ切替を受け持つ */
@@ -270,6 +253,14 @@ class RankingController {
   private readonly body: HTMLElement;
   private dto: RankingDto | undefined;
   private selected: LeagueIdDto = 'kayoi';
+  /** あなたのアバターの装い（マイ街と同じ。読めなければ undefined＝星のバッジ） */
+  private myLook: AvatarLook | undefined;
+  /** 地区の主の名前（ほかの旅人のアバターに王冠をかぶせる。地図と同じ見た目にする） */
+  private lordNames: ReadonlySet<string> = new Set();
+  /** 名前 → アバターのキー（地区の主タイルでアバターを出すため。全リーグの行から集める） */
+  private avatarKeys: ReadonlyMap<string, string> = new Map();
+  /** 「リーグのルール」を開いているか（タブを切り替えても保つ） */
+  private rulesOpen = false;
   /** 順位の入れ替え演出のタイマー */
   private swapTimer: ReturnType<typeof setTimeout> | undefined;
   /** 画面を離れた（以降の非同期結果は捨てる） */
@@ -287,21 +278,25 @@ class RankingController {
   }
 
   /**
-   * 上部バーと本文を置き、ランキングを読み込んで描く。
+   * 上部バーと本文を置き、ランキングとあなたのアバター（マイ街）を読み込んで描く。
    * @param root 画面のルート要素
-   * @sideEffect root に DOM を追加し、services.ranking を呼ぶ
+   * @sideEffect root に DOM を追加し、services.ranking／myTown を呼ぶ
    */
   async mount(root: HTMLElement): Promise<void> {
     const log = logger.fn('mount');
     root.append(createTopBar({ title: 'ランキング' }), this.body);
-    const result = await this.ctx.services.ranking.execute();
+    const [result, town] = await Promise.all([this.ctx.services.ranking.execute(), this.ctx.services.myTown.execute()]);
     if (this.disposed) return log.exit(undefined, '画面を離れたため捨てる');
     if (!result.ok) {
       this.body.dataset.load = 'error';
       this.body.replaceChildren(h('p', { class: 'screen-message', text: result.error.message }));
       return log.fail(undefined, result.error.code);
     }
+    if (town.ok) this.myLook = avatarLookOfTown(town.value);
+    else log.warn('マイ街を読めないため、あなたのアバターは星のバッジにする', { code: town.error.code });
     this.dto = result.value;
+    this.lordNames = new Set(result.value.lords.flatMap((l) => (l.lordName === undefined || l.isMe ? [] : [l.lordName])));
+    this.avatarKeys = new Map(result.value.leagues.flatMap((l) => l.entries.map((e): [string, string] => [e.name, e.avatarKey])));
     this.selected = result.value.recommendedLeagueId;
     this.render();
     log.exit(undefined);
@@ -328,6 +323,34 @@ class RankingController {
   }
 
   /**
+   * 参加者のアバターを作る（あなたはマイ街の装い、ほかの人は地図と同じ決め方。画像が作れなければ頭文字・星のバッジ）。
+   * @param entry 参加者
+   * @param scale 拡大率
+   * @param fallbackClass 画像が作れないときのバッジの class
+   * @returns 要素
+   */
+  private avatarOf(entry: RankingEntryDto, scale: number, fallbackClass = 'rk-avatar--badge'): HTMLElement { // audit-ignore: fnlog-missing 参加者ごとに呼ぶ DOM 組立て（画像化は createAvatarImage でログ）
+    const look = entry.isMe ? this.myLook : personLookOf(entry.avatarKey, this.lordNames.has(entry.name));
+    const img = look === undefined ? undefined : createAvatarImage(look, scale);
+    if (img !== undefined) return h('span', { class: 'rk-avatar', attrs: { 'aria-hidden': 'true' } }, [img]);
+    return entry.isMe
+      ? h('span', { class: fallbackClass, attrs: { 'aria-hidden': 'true' } }, [createIcon('star')])
+      : h('span', { class: fallbackClass, attrs: { 'aria-hidden': 'true' }, text: entry.name.replace(/^旅人/, '').slice(0, 1) });
+  }
+
+  /**
+   * 報酬一覧までスクロールする。
+   * @sideEffect 本文をスクロールする
+   */
+  private scrollToRewards(): void {
+    const log = logger.fn('scrollToRewards');
+    const target = this.body.querySelector<HTMLElement>(`#${REWARDS_ID}`);
+    if (target === null) return log.exit(undefined, '報酬なし');
+    target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+    log.exit(undefined);
+  }
+
+  /**
    * タブを切り替える。
    * @param id 選ぶリーグ
    * @sideEffect 本文を描き直す
@@ -342,7 +365,7 @@ class RankingController {
   }
 
   /**
-   * 本文を描く（決着帯 → リーグタブ → 説明 → バトルカード → 表彰台 → リスト → 地区の主）。
+   * 本文を描く（リーグタブ → ステージ → リスト → 報酬 → 地区の主（かよいのみ） → リーグのルール）。
    * @sideEffect 本文の中身を差し替え、順位アップなら入れ替え演出を始める
    */
   private render(): void {
@@ -352,70 +375,145 @@ class RankingController {
     const league = dto.leagues.find((l) => l.id === this.selected) ?? dto.leagues[0];
     if (league === undefined) return log.exit(undefined, 'リーグなし');
     this.clearSwapTimer();
+    const avatar: AvatarMaker = this.avatarOf.bind(this);
+    this.body.dataset.league = league.id;
     this.body.replaceChildren(
-      createFinaleBanner(dto),
       this.createTabs(dto, league.id),
       h('section', { class: 'ranking__panel', attrs: { role: 'tabpanel', 'data-testid': 'ranking-panel', 'data-league': league.id } }, [
-        h('p', { class: 'ranking__tagline' }, [h('span', { class: 'ranking__icon', attrs: { 'aria-hidden': 'true' } }, [createIcon(leagueIconName(league.icon))]), league.tagline]),
-        this.createBattleCard(league),
-        createPodium(league),
-        createList(league),
-        h('p', { class: 'hint ranking__rule', text: `${league.rule}。ポイントは順位に関係ありません` }),
+        createStage({ dto, league, avatar, meStrip: this.createMeStrip(league), onRewards: (): void => this.scrollToRewards(), leagueIcon: leagueIconName(league.icon) }),
+        createList(league, avatar),
+        createRewards(dto, league),
       ]),
       ...(league.id === 'kayoi' ? [this.createLords(dto.lords)] : []),
+      this.createLeagueRules(dto, league),
     );
     this.body.dataset.load = 'ready';
     log.exit(undefined);
   }
 
   /**
-   * あなたのバトルカード（順位・昨日からの変化・ライバルまでのゲージ・次の一歩・出発ボタン）を作る。
+   * リーグのルール（3リーグの比較表）を、たたんだ状態で作る。行をタップするとそのリーグへ切り替える。開閉はタブを切り替えても保つ。
+   * @param dto ランキング
+   * @param league 選択中のリーグ
+   * @returns 要素（details）
+   * @sideEffect 開閉のたびに rulesOpen を更新する
+   */
+  private createLeagueRules(dto: RankingDto, league: LeagueDto): HTMLElement {
+    const log = logger.fn('createLeagueRules', { leagueId: league.id, open: this.rulesOpen });
+    const rules = h('details', { class: 'rk-rules', attrs: { 'data-testid': 'league-compare' } }, [
+      h('summary', { class: 'rk-rules__summary' }, [createIcon('info'), 'リーグのルール']),
+      h('div', { class: 'league-compare__table', attrs: { role: 'table', 'aria-label': '3つのリーグのちがい' } }, [
+        h('div', { class: ['league-compare__row', 'league-compare__row--head'], attrs: { role: 'row' } }, [
+          h('span', { attrs: { role: 'columnheader' }, text: 'リーグ' }),
+          h('span', { attrs: { role: 'columnheader' }, text: '競うもの' }),
+          h('span', { attrs: { role: 'columnheader' }, text: '参加できる人' }),
+        ]),
+        ...dto.leagues.map((l) =>
+          h(
+            'button',
+            {
+              class: 'league-compare__row',
+              dataset: { league: l.id },
+              attrs: { type: 'button', role: 'row', 'aria-current': l.id === league.id ? 'true' : 'false', 'data-testid': `league-compare-${l.id}` },
+              on: { click: userAction(`league-compare-${l.id}`, (): void => this.select(l.id)) },
+            },
+            [
+              h('span', { class: 'league-compare__name', attrs: { role: 'cell' } }, [h('strong', { text: l.shortName }), h('small', { text: tabRankLabel(l) })]),
+              h('span', { attrs: { role: 'cell' }, text: metricShortOf(l) }),
+              h('span', { attrs: { role: 'cell' }, text: l.eligibility ?? '' }),
+            ],
+          ),
+        ),
+      ]),
+      league.membershipNote === undefined ? undefined : h('p', { class: 'rk-rules__note', text: league.membershipNote }),
+    ]);
+    rules.open = this.rulesOpen;
+    rules.addEventListener('toggle', () => {
+      this.rulesOpen = rules.open;
+    });
+    return log.exit(rules);
+  }
+
+  /**
+   * すぐ上のライバルまでのレース（トラック・ゴールにライバルのアバター・一言）を作る。
+   * @param league リーグ（参加中）
+   * @returns 要素
+   */
+  private createRace(league: LeagueDto): HTMLElement {
+    const log = logger.fn('createRace', { leagueId: league.id });
+    const above = league.rivalAbove;
+    const rivalEntry = above === undefined ? undefined : league.entries.find((e) => e.name === above.name && e.rank === above.rank);
+    const fill = h('span', { class: 'race__fill' });
+    setStyle(fill, '--race', `${gaugePercentOf(league)}%`);
+    const hot = hotLabelOf(league);
+    const keep = keepChipOf(league);
+    return log.exit(
+      h('div', { class: 'race' }, [
+        h('span', { class: 'race__track', attrs: { role: 'img', 'aria-label': above === undefined ? '1位を独走中' : `${above.rank}位 ${above.name}までの進み具合 ${gaugePercentOf(league)}%` } }, [
+          fill,
+          h('span', { class: 'race__goal' }, [
+            rivalEntry === undefined ? h('span', { class: 'race__crown' }, [createIcon('crown')]) : this.avatarOf(rivalEntry, AVATAR_SCALE.rival, 'race__badge'),
+          ]),
+        ]),
+        h('p', { class: 'race__label' }, [
+          h('strong', { text: raceLabelOf(league) }),
+          hot === undefined ? undefined : h('span', { class: ['race__chip', 'race__chip--hot'], text: hot }),
+          keep === undefined ? undefined : h('span', { class: ['race__chip', 'race__chip--keep'], text: keep }),
+        ]),
+      ]),
+    );
+  }
+
+  /**
+   * ステージ下段の「あなた」帯（アバター＋エモート・大きな順位・変化・レース・出かけるボタン）を作る。
    * 順位が上がっていれば、昨日の順位を出してから今日の順位へ入れ替える（動きを減らす設定なら最初から今日の順位）。
    * @param league リーグ
    * @returns 要素
    * @sideEffect 順位アップのとき入れ替えのタイマーを登録する
    */
-  private createBattleCard(league: LeagueDto): HTMLElement {
-    const log = logger.fn('createBattleCard', { leagueId: league.id, joined: league.joined });
+  private createMeStrip(league: LeagueDto): HTMLElement {
+    const log = logger.fn('createMeStrip', { leagueId: league.id, joined: league.joined });
     const me = myEntryOf(league);
+    const go = h('button', { class: 'me-strip__go', attrs: { type: 'button', 'data-testid': 'ranking-go-map', 'aria-label': '順位を上げに出かける（地図へ）' }, on: { click: userAction('ranking-go-map', (): void => this.ctx.router.navigate('#/map')) } }, [
+      createIcon('navigate'),
+      '出かける',
+    ]);
+    const guestEntry: RankingEntryDto = { rank: 0, name: 'あなた', isMe: true, count: league.myCount, lordOf: [], avatarKey: 'traveler' };
+    const figure = h('span', { class: 'me-strip__figure' }, [createEmote(myEmoteOf(league), 3), this.avatarOf(me ?? guestEntry, AVATAR_SCALE.me, 'me-strip__badge')]);
     if (me === undefined) {
       return log.exit(
-        h('section', { class: ['battle', 'battle--guest'], attrs: { 'data-testid': 'ranking-my-card' } }, [
-          h('p', { class: 'battle__guest-title', text: 'このリーグは見学中' }),
-          h('p', { class: 'battle__next', text: league.nextStepText }),
-          league.membershipNote === undefined ? undefined : h('p', { class: 'battle__note', text: league.membershipNote }),
+        h('div', { class: ['me-strip', 'me-strip--guest'], attrs: { 'data-testid': 'ranking-my-card' } }, [
+          figure,
+          h('p', { class: 'me-strip__guest' }, [h('strong', { text: '見学中' })]),
+          go,
         ]),
       );
     }
     const change = rankChangeOf(league);
     const animate = change.kind === 'up' && !prefersReducedMotion();
-    const rankNumber = h('span', { class: 'battle__rank-num', attrs: { 'data-testid': 'ranking-my-rank' }, text: String(animate ? (league.myRankYesterday ?? me.rank) : me.rank) });
-    const chaser = chaserTextOf(league);
-    const card = h('section', { class: ['battle', change.kind === 'up' ? 'battle--up' : undefined, me.rank <= 3 ? 'battle--podium' : undefined], attrs: { 'data-testid': 'ranking-my-card' } }, [
-      change.kind === 'up' ? createConfetti() : undefined,
-      h('div', { class: 'battle__head' }, [h('span', { class: 'battle__league' }, [createIcon(leagueIconName(league.icon)), league.name]), createChangeBadge(change)]),
-      h('div', { class: 'battle__main' }, [
-        h('p', { class: 'battle__rank', attrs: { 'aria-label': `あなたは${me.rank}位` } }, [rankNumber, h('span', { class: 'battle__rank-unit', text: '位' })]),
-        h('p', { class: 'battle__count' }, [h('strong', { text: String(me.count) }), league.unit, h('small', { text: '今月' })]),
+    const rankNumber = h('span', { class: 'me-strip__num', attrs: { 'data-testid': 'ranking-my-rank' }, text: String(animate ? (league.myRankYesterday ?? me.rank) : me.rank) });
+    const strip = h('div', { class: ['me-strip', me.rank <= 3 ? 'me-strip--podium' : undefined], attrs: { 'data-testid': 'ranking-my-card' } }, [
+      figure,
+      h('p', { class: 'me-strip__rank', attrs: { 'aria-label': `あなたは${me.rank}位（${countLabel(me.count, league.unit)}）` } }, [
+        rankNumber,
+        h('span', { class: 'me-strip__unit', attrs: { 'aria-hidden': 'true' }, text: '位' }),
+        createChangeBadge(change),
       ]),
-      createGauge(league),
-      h('p', { class: 'battle__next', text: league.nextStepText }),
-      chaser === undefined ? undefined : h('p', { class: ['battle__chaser', league.rivalBelow?.gap !== undefined && league.rivalBelow.gap <= 1 ? 'battle__chaser--hot' : undefined], text: chaser }),
-      league.membershipNote === undefined ? undefined : h('p', { class: 'battle__note', text: league.membershipNote }),
-      createButton({ label: '順位を上げに出かける', variant: 'primary', testId: 'ranking-go-map', onClick: (): void => this.ctx.router.navigate('#/map') }),
+      go,
+      this.createRace(league),
     ]);
     if (animate) {
       this.swapTimer = setTimeout(() => {
         this.swapTimer = undefined;
         rankNumber.textContent = String(me.rank);
-        rankNumber.classList.add('battle__rank-num--pop');
+        rankNumber.classList.add('me-strip__num--pop');
       }, RANK_SWAP_DELAY_MS);
     }
-    return log.exit(card);
+    return log.exit(strip);
   }
 
   /**
-   * リーグタブを作る（各タブにあなたの順位を添える）。
+   * リーグタブを作る（リーグの色・アイコン・名前・あなたの順位）。
    * @param dto ランキング
    * @param selected 選択中のリーグ
    * @returns 要素
@@ -427,29 +525,55 @@ class RankingController {
         'button',
         {
           class: ['league-tab', l.id === dto.recommendedLeagueId ? 'league-tab--recommended' : undefined],
+          dataset: { league: l.id },
           attrs: { type: 'button', role: 'tab', 'aria-selected': l.id === selected ? 'true' : 'false', 'data-testid': `league-tab-${l.id}` },
           on: { click: userAction(`league-tab-${l.id}`, (): void => this.select(l.id)) },
         },
-        [
-          h('span', { class: 'league-tab__name' }, [createIcon(leagueIconName(l.icon)), l.shortName]),
-          h('span', { class: 'league-tab__rank', text: tabRankLabel(l) }),
-        ],
+        [h('span', { class: 'league-tab__name' }, [createIcon(leagueIconName(l.icon)), l.shortName]), h('span', { class: 'league-tab__rank', text: tabRankLabel(l) })],
       ),
     );
     return log.exit(h('div', { class: 'league-tabs', attrs: { role: 'tablist', 'aria-label': 'リーグ' } }, tabs));
   }
 
   /**
-   * 地区の主の一覧を作る。
+   * 地区の主の1タイル（地区名・主のアバター・あなた／あと○回）を作る。タップで地区ズームの地図へ。
+   * @param lord 地区の主の状況
+   * @returns 要素
+   */
+  private lordTile(lord: RankingLordDto): HTMLElement { // audit-ignore: fnlog-missing 5地区ぶん呼ぶ DOM 組立て（呼び出し側 createLords でログ）
+    const status = lordStatusOf(lord);
+    const short = districtShortOf(lord);
+    const lordEntry: RankingEntryDto | undefined =
+      lord.lordName === undefined ? undefined : { rank: 0, name: lord.lordName, isMe: lord.isMe, count: lord.lordCount, lordOf: [], avatarKey: this.avatarKeys.get(lord.lordName) ?? lord.lordName };
+    return h(
+      'button',
+      {
+        class: 'rk-lord',
+        dataset: { tone: status.tone },
+        attrs: { type: 'button', 'data-testid': 'ranking-lord-card', 'aria-label': `${lord.districtName} 主：${lord.lordName ?? 'なし'}。${status.tone === 'me' ? 'あなたが主' : `主まで${status.text}`}` },
+        on: { click: userAction('ranking-lord', (): void => this.ctx.router.navigate(`#/map/${lord.districtId}`)) },
+      },
+      [
+        h('span', { class: 'rk-lord__district', text: short }),
+        h('span', { class: 'rk-lord__figure', attrs: { 'aria-hidden': 'true' } }, [
+          lordEntry === undefined ? h('span', { class: 'rk-lord__empty', text: '？' }) : this.avatarOf(lordEntry, AVATAR_SCALE.lord, 'rk-lord__badge'),
+        ]),
+        h('span', { class: 'rk-lord__status', text: status.text }),
+      ],
+    );
+  }
+
+  /**
+   * 地区の主（直近30日）を小さなタイルの列で作る。
    * @param lords 地区ごとの状況
    * @returns 要素
    */
   private createLords(lords: readonly RankingLordDto[]): HTMLElement {
     const log = logger.fn('createLords', { lords: lords.length });
     return log.exit(
-      h('section', { class: 'ranking__lords', attrs: { 'data-testid': 'ranking-lords' } }, [
-        h('h3', { class: 'sheet-section-title', text: '地区の主（直近30日）── 王座を奪え' }),
-        ...lords.map((lord) => createLordCard(lord, (): void => this.ctx.router.navigate(`#/map/${lord.districtId}`))),
+      h('section', { class: ['rk-card', 'rk-card--lords'], attrs: { 'data-testid': 'ranking-lords', 'aria-label': '地区の主（直近30日）' } }, [
+        h('h3', { class: 'rk-card__title' }, [createIcon('crown'), '地区の主']),
+        h('div', { class: 'rk-lords' }, lords.map((lord) => this.lordTile(lord))),
       ]),
     );
   }

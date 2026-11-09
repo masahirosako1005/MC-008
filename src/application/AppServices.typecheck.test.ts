@@ -33,11 +33,21 @@ import { GetSpotDetailUseCase } from '@/application/usecases/spot/GetSpotDetailU
 import { GetZukanUseCase } from '@/application/usecases/spot/GetZukanUseCase';
 import { GetRankingUseCase } from '@/application/usecases/competition/GetRankingUseCase';
 import { EvaluateDistrictChangeUseCase } from '@/application/usecases/town/EvaluateDistrictChangeUseCase';
-import { EquipAvatarItemUseCase } from '@/application/usecases/town/EquipAvatarItemUseCase';
+import { GetAvatarClosetUseCase } from '@/application/usecases/avatar/GetAvatarClosetUseCase';
+import { SaveAvatarUseCase } from '@/application/usecases/avatar/SaveAvatarUseCase';
 import { GetMyTownUseCase } from '@/application/usecases/town/GetMyTownUseCase';
 import { GetTownStateUseCase } from '@/application/usecases/town/GetTownStateUseCase';
 import { InMemoryAvatarRepository } from '@/application/testing/InMemoryAvatarRepository';
+import { InMemorySettingsRepository } from '@/application/testing/InMemorySettingsRepository';
+import { GetRankStatusUseCase } from '@/application/usecases/reward/GetRankStatusUseCase';
+import { GetSettingsUseCase } from '@/application/usecases/settings/GetSettingsUseCase';
+import { UpdateTextScaleUseCase } from '@/application/usecases/settings/UpdateTextScaleUseCase';
+import { ExportDataUseCase } from '@/application/usecases/settings/ExportDataUseCase';
+import { DeleteAllDataUseCase } from '@/application/usecases/settings/DeleteAllDataUseCase';
+import { InMemoryDataPort } from '@/application/testing/InMemoryDataPort';
 import type { AvatarRepository } from '@/application/ports/AvatarRepository';
+import type { DataPort } from '@/application/ports/DataPort';
+import type { SettingsRepository } from '@/application/ports/SettingsRepository';
 import type { LordshipRepository } from '@/domain/competition/LordshipRepository';
 import type { RivalActionRepository, RivalRepository } from '@/domain/competition/RivalRepository';
 import type { SpotVisited } from '@/domain/events/DomainEvent';
@@ -54,6 +64,8 @@ import type { SpotRepository } from '@/domain/spot/SpotRepository';
 interface ContainerBag {
   readonly session: SessionRepository;
   readonly avatars: AvatarRepository;
+  readonly settings: SettingsRepository;
+  readonly userData: DataPort;
   readonly travelers: TravelerRepository;
   readonly ledgers: PointLedgerRepository;
   readonly lordships: LordshipRepository;
@@ -89,7 +101,13 @@ describe('AppServices の型（ユースケースの代入可能性）', () => {
     expectTypeOf<GetSpotDetailUseCase>().toExtend<AppServices['spotDetail']>();
     expectTypeOf<GetTownStateUseCase>().toExtend<AppServices['town']>();
     expectTypeOf<GetMyTownUseCase>().toExtend<AppServices['myTown']>();
-    expectTypeOf<EquipAvatarItemUseCase>().toExtend<AppServices['equipItem']>();
+    expectTypeOf<GetAvatarClosetUseCase>().toExtend<AppServices['avatar']>();
+    expectTypeOf<SaveAvatarUseCase>().toExtend<AppServices['saveAvatar']>();
+    expectTypeOf<GetRankStatusUseCase>().toExtend<AppServices['rankStatus']>();
+    expectTypeOf<GetSettingsUseCase>().toExtend<AppServices['settings']>();
+    expectTypeOf<UpdateTextScaleUseCase>().toExtend<AppServices['updateTextScale']>();
+    expectTypeOf<ExportDataUseCase>().toExtend<AppServices['exportData']>();
+    expectTypeOf<DeleteAllDataUseCase>().toExtend<AppServices['deleteAllData']>();
   });
 
   it('デモ5つのインスタンスが DemoServices の該当フィールドに代入できる', () => {
@@ -129,7 +147,13 @@ describe('AppServices の型（ユースケースの代入可能性）', () => {
     expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof GetSpotDetailUseCase>>();
     expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof GetTownStateUseCase>>();
     expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof GetMyTownUseCase>>();
-    expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof EquipAvatarItemUseCase>>();
+    expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof GetAvatarClosetUseCase>>();
+    expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof SaveAvatarUseCase>>();
+    expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof GetRankStatusUseCase>>();
+    expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof GetSettingsUseCase>>();
+    expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof UpdateTextScaleUseCase>>();
+    expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof ExportDataUseCase>>();
+    expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof DeleteAllDataUseCase>>();
     expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof EvaluateDistrictChangeUseCase>>();
     expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof AwardVisitRewardsUseCase>>();
     expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof UpdateDistrictLordUseCase>>();
@@ -150,6 +174,8 @@ describe('AppServices の型（ユースケースの代入可能性）', () => {
 function buildServices(tw: TestWorld, demo: boolean): AppServices {
   const updateLords = new UpdateDistrictLordUseCase(tw);
   const withAvatars = { ...tw, avatars: new InMemoryAvatarRepository() };
+  const withSettings = { settings: new InMemorySettingsRepository() };
+  const withUserData = { userData: new InMemoryDataPort({ settings: { textScale: 'large' } }), clock: tw.clock, demo };
   const bag = { ...tw, demoControl: tw.demo, updateLords, enabled: demo };
   const handlers = [new EvaluateDistrictChangeUseCase(tw), new AwardVisitRewardsUseCase(tw), updateLords];
   for (const handler of handlers) {
@@ -179,7 +205,13 @@ function buildServices(tw: TestWorld, demo: boolean): AppServices {
     ranking: new GetRankingUseCase(tw),
     town: new GetTownStateUseCase(tw),
     myTown: new GetMyTownUseCase(withAvatars),
-    equipItem: new EquipAvatarItemUseCase(withAvatars),
+    avatar: new GetAvatarClosetUseCase(withAvatars),
+    saveAvatar: new SaveAvatarUseCase(withAvatars),
+    rankStatus: new GetRankStatusUseCase(tw),
+    settings: new GetSettingsUseCase(withSettings),
+    updateTextScale: new UpdateTextScaleUseCase(withSettings),
+    exportData: new ExportDataUseCase(withUserData),
+    deleteAllData: new DeleteAllDataUseCase(withUserData),
     ...(demo ? { demo: demoServices } : {}),
   };
 }
@@ -203,7 +235,13 @@ describe('AppServices の組み立て（偽物一式での参照配線）', () =
     expect(must(await services.spotDetail.execute({ spotId: 'l_jo01' }))).toMatchObject({ status: 'visited', visitCount: 1 });
     expect(must(await services.town.execute()).districts.length).toBe(tw.spots.allDistricts().length);
     expect(must(await services.myTown.execute())).toMatchObject({ totalVisits: 1 });
-    expect(must(await services.equipItem.execute({}))).toEqual({});
+    expect(must(await services.saveAvatar.execute({ outfit: ['hair.bob'] })).outfit).toContain('hair.bob');
+    expect(must(await services.avatar.execute()).outfit).toContain('hair.bob');
+    expect(must(await services.rankStatus.execute())).toMatchObject({ totalVisits: 1, points: 10 });
+    expect(must(await services.updateTextScale.execute({ textScale: 'large' }))).toEqual({ textScale: 'large' });
+    expect(must(await services.settings.execute())).toEqual({ textScale: 'large' });
+    expect(must(await services.exportData.execute()).entryCount).toBe(1);
+    expect(must(await services.deleteAllData.execute({ confirmed: true }))).toEqual({ removed: 1 });
   });
 
   it('デモ有効なら demo が5つそろい、状態に dayOffset が付く', async () => {

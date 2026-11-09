@@ -16,7 +16,11 @@
     "master:build": "node scripts/master/build-master.mjs",
     "master:check": "node scripts/master/check-master.mjs",
     "master:hash": "node scripts/master/hash-master.mjs",
-    "e2e": "node scripts/e2e/demo-scenario.mjs"
+    "e2e": "node scripts/e2e/demo-scenario.mjs",
+    "server:build": "vite build -c vite.server.config.ts --mode demo",
+    "dev:backend": "node scripts/dev/backend.mjs dev",
+    "demo:backend": "node scripts/dev/backend.mjs serve",
+    "e2e:backend": "node scripts/e2e/cms-backend.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",

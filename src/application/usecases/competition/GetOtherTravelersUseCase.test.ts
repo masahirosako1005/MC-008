@@ -8,9 +8,9 @@ describe('GetOtherTravelersUseCase', () => {
     await seedTraveler(tw);
     const travelers = must(await new GetOtherTravelersUseCase(tw).execute());
     expect(travelers.map((t) => [t.key, t.name, t.initial, t.districtId, t.isLord])).toEqual([
-      ['r_taro:d_joka', '旅人タロウ', 'タ', 'd_joka', false],
-      ['r_hana:d_minato', '旅人ハナ', 'ハ', 'd_minato', false],
-      ['r_hana:d_joka', '旅人ハナ', 'ハ', 'd_joka', false],
+      ['r_taro:d_joka', 'おまいり番長', 'お', 'd_joka', false],
+      ['r_hana:d_minato', '花見は毎日派', '花', 'd_minato', false],
+      ['r_hana:d_joka', '花見は毎日派', '花', 'd_joka', false],
     ]);
   });
 
@@ -22,7 +22,7 @@ describe('GetOtherTravelersUseCase', () => {
       { districtId: 'd_joka', holder: 'traveler' },
     ]);
     const travelers = must(await new GetOtherTravelersUseCase(tw).execute());
-    const taro = travelers.filter((t) => t.name === '旅人タロウ');
+    const taro = travelers.filter((t) => t.name === 'おまいり番長');
     expect(taro.map((t) => [t.districtId, t.isLord])).toEqual([
       ['d_joka', false],
       ['d_honmachi', true],
@@ -37,7 +37,8 @@ describe('GetOtherTravelersUseCase', () => {
 });
 
 describe('initialOf', () => {
-  it('「旅人」を除いた最初の1文字を返す', () => {
+  it('最初の1文字を返す（「旅人」の接頭辞があれば除く）', () => {
+    expect(initialOf('親子でてくてく')).toBe('親');
     expect(initialOf('旅人アオイ')).toBe('ア');
     expect(initialOf('みなと')).toBe('み');
     expect(initialOf('旅人')).toBe('旅');

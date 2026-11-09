@@ -17,6 +17,7 @@ import type { TabBarHandle, TabItem } from '@/Common/ui/TabBar';
 import { ToastHost } from '@/Common/ui/Toast';
 import { createTopBar } from '@/Common/ui/TopBar';
 import type { AppContext } from '@/presentation/App/AppContext';
+import { createAppIcon } from '@/presentation/App/appIconArt';
 import { AppRouter } from '@/presentation/App/AppRouter';
 import type { RouteMatch, RouteName } from '@/presentation/App/AppRouter';
 import { createGearMenu } from '@/presentation/App/GearMenu';
@@ -26,31 +27,38 @@ import type { StatusBarHandle } from '@/presentation/App/StatusBar';
 import { createDemoMenuScreen } from '@/presentation/screens/Demo/DemoMenuScreen';
 import { createEffectHost } from '@/presentation/screens/Effects/EffectHost';
 import { createMapScreen } from '@/presentation/screens/Map/MapScreen';
-import { createMyTownScreen } from '@/presentation/screens/MyTown/MyTownScreen';
-import { createPlaceholderScreen } from '@/presentation/screens/Placeholder/PlaceholderScreen';
+import { createAvatarScreen } from '@/presentation/screens/Avatar/AvatarScreen';
+import { createRankScreen } from '@/presentation/screens/Rank/RankScreen';
 import { createRankingScreen } from '@/presentation/screens/Ranking/RankingScreen';
+import { createSettingsScreen } from '@/presentation/screens/Settings/SettingsScreen';
 import { createSpotDetailScreen } from '@/presentation/screens/Spot/SpotDetailScreen';
 import { createZukanScreen } from '@/presentation/screens/Zukan/ZukanScreen';
+import { mountLaunchScreen, shouldShowLaunch } from '@/presentation/screens/Launch/LaunchScreen';
 
 const logger = createLogger('presentation/App/App');
 
-/** 下部タブ（CLAUDE.md 6.1。id はルートのパスと同じ） */
+/** 下部タブの絵の一辺（CSS px） */
+const TAB_ART_PX = 28;
+
+/** 下部タブ（CLAUDE.md 6.1。絵はアイコン素材を使わず canvas で描く（appIconArt）。id はルートのパスと同じ。ランクは 2026-11-09 ユーザー指示で追加。マイ街は同日ユーザー指示でアバター（着せ替え）に置き換え） */
 export const TAB_ITEMS: readonly TabItem[] = [
-  { id: 'map', label: '地図', icon: '◎', testId: 'tab-map' },
-  { id: 'zukan', label: '図鑑', icon: '▤', testId: 'tab-zukan' },
-  { id: 'mytown', label: 'マイ街', icon: '⌂', testId: 'tab-mytown' },
-  { id: 'ranking', label: 'ランキング', icon: '♛', testId: 'tab-ranking' },
+  { id: 'map', label: '地図', icon: '◎', testId: 'tab-map', art: (): HTMLElement => createAppIcon('map', TAB_ART_PX) },
+  { id: 'zukan', label: '図鑑', icon: '▤', testId: 'tab-zukan', art: (): HTMLElement => createAppIcon('zukan', TAB_ART_PX) },
+  { id: 'avatar', label: 'アバター', icon: '☺', testId: 'tab-avatar', art: (): HTMLElement => createAppIcon('avatar', TAB_ART_PX) },
+  { id: 'ranking', label: 'ランキング', icon: '♛', testId: 'tab-ranking', art: (): HTMLElement => createAppIcon('ranking', TAB_ART_PX) },
+  { id: 'rank', label: 'ランク', icon: '◇', testId: 'tab-rank', art: (): HTMLElement => createAppIcon('rank', TAB_ART_PX) },
 ];
 
-/** ルートごとの画面ファクトリ（PoC で後回しの画面は準備中画面） */
+/** ルートごとの画面ファクトリ */
 const SCREEN_FACTORIES: Readonly<Record<RouteName, ScreenFactory>> = {
   map: createMapScreen,
   spot: createSpotDetailScreen,
   demo: createDemoMenuScreen,
   zukan: createZukanScreen,
-  mytown: createMyTownScreen,
+  avatar: createAvatarScreen,
+  rank: createRankScreen,
   ranking: createRankingScreen,
-  settings: createPlaceholderScreen('settings'),
+  settings: createSettingsScreen,
 };
 
 /** ルートごとに選択中にするタブ（スポット詳細は地図から来るので地図タブ。設定・デモはどれも選ばない） */
@@ -58,7 +66,8 @@ const TAB_FOR_ROUTE: Readonly<Record<RouteName, string | undefined>> = {
   map: 'map',
   spot: 'map',
   zukan: 'zukan',
-  mytown: 'mytown',
+  avatar: 'avatar',
+  rank: 'rank',
   ranking: 'ranking',
   settings: undefined,
   demo: undefined,
@@ -146,19 +155,34 @@ export class App {
 
   /**
    * アプリを起動する。文字の大きさを適用し、ステータスを読み込み、ルーターを開始して最初の画面を出す。
+   * 開始画面（screens/Launch）は静的スプラッシュと入れ替わる同じ瞬間に重ね、裏で最初の画面を用意しておく。
    * @sideEffect root の中身を置き換え、hashchange を監視し始める
    */
   async start(): Promise<void> {
     const log = logger.fn('start', { isDemo: this.services.isDemo });
     if (this.started) return log.exit(undefined, '起動済み');
     this.started = true;
-    applyTextScale('normal');
+    await this.applySavedTextScale();
+    if (shouldShowLaunch()) mountLaunchScreen(this.parts.phone, this.services);
     this.root.replaceChildren(this.parts.viewport);
     this.router.onChange((route) => void this.showRoute(route));
     this.services.demo?.onCatalogChanged?.(() => this.onCatalogChanged());
     await this.refreshStatus();
     this.router.start();
     log.info('アプリを起動しました', { route: this.router.current().name });
+    log.exit(undefined);
+  }
+
+  /**
+   * 保存済みの文字の大きさを最初の画面より前に当てる（設定画面で選んだもの。CLAUDE.md 6.1）。
+   * 読めなければ標準で始める（保存データは退避済み。起動は止めない）。
+   * @sideEffect html[data-text-scale] を書き換える
+   */
+  private async applySavedTextScale(): Promise<void> {
+    const log = logger.fn('applySavedTextScale');
+    const result = await this.services.settings.execute();
+    if (!result.ok) log.warn('文字の大きさの設定を読めないため、標準で始めます', { code: result.error.code });
+    applyTextScale(result.ok ? result.value.textScale : 'normal');
     log.exit(undefined);
   }
 

@@ -1,8 +1,8 @@
 /**
  * @file 下部タブ部品（Common/ui 層）
- * 地図／図鑑／マイ街／ランキングの4タブ（CLAUDE.md 6.1）。ラベル・記号・testid・選択時の処理は props で受ける（画面の知識を持たない）。
+ * 地図／図鑑／アバター／ランキング／ランクの5タブ（CLAUDE.md 6.1）。ラベル・記号・testid・選択時の処理は props で受ける（画面の知識を持たない）。
  * 選択中は aria-current="page" とアイコン下のピル・塗りアイコン・太字で示す（色だけに頼らない）。各タブは 44px 以上。
- * タブID が Common/ui/icons の名前なら SVG の線画アイコン、そうでなければ icon の文字を出す。
+ * art（呼び出し側が描いた絵。canvas など）があればそれを、無ければタブID が Common/ui/icons の名前なら SVG の線画アイコン、そうでなければ icon の文字を出す。
  */
 import { createLogger, setCorrelationId } from '@/Common/logging/logger';
 import { h } from '@/Common/ui/dom';
@@ -14,8 +14,10 @@ const logger = createLogger('Common/ui/TabBar');
 export interface TabItem {
   readonly id: string;
   readonly label: string;
-  /** タブの記号（1文字程度） */
+  /** タブの記号（1文字程度。art が無いときだけ使う） */
   readonly icon: string;
+  /** タブの絵を作る（canvas など。選んでいないときの淡い表示は CSS で行う） */
+  readonly art?: () => HTMLElement;
   readonly testId: string;
 }
 
@@ -57,7 +59,7 @@ export function createTabBar(opts: TabBarOptions): TabBarHandle {
         },
       },
       [
-        h('span', { class: 'tab-bar__icon', attrs: { 'aria-hidden': 'true' } }, [isIconName(tab.id) ? createIcon(tab.id) : tab.icon]),
+        h('span', { class: 'tab-bar__icon', attrs: { 'aria-hidden': 'true' } }, [tab.art !== undefined ? tab.art() : isIconName(tab.id) ? createIcon(tab.id) : tab.icon]),
         h('span', { class: 'tab-bar__label', text: tab.label }),
       ],
     ),

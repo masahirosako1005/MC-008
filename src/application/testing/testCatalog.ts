@@ -201,18 +201,18 @@ const SHOP_EVENT_DEFS: readonly ShopEventDef[] = [
   { id: 'c_yu01', spotId: 'l_yu02', kind: 'event', title: '湯けむり灯籠まつり', start: '2026-12-20', end: '2027-01-20' },
 ];
 
-/** テスト用のライバルの定義（旧 rivals.json と同じ。既定はタロウとハナの2人。本町の背景活動は誰も持たない＝D9） */
+/** テスト用のライバルの定義（旧 rivals.json と同じ。既定はおまいり番長と花見は毎日派の2人。本町の背景活動は誰も持たない＝D9） */
 const RIVAL_DEFS: readonly RivalDef[] = [
-  { id: 'r_taro', name: '旅人タロウ', patterns: [{ districtId: 'd_joka', intervalDays: 4, phase: 1 }] },
-  { id: 'r_hana', name: '旅人ハナ', patterns: [{ districtId: 'd_minato', intervalDays: 3, phase: 0 }, { districtId: 'd_joka', intervalDays: 9, phase: 4 }] },
-  { id: 'r_ken', name: '旅人ケン', patterns: [{ districtId: 'd_satoyama', intervalDays: 3, phase: 2 }] },
-  { id: 'r_mio', name: '旅人ミオ', patterns: [{ districtId: 'd_minato', intervalDays: 6, phase: 3 }, { districtId: 'd_yunosato', intervalDays: 8, phase: 5 }] },
-  { id: 'r_sora', name: '旅人ソラ', patterns: [{ districtId: 'd_yunosato', intervalDays: 3, phase: 1 }] },
-  { id: 'r_riku', name: '旅人リク', patterns: [{ districtId: 'd_joka', intervalDays: 7, phase: 2 }, { districtId: 'd_satoyama', intervalDays: 9, phase: 6 }] },
-  { id: 'r_aoi', name: '旅人アオイ', patterns: [{ districtId: 'd_yunosato', intervalDays: 10, phase: 7 }] },
+  { id: 'r_taro', name: 'おまいり番長', patterns: [{ districtId: 'd_joka', intervalDays: 4, phase: 1 }] },
+  { id: 'r_hana', name: '花見は毎日派', patterns: [{ districtId: 'd_minato', intervalDays: 3, phase: 0 }, { districtId: 'd_joka', intervalDays: 9, phase: 4 }] },
+  { id: 'r_ken', name: '天六の生き字引', patterns: [{ districtId: 'd_satoyama', intervalDays: 3, phase: 2 }] },
+  { id: 'r_mio', name: 'みおつくし', patterns: [{ districtId: 'd_minato', intervalDays: 6, phase: 3 }, { districtId: 'd_yunosato', intervalDays: 8, phase: 5 }] },
+  { id: 'r_sora', name: '中崎町カフェ部', patterns: [{ districtId: 'd_yunosato', intervalDays: 3, phase: 1 }] },
+  { id: 'r_riku', name: '商店街踏破中', patterns: [{ districtId: 'd_joka', intervalDays: 7, phase: 2 }, { districtId: 'd_satoyama', intervalDays: 9, phase: 6 }] },
+  { id: 'r_aoi', name: '親子でてくてく', patterns: [{ districtId: 'd_yunosato', intervalDays: 10, phase: 7 }] },
 ];
 
-/** 旧 ID のカタログの定義一式（既定のライバルはタロウ・ハナの2人） */
+/** 旧 ID のカタログの定義一式（既定のライバルはおまいり番長・花見は毎日派の2人） */
 const LEGACY_CATALOG_DEFS: CatalogDefs = Object.freeze({
   origin: TEST_ORIGIN, districts: DISTRICT_DEFS, spots: SPOT_DEFS, shopEvents: SHOP_EVENT_DEFS, rivals: RIVAL_DEFS, defaultRivalCount: 2,
 });
@@ -432,7 +432,7 @@ export class TestRivalRepository implements RivalRepository {
 
 /** buildTestCatalog・buildCatalog の選択肢 */
 export interface TestCatalogOptions {
-  /** true ならライバル7人（既定はタロウ・ハナの2人） */
+  /** true ならライバル7人（既定はおまいり番長・花見は毎日派の2人） */
   readonly allRivals?: boolean;
   /** 地図の背景（既定 EMPTY_BACKDROP） */
   readonly backdrop?: MapBackdrop;

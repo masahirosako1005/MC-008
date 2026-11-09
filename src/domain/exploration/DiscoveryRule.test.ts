@@ -44,18 +44,18 @@ function at(raw: string): Instant {
 }
 
 describe('半径の判定（境界値）', () => {
-  it('訪問: 40m は可、41m は不可', () => {
+  it('訪問（チェックイン）: 地図の円と同じ 80m は可、81m は不可（2026-11-09 に 40m から変更）', () => {
     expect(isWithinVisitRadius(0)).toBe(true);
-    expect(isWithinVisitRadius(40)).toBe(true);
-    expect(isWithinVisitRadius(41)).toBe(false);
+    expect(isWithinVisitRadius(80)).toBe(true);
+    expect(isWithinVisitRadius(81)).toBe(false);
   });
   it('発見: 80m は発見、81m は不可', () => {
     expect(isWithinDiscoveryRadius(80)).toBe(true);
     expect(isWithinDiscoveryRadius(81)).toBe(false);
   });
   it('小数は整数に丸めてから判定する（DI-18）', () => {
-    expect(isWithinVisitRadius(40.4)).toBe(true);
-    expect(isWithinVisitRadius(40.5)).toBe(false);
+    expect(isWithinVisitRadius(80.4)).toBe(true);
+    expect(isWithinVisitRadius(80.5)).toBe(false);
     expect(isWithinDiscoveryRadius(80.49)).toBe(true);
   });
   it('負・非数は常に範囲外', () => {

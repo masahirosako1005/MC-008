@@ -26,7 +26,7 @@ export interface RivalPattern {
 /** 模擬ライバル（マスタ rivals.json 由来・不変） */
 export interface Rival {
   readonly id: RivalId;
-  /** 表示名（例: 旅人タロウ） */
+  /** 表示名（例: おまいり番長） */
   readonly name: string;
   /** 地区ごとの背景活動（同じ地区は1件まで。空でもよい＝デモ行動だけで動くライバル） */
   readonly patterns: readonly RivalPattern[];

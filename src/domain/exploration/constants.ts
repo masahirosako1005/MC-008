@@ -6,8 +6,12 @@
 /** 発見の半径（メートル）。この距離以内に入ると図鑑にシルエット登録（仮） */
 export const DISCOVERY_RADIUS_M = 80;
 
-/** 訪問の半径（メートル）。この距離以内で訪問操作が成立（仮）。GPS 誤差を見込んだ値（CLAUDE.md 10） */
-export const VISIT_RADIUS_M = 40;
+/**
+ * 訪問（チェックイン）の半径（メートル）。この距離以内で訪問操作が成立（仮）。GPS 誤差を見込んだ値（CLAUDE.md 10）。
+ * 2026-11-09 ユーザー指示「円の中にいるときはチェックインできるように」で 40m → 80m。地図に描く円（DISCOVERY_RADIUS_M）と同じ値にして、
+ * 「円の中に入っているのにチェックインできない」をなくす。
+ */
+export const VISIT_RADIUS_M = DISCOVERY_RADIUS_M;
 
 /** 訪問を受け付ける位置精度の上限（メートル）。これより粗い測位では訪問不可（DI-14）（仮） */
 export const MAX_ACCURACY_M = 100;

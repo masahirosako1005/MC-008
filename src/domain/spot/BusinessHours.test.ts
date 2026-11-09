@@ -15,7 +15,7 @@ describe('BusinessHours', () => {
   });
 
   it('マスタの文字列を入力欄の値に戻せる（戻せない書式は undefined）', () => {
-    expect(parseBusinessHoursText('8:00–18:00（水休）')).toEqual({ open: '8:00', close: '18:00', closedDays: [2] });
+    expect(parseBusinessHoursText('8:00–18:00（水休）')).toEqual({ open: '8:00', close: '18:00', closedDays: [2], note: '' });
     expect(parseBusinessHoursText('12:00–18:00（月火休）')?.closedDays).toEqual([0, 1]);
     expect(parseBusinessHoursText('15:00–23:00（無休）')?.closedDays).toEqual([]);
     expect(parseBusinessHoursText('境内自由')).toBeUndefined();
@@ -30,6 +30,15 @@ describe('BusinessHours', () => {
     expect(minutesOf('24:30')).toBeUndefined();
     expect(minutesOf('9:5')).toBeUndefined();
     expect(minutesOf('24:00')).toBe(1440);
+  });
+
+  it('補足は「・」でつないで後ろに足し、戻すときも取り出せる（全体で40字以内）', () => {
+    const hours = createBusinessHours({ open: '9:00', close: '18:00', closedDays: [6], note: ' 土曜は15時まで ' });
+    expect(hours.ok && formatBusinessHours(hours.value)).toBe('9:00–18:00（日休）・土曜は15時まで');
+    expect(parseBusinessHoursText('9:00–18:00（日休）・土曜は15時まで')?.note).toBe('土曜は15時まで');
+    expect(createBusinessHours({ open: '9:00', close: '18:00', closedDays: [], note: 'あ'.repeat(17) }).ok).toBe(false);
+    const longest = createBusinessHours({ open: '10:30', close: '24:00', closedDays: [0, 1, 2, 3, 4, 5], note: 'あ'.repeat(16) });
+    expect(longest.ok && [...formatBusinessHours(longest.value)].length).toBeLessThanOrEqual(40);
   });
 
   it('マスタの営業時間（書式が合うもの）は往復しても同じ文字列になる', () => {

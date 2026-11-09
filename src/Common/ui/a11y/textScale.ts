@@ -1,7 +1,7 @@
 /**
  * @file 文字拡大設定（Common/ui/a11y 層）
  * html 要素の data-text-scale を切り替え、CSS のルートフォントを 16/18/20px にする（docs/08 §6、CLAUDE.md 6.1）。
- * Canvas の文字は textScaleFactor() 倍で描く。PoC では既定の normal のまま（設定画面は後回し）。
+ * Canvas の文字は textScaleFactor() 倍で描く。設定画面（screens/Settings）で選んだ値を端末に保存し、起動時に App が当てる。
  */
 import { createLogger } from '@/Common/logging/logger';
 

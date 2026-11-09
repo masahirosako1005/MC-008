@@ -14,12 +14,20 @@ export const CMS_PAGES = ['home', 'info', 'events', 'data'] as const;
 /** CMS のページ */
 export type CmsPage = (typeof CMS_PAGES)[number];
 
-/** ページの表示名（ページ切り替えの順。スマホ幅でも4つが1行に収まる長さにする） */
+/** ページの表示名（ページ切り替えの順） */
 export const CMS_PAGE_LABELS: Readonly<Record<CmsPage, string>> = {
   home: 'ホーム',
   info: 'お店の情報',
-  events: 'クーポン',
+  events: 'クーポン・イベント',
   data: '来店データ',
+};
+
+/** スマホ幅で使う短い表示名 */
+export const CMS_PAGE_SHORT_LABELS: Readonly<Record<CmsPage, string>> = {
+  home: 'ホーム',
+  info: 'お店',
+  events: 'クーポン',
+  data: 'データ',
 };
 
 /** CMS のルート */

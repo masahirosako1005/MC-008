@@ -126,7 +126,7 @@ export function nearestSpotLines(spot: NearbySpotDto): { readonly title: string;
 /**
  * 地区カードの「主」の文言を作る。
  * @param district 地区カード
- * @returns '主：あなた'／'主：旅人タロウ'。主がいなければ undefined
+ * @returns '主：あなた'／'主：おまいり番長'。主がいなければ undefined
  */
 export function lordLabelOf(district: Pick<DistrictCardDto, 'lordName' | 'isLordMe'>): string | undefined {
   const log = logger.fn('lordLabelOf', { isLordMe: district.isLordMe, hasLord: district.lordName !== undefined });

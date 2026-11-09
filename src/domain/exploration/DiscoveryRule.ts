@@ -1,5 +1,5 @@
 /**
- * @file 発見（80m）・訪問（40m）の距離ルールと近傍探索（domain/exploration 層のドメインサービス）
+ * @file 発見（80m）・訪問（80m）の距離ルールと近傍探索（domain/exploration 層のドメインサービス）
  * 発見は DISCOVERY_RADIUS_M 以内で図鑑にシルエット登録、訪問は VISIT_RADIUS_M 以内で成立（CLAUDE.md 4.2）。
  * 距離は m 単位の整数に丸めて判定する（DI-18）。位置の妥当性（移動速度）は本番 GPS のみで使う（DI-14）。
  */
@@ -43,7 +43,7 @@ export function isWithinDiscoveryRadius(meters: number): boolean {
 }
 
 /**
- * 距離が訪問の半径（VISIT_RADIUS_M = 40m）以内か判定する。整数に丸めてから比べる（半径ちょうどは可、1m でも超えたら不可）。
+ * 距離が訪問の半径（VISIT_RADIUS_M = 80m）以内か判定する。整数に丸めてから比べる（半径ちょうどは可、1m でも超えたら不可）。
  * 発見（80m）とは別ルールなので混同しないこと。
  * @param meters 距離（メートル。負・非数は false）
  * @returns 訪問可能なら true

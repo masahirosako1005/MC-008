@@ -1,7 +1,7 @@
 /**
  * @file 地図下シート（presentation/screens/Map/Sheet 層）
  * 3段階（CLAUDE.md 6.3、wireframes/03_sheet）:
- * - つまみ: いちばん近いスポット（名前 or ？・距離・状態。40m 以内なら「訪問する」）と、いちばん強い再訪理由1件
+ * - つまみ: いちばん近いスポット（名前 or ？・距離・状態。チェックインできる範囲（80m）なら「チェックイン」）と、いちばん強い再訪理由1件
  * - 半分: 近隣スポット（距離順）と再訪理由カード（優先順）
  * - 全画面: 5地区の地区カード（Lv・色あせ・主・次の目標）と「Lvは下がらない」の注記
  * refresh() で nearby・reasons・town を並列に読み、読込中・失敗・成功の3状態を描き分ける（docs/03 §6）。
@@ -301,7 +301,7 @@ function buildPeek(data: SheetData, deps: RenderDeps): HTMLElement {
 
 /**
  * つまみの「いちばん近いスポット」の行を作る（data-testid="sheet-nearest"）。
- * 40m 以内で今日まだ訪問していなければ「訪問する」（data-testid="sheet-visit"）を出し、押すとスポット詳細へ。
+ * チェックインできる範囲（VISIT_RADIUS_M＝80m）で今日まだ訪問していなければ「チェックイン」（data-testid="sheet-visit"）を出し、押すとスポット詳細へ。
  * @param spot いちばん近いスポット（無ければ undefined）
  * @param deps 遷移の受け口
  * @returns 行の要素
@@ -321,7 +321,7 @@ function buildNearestRow(spot: NearbySpotDto | undefined, deps: RenderDeps): HTM
       h('span', { class: 'map-sheet__nearest-sub', text: lines.sub }),
     ]),
   ]);
-  const visit = spot.canVisit ? createButton({ label: '訪問する', variant: 'primary', testId: 'sheet-visit', onClick: (): void => deps.goSpot(spotId) }) : undefined;
+  const visit = spot.canVisit ? createButton({ label: 'チェックイン', variant: 'primary', testId: 'sheet-visit', onClick: (): void => deps.goSpot(spotId) }) : undefined;
   const attrs = {
     'data-testid': 'sheet-nearest',
     'data-spot-id': spotId,

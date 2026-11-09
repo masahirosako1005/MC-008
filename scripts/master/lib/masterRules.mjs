@@ -93,13 +93,13 @@ export const REQUIRED_SHOPS = Object.freeze({
 
 /** docs/08 §9.3 の模擬ライバル（名前と地区ごとの訪問間隔） */
 export const EXPECTED_RIVALS = Object.freeze({
-  r_taro: { name: '旅人タロウ', intervals: { d_minamimori: 4 } },
-  r_hana: { name: '旅人ハナ', intervals: { d_okawa: 3, d_minamimori: 9 } },
-  r_ken: { name: '旅人ケン', intervals: { d_tenroku: 3 } },
-  r_mio: { name: '旅人ミオ', intervals: { d_okawa: 6, d_ogimachi: 8 } },
-  r_sora: { name: '旅人ソラ', intervals: { d_ogimachi: 3 } },
-  r_riku: { name: '旅人リク', intervals: { d_minamimori: 7, d_tenroku: 9 } },
-  r_aoi: { name: '旅人アオイ', intervals: { d_ogimachi: 10 } },
+  r_taro: { name: 'おまいり番長', intervals: { d_minamimori: 4 } },
+  r_hana: { name: '花見は毎日派', intervals: { d_okawa: 3, d_minamimori: 9 } },
+  r_ken: { name: '天六の生き字引', intervals: { d_tenroku: 3 } },
+  r_mio: { name: 'みおつくし', intervals: { d_okawa: 6, d_ogimachi: 8 } },
+  r_sora: { name: '中崎町カフェ部', intervals: { d_ogimachi: 3 } },
+  r_riku: { name: '商店街踏破中', intervals: { d_minamimori: 7, d_tenroku: 9 } },
+  r_aoi: { name: '親子でてくてく', intervals: { d_ogimachi: 10 } },
 });
 
 /** 背景活動を誰も持たない地区（docs/08 D9・§9.3） */

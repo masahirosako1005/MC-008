@@ -62,7 +62,7 @@ describe('近隣スポットの表示', () => {
 describe('地区カードの文言', () => {
   it('主は自分なら「あなた」、いなければ出さない', () => {
     expect(lordLabelOf({ isLordMe: true, lordName: '旅人' })).toBe('主：あなた');
-    expect(lordLabelOf({ isLordMe: false, lordName: '旅人タロウ' })).toBe('主：旅人タロウ');
+    expect(lordLabelOf({ isLordMe: false, lordName: 'おまいり番長' })).toBe('主：おまいり番長');
     expect(lordLabelOf({ isLordMe: false })).toBeUndefined();
   });
   it('2行目は最終訪問と次の目標（達成率は出さない）', () => {

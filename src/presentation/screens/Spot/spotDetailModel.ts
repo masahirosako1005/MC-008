@@ -16,8 +16,8 @@ export interface VisitButtonState {
   readonly label: string;
 }
 
-/** 訪問できるときのボタン文言（40m は VISIT_RADIUS_M（仮）。presentation は domain の値を import しないため文言で持つ） */
-export const VISIT_ENABLED_LABEL = '訪問する（40m以内）';
+/** 訪問できるときのボタン文言（80m は VISIT_RADIUS_M（仮）＝地図の円と同じ。2026-11-09 に 40m から変更。presentation は文言で持つ） */
+export const VISIT_ENABLED_LABEL = 'チェックインする（80m以内）';
 
 /** クーポン・イベントの種類の表示名 */
 export const SHOP_EVENT_KIND_LABELS: Readonly<Record<ShopEventDto['kind'], string>> = { coupon: 'クーポン', event: 'イベント' };

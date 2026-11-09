@@ -8,29 +8,29 @@
 
 /** ライバルの原データ。build-master.mjs がそのまま public/master/rivals.json に書く */
 export const RIVAL_SOURCES = Object.freeze([
-  { id: 'r_taro', name: '旅人タロウ', patterns: [{ districtId: 'd_minamimori', intervalDays: 4, phase: 1 }] },
+  { id: 'r_taro', name: 'おまいり番長', patterns: [{ districtId: 'd_minamimori', intervalDays: 4, phase: 1 }] },
   {
-    id: 'r_hana', name: '旅人ハナ',
+    id: 'r_hana', name: '花見は毎日派',
     patterns: [
       { districtId: 'd_okawa', intervalDays: 3, phase: 0 },
       { districtId: 'd_minamimori', intervalDays: 9, phase: 4 },
     ],
   },
-  { id: 'r_ken', name: '旅人ケン', patterns: [{ districtId: 'd_tenroku', intervalDays: 3, phase: 2 }] },
+  { id: 'r_ken', name: '天六の生き字引', patterns: [{ districtId: 'd_tenroku', intervalDays: 3, phase: 2 }] },
   {
-    id: 'r_mio', name: '旅人ミオ',
+    id: 'r_mio', name: 'みおつくし',
     patterns: [
       { districtId: 'd_okawa', intervalDays: 6, phase: 3 },
       { districtId: 'd_ogimachi', intervalDays: 8, phase: 5 },
     ],
   },
-  { id: 'r_sora', name: '旅人ソラ', patterns: [{ districtId: 'd_ogimachi', intervalDays: 3, phase: 1 }] },
+  { id: 'r_sora', name: '中崎町カフェ部', patterns: [{ districtId: 'd_ogimachi', intervalDays: 3, phase: 1 }] },
   {
-    id: 'r_riku', name: '旅人リク',
+    id: 'r_riku', name: '商店街踏破中',
     patterns: [
       { districtId: 'd_minamimori', intervalDays: 7, phase: 2 },
       { districtId: 'd_tenroku', intervalDays: 9, phase: 6 },
     ],
   },
-  { id: 'r_aoi', name: '旅人アオイ', patterns: [{ districtId: 'd_ogimachi', intervalDays: 10, phase: 7 }] },
+  { id: 'r_aoi', name: '親子でてくてく', patterns: [{ districtId: 'd_ogimachi', intervalDays: 10, phase: 7 }] },
 ]);

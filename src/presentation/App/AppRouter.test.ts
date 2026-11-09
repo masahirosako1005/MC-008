@@ -20,7 +20,7 @@ describe('resolveRoute', () => {
     expect(resolveRoute('#/map', false).match).toEqual({ name: 'map', params: {}, path: '#/map' });
     expect(resolveRoute('#/map/d_joka', false).match).toEqual({ name: 'map', params: { districtId: 'd_joka' }, path: '#/map/d_joka' });
     expect(resolveRoute('#/spot/s_hm01', false).match).toEqual({ name: 'spot', params: { spotId: 's_hm01' }, path: '#/spot/s_hm01' });
-    for (const name of ['zukan', 'mytown', 'ranking', 'settings'] as const) {
+    for (const name of ['zukan', 'avatar', 'rank', 'ranking', 'settings'] as const) {
       expect(resolveRoute(`#/${name}`, false)).toEqual({ match: { name, params: {}, path: `#/${name}` }, redirected: false });
     }
     expect(resolveRoute('#/zukan/d_minato', false).match.params).toEqual({ districtId: 'd_minato' });

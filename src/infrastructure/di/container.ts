@@ -3,6 +3,8 @@
  * 本番／デモ／テストの切替はここだけで行う（docs/01 §3-3、docs/02 §5）。デモ用ユースケースは demo モードのときだけ登録する（SEC-02）。
  * イベント連鎖は SpotVisited → 地区の変化 → 報酬 → 地区の主 の順に購読登録する（docs/08 §4.2、DI-11）。
  */
+import { CMS_BACKEND } from '@/Common/constants/env';
+import type { CmsBackend } from '@/Common/constants/env';
 import { createLogger } from '@/Common/logging/logger';
 import { ok } from '@/Common/result/Result';
 import type { Result } from '@/Common/result/Result';
@@ -28,12 +30,20 @@ import { GetSpotDetailUseCase } from '@/application/usecases/spot/GetSpotDetailU
 import { GetZukanUseCase } from '@/application/usecases/spot/GetZukanUseCase';
 import { GetRankingUseCase } from '@/application/usecases/competition/GetRankingUseCase';
 import { GetOtherTravelersUseCase } from '@/application/usecases/competition/GetOtherTravelersUseCase';
+import { GetRankStatusUseCase } from '@/application/usecases/reward/GetRankStatusUseCase';
 import { EvaluateDistrictChangeUseCase } from '@/application/usecases/town/EvaluateDistrictChangeUseCase';
-import { EquipAvatarItemUseCase } from '@/application/usecases/town/EquipAvatarItemUseCase';
+import { GetAvatarClosetUseCase } from '@/application/usecases/avatar/GetAvatarClosetUseCase';
+import { SaveAvatarUseCase } from '@/application/usecases/avatar/SaveAvatarUseCase';
 import { GetMyTownUseCase } from '@/application/usecases/town/GetMyTownUseCase';
 import { GetTownStateUseCase } from '@/application/usecases/town/GetTownStateUseCase';
+import { GetSettingsUseCase } from '@/application/usecases/settings/GetSettingsUseCase';
+import { UpdateTextScaleUseCase } from '@/application/usecases/settings/UpdateTextScaleUseCase';
+import { ExportDataUseCase } from '@/application/usecases/settings/ExportDataUseCase';
+import { DeleteAllDataUseCase } from '@/application/usecases/settings/DeleteAllDataUseCase';
 import type { Clock } from '@/domain/ports/Clock';
 import type { GeoProvider } from '@/domain/ports/GeoProvider';
+import type { ApiClientDeps } from '@/infrastructure/api/requestApi';
+import { buildServerCmsReflection } from '@/infrastructure/di/cmsServerReflection';
 import { DemoControlAdapter } from '@/infrastructure/demo/DemoControlAdapter';
 import { InMemoryEventBus } from '@/infrastructure/events/InMemoryEventBus';
 import { BrowserGeoProvider } from '@/infrastructure/geo/BrowserGeoProvider';
@@ -55,6 +65,8 @@ import { LocalStoragePointLedgerRepository } from '@/infrastructure/storage/Loca
 import { LocalStorageRivalActionRepository } from '@/infrastructure/storage/LocalStorageRivalActionRepository';
 import { LocalStorageAvatarRepository } from '@/infrastructure/storage/LocalStorageAvatarRepository';
 import { LocalStorageSessionRepository } from '@/infrastructure/storage/LocalStorageSessionRepository';
+import { LocalStorageSettingsRepository } from '@/infrastructure/storage/LocalStorageSettingsRepository';
+import { LocalStorageDataPort } from '@/infrastructure/storage/LocalStorageDataPort';
 import { LocalStorageTravelerRepository } from '@/infrastructure/storage/LocalStorageTravelerRepository';
 import { DemoClock } from '@/infrastructure/time/DemoClock';
 import { SystemClock } from '@/infrastructure/time/SystemClock';
@@ -74,6 +86,10 @@ export interface ContainerOptions {
   readonly fetchText?: FetchText;
   /** 実時刻（エポックミリ秒）。テストで固定する */
   readonly nowMs?: () => number;
+  /** 店舗CMS の登録内容の受け取り方（省略時は CMS_BACKEND。'server' は連携サーバーの公開スナップショット＝docs/09 §7.3） */
+  readonly cmsBackend?: CmsBackend;
+  /** 連携サーバーの呼び出し（テストで起点と fetch を渡す） */
+  readonly cmsApi?: ApiClientDeps;
 }
 
 /** 時計・位置・デモ操作のポート一式 */
@@ -119,6 +135,8 @@ function buildBaseDeps(opts: ContainerOptions & { readonly store: KeyValueStore 
     ...ports,
     session: new LocalStorageSessionRepository(repo),
     avatars: new LocalStorageAvatarRepository(repo),
+    settings: new LocalStorageSettingsRepository(repo),
+    userData: new LocalStorageDataPort(repo),
     travelers: new LocalStorageTravelerRepository(repo),
     ledgers: new LocalStoragePointLedgerRepository(repo),
     lordships: new LocalStorageLordshipRepository(repo),
@@ -220,6 +238,10 @@ async function buildCmsReflection(opts: ContainerOptions, master: LoadedMaster, 
   // import.meta.env はビルド時に文字どおりの定数へ置き換わるので、本番ビルドからは以下の CMS の処理ごと消える（MUST-8）。
   // env.ts の isProductionBuild 経由だと定数として畳み込まれないため、ここだけ直接書く（テストでは PROD=false なので通る）
   if ((import.meta.env.PROD && import.meta.env.MODE !== 'demo') || opts.mode !== 'demo') return log.exit({ spots: master.spots });
+  if ((opts.cmsBackend ?? CMS_BACKEND) === 'server') {
+    // 連携サーバーの公開スナップショットを重ねる（別の端末の CMS で保存しても届く。docs/09 §7.3）
+    return log.exit(await buildServerCmsReflection({ catalog: master.catalog, store, prefix: PREFIX_BY_MODE.demo, ...(opts.cmsApi === undefined ? {} : { api: opts.cmsApi }) }));
+  }
   const overlays = new LocalStorageCmsOverlayRepository({ store, prefix: PREFIX_BY_MODE.demo });
   const spots = new RefreshableSpotRepository(await overlaidCatalog(overlays, master.catalog));
   const listeners = new Set<() => void>();
@@ -263,9 +285,15 @@ function buildServices(base: BaseDeps, updateLords: UpdateDistrictLordUseCase, c
     zukan: new GetZukanUseCase(base),
     town: new GetTownStateUseCase(base),
     myTown: new GetMyTownUseCase(base),
-    equipItem: new EquipAvatarItemUseCase(base),
+    avatar: new GetAvatarClosetUseCase(base),
+    saveAvatar: new SaveAvatarUseCase(base),
+    rankStatus: new GetRankStatusUseCase(base),
     ranking: new GetRankingUseCase(base),
     travelers: new GetOtherTravelersUseCase(base),
+    settings: new GetSettingsUseCase(base),
+    updateTextScale: new UpdateTextScaleUseCase(base),
+    exportData: new ExportDataUseCase(base),
+    deleteAllData: new DeleteAllDataUseCase(base),
     demo,
   });
 }

@@ -1,6 +1,6 @@
 /**
  * @file 訪問ボタン（presentation/screens/Spot 層）
- * 40m（VISIT_RADIUS_M（仮））以内でだけ有効。無効のときは押せない理由（あと n m など）をボタンの文言で伝える（wireframes/04_spot）。
+ * 80m（VISIT_RADIUS_M（仮）＝地図の円と同じ）以内でだけ有効。無効のときは押せない理由（あと n m など）をボタンの文言で伝える（wireframes/04_spot）。
  * 店頭QR での訪問確定（CLAUDE.md 10章）は未実装のため、案内は出さない（準備中の機能を見せない）。
  * 実行中は createButton が Promise の完了まで無効化する（二重タップ防止）。
  */

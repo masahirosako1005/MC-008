@@ -1,7 +1,7 @@
 /**
  * @file アイテム獲得の演出（presentation/screens/Effects 層）
  * 淡い円の上にアイテムの絵（現代の道具として描く：LED ランタン・小旗・鉢植え）が弾むように出て、きらめきと紙吹雪（Canvas・rAF）。
- * 文言は「アイテム獲得：{名前}」「マイ街とアバターに飾れます」（wireframes/08）。動きを減らす設定なら完成形だけを描く。
+ * 文言は「アイテム獲得：{名前}」「アバター画面で身につけられます」（wireframes/08 の文言をアバター画面に合わせて変更）。動きを減らす設定なら完成形だけを描く。
  */
 import { createLogger } from '@/Common/logging/logger';
 import { beginFrame } from '@/Common/ui/canvas/CanvasBase';
@@ -73,7 +73,7 @@ export function createItemAcquiredEffect(model: ItemAcquiredEffectModel): Effect
   const element = h('div', { class: 'fx__content' }, [
     canvasBox,
     h('h2', { class: 'fx__title', text: title }),
-    h('p', { class: 'fx__text', text: 'マイ街とアバターに飾れます' }),
+    h('p', { class: 'fx__text', text: 'アバター画面で身につけられます' }),
   ]);
   let animation: CanvasAnimationHandle | undefined;
   const view: EffectView = {

@@ -4,6 +4,9 @@ import { createTestWorld, must, seedTraveler, TEST_TRAVELER_ID } from '@/applica
 import type { TestWorld } from '@/application/testing/fakes';
 import { createScenarioWorld } from '@/application/testing/scenarioCatalog';
 import { EnsureTravelerUseCase } from '@/application/usecases/session/EnsureTravelerUseCase';
+import { persistNewTraveler } from '@/application/usecases/session/TravelerSetup';
+import { Traveler } from '@/domain/exploration/Traveler';
+import { PointLedger } from '@/domain/reward/PointLedger';
 import { holderKey } from '@/domain/competition/LordHolder';
 
 /** テスト用の UUID（crypto.randomUUID の形） */
@@ -39,10 +42,27 @@ describe('EnsureTravelerUseCase', () => {
     expect(output).toEqual({ travelerId: 't_demoregular', profile: 'regular', created: true });
     expect(tw.session.current.activeTravelerId).toBe('t_demoregular');
     const traveler = must(await tw.travelers.findById(must(parseTravelerId('t_demoregular'))));
-    expect(traveler?.visits).toHaveLength(21);
-    expect(must(await tw.ledgers.find(must(parseTravelerId('t_demoregular')))).balance()).toBe(255);
+    expect(traveler?.visits).toHaveLength(45);
+    expect(must(await tw.ledgers.find(must(parseTravelerId('t_demoregular')))).balance()).toBe(600);
     const board = must(await tw.lordships.find(must(parseTravelerId('t_demoregular'))));
     expect(Object.fromEntries(board.entries.map((e) => [e.districtId, e.holder && holderKey(e.holder)]))).toMatchObject({ d_tenma: 'traveler', d_minamimori: 'rival:r_taro' });
+  });
+
+  it('デモビルドで保存済みの「通い慣れた人」が今のシードより古ければ作り直し、最新のシードなら作り直さない', async () => {
+    const tw = createScenarioWorld({ allRivals: true });
+    const id = must(parseTravelerId('t_demoregular'));
+    must(await persistNewTraveler(tw, { traveler: Traveler.create(id, '通い慣れた人', 'regular'), ledger: PointLedger.empty(id), today: tw.clock.today() }));
+    expect(must(await ensureFor(tw, true).useCase.execute())).toEqual({ travelerId: 't_demoregular', profile: 'regular', created: true });
+    expect(must(await tw.travelers.findById(id))?.visits).toHaveLength(45);
+    expect(must(await ensureFor(tw, true).useCase.execute())).toEqual({ travelerId: 't_demoregular', profile: 'regular', created: false });
+  });
+
+  it('本番ビルドでは古いシードの判定をしない（保存済みの旅人をそのまま使う）', async () => {
+    const tw = createScenarioWorld({ allRivals: true });
+    const id = must(parseTravelerId('t_demoregular'));
+    must(await persistNewTraveler(tw, { traveler: Traveler.create(id, '通い慣れた人', 'regular'), ledger: PointLedger.empty(id), today: tw.clock.today() }));
+    expect(must(await ensureFor(tw, false).useCase.execute())).toMatchObject({ travelerId: 't_demoregular', created: false });
+    expect(must(await tw.travelers.findById(id))?.visits).toHaveLength(0);
   });
 
   it('本番ビルドでは UUID から端末ID（t_ ＋ 16進32桁）を作り、profile user・既定の表示名で保存する', async () => {

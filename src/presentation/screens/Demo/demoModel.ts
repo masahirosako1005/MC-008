@@ -20,7 +20,7 @@ export type AdvanceDays = (typeof ADVANCE_DAYS)[number];
 export const DEFAULT_RIVAL_ID = 'r_taro';
 
 /** 既定のライバルの名前（ボタン文言用。結果のトーストは application が返す名前を使う） */
-export const DEFAULT_RIVAL_NAME = '旅人タロウ';
+export const DEFAULT_RIVAL_NAME = 'おまいり番長';
 
 /** ライバル行動の既定の地区（天満。背景活動のライバルがいないので手順5で主が確実に交代する＝D9、docs/08 §9.3） */
 export const DEFAULT_RIVAL_DISTRICT_ID = 'd_tenma';
@@ -70,7 +70,7 @@ export function formatDemoDate(today: string): string {
 /**
  * ライバル行動ボタンの文言。
  * @param districtName 地区名
- * @returns '旅人タロウが天満地区の主を奪う'
+ * @returns 'おまいり番長が天満地区の主を奪う'
  */
 export function rivalButtonLabel(districtName: string): string {
   return `${DEFAULT_RIVAL_NAME}が${districtName}の主を奪う`;
@@ -79,7 +79,7 @@ export function rivalButtonLabel(districtName: string): string {
 /**
  * ライバル行動の結果のトースト文言。
  * @param output ライバル行動の結果
- * @returns 交代したら '旅人タロウが天満地区の主になりました'、しなければ訪問した旨
+ * @returns 交代したら 'おまいり番長が天満地区の主になりました'、しなければ訪問した旨
  */
 export function rivalResultMessage(output: SimulateRivalOutput): string {
   const log = logger.fn('rivalResultMessage', { districtId: output.districtId, changed: output.changed });

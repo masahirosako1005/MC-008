@@ -1,20 +1,37 @@
 /**
- * @file 図鑑の表示文言を決める純粋関数（presentation/screens/Zukan 層）
- * タイルの名前・補足・読み上げ名・なじみ度の星・季節の印、ヘッダーの数字を DOM と切り離して決め、テストできるようにする。
+ * @file 図鑑の表示文言と絞り込みを決める純粋関数（presentation/screens/Zukan 層）
+ * タイルの名前・補足・読み上げ名・なじみ度の星・季節の印、見出しの数字、地区と状態の絞り込みを DOM と切り離して決め、テストできるようにする。
  * 達成率（％や「全n件中m件」）は作らない（CLAUDE.md 6.5）。
  */
-import type { SeasonDto, SpotKindDto, ZukanDistrictDto, ZukanTileDto } from '@/application/dto/Dto';
+import type { SeasonDto, SpotKindDto, SpotStatusDto, ZukanDistrictDto, ZukanTileDto } from '@/application/dto/Dto';
 import { createLogger } from '@/Common/logging/logger';
 import { UNKNOWN_SPOT_NAME } from '@/Common/ui/cards/SpotCard';
 import { KIND_LABELS, LEVEL_DESCRIPTIONS } from '@/presentation/shared/labels';
 
 const logger = createLogger('presentation/screens/Zukan/zukanModel');
 
-/** 未発見タイルをタップしたときの案内（位置は教えない＝B） */
+/** 未発見タイルの見つけ方（位置は教えない＝B） */
 export const UNKNOWN_TILE_HINT = '80m以内に近づくと見つかります';
 
-/** 図鑑の下に出す一言（通いを主役にする） */
-export const ZUKAN_FOOTNOTE = '通うほどカードが育つ。全部そろえなくても街は育つ。';
+/** 状態の絞り込み（'all' はすべて） */
+export type ZukanStatusFilter = 'all' | SpotStatusDto;
+
+/** 図鑑の絞り込み（地区は undefined ですべての地区） */
+export interface ZukanFilter {
+  readonly districtId?: string;
+  readonly status: ZukanStatusFilter;
+}
+
+/** 状態の絞り込みの選択肢（左から） */
+export const STATUS_FILTERS: readonly { readonly value: ZukanStatusFilter; readonly label: string }[] = [
+  { value: 'all', label: 'すべて' },
+  { value: 'visited', label: '訪問済み' },
+  { value: 'discovered', label: '発見済み' },
+  { value: 'unknown', label: '未発見' },
+];
+
+/** 絞り込みで1枚も残らなかったときの文言 */
+export const EMPTY_FILTER_TEXT = 'この条件のカードはまだありません';
 
 /** なじみ度の最高段階（星の数） */
 export const MAX_FAMILIARITY = 3;
@@ -40,13 +57,13 @@ export interface SeasonMark {
 }
 
 /**
- * タイルに出す名前（未発見は「？？？」）。
+ * タイルに出す名前（2026-11-09「すべて表示」で未発見でも名前を出す。名前が無いときだけ「？？？」）。
  * @param tile タイル
  * @returns 名前
  */
 export function tileName(tile: ZukanTileDto): string {
   const log = logger.fn('tileName', { status: tile.status });
-  return log.exit(tile.status === 'unknown' || tile.name === undefined ? UNKNOWN_SPOT_NAME : tile.name);
+  return log.exit(tile.name ?? UNKNOWN_SPOT_NAME);
 }
 
 /**
@@ -85,14 +102,14 @@ export function seasonMarks(tile: ZukanTileDto): SeasonMark[] {
 }
 
 /**
- * タイルの読み上げ名（色に頼らず状態を言葉で伝える）。未発見は種別も伏せる。
+ * タイルの読み上げ名（色に頼らず状態を言葉で伝える）。
  * @param tile タイル
  * @returns 'N西城跡（名所）なじみ、通った 3回、訪れた季節 秋・冬' など
  */
 export function tileAriaLabel(tile: ZukanTileDto): string {
   const log = logger.fn('tileAriaLabel', { status: tile.status });
-  if (tile.status === 'unknown') return log.exit(`未発見のスポット。${UNKNOWN_TILE_HINT}`);
   const head = `${tileName(tile)}（${KIND_LABELS[tile.kind]}）`;
+  if (tile.status === 'unknown') return log.exit(`${head}未発見。${UNKNOWN_TILE_HINT}`);
   if (tile.status === 'discovered') return log.exit(`${head}発見済み、まだ行っていない`);
   const seasons = seasonMarks(tile).filter((m) => m.visited).map((m) => m.label).join('・');
   const next = tile.nextFamiliarityText === undefined ? '' : `、${tile.nextFamiliarityText}`;
@@ -120,6 +137,29 @@ export function levelDescription(level: number): string {
   const log = logger.fn('levelDescription', { level });
   const lv = Math.min(LEVEL_DESCRIPTIONS.length - 1, Math.max(0, Math.round(level)));
   return log.exit(LEVEL_DESCRIPTIONS[lv] ?? '');
+}
+
+/**
+ * 地区と状態でタイルを絞り込む。順番は保つ。
+ * @param tiles タイル（DTO の順）
+ * @param filter 絞り込み（地区 undefined ですべての地区、状態 'all' ですべての状態）
+ * @returns 条件に合うタイル
+ */
+export function filterTiles(tiles: readonly ZukanTileDto[], filter: ZukanFilter): ZukanTileDto[] {
+  const log = logger.fn('filterTiles', { count: tiles.length, districtId: filter.districtId, status: filter.status });
+  const result = tiles.filter((t) => (filter.districtId === undefined || t.districtId === filter.districtId) && (filter.status === 'all' || t.status === filter.status));
+  return log.exit(result);
+}
+
+/**
+ * 地区の絞り込みの値を検証する（一覧に無い地区はすべての地区に戻す）。
+ * @param districtId 絞り込みたい地区
+ * @param districtIds 選べる地区の ID
+ * @returns 一覧にあればその ID、無ければ undefined
+ */
+export function validDistrictFilter(districtId: string | undefined, districtIds: readonly string[]): string | undefined {
+  const log = logger.fn('validDistrictFilter', { districtId });
+  return log.exit(districtId !== undefined && districtIds.includes(districtId) ? districtId : undefined);
 }
 
 /**

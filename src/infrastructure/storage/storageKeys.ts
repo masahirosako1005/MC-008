@@ -18,8 +18,12 @@ export const LORDSHIP_KEY_SEGMENT = 'lordship.';
 export const RIVAL_ACTIONS_KEY_SEGMENT = 'rivalActions.';
 /** アバターの装い（着せ替え） */
 export const AVATAR_KEY_SEGMENT = 'avatar.';
+/** P+'settings'（端末の表示設定＝文字の大きさ。旅人ごとではないので旅人を切り替えても残る） */
+export const SETTINGS_KEY = 'settings';
 /** P+'cms.overlay'（店舗CMS の登録内容。デモ専用＝nnishi.demo.cms.overlay。docs/09 §7.2） */
 export const CMS_OVERLAY_KEY = 'cms.overlay';
+/** P+'cms.snapshot'（連携サーバーから受け取った公開スナップショットの写し。取れないときに使う＝docs/09 APP-02。お店側のデータ） */
+export const CMS_SNAPSHOT_KEY = 'cms.snapshot';
 
 /**
  * アバターの装いのキー（接頭辞を除いた部分）を返す。

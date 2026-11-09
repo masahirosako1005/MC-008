@@ -1,0 +1,357 @@
+/*
+ * @file 起動スプラッシュ（presentation/screens/Launch）
+ * index.html から <link> で読む。JS（main.ts）が読み込まれる前に、コーラルの地に 回る光の筋・きらめき・ロゴ（地図のピンの中で街が育つ）・アプリ名・
+ * NOW LOADING のゲージ（％は CSS の数え上げ）を出す。読み込みが終わると開始画面がゲージを 100% にし、ロゴが光を溜めてから開く。
+ * 開始画面（LaunchScreen.ts）も最初の1枚を同じクラス（.splash__stage 以下）で描き、続きから動かす（つなぎ目を見せない）。
+ * - 共通スタイル（tokens/base.css）はまだ無いので、色・端末枠の寸法はここに直接書く（base.css の .app-viewport / .phone と同じ値）
+ * - 文字の大きさ設定（rem）で開始画面に替わったときにずれないよう、ステージの寸法は px で書く
+ * - 開始画面は、同じ1枚の動きの startTime を静的スプラッシュが出た時刻にそろえる（LaunchScreen.ts の syncSplashClock）。--splash-shift はずらしたいときの予備（既定 0ms）
+ * - CSP（style-src 'self'）のため HTML に style 属性は書かない
+ */
+@import "@fontsource/m-plus-rounded-1c/800.css";
+
+/* ゲージの％（整数として補間して counter() で出す） */
+@property --splash-pct {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+
+html,
+body { margin: 0; height: 100%; }
+
+/* ---- 静的スプラッシュの外枠（index.html のみ。base.css の .app-viewport / .phone と同じ寸法） ---- */
+.splash {
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #e9ecf1;
+}
+.splash__phone {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+@media (min-width: 500px) {
+  .splash {
+    padding: 1.25rem;
+    background: radial-gradient(120% 80% at 50% 0%, #f3f5f8 0%, #e9ecf1 60%);
+  }
+  .splash__phone {
+    width: 390px;
+    height: min(844px, calc(100vh - 2.5rem));
+    border-radius: 44px;
+    box-shadow:
+      0 0 0 10px #1f2937,
+      0 0 0 11px #4b5563,
+      0 30px 60px rgba(17, 24, 39, 0.28),
+      0 8px 20px rgba(17, 24, 39, 0.12);
+  }
+  .splash__phone::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 7px;
+    z-index: 2;
+    width: 136px;
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.85);
+    transform: translateX(-50%);
+  }
+}
+
+/* ---- ステージ（静的スプラッシュと開始画面の最初の1枚で共通） ---- */
+.splash__stage {
+  --splash-shift: 0ms;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 64px;
+  background:
+    radial-gradient(70% 45% at 50% 38%, rgba(255, 196, 140, 0.55) 0%, rgba(255, 196, 140, 0) 100%),
+    radial-gradient(140% 90% at 50% 36%, #ff7a4a 0%, #ff5a36 38%, #e03a26 68%, #9e1f3c 100%);
+  color: #ffffff;
+  font-family: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+/* 四隅を少し沈める（光が中央に集まって見える） */
+.splash__stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(110% 80% at 50% 42%, rgba(0, 0, 0, 0) 55%, rgba(60, 8, 30, 0.38) 100%);
+  pointer-events: none;
+}
+
+/* 回る光の筋（ロゴの後ろ） */
+.splash__rays {
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 50px;
+  width: 680px;
+  height: 680px;
+  margin: -340px 0 0 -340px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.2) 0deg 6deg, rgba(255, 255, 255, 0) 6deg 16deg);
+  -webkit-mask-image: radial-gradient(circle, #000 6%, rgba(0, 0, 0, 0.55) 26%, rgba(0, 0, 0, 0) 58%);
+  mask-image: radial-gradient(circle, #000 6%, rgba(0, 0, 0, 0.55) 26%, rgba(0, 0, 0, 0) 58%);
+  opacity: 0;
+  pointer-events: none;
+  transition: scale 380ms cubic-bezier(0.4, 0, 1, 1);
+  animation: splash-rays-in 900ms ease-out both, splash-spin 26s linear infinite;
+  animation-delay: calc(var(--splash-shift) + 200ms), var(--splash-shift);
+}
+
+/* 舞うきらめき */
+.splash__sparks { position: absolute; inset: 0; pointer-events: none; }
+.splash__sparks > i {
+  position: absolute;
+  display: block;
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  opacity: 0;
+  animation: splash-twinkle 2200ms ease-in-out infinite;
+}
+.splash__sparks > i:nth-child(1) { left: 16%; top: 22%; animation-delay: calc(var(--splash-shift) + 300ms); }
+.splash__sparks > i:nth-child(2) { left: 80%; top: 17%; width: 10px; height: 10px; animation-delay: calc(var(--splash-shift) + 900ms); }
+.splash__sparks > i:nth-child(3) { left: 72%; top: 47%; width: 18px; height: 18px; animation-delay: calc(var(--splash-shift) + 600ms); }
+.splash__sparks > i:nth-child(4) { left: 12%; top: 58%; width: 9px; height: 9px; animation-delay: calc(var(--splash-shift) + 1300ms); }
+.splash__sparks > i:nth-child(5) { left: 86%; top: 70%; animation-delay: calc(var(--splash-shift) + 1600ms); }
+.splash__sparks > i:nth-child(6) { left: 28%; top: 80%; width: 11px; height: 11px; animation-delay: calc(var(--splash-shift) + 1100ms); }
+
+/* ロゴと波紋（ピンの頭＝80m の円のように広がる） */
+.splash__emblem {
+  position: relative;
+  z-index: 1;
+  width: 120px;
+  height: 120px;
+}
+.splash__ring {
+  position: absolute;
+  left: 0;
+  top: -10px;
+  width: 120px;
+  height: 120px;
+  box-sizing: border-box;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  border-radius: 50%;
+  opacity: 0;
+  animation: splash-ring 2200ms cubic-bezier(0.2, 0.6, 0.35, 1) infinite;
+  animation-delay: calc(var(--splash-shift) + 650ms);
+}
+.splash__ring + .splash__ring { animation-delay: calc(var(--splash-shift) + 1750ms); }
+
+.splash__logo {
+  position: relative;
+  display: block;
+  width: 120px;
+  height: 120px;
+  overflow: visible;
+  transform-origin: 50% 92%;
+  filter: drop-shadow(0 6px 14px rgba(120, 14, 20, 0.35));
+  animation: splash-pin-in 780ms cubic-bezier(0.2, 0.9, 0.25, 1.25) both;
+  animation-delay: calc(var(--splash-shift) + 60ms);
+}
+.splash__logo-shadow {
+  fill: rgba(120, 24, 4, 0.28);
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: splash-shadow-in 780ms cubic-bezier(0.2, 0.9, 0.25, 1.25) both;
+  animation-delay: calc(var(--splash-shift) + 60ms);
+}
+.splash__logo-pin { fill: #ffffff; }
+.splash__logo-town { fill: #ff5a36; }
+.splash__logo-ground { fill: #d63d1f; }
+.splash__logo-win { fill: #ffffff; }
+.splash__logo-sprout {
+  fill: #10b981;
+  stroke: #10b981;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: splash-sprout 520ms cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  animation-delay: calc(var(--splash-shift) + 600ms);
+}
+.splash__logo-stem { fill: none; stroke-width: 2.4; stroke-linecap: round; }
+
+/* 地名・アプリ名・ひとこと */
+.splash__place {
+  position: relative;
+  z-index: 1;
+  margin: 22px 0 0;
+  padding: 3px 12px 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  line-height: 1.4;
+  animation: splash-fade-up 520ms ease-out both;
+  animation-delay: calc(var(--splash-shift) + 360ms);
+}
+.splash__name {
+  position: relative;
+  z-index: 1;
+  margin: 8px 0 0;
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  text-shadow: 0 3px 0 rgba(150, 36, 8, 0.4), 0 0 24px rgba(255, 220, 180, 0.55);
+}
+.splash__name > span {
+  display: inline-block;
+  animation: splash-letter 560ms cubic-bezier(0.25, 1.5, 0.45, 1) both;
+  animation-delay: calc(var(--splash-shift) + 420ms);
+}
+.splash__name > span:nth-child(2) { animation-delay: calc(var(--splash-shift) + 480ms); }
+.splash__name > span:nth-child(3) { animation-delay: calc(var(--splash-shift) + 540ms); }
+.splash__name > span:nth-child(4) { animation-delay: calc(var(--splash-shift) + 600ms); }
+.splash__name > span:nth-child(5) { animation-delay: calc(var(--splash-shift) + 660ms); }
+.splash__tagline {
+  position: relative;
+  z-index: 1;
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+  opacity: 0.92;
+  animation: splash-fade-up 520ms ease-out both;
+  animation-delay: calc(var(--splash-shift) + 800ms);
+}
+
+/* NOW LOADING のゲージ */
+.splash__gauge {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: 12%;
+  width: 200px;
+  margin-left: -100px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  row-gap: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.22em;
+  animation: splash-fade-up 420ms ease-out both;
+  animation-delay: calc(var(--splash-shift) + 250ms);
+}
+.splash__gauge-label { opacity: 0.92; }
+.splash__gauge-pct {
+  --splash-pct: 76;
+  counter-reset: pct var(--splash-pct);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  animation: splash-pct 1200ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation-delay: calc(var(--splash-shift) + 250ms);
+}
+.splash__gauge-pct::before { content: counter(pct) "%"; }
+.splash__gauge-bar {
+  grid-column: 1 / -1;
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(80, 10, 24, 0.35);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+.splash__gauge-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 76%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #fff3c4 0%, #ffffff 60%, #ffe08a 100%);
+  box-shadow: 0 0 10px rgba(255, 236, 170, 0.9);
+  animation: splash-fill 1200ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation-delay: calc(var(--splash-shift) + 250ms);
+}
+
+/* 読み込みが終わった（開始画面が付ける）: ゲージを 100% にして、ロゴが光を溜める */
+.splash__stage--done .splash__gauge-pct { animation: splash-pct-done 300ms ease-out both; }
+.splash__stage--done .splash__gauge-fill { animation: splash-fill-done 300ms ease-out both; }
+.splash__stage--done .splash__rays { scale: 1.35; }
+.splash__stage--done .splash__logo { animation: splash-charge 380ms cubic-bezier(0.4, 0, 1, 1) both; }
+
+@keyframes splash-pin-in {
+  0% { opacity: 0; transform: translateY(-46px) scale(0.55, 0.7); }
+  55% { opacity: 1; transform: translateY(4px) scale(1.08, 0.9); }
+  75% { transform: translateY(-3px) scale(0.97, 1.04); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes splash-shadow-in {
+  0% { opacity: 0; transform: scale(0.3); }
+  55% { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes splash-sprout {
+  0% { opacity: 0; transform: scale(0); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes splash-ring {
+  0% { opacity: 0.7; transform: scale(0.55); }
+  100% { opacity: 0; transform: scale(2.6); }
+}
+@keyframes splash-letter {
+  0% { opacity: 0; transform: translateY(18px) scale(0.6); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes splash-fade-up {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes splash-rays-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes splash-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes splash-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+  45% { opacity: 1; transform: scale(1) rotate(45deg); }
+  60% { opacity: 0.9; transform: scale(0.8) rotate(60deg); }
+}
+@keyframes splash-pct {
+  0% { --splash-pct: 0; }
+  100% { --splash-pct: 76; }
+}
+@keyframes splash-fill {
+  0% { width: 0%; }
+  100% { width: 76%; }
+}
+@keyframes splash-pct-done {
+  100% { --splash-pct: 100; }
+}
+@keyframes splash-fill-done {
+  100% { width: 100%; }
+}
+@keyframes splash-charge {
+  0% { transform: none; filter: drop-shadow(0 6px 14px rgba(120, 14, 20, 0.35)); }
+  100% { transform: scale(1.14); filter: drop-shadow(0 0 22px rgba(255, 244, 214, 0.95)) brightness(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash__stage *,
+  .splash__stage *::before { animation: none !important; transition: none !important; }
+  .splash__ring,
+  .splash__sparks { display: none; }
+  .splash__rays { opacity: 1; }
+}

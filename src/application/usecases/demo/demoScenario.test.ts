@@ -24,7 +24,7 @@ describe('実演シナリオ（CLAUDE.md 7.2、通い慣れた人・ライバル
     must(await demo.switchTraveler.execute({ profile: 'regular' }));
     expect(await reasonFor(tw, 'fade', 'd_okawa')).toMatchObject({ state: 'soon', daysUntilFade: 5 });
 
-    // 手順3: 南森町・天満宮の未訪問スポット（s_mm02）を訪問 → Lv2 → Lv3。主はタロウのまま
+    // 手順3: 南森町・天満宮の未訪問スポット（s_mm02）を訪問 → Lv2 → Lv3。主はおまいり番長のまま
     await recordVisit(tw, 's_mm02', scenarioOperationId(1));
     expect(tw.events.ofType('DistrictGrown')).toEqual([expect.objectContaining({ districtId: 'd_minamimori', from: 2, to: 3 })]);
     expect(tw.events.ofType('DistrictLordChanged')).toEqual([]);
@@ -35,12 +35,12 @@ describe('実演シナリオ（CLAUDE.md 7.2、通い慣れた人・ライバル
     expect(await reasonFor(tw, 'fade', 'd_tenma')).toMatchObject({ state: 'fading', daysSinceVisit: 32 });
     expect(tw.events.ofType('DistrictLordChanged')).toEqual([]);
 
-    // 手順5: ライバル行動 → 天満の主がタロウに移り「取り返し」の理由（あと2回）
-    expect(must(await demo.simulateRival.execute({ operationId: scenarioOperationId(2) }))).toMatchObject({ districtId: 'd_tenma', rivalName: '旅人タロウ', changed: true });
-    expect(await reasonFor(tw, 'reclaim', 'd_tenma')).toMatchObject({ lordName: '旅人タロウ', lordCount: 1, myCount: 0, needed: 2 });
+    // 手順5: ライバル行動 → 天満の主がおまいり番長に移り「取り返し」の理由（あと2回）
+    expect(must(await demo.simulateRival.execute({ operationId: scenarioOperationId(2) }))).toMatchObject({ districtId: 'd_tenma', rivalName: 'おまいり番長', changed: true });
+    expect(await reasonFor(tw, 'reclaim', 'd_tenma')).toMatchObject({ lordName: 'おまいり番長', lordCount: 1, myCount: 0, needed: 2 });
     tw.events.clearPublished();
 
-    // 手順6: 天満を再訪 → 復活＋おかえりボーナス（10→15）＋金カード（10回目）。同数なので主はタロウのまま
+    // 手順6: 天満を再訪 → 復活＋おかえりボーナス（10→15）＋金カード（10回目）。同数なので主はおまいり番長のまま
     await recordVisit(tw, 'l_tm01', scenarioOperationId(3));
     expect(tw.events.ofType('DistrictRevived')).toEqual([expect.objectContaining({ districtId: 'd_tenma', daysSinceLastVisit: 32, level: 3 })]);
     expect(tw.events.ofType('WelcomeBackBonusGranted')).toEqual([expect.objectContaining({ districtId: 'd_tenma', multiplier: 1.5, bonusPoints: 5 })]);
@@ -52,13 +52,13 @@ describe('実演シナリオ（CLAUDE.md 7.2、通い慣れた人・ライバル
     // 続き: 天満の別スポットを訪問 → 1回上回って主を取り返す（おかえりの倍率は当日中有効、復活は出ない）
     await recordVisit(tw, 'l_tm02', scenarioOperationId(4));
     expect(tw.events.ofType('DistrictLordChanged')).toEqual([
-      expect.objectContaining({ districtId: 'd_tenma', to: { type: 'traveler' }, fromName: '旅人タロウ', toName: 'あなた', travelerCount: 2, lordCount: 2 }),
+      expect.objectContaining({ districtId: 'd_tenma', to: { type: 'traveler' }, fromName: 'おまいり番長', toName: 'あなた', travelerCount: 2, lordCount: 2 }),
     ]);
     expect(tw.events.ofType('DistrictRevived')).toEqual([]);
     expect(tw.events.ofType('PointsAwarded')[0]).toMatchObject({ basePoints: 10, bonusPoints: 5 });
     expect(await reasonFor(tw, 'reclaim', 'd_tenma')).toBeUndefined();
     const board = must(await tw.lordships.find(must(parseTravelerId('t_demoregular'))));
     expect(board.isLostByTraveler(testDistrictId('d_tenma'))).toBe(false);
-    expect(must(await tw.ledgers.find(must(parseTravelerId('t_demoregular')))).balance()).toBe(255 + 15 + 15 + 15);
+    expect(must(await tw.ledgers.find(must(parseTravelerId('t_demoregular')))).balance()).toBe(600 + 15 + 15 + 15);
   });
 });

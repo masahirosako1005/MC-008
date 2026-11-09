@@ -97,7 +97,7 @@ describe('MasterDataLoader（実ファイル）', () => {
     const ids = loaded.rivals.allRivals().map((r) => r.id);
     expect(ids).toHaveLength(7);
     expect(ids).toEqual([...ids].sort());
-    expect(loaded.rivals.findRival(must(parseRivalId('r_taro')))?.name).toBe('旅人タロウ');
+    expect(loaded.rivals.findRival(must(parseRivalId('r_taro')))?.name).toBe('おまいり番長');
     expect(loaded.rivals.findRival(must(parseRivalId('r_none')))).toBeUndefined();
   });
 

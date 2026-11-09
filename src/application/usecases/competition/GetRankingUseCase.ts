@@ -3,15 +3,17 @@
  * 3リーグ（かよい／はじめまして／ルーキー）それぞれにダミー参加者10人と「あなた」を並べ、Ranking.from で順位をつける（D10）。
  * 初めての人でも活躍できるよう、あなたが一番上位のリーグを最初に開くタブとして返し、「あと何回で何位」を添える。基準 C。
  * 下段に地区の主の状況（直近30日・取り返しまでの回数）を返す（CLAUDE.md 6.7、wireframes/07_ranking）。書込みはしない。
+ * リーグの違いが分かるよう「競うもの」「参加できる人」を返し、期間と報酬（順位報酬・○時間キープでもらえるキープ報酬）を添える。
  */
 import { createLogger } from '@/Common/logging/logger';
 import { ok } from '@/Common/result/Result';
 import type { Result } from '@/Common/result/Result';
-import { addDays, daysBetween, formatJpDate, monthKeyOf } from '@/Common/utils/date';
-import type { LocalDate } from '@/Common/utils/date';
+import { addDays, compareInstant, daysBetween, endOfMonth, formatJpDate, jstInstantOf, monthKeyOf, startOfMonth } from '@/Common/utils/date';
+import type { Instant, LocalDate } from '@/Common/utils/date';
 import type { UseCase } from '@/application/AppServices';
 import type { LeagueDto, LeagueIdDto, RankingDto, RankingEntryDto, RankingLordDto, RankingRivalDto } from '@/application/dto/Dto';
 import { LEAGUE_DUMMIES } from '@/application/usecases/competition/leagueDummies';
+import { leagueRewardsOf } from '@/application/usecases/competition/leagueRewards';
 import { standingsOf, TRAVELER_LORD_NAME } from '@/application/usecases/shared/LordStandings';
 import type { LordStanding } from '@/application/usecases/shared/LordStandings';
 import { loadWorld } from '@/application/usecases/shared/World';
@@ -19,8 +21,10 @@ import type { World, WorldDeps } from '@/application/usecases/shared/World';
 import { ROOKIE_PERIOD_DAYS } from '@/domain/competition/constants';
 import { daysLeftInMonth, isRookie, LEAGUE_IDS, leagueScoreOf, rookieGraduationDateOf } from '@/domain/competition/League';
 import type { LeagueId, LeagueRecords } from '@/domain/competition/League';
+import type { KeepGoal } from '@/domain/competition/LeagueReward';
 import { Ranking } from '@/domain/competition/Ranking';
 import type { RankingParticipant } from '@/domain/competition/Ranking';
+import type { VisitRecord } from '@/domain/exploration/VisitRecord';
 
 const logger = createLogger('application/usecases/competition/GetRankingUseCase');
 
@@ -37,26 +41,48 @@ interface LeagueCopy {
   readonly icon: string;
   readonly tagline: string;
   readonly rule: string;
+  /** 競うもの */
+  readonly metric: string;
+  /** 参加できる人 */
+  readonly eligibility: string;
+  /** タブに添える違いの一言 */
+  readonly tabHint: string;
   readonly unit: string;
 }
 
 /** リーグごとの文言（仮） */
 const LEAGUE_COPY: Readonly<Record<LeagueId, LeagueCopy>> = Object.freeze({
-  kayoi: { name: 'かよいリーグ', shortName: 'かよい', icon: '♛', tagline: '同じ街に何度も通う人が輝くリーグ', rule: '今月通った回数で順位を決めます', unit: '回' },
+  kayoi: {
+    name: 'かよいリーグ',
+    shortName: 'かよい',
+    icon: '♛',
+    tagline: '同じ街に何度も通う人が有利。通い慣れた人どうしの勝負',
+    rule: '今月通った回数で順位を決めます',
+    metric: '今月 通った回数（同じ場所も毎回数える）',
+    eligibility: 'だれでも',
+    tabHint: '通った回数',
+    unit: '回',
+  },
   hajimete: {
     name: 'はじめましてリーグ',
     shortName: 'はじめまして',
     icon: '✦',
-    tagline: '行ったことのない場所へ足をのばす人が輝くリーグ。初めての人ほど有利',
+    tagline: '行ったことのない場所へ足をのばす人が有利。初めての人ほど上位に届きます',
     rule: '今月はじめて訪れたスポットの数で順位を決めます',
+    metric: '今月 はじめて訪れたスポットの数（2回目からは数えない）',
+    eligibility: 'だれでも',
+    tabHint: '新しい場所の数',
     unit: 'か所',
   },
   rookie: {
     name: 'ルーキーリーグ',
     shortName: 'ルーキー',
     icon: '❀',
-    tagline: `使いはじめて${ROOKIE_PERIOD_DAYS}日までの人だけのリーグ。同じスタートラインで競えます`,
+    tagline: '始めたばかりの人だけで、同じスタートラインから競えます',
     rule: '今月通った回数で順位を決めます',
+    metric: '今月 通った回数（かよいリーグと同じ数え方）',
+    eligibility: `使いはじめて${ROOKIE_PERIOD_DAYS}日以内の人だけ`,
+    tabHint: `${ROOKIE_PERIOD_DAYS}日以内の人`,
     unit: '回',
   },
 });
@@ -173,27 +199,95 @@ function competitionOf(leagueId: LeagueId, records: LeagueRecords, today: LocalD
 }
 
 /**
- * 1リーグ分の DTO を作る。
+ * 訪問記録の一部（ある時点までの訪問）だけで数えたときの、あなたの順位を返す。
+ * @param leagueId リーグ
+ * @param records あなたの記録（発見記録はそのまま使う）
+ * @param visits 数に入れる訪問
+ * @param today 今日
+ * @returns 順位
+ */
+function rankWithVisits(leagueId: LeagueId, records: LeagueRecords, visits: readonly VisitRecord[], today: LocalDate): number {
+  const log = logger.fn('rankWithVisits', { leagueId, visits: visits.length });
+  return log.exit(myRankWith(leagueId, leagueScoreOf(leagueId, { visits, discoveries: records.discoveries }, today), today));
+}
+
+/**
+ * あなたがいま goal.maxRank 位以内にいるなら、その順位に入った瞬間を返す（キープ報酬の起点）。
+ * ダミーの数値は固定なので、順位はあなたの記録が増えたときだけ上がる。訪問を古い順に1件ずつ足し、初めて条件の順位に入った訪問の時刻を起点にする。
+ * 月の初めからすでに条件の順位にいたなら、月初め 0:00 を起点にする。
  * @param leagueId リーグ
  * @param records あなたの記録
  * @param today 今日
- * @param lordTags 主の名前 → 地区の短い名前の一覧
+ * @param goal キープの条件
+ * @returns 起点の瞬間（いま条件の順位にいなければ undefined）
+ */
+export function heldSinceOf(leagueId: LeagueId, records: LeagueRecords, today: LocalDate, goal: KeepGoal): Instant | undefined {
+  const log = logger.fn('heldSinceOf', { leagueId, goal: goal.id, today });
+  if (rankWithVisits(leagueId, records, records.visits, today) > goal.maxRank) return log.exit(undefined, '条件の順位の外');
+  const monthStart = jstInstantOf(startOfMonth(today), 0, 0);
+  const sorted = [...records.visits].sort((a, b) => compareInstant(a.visitedAt, b.visitedAt));
+  const beforeMonth = sorted.filter((v) => compareInstant(v.visitedAt, monthStart) < 0).length;
+  if (rankWithVisits(leagueId, records, sorted.slice(0, beforeMonth), today) <= goal.maxRank) return log.exit(monthStart, '月初めから');
+  for (let i = beforeMonth; i < sorted.length; i++) {
+    const visit = sorted[i];
+    if (visit !== undefined && rankWithVisits(leagueId, records, sorted.slice(0, i + 1), today) <= goal.maxRank) return log.exit(visit.visitedAt);
+  }
+  return log.exit(undefined, '起点なし');
+}
+
+/** 1リーグ分の DTO を作るのに使う、リーグ共通の材料 */
+interface LeagueContext {
+  /** あなたの記録 */
+  readonly records: LeagueRecords;
+  readonly today: LocalDate;
+  /** いま（キープ報酬の経過時間に使う） */
+  readonly now: Instant;
+  /** '11月' */
+  readonly monthLabel: string;
+  /** 主の名前 → 地区の短い名前の一覧 */
+  readonly lordTags: ReadonlyMap<string, readonly string[]>;
+  /** 模擬ライバルの名前 → ライバルID（アバターの見た目を地図とそろえる） */
+  readonly rivalIds: ReadonlyMap<string, string>;
+}
+
+/**
+ * 1リーグ分の DTO を作る。
+ * @param leagueId リーグ
+ * @param c リーグ共通の材料
  * @returns LeagueDto（凍結済み）
  */
-function leagueDtoOf(leagueId: LeagueId, records: LeagueRecords, today: LocalDate, lordTags: ReadonlyMap<string, readonly string[]>): LeagueDto {
+function leagueDtoOf(leagueId: LeagueId, c: LeagueContext): LeagueDto {
+  const { records, today, lordTags } = c;
   const log = logger.fn('leagueDtoOf', { leagueId, today });
   const copy = LEAGUE_COPY[leagueId];
   const myCount = leagueScoreOf(leagueId, records, today);
   const joined = leagueId !== 'rookie' || isRookie(records, today);
   const ranking = Ranking.from({ participants: participantsOf(leagueId, joined ? myCount : undefined), asOf: today });
   const entries: RankingEntryDto[] = ranking.entries.map((e) =>
-    Object.freeze({ rank: e.rank, name: e.name, isMe: e.isMe, count: e.count, lordOf: Object.freeze([...lordTagsFor(leagueId, e.name, e.isMe, lordTags)]) }),
+    Object.freeze({
+      rank: e.rank,
+      name: e.name,
+      isMe: e.isMe,
+      count: e.count,
+      lordOf: Object.freeze([...lordTagsFor(leagueId, e.name, e.isMe, lordTags)]),
+      avatarKey: e.isMe ? ME_KEY : (c.rivalIds.get(e.name) ?? e.name),
+    }),
   );
   const myRank = entries.find((e) => e.isMe)?.rank;
   const membershipNote = membershipNoteOf(leagueId, records, today, joined);
+  const rewards = leagueRewardsOf({
+    leagueId,
+    monthLabel: c.monthLabel,
+    unit: copy.unit,
+    myRank,
+    myCount,
+    now: c.now,
+    heldSinceOf: (goal) => heldSinceOf(leagueId, records, today, goal),
+  });
   const dto: LeagueDto = Object.freeze({
     id: leagueId,
     ...copy,
+    rewards,
     joined,
     ...(membershipNote === undefined ? {} : { membershipNote }),
     entries: Object.freeze(entries),
@@ -203,6 +297,15 @@ function leagueDtoOf(leagueId: LeagueId, records: LeagueRecords, today: LocalDat
     ...(joined ? competitionOf(leagueId, records, today, entries) : {}),
   });
   return log.exit(dto);
+}
+
+/**
+ * 画面用の短い日付（'11/1（日）'）。
+ * @param date LocalDate
+ * @returns 'M/D（曜）'
+ */
+function shortJpDate(date: LocalDate): string { // audit-ignore: fnlog-missing formatJpDate（ログあり）の表示を短くするだけ
+  return formatJpDate(date).slice(5).replace(/^0/, '').replace('/0', '/');
 }
 
 /**
@@ -254,6 +357,7 @@ function lordDtosOf(world: World, standings: readonly LordStanding[]): readonly 
       Object.freeze({
         districtId: s.districtId,
         districtName: world.spots.findDistrict(s.districtId)?.name ?? '',
+        districtShortName: world.spots.findDistrict(s.districtId)?.shortName ?? '',
         ...(s.lordName === undefined ? {} : { lordName: s.lordName }),
         isMe: s.isMe,
         lost: s.lostByTraveler,
@@ -287,9 +391,9 @@ export class GetRankingUseCase implements UseCase<void, RankingDto> {
   constructor(private readonly deps: GetRankingDeps) {}
 
   /**
-   * 3リーグのランキングと地区の主の状況を返す。
+   * 3リーグのランキング（報酬つき）と地区の主の状況を返す。
    * @returns 成功: RankingDto（凍結済み）。失敗: TRAVELER_NOT_FOUND／STORAGE_FAILED
-   * @sideEffect 各リポジトリを読む（書込みはしない）
+   * @sideEffect 各リポジトリと Clock.now を読む（書込みはしない）
    */
   async execute(): Promise<Result<RankingDto>> {
     const log = logger.fn('execute');
@@ -298,11 +402,23 @@ export class GetRankingUseCase implements UseCase<void, RankingDto> {
     const { today, traveler } = world.value;
     const records: LeagueRecords = { visits: traveler.visits, discoveries: traveler.discoveries };
     const standings = standingsOf(world.value);
-    const lordTags = lordTagsOf(world.value, standings);
-    const leagues = LEAGUE_IDS.map((id) => leagueDtoOf(id, records, today, lordTags));
+    const monthLabel = `${Number(today.slice(5, 7))}月`;
+    const context: LeagueContext = {
+      records,
+      today,
+      now: this.deps.clock.now(),
+      monthLabel,
+      lordTags: lordTagsOf(world.value, standings),
+      rivalIds: new Map(world.value.rivals.map((r) => [r.name, String(r.id)])),
+    };
+    const leagues = LEAGUE_IDS.map((id) => leagueDtoOf(id, context));
+    const end = endOfMonth(today);
     const dto: RankingDto = Object.freeze({
-      monthLabel: `${Number(today.slice(5, 7))}月`,
+      monthLabel,
       daysLeft: daysLeftInMonth(today),
+      periodLabel: `${shortJpDate(startOfMonth(today))}〜${shortJpDate(end)}`,
+      closeLabel: `${shortJpDate(end)}23:59`,
+      deliveryLabel: shortJpDate(addDays(end, 1)),
       leagues: Object.freeze(leagues),
       recommendedLeagueId: recommendLeague(leagues),
       lords: lordDtosOf(world.value, standings),

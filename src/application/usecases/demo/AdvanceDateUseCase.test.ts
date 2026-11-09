@@ -20,7 +20,7 @@ describe('AdvanceDateUseCase', () => {
     await seedLordship(tw, [{ districtId: 'd_joka', holder: 'traveler' }]);
     must(await createDemoUseCases(tw, { enabled: true }).advanceDate.execute({ days: 30 }));
     const changed = tw.events.ofType('DistrictLordChanged');
-    expect(changed.map((e) => [e.districtId, e.fromName, e.toName])).toEqual([['d_joka', 'あなた', '旅人タロウ'], ['d_minato', undefined, '旅人ハナ']]);
+    expect(changed.map((e) => [e.districtId, e.fromName, e.toName])).toEqual([['d_joka', 'あなた', 'おまいり番長'], ['d_minato', undefined, '花見は毎日派']]);
     const board = must(await tw.lordships.find(TEST_TRAVELER_ID));
     expect(board.isLostByTraveler(testDistrictId('d_joka'))).toBe(true);
   });

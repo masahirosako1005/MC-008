@@ -11,6 +11,7 @@ import { formatJpDate } from '@/Common/utils/date';
 import type { UseCase } from '@/application/AppServices';
 import type { MyTownCardDto, MyTownDto, MyTownItemDto, MyTownLockedItemDto, MyTownNextCardDto } from '@/application/dto/Dto';
 import type { AvatarRepository } from '@/application/ports/AvatarRepository';
+import { outfitOfState, wardrobeOf } from '@/application/usecases/avatar/avatarWardrobe';
 import { districtViewsOf, toDistrictCardDto } from '@/application/usecases/shared/DistrictView';
 import type { DistrictView } from '@/application/usecases/shared/DistrictView';
 import { loadWorld } from '@/application/usecases/shared/World';
@@ -112,6 +113,7 @@ export class GetMyTownUseCase implements UseCase<void, MyTownDto> {
       items: Object.freeze(items.items),
       lockedItems: Object.freeze(items.locked),
       heldItemId: items.held,
+      avatarPartIds: outfitOfState(avatar.value, wardrobeOf(world.value.traveler.visits, this.deps.spots).owned),
     });
     log.debug('マイ街', { points, rank: rank.name, cards: dto.cards.length, items: dto.items.length, held: dto.heldItemId });
     return log.exit(ok(dto));

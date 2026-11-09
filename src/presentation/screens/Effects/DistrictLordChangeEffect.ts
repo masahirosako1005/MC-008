@@ -100,7 +100,7 @@ function drawCrownFrame(ctx: CanvasRenderingContext2D, size: CanvasSize, progres
 /**
  * 主交代の2行目の文言を作る。
  * @param model 主交代の演出の内容
- * @returns '旅人タロウから取り返しました'／'初めての地区の主です'
+ * @returns 'おまいり番長から取り返しました'／'初めての地区の主です'
  */
 export function lordChangeText(model: Pick<LordChangeEffectModel, 'fromName' | 'reclaimed'>): string {
   const log = logger.fn('lordChangeText', { reclaimed: model.reclaimed });

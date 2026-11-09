@@ -10,7 +10,7 @@ import { parseDistrictId, parseSpotId } from '@/Common/types/Id';
 const logger = createLogger('presentation/App/AppRouter');
 
 /** ルート名（画面フォルダと対応＝docs/02 §2） */
-export type RouteName = 'map' | 'spot' | 'zukan' | 'mytown' | 'ranking' | 'settings' | 'demo';
+export type RouteName = 'map' | 'spot' | 'zukan' | 'avatar' | 'rank' | 'ranking' | 'settings' | 'demo';
 
 /** 解決済みのルート */
 export interface RouteMatch {
@@ -47,7 +47,8 @@ export const ROUTES: readonly RouteDef[] = [
   { name: 'spot', pattern: '/spot/:spotId' },
   { name: 'zukan', pattern: '/zukan' },
   { name: 'zukan', pattern: '/zukan/:districtId' },
-  { name: 'mytown', pattern: '/mytown' },
+  { name: 'avatar', pattern: '/avatar' },
+  { name: 'rank', pattern: '/rank' },
   { name: 'ranking', pattern: '/ranking' },
   { name: 'settings', pattern: '/settings' },
   { name: 'demo', pattern: '/demo', demoOnly: true },
@@ -223,6 +224,20 @@ export class AppRouter {
   reload(): void {
     const log = logger.fn('reload', { name: this.currentRoute.name });
     this.sync();
+    log.exit(undefined);
+  }
+
+  /**
+   * アプリをページごと読み込み直して最初から始める（全データ削除の後など、メモリ上の状態も捨てたいとき）。
+   * 読み込み直した後に開く画面を履歴に積まずに置いてから reload する。
+   * @param path 読み込み直した後に開く画面（検証し、不正なら #/map）
+   * @sideEffect 履歴を置き換え、ページを読み込み直す
+   */
+  restart(path: string = DEFAULT_PATH): void {
+    const log = logger.fn('restart', { path });
+    const target = resolveRoute(path, this.isDemo).match.path;
+    this.win.history.replaceState(null, '', target);
+    this.win.location.reload();
     log.exit(undefined);
   }
 

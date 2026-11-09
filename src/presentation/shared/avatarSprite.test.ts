@@ -3,23 +3,25 @@ import type { MyTownDto } from '@/application/dto/Dto';
 import { AVATAR_BOX, avatarLookOfTown, avatarSpriteFor, spriteDotsOf } from '@/presentation/shared/avatarSprite';
 
 /**
- * avatarLookOfTown が使う項目（地区ごとの訪問回数・主か・色あせの種類・持ち物）だけを持つマイ街のデータを作る。
- * @param districts 地区ごとの訪問回数と主か
- * @param heldItemId 持ち物
- * @returns マイ街のデータ
+ * avatarLookOfTown が使う項目（身につけている部品）だけを持つ旅人のまとめを作る。
+ * @param avatarPartIds 身につけている部品
+ * @returns 旅人のまとめ
  */
-function town(districts: readonly { readonly visitCount: number; readonly isLordMe: boolean }[], heldItemId?: string): MyTownDto {
-  return { districts: districts.map((d) => ({ ...d, fade: { kind: d.visitCount > 0 ? 'fresh' : 'never' } })), heldItemId } as unknown as MyTownDto;
+function town(avatarPartIds: readonly string[]): MyTownDto {
+  return { avatarPartIds } as unknown as MyTownDto;
 }
 
 describe('avatarLookOfTown', () => {
-  it('マイ街と同じ規則で装いを決める（主なら王冠、通っていればベレー、10回以上でねこ）', () => {
-    expect(avatarLookOfTown(town([{ visitCount: 0, isLordMe: false }])).hat).toBeUndefined();
-    expect(avatarLookOfTown(town([{ visitCount: 3, isLordMe: false }])).hat).toBe('beret');
-    const lord = avatarLookOfTown(town([{ visitCount: 8, isLordMe: true }, { visitCount: 4, isLordMe: false }]));
-    expect(lord.hat).toBe('crown');
-    expect(lord.hasCat).toBe(true);
-    expect(lord.held).toBe('camera');
+  it('アバター画面で着せ替えた部品から装いを作る（未指定の項目は既定）', () => {
+    const plain = avatarLookOfTown(town([]));
+    expect(plain.hat).toBeUndefined();
+    expect(plain.held).toBe('camera');
+    const look = avatarLookOfTown(town(['hat.crown', 'hair.bob', 'pet.shiba', 'held.matsu', 'topColor.coral']));
+    expect(look.hat).toBe('crown');
+    expect(look.hair).toBe('bob');
+    expect(look.pet).toBe('shiba');
+    expect(look.held).toBe('matsu');
+    expect(look.outfitColor).toBe('#ff7a5c');
   });
 });
 

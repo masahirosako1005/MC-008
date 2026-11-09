@@ -26,7 +26,7 @@ export const DEMO_POSITION_ACCURACY_M = 5;
 /** 日付進行で選べる日数（CLAUDE.md 6.9: +1日／+30日／+90日） */
 export const DEMO_ADVANCE_DAYS: readonly number[] = [1, 30, 90];
 
-/** ライバル行動の既定のライバル（旅人タロウ）（仮） */
+/** ライバル行動の既定のライバル（おまいり番長）（仮） */
 export const DEMO_DEFAULT_RIVAL_ID_TEXT = 'r_taro';
 
 /** ライバル行動の既定の地区（天満地区。背景活動が無いので主交代が確実に起きる＝D9。旧 本町地区の役割＝docs/08 §9.1）（仮） */

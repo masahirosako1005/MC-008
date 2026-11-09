@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ZukanDistrictDto, ZukanTileDto } from '@/application/dto/Dto';
 import {
   familiarityStars,
+  filterTiles,
   groupTiles,
   levelDescription,
   seasonMarks,
@@ -9,15 +10,16 @@ import {
   tileAriaLabel,
   tileCaption,
   tileName,
+  validDistrictFilter,
 } from '@/presentation/screens/Zukan/zukanModel';
 
 const visited: ZukanTileDto = {
-  id: 'l_jo01', name: 'N西城跡', kind: 'landmark', category: '城跡', status: 'visited', visitCount: 3,
+  id: 'l_jo01', name: 'N西城跡', kind: 'landmark', districtId: 'd_joka', category: '城跡', status: 'visited', visitCount: 3,
   familiarity: 2, familiarityLabel: 'なじみ', nextFamiliarityText: 'あと2回で常連', seasons: ['autumn', 'winter'], visitedToday: false,
 };
 const regular: ZukanTileDto = { ...visited, visitCount: 6, familiarity: 3, familiarityLabel: '常連', nextFamiliarityText: undefined };
-const discovered: ZukanTileDto = { id: 's_jo02', name: '丸岡和菓子店', kind: 'shop', category: '和菓子', status: 'discovered', visitCount: 0 };
-const unknown: ZukanTileDto = { kind: 'shop', status: 'unknown', visitCount: 0 };
+const discovered: ZukanTileDto = { id: 's_jo02', name: '丸岡和菓子店', kind: 'shop', districtId: 'd_joka', category: '和菓子', status: 'discovered', visitCount: 0 };
+const unknown: ZukanTileDto = { id: 's_mi01', name: '港の食堂', kind: 'shop', districtId: 'd_minato', category: '食堂', status: 'unknown', visitCount: 0 };
 
 /** 見出しのテスト用地区 */
 function district(over: Partial<ZukanDistrictDto> = {}): ZukanDistrictDto {
@@ -28,12 +30,27 @@ function district(over: Partial<ZukanDistrictDto> = {}): ZukanDistrictDto {
 }
 
 describe('zukanModel', () => {
-  it('タイルの名前・補足は状態ごとに変わり、未発見は名前も種別も伏せる', () => {
+  it('タイルの名前・補足は状態ごとに変わり、未発見も名前を出す（名前が無いときだけ「？？？」）', () => {
     expect([tileName(visited), tileCaption(visited)]).toEqual(['N西城跡', 'あと2回で常連']);
     expect(tileCaption(regular)).toBe('常連になりました');
     expect([tileName(discovered), tileCaption(discovered)]).toEqual(['丸岡和菓子店', 'まだ行っていない']);
-    expect([tileName(unknown), tileCaption(unknown)]).toEqual(['？？？', '未発見']);
-    expect(tileAriaLabel(unknown)).not.toContain('店舗');
+    expect([tileName(unknown), tileCaption(unknown)]).toEqual(['港の食堂', '未発見']);
+    expect(tileName({ kind: 'shop', districtId: 'd_minato', status: 'unknown', visitCount: 0 })).toBe('？？？');
+    expect(tileAriaLabel(unknown)).toBe('港の食堂（店舗）未発見。80m以内に近づくと見つかります');
+  });
+
+  it('地区と状態で絞り込める（順番は保つ）', () => {
+    const tiles = [visited, discovered, unknown];
+    expect(filterTiles(tiles, { status: 'all' })).toEqual(tiles);
+    expect(filterTiles(tiles, { districtId: 'd_joka', status: 'all' })).toEqual([visited, discovered]);
+    expect(filterTiles(tiles, { status: 'unknown' })).toEqual([unknown]);
+    expect(filterTiles(tiles, { districtId: 'd_joka', status: 'unknown' })).toEqual([]);
+  });
+
+  it('地区の絞り込みは一覧にある地区だけ（無い地区はすべての地区に戻す）', () => {
+    expect(validDistrictFilter('d_joka', ['d_joka', 'd_minato'])).toBe('d_joka');
+    expect(validDistrictFilter('d_nowhere', ['d_joka'])).toBeUndefined();
+    expect(validDistrictFilter(undefined, ['d_joka'])).toBeUndefined();
   });
 
   it('なじみ度の星は訪問済みだけに出る', () => {

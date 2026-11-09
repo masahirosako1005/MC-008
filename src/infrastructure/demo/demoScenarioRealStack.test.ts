@@ -29,10 +29,16 @@ import { GetAppStatusUseCase } from '@/application/usecases/session/GetAppStatus
 import { GetSpotDetailUseCase } from '@/application/usecases/spot/GetSpotDetailUseCase';
 import { GetZukanUseCase } from '@/application/usecases/spot/GetZukanUseCase';
 import { GetRankingUseCase } from '@/application/usecases/competition/GetRankingUseCase';
+import { GetRankStatusUseCase } from '@/application/usecases/reward/GetRankStatusUseCase';
 import { EvaluateDistrictChangeUseCase } from '@/application/usecases/town/EvaluateDistrictChangeUseCase';
-import { EquipAvatarItemUseCase } from '@/application/usecases/town/EquipAvatarItemUseCase';
+import { GetAvatarClosetUseCase } from '@/application/usecases/avatar/GetAvatarClosetUseCase';
+import { SaveAvatarUseCase } from '@/application/usecases/avatar/SaveAvatarUseCase';
 import { GetMyTownUseCase } from '@/application/usecases/town/GetMyTownUseCase';
 import { GetTownStateUseCase } from '@/application/usecases/town/GetTownStateUseCase';
+import { GetSettingsUseCase } from '@/application/usecases/settings/GetSettingsUseCase';
+import { UpdateTextScaleUseCase } from '@/application/usecases/settings/UpdateTextScaleUseCase';
+import { ExportDataUseCase } from '@/application/usecases/settings/ExportDataUseCase';
+import { DeleteAllDataUseCase } from '@/application/usecases/settings/DeleteAllDataUseCase';
 import { InMemoryAvatarRepository } from '@/application/testing/InMemoryAvatarRepository';
 import { DOMAIN_EVENT_TYPES } from '@/domain/events/DomainEvent';
 import type { DomainEvent } from '@/domain/events/DomainEvent';
@@ -47,6 +53,8 @@ import { LocalStorageLordshipRepository } from '@/infrastructure/storage/LocalSt
 import { LocalStoragePointLedgerRepository } from '@/infrastructure/storage/LocalStoragePointLedgerRepository';
 import { LocalStorageRivalActionRepository } from '@/infrastructure/storage/LocalStorageRivalActionRepository';
 import { LocalStorageSessionRepository } from '@/infrastructure/storage/LocalStorageSessionRepository';
+import { LocalStorageSettingsRepository } from '@/infrastructure/storage/LocalStorageSettingsRepository';
+import { LocalStorageDataPort } from '@/infrastructure/storage/LocalStorageDataPort';
 import { LocalStorageTravelerRepository } from '@/infrastructure/storage/LocalStorageTravelerRepository';
 import { DemoClock } from '@/infrastructure/time/DemoClock';
 import { SystemClock } from '@/infrastructure/time/SystemClock';
@@ -100,6 +108,8 @@ async function buildDemoStack(store: InMemoryKeyValueStore): Promise<Stack> {
   const updateLords = new UpdateDistrictLordUseCase(base);
   const bag = { ...base, updateLords };
   const avatars = new InMemoryAvatarRepository();
+  const settings = new LocalStorageSettingsRepository(repo);
+  const userData = new LocalStorageDataPort(repo);
   const published: DomainEvent[] = [];
   const handlerFailures: string[] = [];
   for (const type of DOMAIN_EVENT_TYPES) bus.subscribe(type, (event) => void published.push(event));
@@ -118,7 +128,10 @@ async function buildDemoStack(store: InMemoryKeyValueStore): Promise<Stack> {
     isDemo: true, events: bus, status: new GetAppStatusUseCase(bag), map: new GetMapDataUseCase(bag), position: new GetCurrentPositionUseCase(bag),
     discover: new DiscoverNearbySpotsUseCase(bag), visit: new VisitSpotUseCase(bag), nearby: new GetNearbySpotsUseCase(bag),
     reasons: new GetRevisitReasonsUseCase(bag), spotDetail: new GetSpotDetailUseCase(bag), town: new GetTownStateUseCase(bag), zukan: new GetZukanUseCase(bag), ranking: new GetRankingUseCase(bag), demo,
-    myTown: new GetMyTownUseCase({ ...bag, avatars }), equipItem: new EquipAvatarItemUseCase({ ...bag, avatars }),
+    myTown: new GetMyTownUseCase({ ...bag, avatars }), avatar: new GetAvatarClosetUseCase({ ...bag, avatars }), saveAvatar: new SaveAvatarUseCase({ ...bag, avatars }),
+    rankStatus: new GetRankStatusUseCase(bag),
+    settings: new GetSettingsUseCase({ settings }), updateTextScale: new UpdateTextScaleUseCase({ settings }),
+    exportData: new ExportDataUseCase({ userData, clock, demo: true }), deleteAllData: new DeleteAllDataUseCase({ userData }),
   };
   must(await demo.resetPosition.execute());
   return { services, demo, spots: master.spots, published, handlerFailures, ensured };
@@ -155,13 +168,13 @@ describe('実演シナリオ（本物の infrastructure ＋ 実マスタ＝大�
     expect(await reasonOf(stack, 'fade', 'd_okawa')).toMatchObject({ title: expect.stringContaining('あと5日'), calendar: expect.anything() });
     const map = must(await stack.services.map.execute());
     expect(map.districts.map((d) => [d.id, d.level, d.fade.kind])).toEqual([
-      ['d_minamimori', 2, 'fresh'], ['d_tenma', 3, 'fresh'], ['d_tenroku', 0, 'never'], ['d_ogimachi', 2, 'fading'], ['d_okawa', 1, 'soon'],
+      ['d_minamimori', 2, 'fresh'], ['d_tenma', 3, 'fresh'], ['d_tenroku', 0, 'never'], ['d_ogimachi', 3, 'fading'], ['d_okawa', 3, 'soon'],
     ]);
     expect(map.backdrop.features.length).toBeGreaterThan(0);
     expect(map.backdrop.attribution).toContain('OpenStreetMap');
     expect(map.spots.filter((s) => s.kind === 'landmark').every((s) => typeof s.name === 'string')).toBe(true);
     const lords = must(await stack.services.town.execute()).districts.map((d) => [d.id, d.lordName]);
-    expect(lords).toEqual([['d_minamimori', '旅人タロウ'], ['d_tenma', 'あなた'], ['d_tenroku', '旅人ケン'], ['d_ogimachi', '旅人ソラ'], ['d_okawa', '旅人ハナ']]);
+    expect(lords).toEqual([['d_minamimori', 'おまいり番長'], ['d_tenma', 'あなた'], ['d_tenroku', '天六の生き字引'], ['d_ogimachi', '中崎町カフェ部'], ['d_okawa', '花見は毎日派']]);
     expect(must(await stack.services.position.execute()).accuracyM).toBe(5);
   });
 
@@ -174,8 +187,8 @@ describe('実演シナリオ（本物の infrastructure ＋ 実マスタ＝大�
     expect(must(await stack.demo.advanceDate.execute({ days: 30 }))).toEqual({ today: '2026-12-09', dayOffset: 30 });
     expect(await reasonOf(stack, 'fade', 'd_tenma')).toMatchObject({ title: '色あせ中：天満地区' });
 
-    expect(must(await stack.demo.simulateRival.execute({ operationId: uuid() }))).toMatchObject({ districtId: 'd_tenma', rivalName: '旅人タロウ', changed: true });
-    expect(await reasonOf(stack, 'reclaim', 'd_tenma')).toMatchObject({ title: '天満地区の主を旅人タロウに奪われた' });
+    expect(must(await stack.demo.simulateRival.execute({ operationId: uuid() }))).toMatchObject({ districtId: 'd_tenma', rivalName: 'おまいり番長', changed: true });
+    expect(await reasonOf(stack, 'reclaim', 'd_tenma')).toMatchObject({ title: '天満地区の主をおまいり番長に奪われた' });
 
     await walkAndVisit(stack, 'l_tm01');
     expect(takeEvents(stack, 'DistrictRevived')).toEqual([expect.objectContaining({ districtId: 'd_tenma', daysSinceLastVisit: 32, level: 3 })]);
@@ -185,7 +198,7 @@ describe('実演シナリオ（本物の infrastructure ＋ 実マスタ＝大�
 
     await walkAndVisit(stack, 'l_tm02');
     const lordChanges = takeEvents(stack, 'DistrictLordChanged').filter((e) => e.type === 'DistrictLordChanged' && e.districtId === 'd_tenma');
-    expect(lordChanges.map((e) => (e.type === 'DistrictLordChanged' ? e.toName : ''))).toEqual(['旅人タロウ', 'あなた']);
+    expect(lordChanges.map((e) => (e.type === 'DistrictLordChanged' ? e.toName : ''))).toEqual(['おまいり番長', 'あなた']);
     expect(await reasonOf(stack, 'reclaim', 'd_tenma')).toBeUndefined();
     expect(stack.handlerFailures).toEqual([]);
   });

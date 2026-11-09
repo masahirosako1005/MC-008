@@ -73,6 +73,18 @@ export interface MapSpotDto {
   readonly visitCount: number;
   readonly amenities: readonly string[];
   readonly hasActiveShopEvent: boolean;
+  /** カテゴリ（例 'パン'）。地図の看板商品アイコンに使う（未発見の店はシルエットで描く） */
+  readonly category?: string;
+  /** いま開催中のクーポン・イベントのうち、終わりがいちばん近いもの（地図の「今日の情報」に出す） */
+  readonly activeEvent?: MapSpotEventDto;
+}
+
+/** 地図に出す開催中のクーポン・イベント（要約） */
+export interface MapSpotEventDto {
+  readonly kind: 'coupon' | 'event';
+  readonly title: string;
+  /** 終了までの日数（当日終了=0） */
+  readonly daysLeft: number;
 }
 
 /** 地図全体のデータ */
@@ -186,7 +198,7 @@ export interface NearbySpotDto {
   readonly meters: number;
   readonly status: SpotStatusDto;
   readonly visitCount: number;
-  /** 40m 以内で今日まだ訪問していない */
+  /** 訪問の半径（VISIT_RADIUS_M＝80m）以内で今日まだ訪問していない */
   readonly canVisit: boolean;
   readonly hasActiveShopEvent: boolean;
 }
@@ -342,16 +354,73 @@ export interface MyTownDto {
   readonly lockedItems: readonly MyTownLockedItemDto[];
   /** アバターが手に持つアイテム（undefined ならカメラ） */
   readonly heldItemId?: string;
+  /** アバターが身につけている部品ID（アバター画面の着せ替え。地図の自分のアバターに使う） */
+  readonly avatarPartIds: readonly string[];
 }
 
-/** 着せ替えの入力（itemId を省略するとカメラに戻す） */
-export interface EquipItemInput {
-  readonly itemId?: string;
+// ---------------------------------------------------------------------------
+// アバター（着せ替え。部品の所持は通った実績から導出＝報酬は通いに出す）
+// ---------------------------------------------------------------------------
+
+/** 部品のレア度 */
+export type AvatarRarityDto = 'N' | 'R' | 'SR' | 'SSR';
+
+/** 着せ替えの部品1つ */
+export interface AvatarPartDto {
+  /** '<枠>.<種類>' */
+  readonly id: string;
+  readonly slot: string;
+  readonly name: string;
+  readonly rarity: AvatarRarityDto;
+  readonly owned: boolean;
+  /** 手に入れてからまだ見ていない */
+  readonly isNew: boolean;
+  /** 手に入れ方（文言） */
+  readonly hint: string;
+  /** 進み具合（いまの値・目標の値。はじめから持っている部品は 0/0） */
+  readonly current: number;
+  readonly target: number;
+  /** 進み具合の単位（'回'・'日'・'軒' など。アイテムのように数えないものは ''） */
+  readonly unit: string;
+  /** 「この地区に通う」条件なら地区ID（地図で向かう） */
+  readonly districtId?: string;
 }
 
-/** 着せ替えの出力 */
-export interface EquipItemOutput {
-  readonly heldItemId?: string;
+/** マイコーデ1枠 */
+export interface AvatarCoordDto {
+  readonly index: number;
+  /** 保存した部品ID（持っていない部品は外し済み）。空き枠は undefined */
+  readonly partIds?: readonly string[];
+}
+
+/** アバター画面の全体 */
+export interface AvatarClosetDto {
+  readonly nickname: string;
+  readonly rankName: string;
+  readonly points: number;
+  readonly totalVisits: number;
+  /** 身につけている部品ID（正規化済み） */
+  readonly outfit: readonly string[];
+  readonly coords: readonly AvatarCoordDto[];
+  readonly parts: readonly AvatarPartDto[];
+  /** 見た部品をまだ保存していない（はじめて開いた）。いま持っている部品を「見た」として保存し、以降に手に入れたものだけを NEW にする */
+  readonly needsSeenBaseline: boolean;
+}
+
+/** 着せ替えの保存の入力（どれも省略できる） */
+export interface SaveAvatarInput {
+  /** 身につける部品ID（持っていない部品は外して保存する） */
+  readonly outfit?: readonly string[];
+  /** マイコーデの枠へ保存（partIds が null なら空にする） */
+  readonly coord?: { readonly index: number; readonly partIds: readonly string[] | null };
+  /** 見た部品ID（NEW の印を消す） */
+  readonly seenPartIds?: readonly string[];
+}
+
+/** 着せ替えの保存の出力 */
+export interface SaveAvatarOutput {
+  /** 保存した装い（正規化済み） */
+  readonly outfit: readonly string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -360,22 +429,22 @@ export interface EquipItemOutput {
 
 /** 図鑑の入力 */
 export interface ZukanInput {
-  /** 表示する地区（URL 由来でもよい。省略時は表示順の先頭の地区） */
+  /** 最初に絞り込む地区（URL 由来でもよい。省略時はすべての地区） */
   readonly districtId?: string;
 }
 
-/** 図鑑の地区タブ */
+/** 図鑑の地区（絞り込みの選択肢と、カードの地区札に使う） */
 export interface ZukanDistrictTabDto {
   readonly id: string;
   readonly shortName: string;
   readonly theme: string;
   /** 地区の色 '#rrggbb' */
   readonly color: string;
-  /** 色あせ状態の種類（タブに ◌ を出す） */
+  /** 色あせ状態の種類（選択肢に ◌ を出す） */
   readonly fadeKind: FadeKindDto;
 }
 
-/** 図鑑で選んでいる地区のヘッダー（通った回数と最近いつ） */
+/** 図鑑の地区の見出し（地区で絞り込んだときに出す。通った回数と最近いつ） */
 export interface ZukanDistrictDto {
   readonly id: string;
   readonly name: string;
@@ -400,14 +469,17 @@ export type SeasonDto = 'spring' | 'summer' | 'autumn' | 'winter';
 export type FamiliarityDto = 1 | 2 | 3;
 
 /**
- * 図鑑のタイル。unknown のときは id・name・category を含めない（位置も名前も教えない＝B）。
- * 並びはマスタ順（名所→店舗）で、状態によって並べ替えない。
+ * 図鑑のタイル。2026-11-09 ユーザー指示「アイコンが？になっているけどすべて表示」で、unknown でも id・name・category を含める
+ * （位置は出さない＝B。未発見のカードからスポット詳細＝地図の位置へは進めない）。
+ * 並びは名所→店舗、同種は 訪問済み→発見済み→未発見（獲得したカードを先に）、同じ状態は地区の表示順→ID 順。
  */
 export interface ZukanTileDto {
   readonly id?: string;
   readonly name?: string;
   readonly kind: SpotKindDto;
-  /** 絵の形を決めるカテゴリ（unknown は undefined） */
+  /** 所属する地区（地区の絞り込みとカードの地区札に使う） */
+  readonly districtId: string;
+  /** 絵の形を決めるカテゴリ */
   readonly category?: string;
   readonly status: SpotStatusDto;
   /** 通った回数（unknown・discovered は 0） */
@@ -437,10 +509,15 @@ export interface ZukanTileDto {
 /** カードのレア度（1=ノーマル、2=レア、3=スーパーレア、4=レジェンド） */
 export type RarityDto = 1 | 2 | 3 | 4;
 
-/** 図鑑 */
+/** 図鑑（すべての地区のカード。地区と状態の絞り込みは画面で行う） */
 export interface ZukanDto {
+  /** 地区の一覧（表示順） */
   readonly districts: readonly ZukanDistrictTabDto[];
-  readonly district: ZukanDistrictDto;
+  /** 地区ごとの見出し（表示順。地区で絞り込んだときに出す） */
+  readonly headers: readonly ZukanDistrictDto[];
+  /** 入力で指定された地区（最初の絞り込み）。省略時は undefined＝すべての地区 */
+  readonly selectedDistrictId?: string;
+  /** すべての地区のタイル（名所→店舗、同種は訪問済み→発見済み→未発見、同じ状態は地区の表示順→ID 順） */
   readonly tiles: readonly ZukanTileDto[];
 }
 
@@ -460,6 +537,50 @@ export interface RankingEntryDto {
   readonly count: number;
   /** 主をつとめている地区の短い名前（かよいリーグのみ） */
   readonly lordOf: readonly string[];
+  /** アバターの見た目を決める人ごとのキー（模擬ライバルはライバルID、それ以外は名前。地図のほかの旅人と同じ見た目になる） */
+  readonly avatarKey: string;
+}
+
+/** 報酬1つ（種類はアイコンと色に使う） */
+export interface RewardPrizeDto {
+  readonly kind: 'gold' | 'silver' | 'bronze' | 'title' | 'item' | 'stamp' | 'flag' | 'trophy';
+  /** '金メダル' / '称号「11月の常連王」' など */
+  readonly name: string;
+}
+
+/** 順位報酬の1段 */
+export interface RewardTierDto {
+  /** '1位' / '4位〜' */
+  readonly label: string;
+  /** 条件の補足（'今月1回以上' など）。無ければ undefined */
+  readonly condition?: string;
+  readonly prizes: readonly RewardPrizeDto[];
+  /** いまの順位ならこの段の報酬がもらえる */
+  readonly isMine: boolean;
+}
+
+/** キープ報酬（ある順位以内を決まった時間続けて保つともらえる） */
+export interface KeepRewardDto {
+  readonly id: 'podium' | 'top';
+  /** '表彰台（3位以内）' / '1位' */
+  readonly goalLabel: string;
+  /** 続けて保つ時間（時間） */
+  readonly hours: number;
+  readonly prize: RewardPrizeDto;
+  /** achieved: 獲得済み／keeping: キープ中／not-yet: まだ条件の順位にいない（不参加も） */
+  readonly state: 'achieved' | 'keeping' | 'not-yet';
+  /** 続けて保っている時間（時間） */
+  readonly heldHours: number;
+  /** 獲得まであと何時間 */
+  readonly remainingHours: number;
+}
+
+/** 1リーグの報酬 */
+export interface LeagueRewardsDto {
+  /** 順位報酬（上の段から） */
+  readonly tiers: readonly RewardTierDto[];
+  /** キープ報酬（やさしい順） */
+  readonly keeps: readonly KeepRewardDto[];
 }
 
 /** 1リーグ分 */
@@ -475,8 +596,16 @@ export interface LeagueDto {
   readonly tagline: string;
   /** 順位の決め方（1行） */
   readonly rule: string;
+  /** 競うもの（'今月 通った回数'） */
+  readonly metric?: string;
+  /** 参加できる人（'だれでも' / '使いはじめて30日以内の人だけ'） */
+  readonly eligibility?: string;
+  /** タブに添える違いの一言（'通った回数' / '新しい場所の数' / '30日以内の人'） */
+  readonly tabHint?: string;
   /** 数値の単位（'回' / 'か所'） */
   readonly unit: string;
+  /** 報酬（順位報酬とキープ報酬）。metric〜rewards と RankingDto の期間は GetRankingUseCase が必ず入れる（省略可はほかの画面のテストの手組みを壊さないため） */
+  readonly rewards?: LeagueRewardsDto;
   /** あなたが参加しているか（ルーキーは使いはじめて30日まで） */
   readonly joined: boolean;
   /** 参加状況の補足（卒業済み・卒業まであと何日 など）。無ければ undefined */
@@ -512,6 +641,8 @@ export interface RankingRivalDto {
 export interface RankingLordDto {
   readonly districtId: string;
   readonly districtName: string;
+  /** 地区の短い名前（'南森町'。ランキング画面の小さなタイル用。省略可） */
+  readonly districtShortName?: string;
   readonly lordName?: string;
   readonly isMe: boolean;
   /** ライバルに奪われて取り返し中 */
@@ -530,6 +661,12 @@ export interface RankingDto {
   readonly monthLabel: string;
   /** 月末までの残り日数 */
   readonly daysLeft: number;
+  /** 期間（'11/1（日）〜11/30（月）'） */
+  readonly periodLabel?: string;
+  /** 締め（'11/30（月）23:59'） */
+  readonly closeLabel?: string;
+  /** 順位報酬が届く日（'12/1（火）'） */
+  readonly deliveryLabel?: string;
   /** 表示順（かよい→はじめまして→ルーキー） */
   readonly leagues: readonly LeagueDto[];
   /** あなたが一番上位にいる参加中のリーグ（最初に開くタブ） */
@@ -544,13 +681,86 @@ export interface RankingDto {
 export interface OtherTravelerDto {
   /** 表示用の一意キー（ライバルID:地区ID） */
   readonly key: string;
-  /** 表示名（例: 旅人タロウ） */
+  /** 表示名（例: おまいり番長） */
   readonly name: string;
   /** アイコンに描く1文字（例: タ） */
   readonly initial: string;
   readonly districtId: string;
   /** この地区の主か */
   readonly isLord: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// ランク（旅人ランクの状況。下部タブ「ランク」。ランクは累計ポイントで決まり、下がらない＝D11）
+// ---------------------------------------------------------------------------
+
+/** ランクの段の状態（到達済み／いまの段／まだ） */
+export type RankStepStateDto = 'reached' | 'current' | 'locked';
+
+/** ランクの1段 */
+export interface RankStepDto {
+  /** 段の名前（例: '常連'） */
+  readonly name: string;
+  /** この段に上がる累計ポイント */
+  readonly min: number;
+  readonly state: RankStepStateDto;
+}
+
+/** 最近のポイントの1行（新しい順） */
+export interface RankPointHistoryDto {
+  /** 加点した暦日 'YYYY-MM-DD'（表示は presentation で短くする） */
+  readonly date: string;
+  /** スポット名（マスタから消えていれば「スポット」） */
+  readonly spotName: string;
+  /** スポットの種別（アイコンに使う。マスタから消えていれば undefined） */
+  readonly spotKind?: SpotKindDto;
+  /** 地区の短い名前（マスタから消えていれば空文字） */
+  readonly districtName: string;
+  /** visit=訪問の基本点、welcomeBack=おかえりボーナス */
+  readonly kind: 'visit' | 'welcomeBack';
+  readonly points: number;
+}
+
+/** ポイントのもらい方（数値ルール（仮）をそのまま見せる） */
+export interface RankPointRulesDto {
+  readonly landmarkPoints: number;
+  readonly shopPoints: number;
+  /** おかえりボーナスの倍率（1.5） */
+  readonly welcomeBackMultiplier: number;
+}
+
+/** ランク画面 */
+export interface RankStatusDto {
+  readonly nickname: string;
+  /** いまの段 */
+  readonly rank: {
+    readonly name: string;
+    /** 段の添字（0 が最初の段） */
+    readonly index: number;
+    /** 次の段の名前（最上段なら undefined） */
+    readonly nextName?: string;
+    /** 次の段に上がる累計ポイント（最上段なら undefined） */
+    readonly nextAt?: number;
+    /** 次の段まであと何ポイント（最上段なら undefined） */
+    readonly remaining?: number;
+  };
+  /** すべての段（下から順） */
+  readonly steps: readonly RankStepDto[];
+  /** 累計ポイント（台帳の残高。減らない） */
+  readonly points: number;
+  /** 通った回数（累計） */
+  readonly totalVisits: number;
+  /** 訪れたスポットの数（同じスポットは1つ。網羅率は出さない） */
+  readonly visitedSpots: number;
+  readonly silverCards: number;
+  readonly goldCards: number;
+  /** あなたが主をつとめる地区の短い名前（表示順） */
+  readonly lordDistricts: readonly string[];
+  /** 旅の日数（はじめて訪れた日を1日目として今日が何日目か。未訪問なら undefined） */
+  readonly travelDays?: number;
+  /** 最近のポイント（新しい順・最大 RANK_HISTORY_LIMIT 件） */
+  readonly recent: readonly RankPointHistoryDto[];
+  readonly rules: RankPointRulesDto;
 }
 
 // ---------------------------------------------------------------------------

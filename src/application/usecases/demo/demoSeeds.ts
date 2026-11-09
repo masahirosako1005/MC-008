@@ -34,18 +34,36 @@ export const DEMO_PROFILES: readonly DemoProfile[] = ['first', 'regular'];
 
 /**
  * 「通い慣れた人」の訪問（docs/08 §9.3。役割・日付・回数は §4.5 と同じで ID だけ新しい）。[スポットID, 今日からの日数]。
- * 南森町・天満宮 6回（T−20〜T−5。旧 城下）／天満 5スポット計9回（T−28〜T−2。旧 本町）／大川 2回（T−25。旧 みなと）／
- * 天六なし（旧 里山）／扇町・中崎町 4回（T−60・T−45。旧 湯の里）。
+ * 南森町・天満宮 6回（T−20〜T−5。旧 城下）／天満 7スポット計9回（T−28〜T−2。旧 本町）／大川 15回（T−70〜T−25。旧 みなと）／
+ * 天六なし（旧 里山）／扇町・中崎町 15回（T−95〜T−45。旧 湯の里）。
+ * 2026-11-09 ユーザー指示「名所店舗は初期データとしてある程度獲得している状況に」で図鑑の獲得を増やした（訪問済み 36／80 枚）:
+ * - 大川・扇町は、直近30日より古い（主の集計に入らない）・最終訪問日より古い（色あせは変わらない）訪問を末尾に足した
+ * - 天満は回数・日付はそのまま、T−12・T−9 の再訪を別のスポット（l_tm03・s_tm04）に振り替えた（金カード手前の9回は変えない）
+ * - 南森町（手順3で Lv3 に育つ score 9）と天六（未訪問の地区）は変えない
+ * 足すときは末尾に足す（scripts の SEED_VISITS は添字で天満の訪問を引くため）。
  */
 export const REGULAR_SEED_VISITS: readonly (readonly [spotId: string, dayOffset: number])[] = Object.freeze([
   ['l_mm01', -20], ['l_mm01', -12], ['l_mm01', -5], ['s_mm01', -12], ['s_mm01', -5], ['s_mm03', -5],
-  ['l_tm01', -28], ['l_tm02', -26], ['s_tm01', -22], ['s_tm02', -18], ['s_tm03', -15], ['l_tm01', -12], ['l_tm02', -9], ['s_tm01', -5], ['s_tm02', -2],
+  ['l_tm01', -28], ['l_tm02', -26], ['s_tm01', -22], ['s_tm02', -18], ['s_tm03', -15], ['l_tm03', -12], ['s_tm04', -9], ['s_tm01', -5], ['s_tm02', -2],
   ['l_ok01', -25], ['l_ok02', -25],
   ['l_og01', -60], ['l_og01', -45], ['l_og02', -45], ['s_og01', -45],
+  ['l_ok03', -40], ['s_ok01', -40], ['s_ok05', -55], ['s_ok07', -55],
+  ['l_og03', -75], ['s_og03', -75], ['s_og04', -85], ['s_og07', -85],
+  ['s_ok02', -35], ['s_ok06', -35], ['s_ok08', -48], ['s_ok09', -48], ['s_ok10', -62], ['s_ok11', -62], ['s_ok12', -70], ['s_ok01', -70], ['l_ok01', -70],
+  ['s_og02', -50], ['s_og05', -50], ['s_og08', -68], ['s_og09', -68], ['s_og11', -95], ['s_og12', -95], ['l_og01', -95],
 ] as const);
 
-/** 「通い慣れた人」が発見だけしているスポット（南森町・天満宮地区: 天満天神繁昌亭・s_mm02（クーポン c_mm01）・s_mm04） */
-export const REGULAR_SEED_DISCOVERED_ONLY: readonly string[] = Object.freeze(['l_mm02', 's_mm02', 's_mm04']);
+/**
+ * 「通い慣れた人」が発見だけしているスポット。
+ * 南森町・天満宮地区: 天満天神繁昌亭・s_mm02（クーポン c_mm01）・s_mm04（docs/08 §9.3）。
+ * 天満・大川の分は 2026-11-09 に足した（図鑑に「行けば色づく」シルエットを増やす。近い期限のクーポンがある店は避けた）。
+ * 南森町は手順2（入口から歩いて未発見を発見）のため、天六は「未訪問の地区」のため足さない。
+ */
+export const REGULAR_SEED_DISCOVERED_ONLY: readonly string[] = Object.freeze([
+  'l_mm02', 's_mm02', 's_mm04',
+  's_tm05', 's_tm06', 's_tm07', 's_tm08', 's_tm09', 's_tm10', 's_tm11', 's_tm13', 's_tm14',
+  's_ok13',
+]);
 
 /** 発見だけのスポットを発見した日（今日からの日数。開始地区に初めて来た日） */
 export const REGULAR_SEED_DISCOVERY_DAY = -20;
@@ -82,6 +100,27 @@ interface SeedState {
  */
 export function isDemoProfile(value: unknown): value is DemoProfile {
   return value === 'first' || value === 'regular';
+}
+
+/**
+ * 保存済みの「通い慣れた人」が今のシードより古いか（シードの訪問・発見のスポットのどれかが記録に無い）を判定する。
+ * デモビルドの起動時に古ければ作り直すために使う（2026-11-09: シードを増やしても、保存済みのブラウザでは旅人が作り直されず反映されなかったため）。
+ * デモ中に訪問を重ねてもシードのスポットの記録は消えないので、シードを変えない限り作り直さない。
+ * @param traveler 保存済みの旅人
+ * @returns 「通い慣れた人」で、シードのスポットの記録が欠けていれば true（ほかのプロフィールは常に false）
+ */
+export function isRegularSeedOutdated(traveler: Traveler): boolean {
+  const log = logger.fn('isRegularSeedOutdated', { travelerId: traveler.id, profile: traveler.profile });
+  if (traveler.profile !== 'regular') return log.exit(false, '通い慣れた人ではない');
+  const missingVisit = REGULAR_SEED_VISITS.some(([rawId]) => {
+    const id = parseSpotId(rawId);
+    return id.ok && !traveler.hasVisited(id.value);
+  });
+  const missingDiscovery = REGULAR_SEED_DISCOVERED_ONLY.some((rawId) => {
+    const id = parseSpotId(rawId);
+    return id.ok && !traveler.hasDiscovered(id.value);
+  });
+  return log.exit(missingVisit || missingDiscovery);
 }
 
 /**

@@ -1,75 +1,101 @@
 /**
- * @file 店舗CMS の来店データ画面（presentation/cms/screens/Data。docs/09 C07、CMS-D02・D03・D05・D08）
- * グラフを読み慣れていない店主でも使えるように、上から
- * 1) ひとことで言うと（要点の文） 2) 直近30日の数字（それぞれの意味つき） 3) 曜日・時間帯・週ごとのグラフ（いちばん多い棒を強調）
- * 4) 次にやること（クーポンを出す）を出す。フェーズ1はダミーの集計で、画面の上に明示する。
- * 人数・回数が少ないもの（CMS_SMALL_COUNT_THRESHOLD 未満）は数値を出さず「少数」と表示する（個人を特定させない＝PRV-04）。
- * 棒グラフは h() の要素と CSS の幅で描く（外部ライブラリなし＝SEC-08）。
+ * @file 店舗CMS の来店データ（presentation/cms/screens/Data。docs/09 C07、CMS-D02・D05・D08）
+ * 1列で、数字（来店数・来店者・再訪率・新規率）→ 要点1行（多い曜日に合わせて掲載へ）→ 縦棒グラフ（曜日別・時間帯別・週ごと）。
+ * フェーズ1はダミーなので見出しに「サンプル」を付ける。説明文は置かない。
+ * 人数が少ないもの（CMS_SMALL_COUNT_THRESHOLD 未満）は「少数」と出し、数値を出さない（PRV-04）。定休日は棒を出さず「休」。
+ * 棒は h() の要素と CSS の高さで描く（外部ライブラリなし＝SEC-08）。
  */
 import type { CmsCountDto, CmsVisitStatsDto } from '@/application/dto/CmsDto';
 import { createLogger } from '@/Common/logging/logger';
-import { createButton } from '@/Common/ui/Button';
+import { addDays, parseLocalDate } from '@/Common/utils/date';
 import { h } from '@/Common/ui/dom';
-import { insightsOf, largest } from '@/presentation/cms/cmsInsights';
-import { cmsSection, pageHeader, shortDate } from '@/presentation/cms/cmsUi';
+import { keyPointOf, largest } from '@/presentation/cms/cmsInsights';
+import { nextDateOfWeekday } from '@/presentation/cms/cmsTemplates';
+import { badge, icon, mdDate, pageTitle } from '@/presentation/cms/cmsUi';
 import type { CmsContext } from '@/presentation/cms/cmsUi';
+import { openEventForm } from '@/presentation/cms/screens/Events/CmsEventsScreen';
 
 const logger = createLogger('presentation/cms/screens/Data/CmsDataScreen');
 
+/** 集計の期間（日） */
+const WINDOW_DAYS = 30;
+
+/** 時間帯の短い名前（グラフの下に出す） */
+const BAND_SHORT: Readonly<Record<string, string>> = {
+  '朝（〜11時）': '〜11', '昼（11〜14時）': '11-14', '午後（14〜17時）': '14-17', '夕方（17〜20時）': '17-20', '夜（20時〜）': '20〜',
+};
+
 /**
- * 集計の値を文字にする（秘匿は「少数」）。
+ * 集計の値を文字にする（定休日などの説明はそのまま、秘匿は「少数」）。
  * @param count 集計の1項目
  * @param unit 単位
  * @returns 表示する文字
  */
 export function countText(count: CmsCountDto, unit: string): string {
-  return count.suppressed || count.value === undefined ? '少数' : `${count.value}${unit}`;
+  const log = logger.fn('countText', { label: count.label });
+  if (count.note !== undefined) return log.exit(count.note);
+  return log.exit(count.suppressed || count.value === undefined ? '少数' : `${count.value}${unit}`);
 }
 
 /**
- * 横棒グラフを作る（いちばん多い棒を強調し、秘匿した項目は棒を出さない）。
+ * 数字の並び（白い面を縦線で4つに分ける）を作る。
+ * @param stats 来店データ
+ * @returns 要素
+ */
+function kpiStrip(stats: CmsVisitStatsDto): HTMLElement {
+  const log = logger.fn('kpiStrip');
+  const items: readonly [string, CmsCountDto | number, string][] = [['来店数', stats.visits30d, '回'], ['来店者', stats.visitors30d, '人'], ['再訪率', stats.revisitRatePct, '%'], ['新規率', stats.firstTimerPct, '%']];
+  return log.exit(h('div', { class: 'cms-kpis', attrs: { 'data-testid': 'cms-kpis' } }, items.map(([label, value, unit]) => {
+    const hidden = typeof value !== 'number' && (value.suppressed || value.value === undefined);
+    const num = typeof value === 'number' ? value : value.value;
+    return h('div', { class: 'cms-kpi' }, [
+      h('span', { class: 'cms-kpi__label', text: label }),
+      hidden
+        ? h('span', { class: 'cms-kpi__value cms-kpi__value--hidden', attrs: { title: '人数が少ないため非表示' } }, ['少数', icon('info')])
+        : h('span', { class: 'cms-kpi__value' }, [String(num ?? ''), h('small', { text: unit })]),
+    ]);
+  })));
+}
+
+/**
+ * 縦棒グラフを作る（いちばん多い棒（週ごとは直近）を紺墨。朱は使わない）。
  * @param title 見出し
  * @param counts 項目
- * @param unit 単位
- * @param lead 読み方の一言
- * @returns 区画
+ * @param opts 棒の下の名前の作り方・低いグラフにするか・直近を強調するか
+ * @returns 要素
  */
-function barChart(title: string, counts: readonly CmsCountDto[], unit: string, lead: string): HTMLElement {
-  const log = logger.fn('barChart', { title, count: counts.length });
+function columnChart(title: string, counts: readonly CmsCountDto[], opts: { readonly label?: (c: CmsCountDto) => string; readonly short?: boolean; readonly latest?: boolean } = {}): HTMLElement {
+  const log = logger.fn('columnChart', { title, count: counts.length });
   const max = Math.max(1, ...counts.map((c) => c.value ?? 0));
   const top = largest(counts);
-  const rows = counts.map((c) => h('div', { class: ['cms-bar', c === top && 'cms-bar--top'], attrs: { 'data-testid': 'cms-bar' } }, [
-    h('span', { class: 'cms-bar__label', text: c.label }),
-    h('span', { class: 'cms-bar__track' }, [c.suppressed ? undefined : h('span', { class: 'cms-bar__fill', style: { width: `${Math.round(((c.value ?? 0) / max) * 100)}%` } })]),
-    h('span', { class: ['cms-bar__value', c.suppressed && 'cms-bar__value--suppressed'], text: countText(c, unit) }),
-  ]));
-  const summary = `${title}：${counts.map((c) => `${c.label} ${countText(c, unit)}`).join('、')}`;
-  return log.exit(cmsSection(title, [h('div', { class: 'cms-bars', attrs: { role: 'img', 'aria-label': summary } }, rows)], { lead }));
+  const cols = counts.map((c, i) => {
+    const latest = opts.latest === true && i === counts.length - 1;
+    const value = c.note !== undefined ? '休' : c.suppressed || c.value === undefined ? '少数' : String(c.value);
+    const bar = c.value === undefined ? undefined : h('span', { class: ['cms-col__bar', c === top && opts.latest !== true && 'cms-col__bar--top', latest && 'cms-col__bar--latest'], style: { height: `${Math.max(2, Math.round((c.value / max) * 100))}%` } });
+    return h('div', { class: 'cms-col', attrs: { 'data-testid': 'cms-bar' } }, [
+      h('span', { class: 'cms-col__track' }, [h('span', { class: ['cms-col__value', c.value === undefined && 'cms-col__value--muted'], text: value }), bar]),
+      h('span', { class: 'cms-col__label', text: opts.label?.(c) ?? c.label }),
+    ]);
+  });
+  const summary = `${title}：${counts.map((c) => `${c.label} ${countText(c, '回')}`).join('、')}`;
+  return log.exit(h('section', { class: 'cms-chart' }, [h('h2', { class: 'cms-section__title', text: title }), h('div', { class: ['cms-cols', opts.short === true && 'cms-cols--short'], attrs: { role: 'img', 'aria-label': summary } }, cols)]));
 }
 
 /**
- * 数字のタイル（意味の説明つき）を作る。
- * @param label 名前
- * @param value 表示する文字
- * @param meaning 意味の一言
- * @returns タイルの要素
- */
-function kpi(label: string, value: string, meaning: string): HTMLElement {
-  return h('div', { class: 'cms-stat' }, [h('span', { class: 'cms-stat__label', text: label }), h('span', { class: 'cms-stat__value', text: value }), h('span', { class: 'cms-stat__meaning', text: meaning })]);
-}
-
-/**
- * 「ひとことで言うと」の区画を作る。
+ * 要点の行（いちばん多い曜日と時間帯。協力店はその曜日に掲載へ）を作る。
+ * @param ctx 文脈
  * @param stats 来店データ
- * @returns 区画
+ * @returns 要素（作れなければ undefined）
  */
-function renderInsights(stats: CmsVisitStatsDto): HTMLElement {
-  const log = logger.fn('renderInsights');
-  const lines = insightsOf(stats);
-  return log.exit(h('section', { class: 'cms-insights', attrs: { 'data-testid': 'cms-insights' } }, [
-    h('h2', { class: 'cms-card__title', text: 'ひとことで言うと' }),
-    h('ul', { class: 'cms-insights__list' }, lines.map((line) => h('li', { class: line.startsWith('ヒント') ? 'cms-insights__hint' : undefined, text: line }))),
-  ]));
+function keyPointRow(ctx: CmsContext, stats: CmsVisitStatsDto): HTMLElement | undefined {
+  const log = logger.fn('keyPointRow');
+  const point = keyPointOf(stats);
+  if (point === undefined) return log.exit(undefined);
+  const day = nextDateOfWeekday(ctx.info.today, point.weekday);
+  const action = ctx.info.partner
+    ? h('button', { class: 'cms-btn cms-btn--secondary', attrs: { type: 'button', 'data-testid': 'cms-data-to-events' }, on: { click: () => openEventForm(ctx, { start: day, end: day }) } }, [`${point.weekday}曜に掲載`, icon('chevronRight')])
+    : undefined;
+  return log.exit(h('div', { class: 'cms-keypoint', attrs: { 'data-testid': 'cms-keypoint' } }, [h('span', { class: 'cms-keypoint__text', text: point.text }), action]));
 }
 
 /**
@@ -80,24 +106,26 @@ function renderInsights(stats: CmsVisitStatsDto): HTMLElement {
  */
 function renderStats(ctx: CmsContext, stats: CmsVisitStatsDto): HTMLElement {
   const log = logger.fn('renderStats', { today: stats.today });
-  const next = ctx.info.partner
-    ? createButton({ label: 'この傾向に合わせてクーポンを出す', variant: 'primary', testId: 'cms-data-to-events', onClick: () => ctx.go('events') })
-    : h('p', { class: 'cms-note', text: '協力店になると、多い曜日・時間帯に合わせてクーポンやイベントを出せます。' });
-  return log.exit(h('div', { class: 'cms-stack' }, [
-    h('p', { class: 'cms-callout', attrs: { 'data-testid': 'cms-dummy-banner' }, text: 'いまはデモ用のダミーデータです。本番では、お客さんが同意して送った訪問記録（お店・日時・地区だけ）を集計します。' }),
-    renderInsights(stats),
-    cmsSection(`直近30日（${shortDate(stats.today)}まで）`, [h('div', { class: 'cms-stats' }, [
-      kpi('来店', countText(stats.visits30d, '回'), 'アプリで「訪問」した回数'),
-      kpi('来た人', countText(stats.visitors30d, '人'), '同じ人は1人と数えます'),
-      kpi('また来た人', `${stats.revisitRatePct}%`, '来た人のうち、30日以内にもう一度来た人'),
-      kpi('初めての人', `${stats.firstTimerPct}%`, '来た人のうち、このお店が初めての人'),
-    ])], { lead: '人数が少ない集計は「少数」と出し、数字は見せません（お客さんを特定できないようにするため）。' }),
-    barChart('曜日別の来店', stats.byWeekday, '回', 'いちばん多い曜日を濃い色で示しています。'),
-    barChart('時間帯別の来店', stats.byTimeBand, '回', 'クーポンを出す時間帯を考えるときの目安になります。'),
-    barChart('週ごとの来店', stats.weekly, '回', '上が古い週、いちばん下が今週です。'),
-    barChart('アプリのしかけの効果', stats.effects, '人', 'アプリの図鑑・クーポン・おかえり（しばらくぶりの来店）から来た人の数です。'),
-    cmsSection('次にやること', [next]),
+  return log.exit(h('div', { class: 'cms-data' }, [
+    kpiStrip(stats),
+    keyPointRow(ctx, stats),
+    h('div', { class: 'cms-charts' }, [
+      columnChart('曜日別', stats.byWeekday),
+      columnChart('時間帯別', stats.byTimeBand, { label: (c) => BAND_SHORT[c.label] ?? c.label }),
+    ]),
+    columnChart(`直近${stats.weekly.length}週`, stats.weekly, { short: true, latest: true, label: (c) => (c.label === '直近7日' ? '直近' : c.label) }),
   ]));
+}
+
+/**
+ * 集計の期間の文字（「直近30日 10/11〜11/9」）。
+ * @param today 今日
+ * @returns 文字
+ */
+function windowText(today: string): string {
+  const log = logger.fn('windowText', { today });
+  const date = parseLocalDate(today);
+  return log.exit(date.ok ? `直近${WINDOW_DAYS}日 ${mdDate(addDays(date.value, -(WINDOW_DAYS - 1)))}〜${mdDate(today)}` : '');
 }
 
 /**
@@ -107,13 +135,13 @@ function renderStats(ctx: CmsContext, stats: CmsVisitStatsDto): HTMLElement {
  */
 export function renderCmsDataScreen(ctx: CmsContext): HTMLElement {
   const log = logger.fn('renderCmsDataScreen', { spotId: ctx.info.id });
-  const body = h('div', { attrs: { 'aria-busy': 'true' } }, [h('p', { class: 'cms-note', text: '読み込んでいます…' })]);
+  const body = h('div', { attrs: { 'aria-busy': 'true' } }, [h('p', { class: 'cms-muted', text: '…' })]);
   void ctx.services.visitStats.execute({ spotId: ctx.info.id }).then((stats) => {
     body.removeAttribute('aria-busy');
-    body.replaceChildren(stats.ok ? renderStats(ctx, stats.value) : h('p', { class: 'cms-error', text: `来店データを読み込めませんでした：${stats.error.message}` }));
+    body.replaceChildren(stats.ok ? renderStats(ctx, stats.value) : h('p', { class: 'cms-error', text: '読み込めませんでした' }));
   });
-  return log.exit(h('div', { class: 'cms-stack', attrs: { 'data-testid': 'cms-screen-data' } }, [
-    pageHeader('来店データ', 'お客さんがいつ来ているかを見て、クーポンやイベントを出す日を考えるのに使います。'),
+  return log.exit(h('div', { class: 'cms-onecol', attrs: { 'data-testid': 'cms-screen-data' } }, [
+    pageTitle('来店データ', [badge('サンプル', 'muted'), h('span', { class: 'cms-muted', text: windowText(ctx.info.today) })]),
     body,
   ]));
 }

@@ -179,9 +179,9 @@ export function toShopInfoDto(deps: Pick<CmsDeps, 'spots'>, shop: Spot, overlay:
   const hours = parseBusinessHoursText(merged.hours);
   const open = countOpenEvents(liveEventPeriods(deps.spots, overlay, shop.id), today);
   return log.exit({
-    id: shop.id, name: shop.name, districtName: deps.spots.findDistrict(shop.districtId)?.name ?? '', category: shop.category,
+    id: shop.id, name: shop.name, districtId: shop.districtId, districtName: deps.spots.findDistrict(shop.districtId)?.name ?? '', category: shop.category,
     description: shop.description, partner: shop.partner, hoursText: merged.hours,
-    ...(hours === undefined ? {} : { hours: { open: hours.open, close: hours.close, closedDays: [...hours.closedDays] } }),
+    ...(hours === undefined ? {} : { hours: { open: hours.open, close: hours.close, closedDays: [...hours.closedDays], note: hours.note } }),
     amenities: [...merged.amenities], edited: edit !== undefined, ...(edit === undefined ? {} : { updatedAt: edit.updatedAt }),
     today, events: eventsOfShop(deps.spots, overlay, shop.id, today), remainingSlots: Math.max(0, SHOP_EVENT_MAX_OPEN_PER_SPOT - open),
   });

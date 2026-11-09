@@ -41,6 +41,8 @@ export interface MapUiState {
   pulseDistrictId?: string;
   /** 下シートの段階 */
   sheetState: 'peek' | 'half' | 'full';
+  /** 地図のカメラ（ドラッグ・拡大縮小した位置を画面をまたいで保つ。メモリのみ） */
+  camera?: { centerLat: number; centerLng: number; metersPerPx: number };
 }
 
 /** 画面ファクトリに渡すコンテキスト */

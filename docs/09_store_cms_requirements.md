@@ -142,7 +142,7 @@
 | ID | 要件 | 優先度 | フェーズ | 基準 |
 |---|---|---|---|---|
 | CMS-S01 | 自店の情報を見られる。利用者アプリでの見え方を、スポット詳細と同じ形でプレビューできる | Must | 1 | A |
-| CMS-S02 | **営業時間**を入力できる（開店・閉店・定休日）。表示用の文字列（40字以内。例「9:30–19:00（木休）」）は自動で作る。フェーズ1は全曜日共通の時間＋定休日、曜日ごとに違う時間はフェーズ2 | Must | 1 | A |
+| CMS-S02 | **営業時間**を入力できる（開店・閉店・定休日・補足）。表示用の文字列（40字以内。例「9:00–18:00（日休）・土曜は15時まで」）は自動で作る。フェーズ1は全曜日共通の時間＋定休日＋補足（16字まで。曜日で違う時間・中休み・不定休を書く）、曜日ごとの時間の選択はフェーズ2 | Must | 1 | A |
 | CMS-S03 | **臨時休業**（日付の範囲）を登録できる。期間中は、利用者アプリのスポット詳細に「臨時休業」と出る | Should | 2 | A |
 | CMS-S04 | **便利情報**6種（子連れ歓迎／トイレ／授乳室／ベビーカーOK／雨の日OK／駐車場）を選べる | Must | 1 | A |
 | CMS-S05 | **名前**（1〜20字）を編集できる | Should | 2 | A |
@@ -381,7 +381,7 @@
 - **CMS は別のエントリ・別のビルド・別のオリジン**にする（例：`admin.<ドメイン>`）。
   - 利用者アプリのビルドに CMS のコードと URL を含めない。
   - Cookie と CSP を分ける（SEC-04）。
-- **サーバー**：REST API、DB、画像ストレージ（別オリジンで配信）、スナップショットの生成と配信（CDN）。技術は未決（§10）。
+- **サーバー**：REST API、DB、画像ストレージ（別オリジンで配信）、スナップショットの生成と配信（CDN）。技術は TypeScript＋Node 標準（`node:http`・`node:sqlite`）に決定（2026-11-09。§7.3、§10 U1）。ホスティングは未決。
 - **domain の共有**：`Spot`・`ShopEvent`・`Period`・ID・parse・`TEXT_LIMITS` は、利用者アプリ・CMS・サーバーで共有する（検証規則を1か所にまとめる）。
 - **利用者アプリの差し替え**：計画どおり `infrastructure/api/` に実装を足す（01 §5、02 §5）。
   - `SpotRepository` は「読み込んだら変えない」から「スナップショット単位で置き換える」に変える。
@@ -405,6 +405,85 @@
 | application | `CmsServices.ts`、`dto/CmsDto.ts`、`ports/CmsOverlayRepository.ts`、`usecases/cms/`（店舗一覧・店舗情報・保存・登録・取り下げ・来訪データ・デモのやり直し） |
 | domain | `spot/BusinessHours.ts`（営業時間 ⇔ 表示用の文字列）、`revisit/ShopEventDraft.ts`（登録の規則・取り下げ後の期間）、`revisit/constants.ts`（字数・90日・3件） |
 | infrastructure | `storage/LocalStorageCmsOverlayRepository.ts`（キー `nnishi.demo.cms.overlay`）、`storage/schema/cmsOverlayParser.ts`、`master/applyCmsOverlay.ts`（マスタと同じ parse で検証して重ねる）、`master/RefreshableSpotRepository.ts`、`storage/watchStorageKey.ts`、`di/cmsContainer.ts`。`di/container.ts` はデモのときだけ重ねる（本番ビルドでは処理ごと消える） |
+
+### 7.3 連携サーバー（連携の芯。2026-11-09）
+
+PC の CMS とスマホのアプリのように、**別の端末どうし**でも登録内容が届くようにするサーバー。フェーズ2の「スナップショット配信（APP-01〜03）」の芯を先に作ったもの。ログイン・権限・掲載確認はまだ無い（フェーズ2の残り）。
+
+**決めたこと（ユーザー決定）**
+- 範囲は「連携の芯」：CMS の登録内容をサーバーに保存し、版番号付きの公開スナップショットとしてアプリへ配る。ログインは作らず、デモの「店を選ぶ」方式のまま。
+- 技術（U1）：TypeScript＋Node 標準。`node:http` と `node:sqlite` だけで動き、依存パッケージを増やさない。サーバーは利用者アプリと同じ src（domain・application・検証の関数）を使う。
+
+**仕組み**
+
+```
+CMS（PC）──HTTP──▶ 連携サーバー ──▶ SQLite（登録内容・変更履歴）
+                     │ CMS のユースケースをサーバー側で実行（規則の確認＝SEC-03）
+                     └─ 公開スナップショット（版番号・ETag）＋ SSE で版番号を通知
+アプリ（スマホ）◀── 起動時に取得・SSE で変化を知ったら取り直す・前回の写しを localStorage に保存
+```
+
+- **規則はサーバーで確かめる**：協力店だけ・字数・期間・同時3件・二重登録の防止（操作ID）・楽観ロック（版数）は、フェーズ1と同じユースケースをサーバー側で動かして確かめる。CMS の画面は `HttpCmsServices`（`CmsServices` の HTTP 版）に差し替わるだけで、画面のコードは変えていない。
+- **アプリはもう一度確かめる**：受け取った公開スナップショットは、マスタと同じ parse・`applyCmsOverlay` にかけてから重ねる（APP-05）。
+- **止まっても動く**：サーバーにつながらないときは、前回の写し（`P+'cms.snapshot'`）で動く。写しも無ければマスタだけで動く（§4.5、APP-02）。
+- **デモの日付**：CMS は DemoClock のずらし日数をヘッダー `x-demo-offset-days` で送り、サーバーはその日数の時計でユースケースを動かす（デモの版だけ）。
+- **変更履歴**：保存のたびに「いつ・誰が・何を・前の値と後の値」を同じトランザクションで残す（DI-20。誰は今は `demo`）。
+- **消しても版番号を戻さない**：デモのやり直しでも版番号は進める（配った版番号と食い違わないように）。DB のファイルを消して作り直すと版番号は 0 からになるので、「どの版か」は DB ごとの ID（`dbId`）と版番号の組で見分ける（ETag も `"cms-<dbId>-<版番号>"`）。やり直しは、ファイルを消すより CMS の「デモのやり直し」を使う。
+- **二重登録を防ぐ**：CMS の画面は押すたびに新しい操作ID を作るので、サーバー経由では連打や時間切れ後の送り直しで二重に登録されうる。`WriteGuard` が、同じ内容の要求が送信中なら同じ結果を共有し、結果が分からなかった失敗のあとの送り直しは前と同じ操作ID で送る（DI-07。画面のコードは変えない）。
+- **通知が止まってもつなぎ直す**：サーバーが 200 以外を返す（込み合い 503・中継の 502）と EventSource はあきらめるので、アプリ側で間を空けてつなぎ直す（3秒から、最長1分）。
+
+**API**（道筋は `src/infrastructure/api/apiRoutes.ts` の1か所で決める）
+
+| 道筋 | 用途 | 使える版 |
+|---|---|---|
+| `GET /api/health` | 動作確認（版番号・モード・SSE のつながり数） | 両方 |
+| `GET /api/public/cms-snapshot` | 公開スナップショット（ETag。同じなら 304） | 両方 |
+| `GET /api/public/cms-snapshot/stream` | 版番号の変化（SSE。つないだ直後に今の版番号を送る） | 両方 |
+| `GET /api/cms/shops`、`GET /api/cms/shops/:spotId` | 店舗の一覧・店舗の情報 | デモだけ |
+| `PUT /api/cms/shops/:spotId/info` | 営業時間・便利情報の保存 | デモだけ |
+| `POST /api/cms/shops/:spotId/events`、`…/events/:id/withdraw` | クーポン・イベントの登録・取り下げ | デモだけ |
+| `GET /api/cms/shops/:spotId/visit-stats` | 来店データ（ダミー） | デモだけ |
+| `POST /api/cms/demo/reset` | 登録内容をすべて消す | デモだけ |
+
+- API は、Host が `localhost` か IP アドレスの要求だけ受け付ける（403。DNS リバインディング対策＝攻撃者のドメイン名を 127.0.0.1 に向けても使えない）。
+- 書込系は、`Content-Type: application/json` だけ受け付け（415）、Origin が自分のオリジンと違えば断り（403、SEC-28）、本文は 16KB まで（超えた時点で読むのをやめて 413）、1つの相手につき1分に120回まで（429、SEC-18）。
+- SSE は全体で200本、1つの相手につき10本まで（503）。
+- 失敗の応答は `{ ok:false, error:{ code, message, details } }`。details は文字・数値・真偽だけで、例外の中身は出さない。
+- 公開スナップショットに入れないもの：処理済みの操作ID、開始日より前に取り下げたクーポン・イベント（§6.3）。
+- **本番の版のサーバーは CMS の API を出さない**（ログインが無いため。MUST-8、SEC-02、SEC-03）。公開の API だけを出す。判定は `import.meta.env` を直接書いた式なので、本番ビルドでは CMS の API とユースケースが処理ごと消える（ビルドの大きさ 228KB → 170KB で確かめた）。
+
+**動かし方**
+
+| コマンド | 内容 |
+|---|---|
+| `npm run dev:backend` | 開発用。連携サーバー（8787）＋ Vite（5174。`/api` を 8787 へ中継）。アプリ http://localhost:5174/ ・ CMS /cms.html |
+| `npm run demo:backend` | 発表用。連携つきでデモビルド（`dist-backend`）し、連携サーバーが画面と API を1つのオリジン（8787）で配る |
+| `npm run e2e:backend` | 通し確認（ヘッドレス Edge。`demo:backend` を動かしたまま実行） |
+| `npm run server:build` | サーバーだけビルド（`dist-server/serverMain.mjs`） |
+
+- 切り替えはビルド時の `VITE_CMS_BACKEND=server`（上のスクリプトが付ける）。ふだんの `npm run dev`（5173）は今までどおり localStorage でつなぐ。
+- DB は `.data/cms-demo.sqlite`（`--db` で変えられる。消すと登録内容が空に戻る）。`.data/`・`dist-server/`・`dist-backend/` は git に入れない。
+- スマホから開くときは `--host 0.0.0.0` を付ける（例：`node scripts/dev/backend.mjs serve --host 0.0.0.0`）。ログインが無いので、同じネットワークの人なら誰でも編集できる。発表の場だけで使う。
+  - 注意：アプリは `crypto.randomUUID` を使うため、安全な文脈（https か localhost）が必要。LAN の http://192.168.… では動かない。スマホで見せるときは、USB 経由のポート転送（localhost として開く）か、https の用意が要る。
+
+**実装の配置**
+
+| 層 | ファイル |
+|---|---|
+| エントリ | `src/serverMain.ts`、`vite.server.config.ts`（Node 用の1ファイルにまとめる）、`scripts/dev/backend.mjs`、`scripts/e2e/cms-backend.mjs` |
+| infrastructure/api（ブラウザ側・共有の契約） | `apiRoutes.ts`（道筋）、`requestApi.ts`、`HttpCmsServices.ts`、`WriteGuard.ts`（二重登録の防止）、`CmsSnapshotSync.ts`、`schema/{shape,cmsApiShapes,publicCmsSnapshot}.ts` |
+| infrastructure/server | `http/{createApiHandler,cmsRoutes,publicRoutes,httpIo,SnapshotStream,FixedWindowRateLimiter,staticFiles}.ts`、`sqlite/{CmsDatabase,SqliteCmsOverlayRepository,cmsAuditDiff}.ts`、`buildPublicCmsSnapshot.ts`、`nodeFetchText.ts`、`serverOptions.ts` |
+| infrastructure/di | `serverContainer.ts`、`cmsServerReflection.ts`（アプリ側の反映）、`cmsUseCases.ts`（ユースケース一式の組み立て。cmsContainer と共有） |
+| infrastructure/time | `OffsetClock.ts`（ずらし日数の時計） |
+| 変更した既存ファイル | `di/container.ts`・`di/cmsContainer.ts`（server のときの分岐）、`Common/constants/env.ts`（`CMS_BACKEND`）、`storage/storageKeys.ts`（`CMS_SNAPSHOT_KEY`）、`vite.config.ts`（`CMS_API_PROXY` のときだけ中継）、`package.json`、`.gitignore` |
+
+**確かめたこと**
+- 統合テスト `server/cmsBackend.test.ts`（11件）：別の端末（保存先が別）のアプリに届く、HTTP 経由の応答がブラウザで直接動かした結果と一致する、サーバー側で規則を確かめる（連打を含む）、デモの日付、本番の版では CMS の API が無い、415/403/413/429/405、Host の確認、Content-Length の無い大きな本文、SSE の本数の上限、開始前の取り下げは配らない・ETag・SSE、サーバーが止まっても前回の写しで動く。
+- 単体テスト：`SqliteCmsOverlayRepository.test.ts`（楽観ロック・変更履歴・ファイルに残る・DB の ID）、`CmsSnapshotSync.test.ts`（DB の ID での見分け・つなぎ直し）、`WriteGuard.test.ts`、`shape.test.ts`、`serverOptions.test.ts`（静的ファイルのパスの検証を含む）。
+- 独立したレビュー担当（サブエージェント）に見てもらい、指摘7件（DNS リバインディング、連打・送り直しの二重登録、SSE がつなぎ直さない、本文の上限、DB を作り直したときの版番号、DB の例外の扱い、本番ビルドに CMS の API が残る）をすべて直した。
+- ヘッドレス Edge（`e2e:backend`）：PC の CMS で営業時間・便利情報を保存し、クーポンを掲載すると、別のブラウザコンテキストのスマホのアプリに、再読み込みなしで届く（8項目すべて成功）。
+
+**まだ無いもの（フェーズ2の残り）**：ログインとロール、担当店舗との照合（今は道筋のスポットID を信じている）、掲載確認、変更履歴の画面、CMS の別オリジン化、ホスティング、変更履歴の保持期間（3年）での削除、本番版アプリでのスナップショット受信（今はデモの版だけ）。
 
 ---
 
@@ -454,6 +533,35 @@
 
 ---
 
+### 8.4 画面の作り（2026-11-09 デザイン改訂）
+
+ユーザーの指摘：「Claude感（AIが作った感）が強い。40才くらいの人でも使いやすいように、文字を減らし、左が画面表示、右が入力フォームにする」。
+デザイナー役の仕様に沿って作り直した。
+
+| 項目 | 作り |
+|---|---|
+| 配置 | 上部バー 56px にページのタブ（ホーム／お店の情報／クーポン・イベント／来店データ）、お店の切り替え、デモの日付、アプリを開く。本文は「左：見え方（スマホ枠） 352px ／ 右：フォーム」。来店データだけ1列。スマホ幅（959px 以下）では、見え方は下のバーの「見え方」からシートで開く |
+| 見え方 | アプリの本物の部品（createSpotInfo・createCouponEventList・createSpotIllustration・createRevisitReasonCard）で描く。入力のたびに更新し、入力中の欄に対応する部分を破線で囲む。クーポン・イベントでは「お店のページ｜地図」を切り替え、枠の下の1行に「11/14(土)から表示」などを出す |
+| 文字 | 説明文・ヒント・括弧書き・番号付きステップ・色付きの説明箱は置かない。残すのは「アプリでの見え方」「店名・紹介文の変更は運営者へ連絡してください」「協力店のみ掲載できます。運営者にご相談ください」の3つだけ。ボタンは2〜6字（「この内容でOK」のみ7字） |
+| 色・部品 | 朱は主ボタンと選択中のタブだけ。選んだ状態は紺墨。角丸は 8px 以下。影はモーダル・トースト・シートだけ。記号は SVG アイコン。通知は1つずつ（12字以内） |
+| お店の情報 | 営業時間（select 2つ）、定休日（7つのトグル）、補足（16字）、便利情報（2列のチェック）。下のバーの状態は5つ：この内容でOK（未確認）／保存済み／未保存の変更／保存中…／保存できませんでした（再試行）。未保存のまま移るときは「未保存の変更があります」［戻る］［破棄して移動］ |
+| クーポン・イベント | 右側は「一覧」と「入力」を切り替える。一覧は 下書き → 掲載中 → 予定 の順で、行の右に「編集」「取り下げ」。入力は種類・例文・題名・説明・期間で、誤りは押したときだけ欄の下に出す。編集は取り下げて掲載し直す |
+| 来店データ | 数字4つ（来店数・来店者・再訪率・新規率）、要点1行（例「土曜の昼（11〜14時）が最も多い」と［土曜に出す］）、縦棒グラフ（曜日別・時間帯別・週ごと。最大の1本だけ朱、定休日は「休」、少数は「少数」） |
+| ホーム | 店名、はじめにやること（3つ済んだら消す）、掲載中（最大3件）、直近30日の数字、デモをリセット（文字リンク） |
+
+確かめ方：
+- ヘッドレス Edge で、PC幅（1280px）とスマホ幅（390px）の課題を自動で操作した。
+  - 確認だけで手順1を終える
+  - 定休日・補足・便利情報を直して保存する（未保存の確認も含む）
+  - 空のまま掲載を押す
+  - 例文と「次の土日」で掲載する
+  - 編集する
+  - 取り下げの確認を出す
+  - 「土曜に出す」から入力を開く
+  - スマホで見え方のシートを開く
+- 結果はすべて成功。
+- 手数：確認だけなら3回、クーポンの掲載は5回。
+
 ## 9. 既存文書への影響（実装前に改訂する）
 
 | 文書 | 箇所 | 改訂の内容 | 時期 |
@@ -480,7 +588,7 @@
 
 | # | 項目 | 選択肢・論点 | 決める時期 |
 |---|---|---|---|
-| U1 | バックエンドの技術とホスティング | 自前で作る（TypeScript＋RDB）か、BaaS を使うか。社内の制約、運用の担い手 | フェーズ2の前 |
+| U1 | バックエンドの技術とホスティング | **技術は決定**（2026-11-09）：TypeScript＋Node 標準（`node:http`・`node:sqlite`）、依存パッケージなし（§7.3）。**ホスティングは未決**（社内の制約、運用の担い手、本番の DB を SQLite のままにするか） | ホスティングはフェーズ2の前 |
 | U2 | すぐ公開する項目の範囲 | §2.2 S09 の案（営業時間・臨時休業・便利情報はすぐ公開）でよいか。信頼できる店舗は全項目をすぐ公開にするか | フェーズ2の前 |
 | U3 | 店頭QR の方式 | 印刷した固定の QR＋GPS（Q04〜Q06）か、店頭端末の動的な QR（Q09）か。併用の半径100m は妥当か | フェーズ3の前 |
 | U4 | 少数を秘匿するしきい値 | 5人（仮）でよいか。曜日×時間帯のように細かい集計の扱い | フェーズ3の前 |

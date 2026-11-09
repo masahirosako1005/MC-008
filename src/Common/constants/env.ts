@@ -19,6 +19,16 @@ export const isProductionBuild: boolean = import.meta.env.PROD && !isDemoBuild;
 /** localStorage キーの接頭辞（SEC-07）。デモと本番で名前空間を分ける（DI-23） */
 export const STORAGE_PREFIX: 'nnishi.demo.' | 'nnishi.' = isDemoBuild ? 'nnishi.demo.' : 'nnishi.';
 
+/** 店舗CMS の登録内容の受け渡し方 */
+export type CmsBackend = 'local' | 'server';
+
+/**
+ * 店舗CMS の登録内容の受け渡し方（docs/09 §7.3）。
+ * 'local'（既定）：同じブラウザの localStorage（フェーズ1）／'server'：連携サーバー（/api。別の端末どうしでもつながる）。
+ * ビルド時の環境変数 VITE_CMS_BACKEND=server で切り替える（scripts/dev/backend.mjs が付ける）。
+ */
+export const CMS_BACKEND: CmsBackend = import.meta.env['VITE_CMS_BACKEND'] === 'server' ? 'server' : 'local';
+
 /** アプリのバージョン（エクスポートデータ・ログに付ける） */
 export const APP_VERSION = '0.1.0';
 

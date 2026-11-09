@@ -42,6 +42,23 @@ export const PERIOD_PRESETS: readonly { readonly id: PeriodPresetId; readonly la
   { id: 'month', label: '今月末まで' },
 ];
 
+/** 日曜始まりの曜日の名前（dayOfWeekOf の番号の順） */
+const SUNDAY_FIRST_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
+
+/**
+ * 今日以降でいちばん近い、その曜日の日付を返す（来店データの「多い曜日」に合わせてクーポンを出すときに使う）。
+ * @param today 今日（'YYYY-MM-DD'）
+ * @param weekdayLabel 曜日の名前（'月'〜'日'）
+ * @returns 日付（今日・曜日が不正なら今日）
+ */
+export function nextDateOfWeekday(today: string, weekdayLabel: string): string {
+  const log = logger.fn('nextDateOfWeekday', { today, weekdayLabel });
+  const parsed = parseLocalDate(today);
+  const target = SUNDAY_FIRST_LABELS.indexOf(weekdayLabel);
+  if (!parsed.ok || target < 0) return log.exit(today);
+  return log.exit(addDays(parsed.value, (target - dayOfWeekOf(parsed.value) + 7) % 7));
+}
+
 /** 曜日番号（dayOfWeekOf: 0=日曜 … 6=土曜） */
 const SATURDAY = 6;
 const SUNDAY = 0;

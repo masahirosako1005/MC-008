@@ -10,13 +10,14 @@ import { ok } from '@/Common/result/Result';
 import type { Result } from '@/Common/result/Result';
 import type { LocalDate } from '@/Common/utils/date';
 import type { UseCase } from '@/application/AppServices';
-import type { AmenityPointDto, LatLngDto, MapBackdropDto, MapDataDto, MapFeatureDto, MapSpotDto, SpotStatusDto, StationDto } from '@/application/dto/Dto';
+import type { AmenityPointDto, LatLngDto, MapBackdropDto, MapDataDto, MapFeatureDto, MapSpotDto, MapSpotEventDto, SpotStatusDto, StationDto } from '@/application/dto/Dto';
 import { hasActiveShopEventOn, spotStatusOf } from '@/application/usecases/exploration/SpotStatus';
 import { districtViewsOf, toDistrictMapDto } from '@/application/usecases/shared/DistrictView';
 import { loadWorld } from '@/application/usecases/shared/World';
 import type { World, WorldDeps } from '@/application/usecases/shared/World';
 import type { GeoPoint } from '@/domain/exploration/GeoPoint';
 import { visitCountOfSpot } from '@/domain/exploration/VisitStats';
+import { isActive } from '@/domain/revisit/ShopEvent';
 import type { Traveler } from '@/domain/exploration/Traveler';
 import type { AmenityPoint, MapBackdrop, MapFeature, Station } from '@/domain/spot/MapBackdrop';
 import type { Spot } from '@/domain/spot/Spot';
@@ -64,8 +65,28 @@ function toMapSpotDto(spot: Spot, context: MapSpotContext): MapSpotDto {
     visitCount: visitCountOfSpot(context.traveler.visits, spot.id),
     amenities: Object.freeze([...spot.amenities]),
     hasActiveShopEvent: hasActiveShopEventOn(context.spots, spot.id, context.today),
+    category: spot.category,
+    ...activeEventField(spot, context),
   });
   return log.exit(dto, status);
+}
+
+/**
+ * スポットで開催中のクーポン・イベントのうち、終わりがいちばん近いものを地図用に要約する（無ければ空のオブジェクト）。
+ * 地図の「今日だけ」「あと n 日」の表示に使う（C: 期限の再訪理由を地図の上でも見せる）。
+ * @param spot スポット
+ * @param context 旅人・マスタ・今日
+ * @returns activeEvent を含むオブジェクト、または空のオブジェクト
+ */
+function activeEventField(spot: Spot, context: MapSpotContext): { readonly activeEvent?: MapSpotEventDto } {
+  const log = logger.fn('activeEventField', { spotId: spot.id });
+  const active = context.spots
+    .shopEventsForSpot(spot.id)
+    .filter((event) => isActive(event, context.today))
+    .map((event) => ({ kind: event.kind, title: event.title, daysLeft: event.period.daysUntilEnd(context.today) }))
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+  const first = active[0];
+  return log.exit(first === undefined ? {} : { activeEvent: Object.freeze(first) }, first === undefined ? 'なし' : `あと${first.daysLeft}日`);
 }
 
 /**

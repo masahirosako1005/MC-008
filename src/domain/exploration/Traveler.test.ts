@@ -148,11 +148,11 @@ describe('Traveler.visit', () => {
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value.traveler.visits.map((v) => v.localDate)).toEqual(['2026-11-09', '2026-11-10']);
   });
-  it('40m は訪問可、41m は OUT_OF_RANGE', () => {
-    expect(fresh().visit(visitInput(CASTLE, 1, { date: '2026-11-09' }, { meters: 40 })).ok).toBe(true);
-    const far = fresh().visit(visitInput(CASTLE, 1, { date: '2026-11-09' }, { meters: 41 }));
+  it('80m は訪問可、81m は OUT_OF_RANGE（地図の円と同じ半径）', () => {
+    expect(fresh().visit(visitInput(CASTLE, 1, { date: '2026-11-09' }, { meters: 80 })).ok).toBe(true);
+    const far = fresh().visit(visitInput(CASTLE, 1, { date: '2026-11-09' }, { meters: 81 }));
     expect(far.ok ? undefined : far.error.code).toBe('OUT_OF_RANGE');
-    if (!far.ok) expect(far.error.details).toMatchObject({ meters: 41, radiusM: 40 });
+    if (!far.ok) expect(far.error.details).toMatchObject({ meters: 81, radiusM: 80 });
   });
   it('距離が非数・負なら OUT_OF_RANGE', () => {
     for (const meters of [Number.NaN, -1]) {
@@ -226,8 +226,8 @@ describe('Traveler.redeem', () => {
     const early = base().redeem(redeemInput(2, '2026-10-31'));
     expect(early.ok ? undefined : early.error.details).toEqual({ reason: 'notStarted' });
   });
-  it('41m 離れていたら OUT_OF_RANGE', () => {
-    const r = base().redeem(redeemInput(2, '2026-11-10', { meters: 41 }));
+  it('81m 離れていたら OUT_OF_RANGE', () => {
+    const r = base().redeem(redeemInput(2, '2026-11-10', { meters: 81 }));
     expect(r.ok ? undefined : r.error.code).toBe('OUT_OF_RANGE');
   });
 });

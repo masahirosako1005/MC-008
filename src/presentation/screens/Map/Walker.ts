@@ -47,6 +47,10 @@ export interface WalkerHooks {
 export interface Walker {
   /** from から to へ歩く（metersPerPx は表示中の縮尺。歩く速さを画面上でそろえる）。歩行中なら今の位置から新しい目的地へ向かい直す */
   walkTo(from: LatLng, to: LatLng, metersPerPx?: number): void;
+  /** 折れ線（道に沿った経路。先頭は出発点）に沿って歩く。歩行中なら今の位置から歩き直す */
+  walkPath(points: readonly LatLng[], metersPerPx?: number): void;
+  /** これから歩く残りの道筋（今の位置から目的地まで）。歩いていなければ空 */
+  remainingRoute(now: number): readonly LatLng[];
   /** 描画用の今の位置（時間に合わせてなめらかに補間）。歩いていなければ undefined */
   livePosition(now: number): LatLng | undefined;
   /** 東西の進む向き（東=1・西=-1・真南北=0）。歩いていなければ undefined */
@@ -61,6 +65,10 @@ export interface Walker {
 interface WalkRoute {
   readonly from: LatLng;
   readonly to: LatLng;
+  /** 道筋の折れ線（先頭が出発点） */
+  readonly points: readonly LatLng[];
+  /** 折れ線の各点までの累積距離（メートル） */
+  readonly cum: readonly number[];
   /** 全体の距離（メートル） */
   readonly totalM: number;
   readonly path: readonly LatLng[];
@@ -115,6 +123,61 @@ export function interpolateWalk(from: LatLng, to: LatLng, stepM = WALK_STEP_M): 
   path.push({ lat: to.lat, lng: to.lng });
   log.exit({ steps: path.length });
   return path;
+}
+
+/**
+ * 折れ線の各点までの累積距離（メートル）を返す。
+ * @param points 折れ線
+ * @returns 累積距離（先頭は 0）
+ */
+export function cumulativeMeters(points: readonly LatLng[]): number[] {
+  const log = logger.fn('cumulativeMeters', { points: points.length });
+  const cum: number[] = [];
+  let total = 0;
+  points.forEach((p, k) => {
+    const prev = points[k - 1];
+    if (prev !== undefined) total += distanceMeters(prev, p);
+    cum.push(total);
+  });
+  return log.exit(cum, `${Math.round(total)}m`);
+}
+
+/**
+ * 折れ線の上で、出発点から distance メートル進んだ点を返す（範囲外は端）。
+ * @param points 折れ線
+ * @param cum 累積距離
+ * @param distance 進んだ距離（メートル）
+ * @returns 位置
+ */
+export function pointOnPolyline(points: readonly LatLng[], cum: readonly number[], distance: number): LatLng { // audit-ignore: fnlog-missing 毎フレーム呼ぶ純粋な算術ヘルパー（座標を扱うのでログに出さない）
+  const last = points[points.length - 1] ?? { lat: 0, lng: 0 };
+  if (distance >= (cum[cum.length - 1] ?? 0)) return last;
+  for (let k = 1; k < points.length; k++) {
+    const d1 = cum[k] ?? 0;
+    if (d1 < distance) continue;
+    const d0 = cum[k - 1] ?? 0;
+    const a = points[k - 1] ?? last;
+    const b = points[k] ?? last;
+    const t = d1 > d0 ? Math.max(0, (distance - d0) / (d1 - d0)) : 1;
+    return { lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t };
+  }
+  return last;
+}
+
+/**
+ * 折れ線を、記録の刻み（WALK_STEP_M 以下）の点列にする（出発点は含めず、目的地は必ず含める）。
+ * @param points 折れ線
+ * @param cum 累積距離
+ * @param stepM 刻み（メートル）
+ * @returns 刻みの点列
+ */
+export function resamplePolyline(points: readonly LatLng[], cum: readonly number[], stepM = WALK_STEP_M): LatLng[] {
+  const total = cum[cum.length - 1] ?? 0;
+  const log = logger.fn('resamplePolyline', { meters: Math.round(total), stepM });
+  const steps = Math.max(1, Math.ceil(total / Math.max(0.001, stepM)));
+  const path: LatLng[] = [];
+  for (let i = 1; i <= steps; i++) path.push(pointOnPolyline(points, cum, (total * i) / steps));
+  return log.exit(path, `${path.length} 刻み`);
 }
 
 /**
@@ -215,14 +278,30 @@ class DemoWalker implements Walker {
    */
   walkTo(from: LatLng, to: LatLng, metersPerPx?: number): void {
     const log = logger.fn('walkTo', { walking: this.route !== undefined });
-    if (this.destroyed) return log.exit(undefined, '破棄済み');
-    const start = this.livePosition(performance.now()) ?? (this.route !== undefined && this.current !== undefined ? this.current : from);
-    const meters = distanceMeters(start, to);
-    const path = interpolateWalk(start, to);
+    this.walkPath([from, to], metersPerPx);
+    log.exit(undefined);
+  }
+
+  /**
+   * 折れ線（道に沿った経路）に沿って歩く。歩行中なら今の位置（描画中の位置）を出発点に置き換えて歩き直す。
+   * @param points 道筋（先頭が出発点、末尾が目的地）
+   * @param metersPerPx 表示中の縮尺（m/px。歩く速さを画面上でそろえる）
+   * @sideEffect ctx.ui.footprints を書き換え、歩行ループを開始する
+   */
+  walkPath(points: readonly LatLng[], metersPerPx?: number): void {
+    const log = logger.fn('walkPath', { walking: this.route !== undefined, points: points.length });
+    const first = points[0];
+    const to = points[points.length - 1];
+    if (this.destroyed || first === undefined || to === undefined) return log.exit(undefined, '破棄済みまたは経路なし');
+    const start = this.livePosition(performance.now()) ?? (this.route !== undefined && this.current !== undefined ? this.current : first);
+    const line = [start, ...points.slice(1)];
+    const cum = cumulativeMeters(line);
+    const meters = cum[cum.length - 1] ?? 0;
+    const path = resamplePolyline(line, cum);
     this.startTrail(start);
     this.current = start;
-    this.route = { from: start, to, totalM: meters, path, stepLengthM: meters / path.length, speedMps: walkSpeedMps(meters, metersPerPx), startedAt: performance.now(), done: 0 };
-    log.info('歩き始めました', { meters: Math.round(meters), steps: path.length });
+    this.route = { from: start, to, points: line, cum, totalM: meters, path, stepLengthM: meters / Math.max(1, path.length), speedMps: walkSpeedMps(meters, metersPerPx), startedAt: performance.now(), done: 0 };
+    log.info('歩き始めました', { meters: Math.round(meters), steps: path.length, turns: line.length });
     if (!this.running) {
       this.running = true;
       void this.run();
@@ -245,16 +324,36 @@ class DemoWalker implements Walker {
    */
   livePosition(now: number): LatLng | undefined { // audit-ignore: fnlog-missing 毎フレーム描画（座標を扱うのでログに出さない）
     const route = this.route;
-    return route === undefined ? undefined : pointAlong(route, now - route.startedAt);
+    if (route === undefined) return undefined;
+    return pointOnPolyline(route.points, route.cum, ((now - route.startedAt) / 1000) * route.speedMps);
   }
 
   /**
-   * 東西の進む向きを返す（アバターの向きに使う）。
+   * これから歩く残りの道筋を返す（今の位置 → 残りの曲がり角 → 目的地）。
+   * @param now 現在時刻（performance.now()）
+   * @returns 折れ線（歩いていなければ空）
+   */
+  remainingRoute(now: number): readonly LatLng[] { // audit-ignore: fnlog-missing 毎フレーム描画（座標を扱うのでログに出さない）
+    const route = this.route;
+    if (route === undefined) return [];
+    const walked = ((now - route.startedAt) / 1000) * route.speedMps;
+    const here = pointOnPolyline(route.points, route.cum, walked);
+    return [here, ...route.points.filter((_, k) => (route.cum[k] ?? 0) > walked)];
+  }
+
+  /**
+   * 東西の進む向きを返す（アバターの向きに使う。いま歩いている区間の向き）。
    * @returns 東=1・西=-1・真南北=0。歩いていなければ undefined
    */
   heading(): number | undefined { // audit-ignore: fnlog-missing 毎フレーム描画
     const route = this.route;
-    return route === undefined ? undefined : Math.sign(route.to.lng - route.from.lng);
+    if (route === undefined) return undefined;
+    const walked = ((performance.now() - route.startedAt) / 1000) * route.speedMps;
+    const idx = route.cum.findIndex((d) => d > walked);
+    const k = idx < 0 ? route.points.length - 1 : Math.max(1, idx);
+    const a = route.points[k - 1] ?? route.from;
+    const b = route.points[k] ?? route.to;
+    return Math.sign(b.lng - a.lng);
   }
 
   /**

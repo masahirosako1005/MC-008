@@ -7,7 +7,7 @@ import type { EffectSourceEvent } from '@/presentation/screens/Effects/effectPla
 
 /** 手順6（本町に再訪）で届くイベントの例 */
 const revisitEvents: EffectSourceEvent[] = [
-  { type: 'DistrictLordChanged', eventId: 'e5', sequence: 5, districtId: 'd_honmachi', from: { type: 'rival' }, to: { type: 'traveler' }, fromName: '旅人タロウ', toName: 'あなた', travelerCount: 11, lordCount: 11 },
+  { type: 'DistrictLordChanged', eventId: 'e5', sequence: 5, districtId: 'd_honmachi', from: { type: 'rival' }, to: { type: 'traveler' }, fromName: 'おまいり番長', toName: 'あなた', travelerCount: 11, lordCount: 11 },
   { type: 'CardAwarded', eventId: 'e4', sequence: 4, districtId: 'd_honmachi', rank: 'gold', reason: 'visits', visitCount: 10 },
   { type: 'PointsAwarded', eventId: 'e2', sequence: 2, districtId: 'd_honmachi', spotId: 's_hm01', basePoints: 15, bonusPoints: 7 },
   { type: 'WelcomeBackBonusGranted', eventId: 'e3', sequence: 3, districtId: 'd_honmachi', multiplier: 1.5, bonusPoints: 7 },
@@ -19,11 +19,11 @@ describe('planEffects', () => {
     const plan = planEffects(revisitEvents);
     expect(plan.map((item) => item.kind)).toEqual(['revival', 'card', 'lord']);
     expect(plan[0]).toEqual({ kind: 'revival', districtId: 'd_honmachi', daysSinceLastVisit: 32, level: 3, multiplier: 1.5, bonusPoints: 7 });
-    expect(plan[2]).toEqual({ kind: 'lord', districtId: 'd_honmachi', fromName: '旅人タロウ', reclaimed: true, travelerCount: 11 });
+    expect(plan[2]).toEqual({ kind: 'lord', districtId: 'd_honmachi', fromName: 'おまいり番長', reclaimed: true, travelerCount: 11 });
   });
 
   it('ライバルに主を奪われたときは演出しない（失う体験を作らない）', () => {
-    const lost: EffectSourceEvent = { type: 'DistrictLordChanged', eventId: 'x', sequence: 1, districtId: 'd_honmachi', from: { type: 'traveler' }, to: { type: 'rival' }, fromName: 'あなた', toName: '旅人タロウ', travelerCount: 9, lordCount: 10 };
+    const lost: EffectSourceEvent = { type: 'DistrictLordChanged', eventId: 'x', sequence: 1, districtId: 'd_honmachi', from: { type: 'traveler' }, to: { type: 'rival' }, fromName: 'あなた', toName: 'おまいり番長', travelerCount: 9, lordCount: 10 };
     expect(planEffects([lost])).toEqual([]);
   });
 

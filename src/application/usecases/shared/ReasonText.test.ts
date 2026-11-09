@@ -30,11 +30,11 @@ describe('reasonDtoOf（再訪理由の日本語化）', () => {
   });
 
   it('取り返し:「{地区名}の主を{名前}に奪われた」と直近30日の回数・必要回数', () => {
-    const reason: RevisitReason = { kind: 'reclaim', districtId: testDistrictId('d_honmachi'), lordName: '旅人タロウ', lordCount: 5, myCount: 3, needed: 3 };
+    const reason: RevisitReason = { kind: 'reclaim', districtId: testDistrictId('d_honmachi'), lordName: 'おまいり番長', lordCount: 5, myCount: 3, needed: 3 };
     expect(reasonDtoOf(reason, spots)).toEqual({
       kind: 'reclaim',
-      title: '本町地区の主を旅人タロウに奪われた',
-      subtitle: '直近30日：旅人タロウ 5回／あなた 3回・取り返しまであと3回',
+      title: '本町地区の主をおまいり番長に奪われた',
+      subtitle: '直近30日：おまいり番長 5回／あなた 3回・取り返しまであと3回',
       districtId: 'd_honmachi',
     });
   });
@@ -79,7 +79,7 @@ describe('reasonDtoOf（再訪理由の日本語化）', () => {
   });
 
   it('作った DTO は凍結されている', () => {
-    const reason: RevisitReason = { kind: 'reclaim', districtId: JOKA, lordName: '旅人ハナ', lordCount: 2, myCount: 1, needed: 2 };
+    const reason: RevisitReason = { kind: 'reclaim', districtId: JOKA, lordName: '花見は毎日派', lordCount: 2, myCount: 1, needed: 2 };
     expect(Object.isFrozen(reasonDtoOf(reason, spots))).toBe(true);
   });
 });
@@ -105,7 +105,7 @@ describe('reasonDtosOf（RevisitReasonPolicy.collect と組み合わせ）', () 
     const dtos = reasonDtosOf(reasons, world.spots);
     expect(dtos.map((d) => d.kind)).toEqual(['deadline', 'reclaim', 'fade', 'fade', 'unvisited']);
     expect(dtos[0]?.title).toBe('丸岡和菓子店のクーポン、あと3日');
-    expect(dtos[1]?.title).toBe('本町地区の主を旅人タロウに奪われた');
+    expect(dtos[1]?.title).toBe('本町地区の主をおまいり番長に奪われた');
     expect(dtos[2]?.title).toBe('色あせ中：湯の里地区');
     expect(dtos[3]?.title).toBe('そろそろ色あせ：みなと地区 あと5日');
     expect(dtos[4]).toMatchObject({ title: '城下地区にまだ行っていないスポットが2件', subtitle: '武家屋敷通り、丸岡和菓子店' });

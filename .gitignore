@@ -28,3 +28,8 @@ logs/
 # デモビルド・E2E 一時ファイル
 dist-demo/
 e2e-output/
+
+# 連携サーバー（docs/09 §7.3）：サーバーのビルド、連携つきの画面のビルド、SQLite の DB
+dist-server/
+dist-backend/
+.data/

@@ -291,6 +291,8 @@ button:disabled { cursor: default; }
   justify-content: center;
 }
 .gear__face svg { width: 1.25rem; height: 1.25rem; display: block; }
+.gear__face .app-icon { display: block; transition: transform var(--motion); }
+.gear[data-pressing="1"] .gear__face .app-icon { transform: rotate(45deg); }
 .gear[data-pressing="1"] .gear__face { color: var(--brand-ink); }
 
 /* ---- 下部タブ（白＋上に hairline。線アイコン＋ラベル、選択中はブランド色・太字・アイコンの淡い塗り・上の短いバー） ---- */
@@ -347,6 +349,9 @@ button:disabled { cursor: default; }
 .tab-bar__tab[aria-current="page"] .tab-bar__icon svg { stroke-width: 2.1; }
 .tab-bar__tab[aria-current="page"] .tab-bar__icon svg path:first-child { fill: color-mix(in srgb, var(--brand) 16%, transparent); }
 .tab-bar__tab:active .tab-bar__icon { transform: scale(0.94); }
+/* canvas で描いたタブの絵（presentation/App/appIconArt）。選んでいないときは淡く、選ぶと色がつく */
+.tab-bar__icon .app-icon { display: block; filter: grayscale(0.7) opacity(0.7); transition: filter var(--motion-fast), transform var(--motion-fast); }
+.tab-bar__tab[aria-current="page"] .tab-bar__icon .app-icon { filter: none; transform: translateY(-1px) scale(1.08); }
 /* PC 表示の端末枠ではホームバーの分だけタブの下を空ける */
 @media (min-width: 500px) {
   .tab-bar { padding-bottom: 1.125rem; height: calc(var(--tabbar-h) + 0.5rem); }

@@ -20,7 +20,7 @@ describe('GetTownStateUseCase', () => {
     await seedLordship(tw, [{ districtId: 'd_honmachi', holder: 'r_taro', lost: true }]);
     const town = must(await new GetTownStateUseCase(tw).execute());
     const honmachi = town.districts.find((card) => card.id === 'd_honmachi');
-    expect(honmachi).toMatchObject({ lordName: '旅人タロウ', isLordMe: false, lordLost: true, nextGoalText: '取り返しまで：あと1回（直近30日）' });
+    expect(honmachi).toMatchObject({ lordName: 'おまいり番長', isLordMe: false, lordLost: true, nextGoalText: '取り返しまで：あと1回（直近30日）' });
   });
 
   it('旅人がいなければ TRAVELER_NOT_FOUND', async () => {

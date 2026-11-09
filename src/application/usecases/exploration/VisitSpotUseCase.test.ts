@@ -33,7 +33,7 @@ async function storedTraveler(tw: TestWorld) {
 }
 
 describe('VisitSpotUseCase', () => {
-  it('40m 以内なら訪問記録を保存し、SpotVisited を1回発行する', async () => {
+  it('80m 以内なら訪問記録を保存し、SpotVisited を1回発行する', async () => {
     const tw = createTestWorld();
     await seedTraveler(tw, { discovered: ['l_jo01'] });
     standNear(tw, 'l_jo01', 30);
@@ -87,10 +87,10 @@ describe('VisitSpotUseCase', () => {
     expect(tw.events.ofType('SpotVisited')).toHaveLength(1);
   });
 
-  it('40m を超えると OUT_OF_RANGE で、保存も発行もしない', async () => {
+  it('80m を超えると OUT_OF_RANGE で、保存も発行もしない', async () => {
     const tw = createTestWorld();
     await seedTraveler(tw, { discovered: ['l_jo01'] });
-    standNear(tw, 'l_jo01', 45);
+    standNear(tw, 'l_jo01', 90);
     const result = await new VisitSpotUseCase(tw).execute({ operationId: testOperationId(1), spotId: 'l_jo01' });
     expect(codeOf(result)).toBe('OUT_OF_RANGE');
     expect(tw.travelers.saveCount).toBe(1);
@@ -142,7 +142,7 @@ describe('VisitSpotUseCase', () => {
     expect(tw.geo.callCount).toBe(0);
   });
 
-  it('未発見のスポットでも 40m 以内なら訪問でき、発見記録も付く', async () => {
+  it('未発見のスポットでも 80m 以内なら訪問でき、発見記録も付く', async () => {
     const tw = createTestWorld();
     await seedTraveler(tw);
     standNear(tw, 's_jo03', 5);

@@ -1,6 +1,6 @@
 /**
  * @file 起動時にアクティブな旅人を用意するユースケース（application 層）
- * 起動時に1回だけ呼ぶ。セッションの旅人が保存済みなら何もしない。無ければ（D14）:
+ * 起動時に1回だけ呼ぶ。セッションの旅人が保存済みなら何もしない（デモビルドで、保存済みの「通い慣れた人」が今のシードより古いときだけ作り直す）。無ければ（D14）:
  * - デモビルド: 「通い慣れた人」のシードを作る（旅人切替 regular と同じ＝installDemoSeed）
  * - 本番ビルド: 端末ID（'t_' ＋ UUID の16進）で新しい旅人（profile 'user'）を作り、地区の主の初期状態を計算して保存する
  * どちらもセッションのアクティブな旅人にする（以降のユースケースはセッションから旅人を解決する＝SEC-01）。
@@ -12,6 +12,7 @@ import type { Result } from '@/Common/result/Result';
 import { travelerIdFromUuid } from '@/Common/types/Id';
 import type { LocalDate } from '@/Common/utils/date';
 import type { UseCase } from '@/application/AppServices';
+import { isRegularSeedOutdated } from '@/application/usecases/demo/demoSeeds';
 import { installDemoSeed } from '@/application/usecases/demo/installDemoSeed';
 import type { DemoSeedStoreDeps } from '@/application/usecases/demo/installDemoSeed';
 import { persistNewTraveler } from '@/application/usecases/session/TravelerSetup';
@@ -63,7 +64,7 @@ export class EnsureTravelerUseCase implements UseCase<void, EnsureTravelerOutput
   }
 
   /**
-   * アクティブな旅人を用意する（保存済みなら何もしない）。
+   * アクティブな旅人を用意する（保存済みなら何もしない。デモビルドで「通い慣れた人」のシードが古ければ作り直す）。
    * @returns 成功: 旅人ID・プロフィール・作ったか。失敗: STORAGE_FAILED（読込・保存）／CONFLICT／INVALID_INPUT（UUID が不正）／SPOT_NOT_FOUND（デモのシード）
    * @sideEffect 旅人が無ければ TravelerRepository・PointLedgerRepository・LordshipRepository・SessionRepository に保存する
    * @see docs/08 D14, §4.5
@@ -72,7 +73,10 @@ export class EnsureTravelerUseCase implements UseCase<void, EnsureTravelerOutput
     const log = logger.fn('execute', { demo: this.demo });
     const existing = await this.findExisting();
     if (!existing.ok) return log.fail(existing);
-    if (existing.value !== undefined) return log.exit(ok(outputOf(existing.value, false)), '既存の旅人');
+    if (existing.value !== undefined) {
+      if (!this.demo || !isRegularSeedOutdated(existing.value)) return log.exit(ok(outputOf(existing.value, false)), '既存の旅人');
+      log.info('保存済みの「通い慣れた人」が今のシードより古いため作り直す', { travelerId: existing.value.id, visits: existing.value.visits.length });
+    }
     const today = this.deps.clock.today();
     const created = this.demo ? await installDemoSeed(this.deps, { profile: 'regular', today }) : await this.createUser(today);
     if (!created.ok) return log.fail(created);

@@ -1,17 +1,17 @@
 /**
- * @file アバターのスプライト（presentation/shared。マイ街のアバターを地図などほかの画面で使うための部品）
- * マイ街と同じアバター（MyTown/avatarArt.ts の drawAvatar・myTownModel の avatarLookOf）を、小さな画像にして使い回す。
- * - 端末の解像度でくっきり描く（マイ街と同じフラットなモダンのアバター＝docs/08 §10.5。大きさの単位 dotPx は配置の互換のため残す）
+ * @file アバターのスプライト（presentation/shared。アバター画面で着せ替えたアバターを地図などほかの画面で使うための部品）
+ * アバター画面と同じアバター（shared/avatar/avatarPaint の drawAvatar・avatarLook の avatarLookOfParts）を、小さな画像にして使い回す。
+ * - 端末の解像度でくっきり描く（アバター画面と同じフラットなモダンのアバター＝docs/08 §10.5。大きさの単位 dotPx は配置の互換のため残す）
  * - まわりに白いふちを付ける（地図の上でも埋もれないステッカー風）
  * 画像は装い・拡大率・dpr ごとにキャッシュし、毎フレーム作らない。
- * 依存はこのファイルに閉じる（avatarArt が Common／shared へ移ったら import を差し替えるだけでよい）。
+ * 地図のほかの旅人は旧来の4項目（帽子・服の色・持ち物・ねこ）だけの装いで描ける（avatarLook の既定で補う）。
  */
 import { createLogger } from '@/Common/logging/logger';
 import { h } from '@/Common/ui/dom';
 import type { MyTownDto } from '@/application/dto/Dto';
-import { drawAvatar } from '@/presentation/screens/MyTown/avatarArt';
-import type { AvatarLook } from '@/presentation/screens/MyTown/avatarArt';
-import { avatarLookOf, profileStatsOf } from '@/presentation/screens/MyTown/myTownModel';
+import { avatarLookOfParts } from '@/presentation/shared/avatar/avatarLook';
+import type { AvatarLook } from '@/presentation/shared/avatar/avatarLook';
+import { drawAvatar } from '@/presentation/shared/avatar/avatarPaint';
 
 export type { AvatarLook };
 
@@ -50,13 +50,13 @@ export interface AvatarSpriteOptions {
 const cache = new Map<string, AvatarSprite>();
 
 /**
- * マイ街のデータから、マイ街と同じアバターの装いを決める（帽子・ねこは通った実績、持ち物は着せ替えの選択）。
- * @param dto マイ街のデータ
+ * 旅人のまとめ（MyTownDto）から、アバター画面で着せ替えた装いを作る。
+ * @param dto 旅人のまとめ（avatarPartIds＝身につけている部品）
  * @returns 装い
  */
 export function avatarLookOfTown(dto: MyTownDto): AvatarLook {
-  const log = logger.fn('avatarLookOfTown', { heldItemId: dto.heldItemId });
-  return log.exit(avatarLookOf(profileStatsOf(dto.districts), dto.heldItemId));
+  const log = logger.fn('avatarLookOfTown', { parts: dto.avatarPartIds.length });
+  return log.exit(avatarLookOfParts(dto.avatarPartIds));
 }
 
 /**
@@ -80,7 +80,8 @@ export function spriteDotsOf(scale: number, dotPx: number): { readonly width: nu
  * @returns キー
  */
 function keyOf(look: AvatarLook, opts: AvatarSpriteOptions): string { // audit-ignore: fnlog-missing 毎フレーム呼ぶキャッシュ参照（文字列を作るだけ）
-  return `${look.hat ?? '-'}|${look.outfitColor}|${look.held}|${look.hasCat ? 1 : 0}|${opts.scale}|${opts.dotPx}|${opts.dpr}`;
+  const parts = [look.hat, look.outfitColor, look.held, look.hasCat ? 1 : 0, look.hair, look.hairColor, look.eyes, look.skin, look.top, look.bottom, look.shoes, look.accessory, look.pet];
+  return `${parts.map((p) => p ?? '-').join('|')}|${opts.scale}|${opts.dotPx}|${opts.dpr}`;
 }
 
 /**

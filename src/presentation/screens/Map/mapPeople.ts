@@ -17,12 +17,13 @@ import type { Camera, MapViewModel, Viewport } from '@/presentation/screens/Map/
 import type { MapZoom } from '@/presentation/screens/Map/ZoomState';
 import { avatarSpriteFor } from '@/presentation/shared/avatarSprite';
 import type { AvatarLook, AvatarSprite } from '@/presentation/shared/avatarSprite';
+import { personColorOfId, personLookOf } from '@/presentation/shared/personLook';
 import { drawCrown } from '@/presentation/screens/Map/mapPins';
 
 const logger = createLogger('presentation/screens/Map/mapPeople');
 
-/** ほかの旅人の色（人ごとに固定。地区色と混ざらない濃いめの色） */
-export const PERSON_COLORS: readonly string[] = ['#4338ca', '#0369a1', '#047857', '#b45309', '#be185d', '#6d28d9', '#0f766e'];
+/** ほかの旅人の色（人ごとに固定。ランキングと共通なので shared/personLook に置く） */
+export { PERSON_COLORS } from '@/presentation/shared/personLook';
 /** ほかの旅人のバッジ半径（CSS px）。広域は小さく、地区・詳細は読める大きさにする */
 const OTHER_RADIUS: Readonly<Record<MapZoom, number>> = { wide: 8, district: 14, near: 15 };
 /** 自分のバッジ半径（CSS px） */
@@ -53,10 +54,6 @@ const SELF_BODY_OFFSET_PX = 24;
 export const OTHER_AVATAR_SCALE: Readonly<Record<MapZoom, number>> = { wide: 0.38, district: 0.5, near: 0.56 };
 /** ほかの旅人のタップ判定に使う体の中心（足元からの高さ、CSS px） */
 const OTHER_BODY_LIFT_PX = 16;
-/** ほかの旅人の帽子（地区の主は王冠） */
-const OTHER_HATS: readonly (AvatarLook['hat'])[] = ['beret', 'straw', undefined];
-/** ほかの旅人が手に持つもの */
-const OTHER_HELD: readonly AvatarLook['held'][] = ['camera', 'chochin', 'nobori', 'matsu'];
 
 /** 画面上に置いたほかの旅人 */
 export interface PlacedPerson {
@@ -91,8 +88,7 @@ export interface PeopleDrawInput {
  * @returns '#rrggbb'
  */
 export function personColorOf(key: string): string { // audit-ignore: fnlog-missing 毎フレーム描画で呼ぶ純粋なヘルパー
-  const rivalId = key.split(':')[0] ?? key;
-  return PERSON_COLORS[hashString(rivalId) % PERSON_COLORS.length] ?? PALETTE.ink;
+  return personColorOfId(key.split(':')[0] ?? key);
 }
 
 /** placeTravelers の表示条件（カメラ・描画領域・ズーム・自分の画面位置） */
@@ -220,16 +216,13 @@ export function drawPeople(ctx: CanvasRenderingContext2D, input: PeopleDrawInput
 
 /**
  * ほかの旅人のアバターの装いを返す（ライバルID から決めるので、複数の地区に出ても同じ見た目）。
- * 服の色は人ごとの色（personColorOf）。地区の主は王冠をかぶる。
+ * 服の色は人ごとの色（personColorOf）。地区の主は王冠をかぶる。ランキングと同じ決め方（shared/personLook）。
  * @param traveler ほかの旅人
  * @returns 装い
  */
 export function travelerLookOf(traveler: OtherTravelerDto): AvatarLook {
   const log = logger.fn('travelerLookOf', { key: traveler.key, isLord: traveler.isLord });
-  const seed = hashString(traveler.key.split(':')[0] ?? traveler.key);
-  const hat = traveler.isLord ? 'crown' : OTHER_HATS[seed % OTHER_HATS.length];
-  const held = OTHER_HELD[Math.floor(seed / 3) % OTHER_HELD.length] ?? 'camera';
-  return log.exit({ hat, outfitColor: personColorOf(traveler.key), held, hasCat: Math.floor(seed / 12) % 3 === 0 });
+  return log.exit(personLookOf(traveler.key.split(':')[0] ?? traveler.key, traveler.isLord));
 }
 
 /**

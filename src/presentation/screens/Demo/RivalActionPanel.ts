@@ -1,6 +1,6 @@
 /**
  * @file デモメニュー：ライバル行動（presentation/screens/Demo 層）
- * 「旅人タロウが天満地区の主を奪う」（data-testid="demo-rival"）。地区は選択できる（data-testid="demo-rival-district"、既定 天満＝d_tenma）。
+ * 「おまいり番長が天満地区の主を奪う」（data-testid="demo-rival"）。地区は選択できる（data-testid="demo-rival-district"、既定 天満＝d_tenma）。
  * 実演の手順5（ライバル行動 → 下シートに「取り返し」カード）で使う（CLAUDE.md 6.9）。
  */
 import { createLogger } from '@/Common/logging/logger';

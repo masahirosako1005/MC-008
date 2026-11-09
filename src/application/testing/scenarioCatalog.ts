@@ -3,7 +3,8 @@
  * 本番コードから import しない。fakes.ts の TestWorld に、SpotVisited の購読ハンドラ（docs/08 §4.2 の順で登録）・
  * デモユースケース一式・訪問の記録（VisitSpotUseCase と同じく 保存 → SpotVisited 発行）・再訪理由の計算を足す。
  * デモシード（demoSeeds.ts）・デモの既定（開始地区 d_minamimori・ライバル行動の地区 d_tenma）は本物のマスタの新しい ID（docs/08 §9.3）を使うので、
- * それらを通すテストは buildScenarioCatalog / createScenarioWorld（新 ID の5地区・20スポット。配置と役割は旧 buildTestCatalog と同じ）を使う。
+ * それらを通すテストは buildScenarioCatalog / createScenarioWorld（新 ID の5地区・51スポット。配置と役割は旧 buildTestCatalog と同じ）を使う。
+ * 2026-11-09 に、図鑑の初期データ（大川・扇町の古い訪問、天満の振り替え、天満・大川の発見のみ）で使う31スポットを各地区の北・南の列に足した。
  * 座標は合成（南森町駅付近を原点にした 400m 四方の地区）で、実在の位置とは一致しない。
  * 注意: デモシードの操作ID（'00000000-0000-4000-8000-' ＋ 16 進の連番 1〜）は testOperationId と同じ接頭辞なので、
  * シードの旅人で新しく訪問するときは scenarioOperationId（番号を SCENARIO_OPERATION_BASE だけずらす）を使う。
@@ -63,14 +64,45 @@ const SCENARIO_CATALOG_DEFS: CatalogDefs = Object.freeze<CatalogDefs>({
     { id: 's_tm01', districtId: 'd_tenma', name: '天満コロッケ', category: '総菜', eastM: -100, northM: 0, amenities: ['kids'], partner: true },
     { id: 's_tm02', districtId: 'd_tenma', name: 'アーケード珈琲', category: 'カフェ', eastM: 0, northM: 0, amenities: ['rainOk', 'toilet', 'kids'], partner: true },
     { id: 's_tm03', districtId: 'd_tenma', name: '天満青果', category: '青果', eastM: 100, northM: 0, amenities: ['kids', 'stroller'], partner: false },
+    { id: 's_tm04', districtId: 'd_tenma', name: '市場の八百屋', category: '青果', eastM: -100, northM: -100, amenities: [], partner: false },
+    { id: 's_tm05', districtId: 'd_tenma', name: '天満お好み焼き', category: 'お好み焼き', eastM: 0, northM: -100, amenities: ['kids'], partner: false },
+    { id: 's_tm08', districtId: 'd_tenma', name: '立ち寿司 天満', category: '寿司', eastM: 100, northM: -100, amenities: [], partner: false },
+    { id: 's_tm09', districtId: 'd_tenma', name: '市場食堂', category: '食堂', eastM: -50, northM: -165, amenities: ['toilet'], partner: false },
+    { id: 's_tm11', districtId: 'd_tenma', name: '焼き鳥 天満', category: '焼き鳥', eastM: 50, northM: -165, amenities: [], partner: false },
+    { id: 's_tm06', districtId: 'd_tenma', name: '漬物処 天満', category: '漬物', eastM: -100, northM: 165, amenities: [], partner: false },
+    { id: 's_tm07', districtId: 'd_tenma', name: 'だしの店', category: '乾物', eastM: 0, northM: 165, amenities: [], partner: false },
+    { id: 's_tm10', districtId: 'd_tenma', name: '立ち飲み 天満', category: '立ち飲み', eastM: 100, northM: 165, amenities: [], partner: false },
+    { id: 's_tm13', districtId: 'd_tenma', name: 'パン工房 天満', category: 'パン', eastM: -165, northM: -165, amenities: [], partner: false },
+    { id: 's_tm14', districtId: 'd_tenma', name: '台所道具 天満', category: '雑貨', eastM: 165, northM: -165, amenities: [], partner: false },
     { id: 'l_ok01', districtId: 'd_okawa', name: '造幣局（桜の通り抜け）', category: '桜', eastM: -100, northM: 0, amenities: ['toilet'], partner: false },
     { id: 'l_ok02', districtId: 'd_okawa', name: '泉布観', category: '建築', eastM: 0, northM: 0, amenities: ['toilet', 'rainOk'], partner: false },
     { id: 's_ok01', districtId: 'd_okawa', name: '川べり焼き菓子店', category: '焼き菓子', eastM: 100, northM: 0, amenities: ['stroller'], partner: true },
+    { id: 'l_ok03', districtId: 'd_okawa', name: '南天満公園', category: '公園', eastM: -100, northM: 100, amenities: ['toilet', 'kids'], partner: false },
+    { id: 's_ok05', districtId: 'd_okawa', name: '川辺のそば', category: 'そば', eastM: 0, northM: 100, amenities: [], partner: false },
+    { id: 's_ok07', districtId: 'd_okawa', name: '川辺の和菓子', category: '和菓子', eastM: 100, northM: 100, amenities: [], partner: false },
+    { id: 's_ok02', districtId: 'd_okawa', name: '川辺のおにぎり', category: 'おにぎり', eastM: -100, northM: -100, amenities: [], partner: false },
+    { id: 's_ok10', districtId: 'd_okawa', name: '川辺の茶房', category: 'カフェ', eastM: 0, northM: -100, amenities: ['rainOk'], partner: false },
+    { id: 's_ok11', districtId: 'd_okawa', name: '川辺のジェラート', category: 'ジェラート', eastM: 100, northM: -100, amenities: [], partner: false },
+    { id: 's_ok06', districtId: 'd_okawa', name: '川辺の酒店', category: '酒店', eastM: -100, northM: 165, amenities: [], partner: false },
+    { id: 's_ok08', districtId: 'd_okawa', name: '川辺の写真館', category: '写真館', eastM: 0, northM: 165, amenities: [], partner: false },
+    { id: 's_ok09', districtId: 'd_okawa', name: 'うなぎ処 川辺', category: 'うなぎ', eastM: 100, northM: 165, amenities: [], partner: false },
+    { id: 's_ok12', districtId: 'd_okawa', name: '川辺の古道具', category: '古道具', eastM: -50, northM: -165, amenities: [], partner: false },
+    { id: 's_ok13', districtId: 'd_okawa', name: '川辺のお好み焼き', category: 'お好み焼き', eastM: 50, northM: -165, amenities: [], partner: false },
     { id: 'l_tr01', districtId: 'd_tenroku', name: '大阪くらしの今昔館', category: '博物館', eastM: -50, northM: 0, amenities: ['toilet', 'rainOk'], partner: false },
     { id: 's_tr01', districtId: 'd_tenroku', name: '天六おむすび', category: '食堂', eastM: 50, northM: 0, amenities: ['kids', 'toilet'], partner: true },
     { id: 'l_og01', districtId: 'd_ogimachi', name: '扇町公園', category: '公園', eastM: -100, northM: 0, amenities: ['toilet', 'kids'], partner: false },
     { id: 'l_og02', districtId: 'd_ogimachi', name: 'キッズプラザ大阪', category: '博物館', eastM: 0, northM: 0, amenities: ['kids', 'nursing', 'rainOk'], partner: false },
     { id: 's_og01', districtId: 'd_ogimachi', name: '中崎町の古書店', category: '古書', eastM: 100, northM: 0, amenities: ['rainOk'], partner: false },
+    { id: 'l_og03', districtId: 'd_ogimachi', name: '中崎町の路地', category: '町並み', eastM: -100, northM: 100, amenities: [], partner: false },
+    { id: 's_og03', districtId: 'd_ogimachi', name: '路地の古着屋', category: '古着', eastM: 0, northM: 100, amenities: [], partner: false },
+    { id: 's_og04', districtId: 'd_ogimachi', name: '路地のたこ焼き', category: 'たこ焼き', eastM: 100, northM: 100, amenities: ['kids'], partner: false },
+    { id: 's_og07', districtId: 'd_ogimachi', name: '古書と珈琲', category: '古書', eastM: -100, northM: -100, amenities: ['rainOk'], partner: false },
+    { id: 's_og02', districtId: 'd_ogimachi', name: '路地のパン工房', category: 'パン', eastM: 0, northM: -100, amenities: [], partner: false },
+    { id: 's_og05', districtId: 'd_ogimachi', name: '器と雑貨の店', category: '雑貨', eastM: 100, northM: -100, amenities: [], partner: false },
+    { id: 's_og09', districtId: 'd_ogimachi', name: '路地のギャラリー', category: 'ギャラリー', eastM: 50, northM: -165, amenities: [], partner: false },
+    { id: 's_og08', districtId: 'd_ogimachi', name: '路地の手芸店', category: '手芸', eastM: -100, northM: 165, amenities: [], partner: false },
+    { id: 's_og11', districtId: 'd_ogimachi', name: 'うどん 扇町', category: 'うどん', eastM: 0, northM: 165, amenities: [], partner: false },
+    { id: 's_og12', districtId: 'd_ogimachi', name: '路地の花屋', category: '花', eastM: 100, northM: 165, amenities: [], partner: false },
   ],
   shopEvents: [
     { id: 'c_mm01', spotId: 's_mm02', kind: 'coupon', title: 'どら焼き1個サービス', start: '2026-11-01', end: '2026-11-12' },
@@ -82,13 +114,13 @@ const SCENARIO_CATALOG_DEFS: CatalogDefs = Object.freeze<CatalogDefs>({
     { id: 'c_og01', spotId: 'l_og02', kind: 'event', title: '冬休みこども工作まつり', start: '2026-12-20', end: '2027-01-20' },
   ],
   rivals: [
-    { id: 'r_taro', name: '旅人タロウ', patterns: [{ districtId: 'd_minamimori', intervalDays: 4, phase: 1 }] },
-    { id: 'r_hana', name: '旅人ハナ', patterns: [{ districtId: 'd_okawa', intervalDays: 3, phase: 0 }, { districtId: 'd_minamimori', intervalDays: 9, phase: 4 }] },
-    { id: 'r_ken', name: '旅人ケン', patterns: [{ districtId: 'd_tenroku', intervalDays: 3, phase: 2 }] },
-    { id: 'r_mio', name: '旅人ミオ', patterns: [{ districtId: 'd_okawa', intervalDays: 6, phase: 3 }, { districtId: 'd_ogimachi', intervalDays: 8, phase: 5 }] },
-    { id: 'r_sora', name: '旅人ソラ', patterns: [{ districtId: 'd_ogimachi', intervalDays: 3, phase: 1 }] },
-    { id: 'r_riku', name: '旅人リク', patterns: [{ districtId: 'd_minamimori', intervalDays: 7, phase: 2 }, { districtId: 'd_tenroku', intervalDays: 9, phase: 6 }] },
-    { id: 'r_aoi', name: '旅人アオイ', patterns: [{ districtId: 'd_ogimachi', intervalDays: 10, phase: 7 }] },
+    { id: 'r_taro', name: 'おまいり番長', patterns: [{ districtId: 'd_minamimori', intervalDays: 4, phase: 1 }] },
+    { id: 'r_hana', name: '花見は毎日派', patterns: [{ districtId: 'd_okawa', intervalDays: 3, phase: 0 }, { districtId: 'd_minamimori', intervalDays: 9, phase: 4 }] },
+    { id: 'r_ken', name: '天六の生き字引', patterns: [{ districtId: 'd_tenroku', intervalDays: 3, phase: 2 }] },
+    { id: 'r_mio', name: 'みおつくし', patterns: [{ districtId: 'd_okawa', intervalDays: 6, phase: 3 }, { districtId: 'd_ogimachi', intervalDays: 8, phase: 5 }] },
+    { id: 'r_sora', name: '中崎町カフェ部', patterns: [{ districtId: 'd_ogimachi', intervalDays: 3, phase: 1 }] },
+    { id: 'r_riku', name: '商店街踏破中', patterns: [{ districtId: 'd_minamimori', intervalDays: 7, phase: 2 }, { districtId: 'd_tenroku', intervalDays: 9, phase: 6 }] },
+    { id: 'r_aoi', name: '親子でてくてく', patterns: [{ districtId: 'd_ogimachi', intervalDays: 10, phase: 7 }] },
   ],
   defaultRivalCount: 2,
 });
@@ -97,7 +129,7 @@ const SCENARIO_CATALOG_DEFS: CatalogDefs = Object.freeze<CatalogDefs>({
 export interface ScenarioWorldOptions {
   /** 今日（既定 TEST_TODAY_TEXT） */
   readonly today?: string;
-  /** true ならライバル7人（既定はタロウ・ハナの2人） */
+  /** true ならライバル7人（既定はおまいり番長・花見は毎日派の2人） */
   readonly allRivals?: boolean;
 }
 

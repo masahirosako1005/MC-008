@@ -10,7 +10,7 @@ export const MASTER_HASHES: Readonly<Record<string, string>> = Object.freeze({
   'landmarks.json': 'ad118508d5edc0e51c4fccda33f2c2665f91914a4e28114def6c1c3574eacfce',
   'shops.json': '24df93ca48f9203a2bb31b24125075ef2a26cafb7b93862fbab457653278687f',
   'shopEvents.json': '38fb5aeeb4beb6b19184aac645572dc74063fe94524a0cda2d7186d24665888e',
-  'rivals.json': 'db551b9ce71eea7881e345ae4b061441e53b8f7e702ddbdca2d6fabe8ef50c8c',
+  'rivals.json': '0cee408656ce851e0ca81dc61d7870df9ad87ab3ea8725b20b4889ea6fb16191',
   'mapFeatures.json': '9e1961f45126dde2d28e9fd38a9529bcef6c6285b80245bf67820e28d7e1510b',
   'amenityPoints.json': 'c3bb6bce7dda7230b90250fcadc70989f7e2382b04650e826fc476755601aa9e',
 });

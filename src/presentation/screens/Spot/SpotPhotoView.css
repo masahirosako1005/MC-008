@@ -1,0 +1,65 @@
+/*
+ * @file スポットの写真のスタイル（presentation/screens/Spot。スポット詳細の上部・図鑑のカード・拡大プレビュー）
+ * 写真は枠いっぱいに object-fit: cover。未訪問はモノクロ（行けば色づく）。「イメージ」の札とクレジットは写真の上に小さく重ねる。
+ * 2026-11-09 ユーザー指示「リアル写真風な、場所がしっかり思い出せるデザインに」。
+ */
+.spot-photo__img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+}
+
+/* スポット詳細の上部（.spot-illust の枠をそのまま使う） */
+figure.spot-photo { margin-top: 0; margin-bottom: 0; background: #1f2937; }
+.spot-photo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.35) 0%, transparent 28%, transparent 70%, rgba(17, 24, 39, 0.25) 100%);
+}
+.spot-photo[data-status="discovered"] .spot-photo__img { filter: grayscale(1) contrast(0.95) brightness(1.05); }
+.spot-photo[data-status="discovered"]::after { z-index: 2; }
+
+/* 「イメージ」の札 */
+.spot-photo__badge {
+  position: absolute;
+  z-index: 3;
+  top: 0.625rem;
+  left: var(--gutter);
+  padding: 0.0625rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: rgba(17, 24, 39, 0.7);
+  color: #ffffff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.6;
+  letter-spacing: 0.06em;
+}
+
+/* クレジット（作者・ライセンス・出典） */
+.spot-photo__credit {
+  position: absolute;
+  z-index: 3;
+  top: 0.625rem;
+  right: var(--gutter);
+  max-width: 62%;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0.0625rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: rgba(17, 24, 39, 0.55);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.5625rem;
+  line-height: 1.6;
+}
+.spot-photo__credit-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spot-photo__credit-link { flex: none; color: #ffffff; font-weight: 700; text-decoration: underline; }
+.spot-photo__credit-link:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }

@@ -31,8 +31,8 @@ function pattern(intervalDays: number, phase: number, districtId: DistrictId = J
 
 describe('Rival.of', () => {
   it('正しい値からライバルを作り、表示名の前後の空白を除いて凍結する', () => {
-    const rival = must(Rival.of({ id: TARO, name: '  旅人タロウ ', patterns: [pattern(4, 1), pattern(9, 4, MINATO)] }));
-    expect(rival.name).toBe('旅人タロウ');
+    const rival = must(Rival.of({ id: TARO, name: '  おまいり番長 ', patterns: [pattern(4, 1), pattern(9, 4, MINATO)] }));
+    expect(rival.name).toBe('おまいり番長');
     expect(rival.patterns).toHaveLength(2);
     expect(Object.isFrozen(rival)).toBe(true);
     expect(Object.isFrozen(rival.patterns)).toBe(true);

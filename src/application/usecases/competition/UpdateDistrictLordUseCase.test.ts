@@ -15,7 +15,7 @@ async function lordsOf(tw: TestWorld): Promise<Record<string, string>> {
   return Object.fromEntries(board.entries.flatMap((e) => (e.holder === undefined ? [] : [[e.districtId, holderKey(e.holder)]])));
 }
 
-/** 今日付で本町にタロウの行動を count 回足す */
+/** 今日付で本町におまいり番長の行動を count 回足す */
 async function addTaroInHonmachi(tw: TestWorld, count: number): Promise<void> {
   const action = must(RivalActionVisit.of({ rivalId: testRivalId('r_taro'), districtId: testDistrictId('d_honmachi'), localDate: TEST_TODAY, count }));
   must(await tw.rivalActions.append(TEST_TRAVELER_ID, action));
@@ -27,8 +27,8 @@ describe('UpdateDistrictLordUseCase.execute', () => {
     await seedTraveler(tw);
     const output = must(await new UpdateDistrictLordUseCase(tw).execute());
     expect(output.changed.map((e) => [e.districtId, e.toName, e.fromName, e.travelerCount])).toEqual([
-      ['d_joka', '旅人タロウ', undefined, 0],
-      ['d_minato', '旅人ハナ', undefined, 0],
+      ['d_joka', 'おまいり番長', undefined, 0],
+      ['d_minato', '花見は毎日派', undefined, 0],
     ]);
     expect(output.changed[0]?.from).toBeUndefined();
     expect(await lordsOf(tw)).toEqual({ d_joka: 'rival:r_taro', d_minato: 'rival:r_hana' });
@@ -61,7 +61,7 @@ describe('UpdateDistrictLordUseCase.execute', () => {
     await seedLordship(tw, [{ districtId: 'd_honmachi', holder: 'traveler' }]);
     await addTaroInHonmachi(tw, 3);
     const output = must(await new UpdateDistrictLordUseCase(tw).execute({ districtIds: ['d_honmachi'] }));
-    expect(output.changed[0]).toMatchObject({ from: { type: 'traveler' }, to: { type: 'rival', rivalId: 'r_taro' }, fromName: 'あなた', toName: '旅人タロウ', travelerCount: 2, lordCount: 3 });
+    expect(output.changed[0]).toMatchObject({ from: { type: 'traveler' }, to: { type: 'rival', rivalId: 'r_taro' }, fromName: 'あなた', toName: 'おまいり番長', travelerCount: 2, lordCount: 3 });
     const board = must(await tw.lordships.find(TEST_TRAVELER_ID));
     expect(board.isLostByTraveler(testDistrictId('d_honmachi'))).toBe(true);
   });
@@ -105,7 +105,7 @@ describe('UpdateDistrictLordUseCase.handle', () => {
     expect(changed).toHaveLength(1);
     expect(changed[0]).toMatchObject({
       districtId: 'd_honmachi', from: { type: 'rival', rivalId: 'r_taro' }, to: { type: 'traveler' },
-      fromName: '旅人タロウ', toName: 'あなた', travelerCount: 3, lordCount: 3,
+      fromName: 'おまいり番長', toName: 'あなた', travelerCount: 3, lordCount: 3,
     });
     const board = must(await tw.lordships.find(TEST_TRAVELER_ID));
     expect(board.isLostByTraveler(testDistrictId('d_honmachi'))).toBe(false);

@@ -29,7 +29,7 @@ export interface DistrictCardOptions {
   readonly fadeProgress?: number;
   /** 色あせの表示文言（例「あと5日で色あせ」「色あせ中」） */
   readonly fadeLabel?: string;
-  /** 主の表示文言（例「主：あなた」「主：旅人タロウ」） */
+  /** 主の表示文言（例「主：あなた」「主：おまいり番長」） */
   readonly lordLabel?: string;
   /** 自分（旅人）が主なら true（主タグを金の面＋王冠アイコンで強調） */
   readonly isLordMe?: boolean;

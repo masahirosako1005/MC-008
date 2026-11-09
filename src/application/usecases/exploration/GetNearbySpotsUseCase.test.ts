@@ -43,15 +43,17 @@ describe('GetNearbySpotsUseCase', () => {
     expect(list.map((spot) => spot.id)).toEqual(['s_jo02', 'l_jo01']);
   });
 
-  it('40m 以内で今日まだ訪問していなければ canVisit=true、それ以外は false', async () => {
+  it('80m（地図の円）以内で今日まだ訪問していなければ canVisit=true、それ以外は false', async () => {
     const tw = createTestWorld();
     await seedTraveler(tw, SEED);
     standNearJo02(tw);
     const list = must(await new GetNearbySpotsUseCase(tw).execute({}));
-    expect(list.filter((spot) => spot.canVisit).map((spot) => spot.id)).toEqual(['s_jo02']);
+    const expected = list.filter((spot) => spot.meters <= 80).map((spot) => spot.id);
+    expect(expected).toContain('s_jo02');
+    expect(list.filter((spot) => spot.canVisit).map((spot) => spot.id)).toEqual(expected);
   });
 
-  it('今日訪問済みのスポットは 40m 以内でも canVisit=false', async () => {
+  it('今日訪問済みのスポットは 80m 以内でも canVisit=false', async () => {
     const tw = createTestWorld();
     await seedTraveler(tw, { ...SEED, visits: [['s_jo02', 0]] });
     standNearJo02(tw);

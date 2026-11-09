@@ -5,17 +5,15 @@
  * - 時計は DemoClock（利用者アプリのデモ日付進行と同じ「今日」になる）
  * - スポットはマスタそのもの（上書き前）。登録内容は LocalStorageCmsOverlayRepository から読む
  */
+import { CMS_BACKEND } from '@/Common/constants/env';
+import type { CmsBackend } from '@/Common/constants/env';
 import { createLogger } from '@/Common/logging/logger';
 import { AppError, fail, ok } from '@/Common/result/Result';
 import type { Result } from '@/Common/result/Result';
 import type { CmsServices } from '@/application/CmsServices';
-import { GetCmsShopInfoUseCase } from '@/application/usecases/cms/GetCmsShopInfoUseCase';
-import { GetCmsShopsUseCase } from '@/application/usecases/cms/GetCmsShopsUseCase';
-import { GetCmsVisitStatsUseCase } from '@/application/usecases/cms/GetCmsVisitStatsUseCase';
-import { RegisterShopEventUseCase } from '@/application/usecases/cms/RegisterShopEventUseCase';
-import { ResetCmsDemoUseCase } from '@/application/usecases/cms/ResetCmsDemoUseCase';
-import { SaveShopInfoUseCase } from '@/application/usecases/cms/SaveShopInfoUseCase';
-import { WithdrawShopEventUseCase } from '@/application/usecases/cms/WithdrawShopEventUseCase';
+import { createHttpCmsServices } from '@/infrastructure/api/HttpCmsServices';
+import type { ApiClientDeps } from '@/infrastructure/api/requestApi';
+import { buildCmsUseCases } from '@/infrastructure/di/cmsUseCases';
 import { browserFetchText } from '@/infrastructure/master/browserFetchText';
 import { MasterDataLoader } from '@/infrastructure/master/MasterDataLoader';
 import type { FetchText } from '@/infrastructure/master/MasterDataLoader';
@@ -40,35 +38,30 @@ export interface CmsContainerOptions {
   readonly fetchText?: FetchText;
   /** 実時刻（エポックミリ秒）。テストで固定する */
   readonly nowMs?: () => number;
+  /** 登録内容の受け渡し方（省略時は CMS_BACKEND。'server' は連携サーバーの API を呼ぶ＝docs/09 §7.3） */
+  readonly backend?: CmsBackend;
+  /** 連携サーバーの呼び出し（テストで起点と fetch を渡す） */
+  readonly api?: Omit<ApiClientDeps, 'headers'>;
 }
 
 /**
  * 店舗CMS のサービス一覧を作る。
+ * - 'local'：ユースケースをこのブラウザで動かし、localStorage に保存する（フェーズ1）
+ * - 'server'：連携サーバーのユースケースを HTTP で呼ぶ。デモの日付のずらし日数（DemoClock）はヘッダーで伝える
  * @param opts 設定
  * @returns 成功: CmsServices。失敗: DEMO_DISABLED（デモ以外）/ マスタの検証エラー
  */
 export async function createCmsContainer(opts: CmsContainerOptions): Promise<Result<CmsServices>> {
-  const log = logger.fn('createCmsContainer', { mode: opts.mode });
+  const log = logger.fn('createCmsContainer', { mode: opts.mode, backend: opts.backend ?? CMS_BACKEND });
   if (opts.mode !== 'demo') {
     log.warn('デモ以外で店舗CMS を開こうとしました');
     return log.fail(fail(AppError.of('DEMO_DISABLED', '店舗CMS はデモ版だけで使えます')));
   }
+  const store = opts.store ?? new LocalStorageKeyValueStore();
+  const clock = new DemoClock({ store, nowMs: opts.nowMs });
+  if ((opts.backend ?? CMS_BACKEND) === 'server') return log.exit(ok(createHttpCmsServices({ ...opts.api, demoOffsetDays: () => clock.offsetDays() })));
   const master = await MasterDataLoader.load(opts.fetchText ?? browserFetchText);
   if (!master.ok) return log.fail(master);
-  const store = opts.store ?? new LocalStorageKeyValueStore();
-  const deps = {
-    spots: master.value.spots,
-    cmsOverlay: new LocalStorageCmsOverlayRepository({ store, prefix: DEMO_PREFIX }),
-    clock: new DemoClock({ store, nowMs: opts.nowMs }),
-    ids: new CryptoIdGenerator(),
-  };
-  return log.exit(ok({
-    shops: new GetCmsShopsUseCase(deps),
-    shopInfo: new GetCmsShopInfoUseCase(deps),
-    saveShopInfo: new SaveShopInfoUseCase(deps),
-    registerShopEvent: new RegisterShopEventUseCase(deps),
-    withdrawShopEvent: new WithdrawShopEventUseCase(deps),
-    visitStats: new GetCmsVisitStatsUseCase(deps),
-    resetDemo: new ResetCmsDemoUseCase(deps),
-  }));
+  const cmsOverlay = new LocalStorageCmsOverlayRepository({ store, prefix: DEMO_PREFIX });
+  return log.exit(ok(buildCmsUseCases({ spots: master.value.spots, cmsOverlay, clock, ids: new CryptoIdGenerator() })));
 }

@@ -61,7 +61,7 @@ describe('GetMapDataUseCase', () => {
     const minato = map.districts.find((district) => district.id === 'd_minato');
     expect(minato).toMatchObject({ level: 1, visitCount: 1, isLordMe: true, lordName: 'あなた' });
     expect(minato?.fade).toMatchObject({ kind: 'soon', daysSinceVisit: 25, daysUntilFade: 5 });
-    expect(map.districts.find((district) => district.id === 'd_joka')).toMatchObject({ lordName: '旅人タロウ', isLordMe: false });
+    expect(map.districts.find((district) => district.id === 'd_joka')).toMatchObject({ lordName: 'おまいり番長', isLordMe: false });
     expect(map.districts.find((district) => district.id === 'd_satoyama')?.fade.kind).toBe('never');
   });
 

@@ -1,6 +1,7 @@
 /**
- * @file 図鑑（地区別のタイルと通った回数）を返すユースケース（application 層・読取系）
- * 未発見＝「？」（id・名前・カテゴリを含めない）、発見済み＝シルエット、訪問済み＝カラー＋通った回数（CLAUDE.md 6.5、wireframes/05_zukan）。基準 B・C。
+ * @file 図鑑（すべての地区のタイルと通った回数）を返すユースケース（application 層・読取系）
+ * 2026-11-09 ユーザー指示で地区別タブをやめ、すべての地区のカードを返す（地区と状態の絞り込みは画面で行う）。
+ * 未発見＝絵・名前・カテゴリも出す（「すべて表示」の指示。位置は出さない＝B）、発見済み＝シルエット、訪問済み＝カラー＋通った回数（CLAUDE.md 6.5）。基準 B・C。
  * 訪問済みには「なじみ度」（同じスポットに通うほど上がる）と訪れた季節を付け、次に通う理由にする（報酬は通いに出す＝CLAUDE.md 4.6）。
  * 達成率（％や「全n件中m件」）は返さない。埋めることではなく通うことを主役にする（CLAUDE.md 13）。
  * 成長段階・色あせ・なじみ度は訪問記録と今日から導出する（D4）。地区の数字と「次の目標」は DistrictView に集約（D2）。書込みはしない。
@@ -39,6 +40,9 @@ export type GetZukanDeps = WorldDeps;
 /** スポット種別の並び順（名所→店舗） */
 const KIND_ORDER: Readonly<Record<Spot['kind'], number>> = { landmark: 0, shop: 1 };
 
+/** 状態の並び順（獲得した＝訪問済み → 発見済み → 未発見。2026-11-09「グレーではなく獲得したものを見せて」） */
+const STATUS_ORDER: Readonly<Record<ZukanTileDto['status'], number>> = { visited: 0, discovered: 1, unknown: 2 };
+
 /** 季節の並び（春→冬） */
 const SEASON_ORDER: readonly SeasonDto[] = ['spring', 'summer', 'autumn', 'winter'];
 
@@ -66,13 +70,38 @@ export function nextFamiliarityText(visitCount: number): string | undefined {
 }
 
 /**
- * スポットを図鑑の並び（名所→店舗、同種は ID 順）にそろえる。状態では並べ替えない（位置の手がかりを増やさない）。
- * @param spots 地区内のスポット
+ * スポットを図鑑の並び（名所→店舗、同種は地区の表示順→ID 順）にそろえる。状態の並べ替えは orderByStatus で後からかける。
+ * @param spots すべてのスポット
+ * @param districtOrder 地区ID → 表示順
  * @returns 並べ替えた新しい配列
  */
-function sortForZukan(spots: readonly Spot[]): Spot[] {
+function sortForZukan(spots: readonly Spot[], districtOrder: ReadonlyMap<string, number>): Spot[] {
   const log = logger.fn('sortForZukan', { count: spots.length });
-  const sorted = [...spots].sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const sorted = [...spots].sort(
+    (a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || districtOrderOf(districtOrder, a) - districtOrderOf(districtOrder, b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  );
+  return log.exit(sorted);
+}
+
+/**
+ * スポットの地区の表示順を返す（並べ替えの比較用。地区が無ければ最後）。
+ * @param districtOrder 地区ID → 表示順
+ * @param spot スポット
+ * @returns 表示順
+ */
+function districtOrderOf(districtOrder: ReadonlyMap<string, number>, spot: Spot): number { // audit-ignore: fnlog-missing 並べ替えの比較で何度も呼ぶ1行の参照（sortForZukan でログを出す）
+  return districtOrder.get(spot.districtId) ?? Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * タイルを、同じ種別の中で 訪問済み → 発見済み → 未発見 の順に並べ替える（同じ状態の中は元の順＝地区の表示順→ID 順を保つ）。
+ * 獲得したカードが先頭に並び、図鑑を開いたときにグレーのカードばかりにならないようにする（2026-11-09 ユーザー指示）。
+ * @param tiles タイル（sortForZukan の順）
+ * @returns 並べ替えた新しい配列
+ */
+function orderByStatus(tiles: readonly ZukanTileDto[]): ZukanTileDto[] {
+  const log = logger.fn('orderByStatus', { count: tiles.length });
+  const sorted = [...tiles].sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
   return log.exit(sorted);
 }
 
@@ -83,7 +112,7 @@ function sortForZukan(spots: readonly Spot[]): Spot[] {
  * @param today 今日
  * @returns タイルに足す項目
  */
-function visitedExtrasOf(traveler: Traveler, spot: Spot, today: LocalDate): Omit<ZukanTileDto, 'id' | 'name' | 'kind' | 'category' | 'status'> {
+function visitedExtrasOf(traveler: Traveler, spot: Spot, today: LocalDate): Omit<ZukanTileDto, 'id' | 'name' | 'kind' | 'districtId' | 'category' | 'status'> {
   const log = logger.fn('visitedExtrasOf', { spotId: spot.id });
   const visits = visitsOfSpot(traveler.visits, spot.id);
   const familiarity = familiarityOf(visits.length);
@@ -100,7 +129,7 @@ function visitedExtrasOf(traveler: Traveler, spot: Spot, today: LocalDate): Omit
 }
 
 /**
- * スポット1件をタイルにする。未発見は id・名前・カテゴリを含めない（B）。
+ * スポット1件をタイルにする。未発見でも id・名前・カテゴリを含める（2026-11-09「すべて表示」。座標は含めない＝B）。
  * @param traveler 旅人
  * @param spot スポット
  * @param today 今日
@@ -109,14 +138,13 @@ function visitedExtrasOf(traveler: Traveler, spot: Spot, today: LocalDate): Omit
 function toTile(traveler: Traveler, spot: Spot, today: LocalDate): ZukanTileDto {
   const log = logger.fn('toTile', { spotId: spot.id });
   const status = spotStatusOf(traveler, spot.id);
-  if (status === 'unknown') return log.exit(Object.freeze({ kind: spot.kind, status, visitCount: 0 }), 'unknown');
-  const base = { id: spot.id, name: spot.name, kind: spot.kind, category: spot.category, status };
-  if (status === 'discovered') return log.exit(Object.freeze({ ...base, visitCount: 0 }), 'discovered');
+  const base = { id: spot.id, name: spot.name, kind: spot.kind, districtId: spot.districtId, category: spot.category, status };
+  if (status !== 'visited') return log.exit(Object.freeze({ ...base, visitCount: 0 }), status);
   return log.exit(Object.freeze({ ...base, ...visitedExtrasOf(traveler, spot, today) }));
 }
 
 /**
- * 選んでいる地区のヘッダー（色・成長段階・通った回数・最近いつ・色あせ・次の目標）を作る。
+ * 地区の見出し（色・成長段階・通った回数・最近いつ・色あせ・次の目標）を作る。
  * @param view 地区の表示の材料
  * @returns ZukanDistrictDto（凍結済み）
  */
@@ -151,19 +179,15 @@ function districtTabsOf(views: readonly DistrictView[]): readonly ZukanDistrictT
 }
 
 /**
- * 入力の地区ID を解決する（省略時は表示順の先頭）。
+ * 入力の地区ID を解決する（省略時は undefined＝すべての地区）。
  * @param spots マスタ参照
  * @param input 入力（URL 由来でもよい）
- * @returns 成功: 地区。失敗: INVALID_INPUT（ID 形式が不正）／DISTRICT_NOT_FOUND
+ * @returns 成功: 地区（省略時は undefined）。失敗: INVALID_INPUT（ID 形式が不正）／DISTRICT_NOT_FOUND
  */
-function resolveDistrict(spots: SpotRepository, input: unknown): Result<District> {
+function resolveDistrict(spots: SpotRepository, input: unknown): Result<District | undefined> {
   const log = logger.fn('resolveDistrict');
   const raw = isRecord(input) ? input['districtId'] : undefined;
-  if (raw === undefined) {
-    const first = [...spots.allDistricts()].sort((a, b) => a.order - b.order)[0];
-    if (first === undefined) return log.fail(fail(AppError.of(DISTRICT_NOT_FOUND, '地区が見つかりません')), '地区マスタが空');
-    return log.exit(ok(first));
-  }
+  if (raw === undefined) return log.exit(ok(undefined), 'すべての地区');
   const districtId = parseDistrictId(raw);
   if (!districtId.ok) return log.fail(districtId, 'districtId が不正');
   const district = spots.findDistrict(districtId.value);
@@ -180,7 +204,7 @@ export class GetZukanUseCase implements UseCase<ZukanInput, ZukanDto> {
   constructor(private readonly deps: GetZukanDeps) {}
 
   /**
-   * 指定した地区（省略時は先頭の地区）の図鑑を返す。
+   * すべての地区の図鑑を返す（指定した地区は最初の絞り込みとして返す）。
    * @param input districtId（任意。URL 由来の値でもよい。境界で検証する＝SEC-16）
    * @returns 成功: ZukanDto（達成率を含まない・凍結済み）。
    *          失敗: INVALID_INPUT（districtId 不正）／DISTRICT_NOT_FOUND／TRAVELER_NOT_FOUND／STORAGE_FAILED
@@ -194,12 +218,18 @@ export class GetZukanUseCase implements UseCase<ZukanInput, ZukanDto> {
     if (!world.ok) return log.fail(world);
     const { traveler, today } = world.value;
     const views = districtViewsOf(world.value).sort((a, b) => a.district.order - b.district.order);
-    const selected = views.find((view) => view.district.id === district.value.id);
-    if (selected === undefined) return log.fail(fail(AppError.of(DISTRICT_NOT_FOUND, '地区が見つかりません', { districtId: district.value.id })));
-    const legendIds = legendSpotIdsOf(this.deps.spots.allSpots());
-    const tiles = sortForZukan(this.deps.spots.spotsInDistrict(district.value.id)).map((spot) => withRarity(toTile(traveler, spot, today), spot, legendIds));
-    const dto: ZukanDto = Object.freeze({ districts: districtTabsOf(views), district: toDistrictHeader(selected), tiles: Object.freeze(tiles) });
-    log.debug('図鑑', { districtId: district.value.id, tiles: tiles.length, visited: tiles.filter((t) => t.status === 'visited').length });
+    const districtOrder = new Map(views.map((view) => [String(view.district.id), view.district.order]));
+    const allSpots = this.deps.spots.allSpots();
+    const legendIds = legendSpotIdsOf(allSpots);
+    const tiles = orderByStatus(sortForZukan(allSpots, districtOrder).map((spot) => withRarity(toTile(traveler, spot, today), spot, legendIds)));
+    const selectedId = district.value?.id;
+    const dto: ZukanDto = Object.freeze({
+      districts: districtTabsOf(views),
+      headers: Object.freeze(views.map(toDistrictHeader)),
+      ...(selectedId === undefined ? {} : { selectedDistrictId: selectedId }),
+      tiles: Object.freeze(tiles),
+    });
+    log.debug('図鑑', { selectedDistrictId: selectedId, tiles: tiles.length, visited: tiles.filter((t) => t.status === 'visited').length });
     return log.exit(ok(dto));
   }
 }

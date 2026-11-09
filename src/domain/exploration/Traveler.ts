@@ -1,7 +1,7 @@
 /**
  * @file 旅人集約（domain/exploration 層）
  * 発見・訪問・クーポン利用の記録を追記専用で持つ不変オブジェクト。変更メソッドは新しいインスタンスを返す。
- * - 訪問は 40m（VISIT_RADIUS_M）以内・精度 MAX_ACCURACY_M 以下・同一スポット1日1回（DI-08, DI-14）
+ * - 訪問は 80m（VISIT_RADIUS_M）以内・精度 MAX_ACCURACY_M 以下・同一スポット1日1回（DI-08, DI-14）
  * - 同じ operationId の再実行は duplicate=true で無変更（DI-07）
  * - 記録を消す・減らす操作は作らない（CLAUDE.md 5「失う体験を作らない」）
  */

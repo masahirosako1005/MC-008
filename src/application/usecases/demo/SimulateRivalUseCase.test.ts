@@ -15,13 +15,13 @@ async function tenmaLordWorld(): Promise<TestWorld> {
 }
 
 describe('SimulateRivalUseCase', () => {
-  it('既定（タロウ・天満）で max(現職, 旅人)+1−ライバルの回数 を今日付で足し、主を奪う', async () => {
+  it('既定（おまいり番長・天満）で max(現職, 旅人)+1−ライバルの回数 を今日付で足し、主を奪う', async () => {
     const tw = await tenmaLordWorld();
     const output = must(await createDemoUseCases(tw, { enabled: true }).simulateRival.execute({ operationId: testOperationId(1) }));
-    expect(output).toEqual({ districtId: 'd_tenma', districtName: '天満地区', rivalName: '旅人タロウ', changed: true });
+    expect(output).toEqual({ districtId: 'd_tenma', districtName: '天満地区', rivalName: 'おまいり番長', changed: true });
     const actions = must(await tw.rivalActions.list(TEST_TRAVELER_ID));
     expect(actions.map((a) => [a.rivalId, a.districtId, a.localDate, a.count])).toEqual([['r_taro', 'd_tenma', '2026-11-09', 4]]);
-    expect(tw.events.ofType('DistrictLordChanged')[0]).toMatchObject({ fromName: 'あなた', toName: '旅人タロウ', travelerCount: 3, lordCount: 4 });
+    expect(tw.events.ofType('DistrictLordChanged')[0]).toMatchObject({ fromName: 'あなた', toName: 'おまいり番長', travelerCount: 3, lordCount: 4 });
     const board = must(await tw.lordships.find(TEST_TRAVELER_ID));
     expect(board.isLostByTraveler(testDistrictId('d_tenma'))).toBe(true);
   });
@@ -30,7 +30,7 @@ describe('SimulateRivalUseCase', () => {
     const tw = await tenmaLordWorld();
     must(await createDemoUseCases(tw, { enabled: true }).simulateRival.execute({ operationId: testOperationId(1) }));
     const reclaim = (await reasonsOf(tw)).find((r) => r.kind === 'reclaim');
-    expect(reclaim).toMatchObject({ kind: 'reclaim', districtId: 'd_tenma', lordName: '旅人タロウ', lordCount: 4, myCount: 3, needed: 2 });
+    expect(reclaim).toMatchObject({ kind: 'reclaim', districtId: 'd_tenma', lordName: 'おまいり番長', lordCount: 4, myCount: 3, needed: 2 });
   });
 
   it('同じ operationId は1回だけ記録する（DI-07）', async () => {
@@ -47,7 +47,7 @@ describe('SimulateRivalUseCase', () => {
     const tw = createScenarioWorld();
     await seedTraveler(tw);
     const output = must(await createDemoUseCases(tw, { enabled: true }).simulateRival.execute({ operationId: testOperationId(1), rivalId: 'r_hana', districtId: 'd_tenma' }));
-    expect(output).toMatchObject({ rivalName: '旅人ハナ', changed: true });
+    expect(output).toMatchObject({ rivalName: '花見は毎日派', changed: true });
     expect(must(await tw.rivalActions.list(TEST_TRAVELER_ID)).map((a) => a.count)).toEqual([1]);
   });
 

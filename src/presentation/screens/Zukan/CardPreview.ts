@@ -2,7 +2,9 @@
  * @file 図鑑カードの拡大プレビュー（presentation/screens/Zukan 層）
  * カードをタップすると大きなカードで中身（ピクトグラム・カテゴリ・レア度）と取得方法の手順を見せる。
  * 手順は「済んだ＝✓」「次はこれ＝→」の線アイコンの印つきで、次に何をすればカードが育つかがわかるようにする（基準 B・C）。
- * 発見済み・訪問済みは「スポット詳細へ」で 04 に進める（タップ2回以内＝CLAUDE.md 5）。未発見は位置を教えない。
+ * 発見済み・訪問済みは「スポット詳細へ」で 04 に進める（タップ2回以内＝CLAUDE.md 5）。
+ * 未発見も名前・カテゴリは出すが（2026-11-09「すべて表示」）、位置を教えないためスポット詳細へは進めない（B）。
+ * 獲得した ★4（SSR 級）は大きなカードにもキラキラの層を重ねる（ShinyLayer）。
  */
 import type { ZukanTileDto } from '@/application/dto/Dto';
 import { createLogger } from '@/Common/logging/logger';
@@ -11,7 +13,11 @@ import { createIcon } from '@/Common/ui/icons';
 import type { IconName } from '@/Common/ui/icons';
 import { openModal } from '@/Common/ui/Modal';
 import type { ModalHandle } from '@/Common/ui/Modal';
-import { categoryIconOf, mysteryTeaserOf, rarityViewOf } from '@/presentation/screens/Zukan/cardFace';
+import { categoryIconOf, isShinyCard, rarityViewOf } from '@/presentation/screens/Zukan/cardFace';
+import { createShinyLayer } from '@/presentation/screens/Zukan/ShinyLayer';
+import { createImageBadge, createPhotoCredit, mountPhotoImage } from '@/presentation/screens/Spot/SpotPhotoView';
+import { spotPhotoOf } from '@/presentation/shared/spotPhotos';
+import type { SpotPhoto } from '@/presentation/shared/spotPhotos';
 import { tileName } from '@/presentation/screens/Zukan/zukanModel';
 
 const logger = createLogger('presentation/screens/Zukan/CardPreview');
@@ -33,6 +39,20 @@ export function stepStatesOf(tile: ZukanTileDto, count: number): StepState[] {
 }
 
 /**
+ * 大きなカードの上の写真（読めなければ枠ごと取り除く）。未訪問はモノクロ（CSS）。
+ * @param tile タイル
+ * @param photo 写真
+ * @returns 要素
+ */
+function createPreviewPhoto(tile: ZukanTileDto, photo: SpotPhoto): HTMLElement {
+  const log = logger.fn('createPreviewPhoto', { status: tile.status, isImage: photo.isImage });
+  const frame = h('span', { class: 'card-preview__photo' }, [photo.isImage ? createImageBadge() : undefined]);
+  const alt = photo.isImage ? `${tile.category ?? ''}のイメージ写真` : `${tileName(tile)}の写真`;
+  mountPhotoImage(frame, photo, { alt, onFail: (): void => frame.remove() });
+  return log.exit(frame);
+}
+
+/**
  * 大きなカード（プレビューの上半分）を作る。
  * @param tile タイル
  * @returns 要素
@@ -40,20 +60,26 @@ export function stepStatesOf(tile: ZukanTileDto, count: number): StepState[] {
 function createBigCard(tile: ZukanTileDto): HTMLElement {
   const log = logger.fn('createBigCard', { status: tile.status });
   const view = rarityViewOf(tile);
-  const icon = categoryIconOf(tile);
+  const shiny = isShinyCard(tile);
+  const photo = spotPhotoOf(tile);
   return log.exit(
     h(
       'div',
-      { class: 'rarity-card card-preview__card', dataset: { rarity: String(view.rarity), status: tile.status, awakened: tile.awakened === true ? '1' : undefined } },
+      {
+        class: 'rarity-card card-preview__card',
+        dataset: { rarity: String(view.rarity), status: tile.status, awakened: tile.awakened === true ? '1' : undefined, shiny: shiny ? '1' : undefined },
+      },
       [
+        shiny ? createShinyLayer() : undefined,
+        photo === undefined ? undefined : createPreviewPhoto(tile, photo),
         h('span', { class: 'rarity-card__foil', attrs: { 'aria-hidden': 'true' } }),
         h('span', { class: 'rarity-card__code', text: view.code }),
-        h('span', { class: 'rarity-card__icon', attrs: { 'aria-hidden': 'true' }, text: icon ?? '？' }),
+        h('span', { class: 'rarity-card__icon', attrs: { 'aria-hidden': 'true' }, text: categoryIconOf(tile) }),
         h('span', { class: 'rarity-card__stars', attrs: { 'aria-label': `レア度 ${view.rarity}` }, text: view.stars }),
         h('span', { class: 'rarity-card__rname', text: view.name }),
         h('strong', { class: 'card-preview__name', text: tileName(tile) }),
-        h('span', { class: 'card-preview__category', text: tile.status === 'unknown' ? mysteryTeaserOf(view.rarity) : (tile.category ?? '') }),
-        view.rarity === 4 ? h('span', { class: 'rarity-card__sparkles', attrs: { 'aria-hidden': 'true' } }, ['✦', '✧', '✦', '✧', '✦'].map((s) => h('span', { text: s }))) : undefined,
+        h('span', { class: 'card-preview__category', text: tile.category ?? '' }),
+        shiny ? h('span', { class: 'card-preview__shiny-label', text: '✦ 獲得済みレジェンド ✦' }) : undefined,
       ],
     ),
   );
@@ -92,16 +118,21 @@ function createSteps(tile: ZukanTileDto): HTMLElement {
 /**
  * プレビューを開く。
  * @param tile タイル
- * @param onOpenSpot スポット詳細へ進む処理（未発見なら使わない）
+ * @param onOpenSpot スポット詳細へ進む処理（未発見なら使わない＝位置を教えない）
  * @returns モーダルの操作
  * @sideEffect 画面にモーダルを出す
  */
 export function openCardPreview(tile: ZukanTileDto, onOpenSpot: (spotId: string) => void): ModalHandle {
   const log = logger.fn('openCardPreview', { status: tile.status, rarity: tile.rarity });
   const spotId = tile.id;
-  const body = h('div', { class: 'card-preview', attrs: { 'data-testid': 'zukan-card-preview' } }, [createBigCard(tile), createSteps(tile)]);
+  const photo = spotPhotoOf(tile);
+  const body = h('div', { class: 'card-preview', attrs: { 'data-testid': 'zukan-card-preview' } }, [
+    createBigCard(tile),
+    photo === undefined ? undefined : createPhotoCredit(photo),
+    createSteps(tile),
+  ]);
   const actions =
-    spotId === undefined
+    spotId === undefined || tile.status === 'unknown'
       ? [{ label: '閉じる', variant: 'primary' as const, testId: 'zukan-preview-close', onClick: (): void => undefined }]
       : [
           { label: '閉じる', variant: 'ghost' as const, testId: 'zukan-preview-close', onClick: (): void => undefined },
