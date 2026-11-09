@@ -1,0 +1,2 @@
+# マスタ JSON は SHA-256（src/infrastructure/master/masterHashes.ts）でバイト列を照合するため、改行を常に LF に固定する（SEC-22, DI-13）
+public/master/*.json text eol=lf

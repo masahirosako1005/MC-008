@@ -1,0 +1,331 @@
+/*
+ * @file 図鑑画面のスタイル（presentation/screens/Zukan）
+ * 地区タブ＋地区の見出し（地区の色の帯）＋収集カード風の3列格子（wireframes/05_zukan）。サイズは rem、タップ領域は最小 44px。
+ * カードの状態は「絵の色・枠線（実線／破線／太線／二重）・帯・星・文言」の重ねがけで示す（色覚配慮）。
+ * 地区の色は帯と丸だけに使い、ほかはグレースケール＋アクセント1色（tokens.css）。動きは prefers-reduced-motion で止める。
+ */
+.zukan__body { padding-top: 0.75rem; padding-bottom: 1rem; }
+
+/* ---- 地区タブ ---- */
+.zukan-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 0.875rem;
+  background: var(--g1);
+  border: 1px solid var(--g2);
+}
+.zukan-tabs__tab {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0 0.125rem;
+  border: 0;
+  border-radius: 0.625rem;
+  background: transparent;
+  color: var(--g5);
+  font: inherit;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.zukan-tabs__tab[aria-selected="true"] {
+  background: var(--g0);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), inset 0 -3px 0 var(--accent);
+}
+.zukan-tabs__tab:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.zukan-tabs__dot {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--district, var(--g3));
+}
+.zukan-tabs__dot[data-fade="fading"] { background: transparent; border: 1.5px dashed var(--district, var(--g4)); }
+.zukan-tabs__dot[data-fade="never"] { background: transparent; border: 1.5px solid var(--g3); }
+.zukan-tabs__label { overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- 地区の見出し ---- */
+.zukan-hero {
+  margin: 0.75rem 0 0.25rem;
+  border: 1px solid var(--g2);
+  border-radius: var(--radius-l);
+  background: var(--g0);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.zukan-hero__band {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0.375rem 0.875rem;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0 0.5rem, transparent 0.5rem 1rem),
+    linear-gradient(120deg, var(--district, var(--g4)), color-mix(in srgb, var(--district, var(--g4)) 55%, #ffffff));
+}
+.zukan-hero__theme,
+.zukan-hero__fade {
+  padding: 0.0625rem 0.625rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.zukan-hero__fade { border: 1px dashed var(--g4); color: var(--g5); }
+.zukan-hero[data-fade="fading"] { border-style: dashed; border-color: var(--g3); }
+.zukan-hero[data-fade="fading"] .zukan-hero__band { filter: saturate(0.3); opacity: 0.75; }
+.zukan-hero__name { margin: 0.625rem 0.875rem 0.375rem; font-size: 1.25rem; font-weight: 800; letter-spacing: 0.02em; }
+
+.zukan-hero__stats { display: grid; grid-template-columns: 1fr 1.25fr 1fr; margin: 0 0.5rem; }
+.zukan-hero__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.125rem;
+  padding: 0.25rem 0.25rem 0.5rem;
+  border-right: 1px solid var(--g2);
+  min-width: 0;
+}
+.zukan-hero__stat:last-child { border-right: 0; }
+.zukan-hero__value { display: flex; align-items: baseline; gap: 0.125rem; font-size: 0.875rem; font-weight: 700; white-space: nowrap; }
+.zukan-hero__big { font-size: 1.75rem; line-height: 1; color: var(--accent-strong); font-weight: 800; }
+.zukan-hero__caption { font-size: 0.625rem; color: var(--g4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.zukan-hero__level { flex-direction: column; align-items: center; gap: 0.25rem; }
+.zukan-hero__lv { font-size: 1rem; line-height: 1; }
+.zukan-hero__pips { display: flex; gap: 0.25rem; }
+.zukan-hero__pip { width: 0.625rem; height: 0.625rem; border-radius: 50%; border: 1.5px solid var(--g3); background: var(--g0); }
+.zukan-hero__pip[data-on="1"] { border-color: var(--accent); background: var(--accent); }
+
+.zukan-hero__goal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 0.875rem;
+  border-top: 1px solid var(--g2);
+  background: var(--accent-soft);
+  font-size: 0.8125rem;
+}
+.zukan-hero__goal-label {
+  flex: none;
+  padding: 0 0.5rem;
+  border-radius: 0.25rem;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.zukan-hero__goal-text { font-weight: 700; color: var(--ink); }
+
+/* ---- 区分見出し ---- */
+.zukan-section { margin-top: 1rem; }
+.zukan-section__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--g5);
+  letter-spacing: 0.15em;
+}
+.zukan-section__title::after { content: ""; flex: 1; height: 1px; background: var(--g2); }
+
+/* ---- カード格子 ---- */
+.zukan-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.zukan-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.1875rem;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: 0.3125rem 0.3125rem 0.4375rem;
+  border: 1px solid var(--g2);
+  border-radius: var(--radius-m);
+  background: var(--g0);
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  animation: zukan-card-in 0.36s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 28ms);
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast);
+}
+.zukan-card:active { transform: scale(0.97); }
+.zukan-card:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.zukan-card__art {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-s);
+  overflow: hidden;
+  background: var(--g1);
+}
+.zukan-card__art .zukan-card__canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.zukan-card__name {
+  display: block;
+  margin-top: 0.125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.zukan-card__caption { display: block; font-size: 0.625rem; line-height: 1.3; color: var(--g4); }
+
+/* 絵の上の小物（canvas は後から差し込まれるので重なり順を明示する） */
+.zukan-card__ribbon,
+.zukan-card__today,
+.zukan-card__count,
+.zukan-card__mystery { z-index: 1; }
+.zukan-card__ribbon {
+  position: absolute;
+  top: 0.25rem;
+  left: 0;
+  padding: 0 0.375rem 0 0.3125rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.5625rem;
+  font-weight: 800;
+  line-height: 1.6;
+  letter-spacing: 0.05em;
+}
+.zukan-card__today {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  padding: 0 0.3125rem;
+  border-radius: 0.5rem;
+  background: var(--ink);
+  color: var(--g0);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.zukan-card__count {
+  position: absolute;
+  right: 0.25rem;
+  bottom: 0.25rem;
+  padding: 0 0.3125rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--accent-strong);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  line-height: 1.45;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* なじみ度の星と季節の印 */
+.zukan-card__meta { display: flex; flex-direction: column; align-items: center; gap: 0.1875rem; }
+.zukan-card__stars { font-size: 0.6875rem; line-height: 1; letter-spacing: 0.1em; color: var(--accent); }
+.zukan-card__seasons { display: flex; justify-content: center; gap: 0.125rem; }
+.zukan-card__season {
+  width: 1.0625rem;
+  height: 1.0625rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.25rem;
+  border: 1px dashed var(--g3);
+  color: var(--g3);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.zukan-card__season[data-on="1"] { border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+
+/* 訪問済み＝カラー。なじみ度で枠が育つ（1=細線、2=太線＋帯、3=二重枠＋帯＋光） */
+.zukan-card[data-status="visited"] { border-color: var(--accent); }
+.zukan-card[data-status="visited"] .zukan-card__caption { color: var(--accent-strong); font-weight: 700; }
+.zukan-card[data-familiarity="2"] { border-width: 2px; padding: 0.25rem 0.25rem 0.375rem; }
+.zukan-card[data-familiarity="3"] {
+  border-width: 2px;
+  padding: 0.25rem 0.25rem 0.375rem;
+  background: linear-gradient(180deg, var(--accent-soft), var(--g0) 55%);
+  box-shadow: 0 0 0 2px var(--g0), 0 0 0 3.5px var(--accent), 0 3px 10px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.zukan-card[data-familiarity="3"] .zukan-card__ribbon { background: var(--accent-strong); }
+.zukan-card[data-familiarity="3"] .zukan-card__ribbon::before { content: "★ "; }
+.zukan-card[data-familiarity="3"] .zukan-card__art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.55) 45%, transparent 60%);
+  z-index: 2;
+  transform: translateX(-120%);
+  animation: zukan-shine 3.2s ease-in-out 0.8s infinite;
+  pointer-events: none;
+}
+
+/* 発見済み＝シルエット（行けば色づく） */
+.zukan-card[data-status="discovered"] { border-color: var(--g3); }
+.zukan-card[data-status="discovered"] .zukan-card__name { color: var(--g5); }
+
+/* 未発見＝霧の「？」 */
+.zukan-card[data-status="unknown"] { border-style: dashed; border-color: var(--g3); background: var(--g1); box-shadow: none; }
+.zukan-card[data-status="unknown"] .zukan-card__art {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.9), transparent 45%),
+    radial-gradient(circle at 75% 80%, rgba(255, 255, 255, 0.7), transparent 40%),
+    repeating-linear-gradient(45deg, var(--g1) 0 0.375rem, var(--g2) 0.375rem 0.4375rem);
+}
+.zukan-card__mystery {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1.5px dashed var(--g4);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--g4);
+  font-size: 1rem;
+  font-weight: 800;
+}
+.zukan-card[data-status="unknown"] .zukan-card__name { color: var(--g4); letter-spacing: 0.15em; font-weight: 400; }
+
+/* 色あせ中の地区＝カラーの絵を薄く（見た目だけ。回数・なじみ度は変えない）。見出しの「◌ 色あせ中」と併せて示す */
+.zukan__body[data-fade="fading"] .zukan-card[data-status="visited"] { border-style: dashed; }
+.zukan__body[data-fade="fading"] .zukan-card[data-status="visited"] .zukan-card__canvas { filter: saturate(0.3); opacity: 0.7; }
+
+.zukan__footnote { margin: 1rem 0 0.5rem; font-size: 0.75rem; color: var(--g4); text-align: center; }
+
+@keyframes zukan-card-in {
+  from { opacity: 0; transform: translateY(0.375rem) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes zukan-shine {
+  0% { transform: translateX(-120%); }
+  45%, 100% { transform: translateX(120%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .zukan-card { animation: none; }
+  .zukan-card[data-familiarity="3"] .zukan-card__art::after { animation: none; display: none; }
+}
+
+/* 未発見カードの見つけ方（格子の上に1回だけ） */
+.zukan-unknown-hint { margin: 0 0 0.75rem; }

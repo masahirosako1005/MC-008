@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 スポット詳細 | N西市 WF</title>
+<link rel="stylesheet" href="wf.css">
+<style>
+.info{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.info span{border:1px solid var(--g3);border-radius:6px;padding:2px 8px;font-size:11px;background:#fff}
+.info span.off{color:var(--g3);border-style:dashed}
+.foot{position:absolute;left:0;right:0;bottom:0;padding:10px 16px 12px;background:#fff;border-top:1px solid var(--g2)}
+</style>
+</head>
+<body>
+<header class="page-head">
+  <a class="back" href="index.html">← 画面一覧</a>
+  <h1>04 スポット詳細</h1>
+  <p class="meta">
+    <span class="badge acc">基準 A 初回満足度</span>
+    <span class="badge acc">基準 C 再訪動機</span>
+    <span class="badge">ファイル 04_spot</span>
+    <span class="badge">遷移元：02 近接／03 下シート／05 図鑑</span>
+    <span class="badge">遷移先：08 演出（訪問確定後）／戻る</span>
+  </p>
+  <p><b>主な操作：</b>「訪問する」で訪問確定（40m以内でのみ有効）／店頭QRでも確定（店舗協力あり）／クーポンを開く／便利情報を見る</p>
+</header>
+
+<section class="frames">
+  <!-- 40m外 -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/11/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="topbar"><span class="bk">‹ 地図</span><span>スポット詳細</span><span class="gear" style="visibility:hidden">⚙</span></div>
+        <div class="scroll" style="top:48px;bottom:96px">
+          <div class="ph" style="height:150px">写真（Canvas の街なみ絵、またはダミー画像）</div>
+          <h3 style="margin:10px 0 2px;font-size:18px">丸岡和菓子店 <span class="tag">店舗</span></h3>
+          <div class="hint">城下地区 ・ 現在地から <b style="color:var(--ink)">120m</b> ・ 発見済み・未訪問</div>
+          <div class="info"><span>トイレあり</span><span>子連れ歓迎</span><span>ベビーカーOK</span><span>雨の日OK</span><span class="off">駐車場</span></div>
+          <div class="kv"><span>営業時間</span><span>10:00–18:00（水休）</span></div>
+          <div class="kv"><span>滞在目安</span><span class="hint">（将来）</span></div>
+          <p style="font-size:13px;margin:8px 0">城下町の和菓子店。季節の上生菓子と名物どら焼き。店先のベンチで食べられる。</p>
+          <div class="sec">クーポン・イベント</div>
+          <div class="card"><span class="tt kigen">期</span><div>どら焼き1個サービス<small>あと3日 ・ 店舗協力あり ・ 訪問時に提示</small></div><span class="r hint">›</span></div>
+          <div class="sec">あなたの訪問履歴</div>
+          <div class="kv"><span>このスポットに通った回数</span><span>0回</span></div>
+          <div class="kv"><span>城下地区に通った回数</span><span>2回 <span class="tag acc">あと1回で銀カード</span></span></div>
+        </div>
+        <div class="foot">
+          <span class="btn big dis">あと80m近づくと訪問できます</span>
+          <div class="hint" style="text-align:center;margin-top:6px">店頭QRでも訪問を確定できます</div>
+        </div>
+        <span class="co" style="left:12px;top:60px">1</span>
+        <span class="co" style="left:12px;top:290px">2</span>
+        <span class="co" style="left:12px;top:420px">3</span>
+        <span class="co" style="left:196px;top:570px">4</span>
+        <span class="co" style="left:12px;top:650px">5</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>状態A：40m外</b>　情報はすべて見えるが、訪問ボタンは無効。あと何m近づけばよいかを示す。</figcaption>
+  </figure>
+
+  <!-- 40m内 -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/11/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="topbar"><span class="bk">‹ 地図</span><span>スポット詳細</span><span class="gear" style="visibility:hidden">⚙</span></div>
+        <div class="scroll" style="top:48px;bottom:96px">
+          <div class="ph" style="height:150px">写真（Canvas の街なみ絵、またはダミー画像）</div>
+          <h3 style="margin:10px 0 2px;font-size:18px">丸岡和菓子店 <span class="tag">店舗</span></h3>
+          <div class="hint">城下地区 ・ 現在地から <b style="color:var(--accent)">22m</b> ・ 発見済み・未訪問</div>
+          <div class="info"><span>トイレあり</span><span>子連れ歓迎</span><span>ベビーカーOK</span><span>雨の日OK</span><span class="off">駐車場</span></div>
+          <div class="kv"><span>営業時間</span><span>10:00–18:00（水休）</span></div>
+          <div class="kv"><span>滞在目安</span><span class="hint">（将来）</span></div>
+          <p style="font-size:13px;margin:8px 0">城下町の和菓子店。季節の上生菓子と名物どら焼き。店先のベンチで食べられる。</p>
+          <div class="sec">クーポン・イベント</div>
+          <div class="card"><span class="tt kigen">期</span><div>どら焼き1個サービス<small>あと3日 ・ 店舗協力あり ・ 訪問時に提示</small></div><span class="r hint">›</span></div>
+          <div class="sec">あなたの訪問履歴</div>
+          <div class="kv"><span>このスポットに通った回数</span><span>0回</span></div>
+          <div class="kv"><span>城下地区に通った回数</span><span>2回 <span class="tag acc">あと1回で銀カード</span></span></div>
+        </div>
+        <div class="foot">
+          <span class="btn big pri">訪問する（40m以内）</span>
+          <div class="hint" style="text-align:center;margin-top:6px">店頭QRでも訪問を確定できます</div>
+        </div>
+        <span class="co" style="left:12px;top:650px">6</span>
+        <span class="co" style="left:300px;top:690px">7</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>状態B：40m内</b>　訪問ボタンが有効。タップで訪問確定 → 08 演出（通常／カード／主交代／復活）→ 地図に戻る。</figcaption>
+  </figure>
+</section>
+
+<ol class="notes">
+  <li><span class="n">1</span>写真は Canvas の街なみ絵で代替可。名前・種別タグ・地区・距離・状態を一塊で。</li>
+  <li><span class="n">2</span>便利情報（基準A）：該当する項目を実線、該当しないものは破線で薄く。初回ユーザーが「困らない」ための情報を上に置く。</li>
+  <li><span class="n">3</span>クーポン・イベントは再訪理由タグ「期」を付けて 03 と同じ見た目にする。店舗協力がない店は本セクションが出ないだけで、他は成立する。</li>
+  <li><span class="n">4</span>訪問履歴は「このスポット」と「地区」の通った回数。銀・金カードの条件は地区単位（4.6）なので、地区の回数と「あと◯回」を見せる（基準C）。達成率は出さない。</li>
+  <li><span class="n">5</span>40m外は無効ボタン＋「あと◯m」。押せない理由を言葉で伝える。</li>
+  <li><span class="n">6</span>40m内は主要操作ボタン（アクセント色）。確定後に 08 の演出へ。初訪問なら地区が育つ、再訪なら回数が増える、色あせ地区なら復活。</li>
+  <li><span class="n">7</span>店頭QR（店舗協力あり）でも確定できる旨を常に小さく出す。なりすまし対策・来店証明（10章）。</li>
+</ol>
+
+<nav class="nav"><a href="03_sheet.html">← 03 地図下シート</a><a href="05_zukan.html">次：05 図鑑 →</a></nav>
+</body>
+</html>

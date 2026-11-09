@@ -1,0 +1,52 @@
+/*
+ * @file デモメニュー画面のスタイル（presentation/screens/Demo）
+ * 設定アプリ風: 日付・旅人の2行を1枚の白いカードにまとめ、操作はパネルごとに白いカード（見出し・ボタン・補足）。
+ * ボタンは高さ 48px、選択欄も 48px。タップ領域は最小 44px、サイズは rem（docs/08 §10.3）。
+ */
+.demo-menu { padding-top: 1rem; }
+
+/* ---- 日付・旅人（2行で1枚のカード、行の間は内側に寄せた hairline） ---- */
+.demo-info { padding: 0 1rem; border-radius: var(--radius-m); background: var(--surface); box-shadow: var(--shadow-1); }
+.demo-kv {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3rem;
+  font-size: var(--fs-s);
+}
+.demo-kv + .demo-kv { border-top: 1px solid var(--hairline); }
+.demo-kv__key { color: var(--g4); }
+.demo-kv__value { text-align: right; font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
+
+/* ---- 操作パネル（白いカード） ---- */
+.demo-panel {
+  margin-top: 0.875rem;
+  padding: 0.875rem 1rem 1rem;
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.demo-panel > .sheet-section-title { margin: 0 0 0.75rem; font-size: var(--fs-m); }
+.demo-panel .hint { margin-top: 0.625rem; }
+.demo-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.demo-row > .btn { flex: 1 1 0; min-width: 0; padding-left: 0.75rem; padding-right: 0.75rem; white-space: normal; }
+
+.demo-select {
+  display: block;
+  width: 100%;
+  min-height: 3rem;
+  margin-bottom: 0.5rem;
+  padding: 0 0.875rem;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--g1);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-m);
+  font-weight: var(--fw-medium);
+}
+.demo-select:focus-visible { box-shadow: var(--focus-ring); }
+
+.demo-note { margin-top: 1.25rem; text-align: center; }

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03 地図下シート | N西市 WF</title>
+<link rel="stylesheet" href="wf.css">
+<style>.bgmap{position:absolute;inset:0;top:48px;background:#f1ece6;opacity:.6}</style>
+</head>
+<body>
+<header class="page-head">
+  <a class="back" href="index.html">← 画面一覧</a>
+  <h1>03 地図下シート（つまみ／半分／全画面）</h1>
+  <p class="meta">
+    <span class="badge acc">基準 C 再訪動機</span>
+    <span class="badge">ファイル 03_sheet</span>
+    <span class="badge">遷移元：01, 02（地図の上に常駐）</span>
+    <span class="badge">遷移先：04 スポット詳細／01 地区ズーム／カレンダー（ICS）</span>
+  </p>
+  <p><b>主な操作：</b>つまみを引き上げて半分→全画面／スポットカードをタップで 04／再訪理由カードをタップで該当地区へ／「カレンダーに追加」</p>
+</header>
+
+<section class="frames">
+  <!-- つまみ -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/12/09（+30日）</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="topbar"><span>N西市</span><span class="gear">⚙</span></div>
+        <div class="bgmap"></div>
+        <div class="canvas-note" style="bottom:120px">地図（01／02 参照）</div>
+        <div class="sheet h-grip">
+          <div class="grip"></div>
+          <div class="card" style="margin:0"><span class="tt iro">色</span><div>そろそろ色あせ：みなと地区 あと7日<small>いちばん近い：丸岡和菓子店 62m</small></div><span class="r hint">▲</span></div>
+        </div>
+        <span class="co" style="left:12px;top:636px">1</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>つまみ</b>　いちばん近いスポットと、いちばん強い再訪理由1件。地図を邪魔しない高さ。</figcaption>
+  </figure>
+
+  <!-- 半分 -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/12/09（+30日）</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="topbar"><span>N西市</span><span class="gear">⚙</span></div>
+        <div class="bgmap"></div>
+        <div class="sheet h-half">
+          <div class="grip"></div>
+          <div class="sec">近くのスポット（距離順）</div>
+          <div class="card spot"><span class="ic sil">■</span><div>丸岡和菓子店 <span class="tag">店舗</span><small>62m ・ 発見済み・未訪問</small></div><span class="r hint">›</span></div>
+          <div class="card spot"><span class="ic vis">✓</span><div>城下カフェ <span class="tag">店舗</span><small>95m ・ 訪問2回 ・ クーポンあり</small></div><span class="r hint">›</span></div>
+          <div class="sec">次に訪れる理由（優先順）</div>
+          <div class="card"><span class="tt kigen">期</span><div>城下カフェのクーポン、あと3日<small>どら焼き1個サービス（店舗協力）</small></div><span class="r hint">›</span></div>
+          <div class="card"><span class="tt tori">取</span><div>本町地区の主を旅人タロウに奪われた<small>直近30日：タロウ 12回／あなた 9回</small></div><span class="r hint">›</span></div>
+          <div class="card"><span class="tt iro">色</span><div>そろそろ色あせ：みなと地区 あと7日<small>最終訪問 23日前</small></div><span class="r btn">カレンダー</span></div>
+          <div class="card"><span class="tt mi">未</span><div>城下地区に発見済み・未訪問が2件<small>丸岡和菓子店、御堀端ベーカリー</small></div><span class="r hint">›</span></div>
+        </div>
+        <span class="co" style="left:330px;top:272px">2</span>
+        <span class="co" style="left:330px;top:418px">3</span>
+        <span class="co" style="left:262px;top:580px">4</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>半分</b>　近隣スポットのリスト（距離順）と、再訪理由カード（期限→取り返し→色あせ→未訪問の優先順）。</figcaption>
+  </figure>
+
+  <!-- 全画面 -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/12/09（+30日）</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="sheet h-full">
+          <div class="grip"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center"><b>地区カード</b><span class="hint">▼ 下げて閉じる</span></div>
+          <div class="card" style="border-color:var(--g4)"><span class="tt iro">色</span><div>そろそろ色あせ：みなと地区 あと7日<small>「おかえり」を迎えに行く日を決めておく</small></div><span class="r btn pri">カレンダーに追加</span></div>
+          <div class="sec">5地区の状態</div>
+          <div class="dcard"><span class="dsw l2"></span><div><b>城下地区</b> <span class="tag">Lv2</span><small>主：旅人タロウ ・ 次の目標：あと2スポットでLv3</small></div><span class="hint">›</span></div>
+          <div class="dcard"><span class="dsw l1"></span><div><b>みなと地区</b> <span class="tag">Lv1</span> <span class="tag fade">あと7日で色あせ</span><small>最終訪問 23日前 ・ 次の目標：あと1回で銀カード</small></div><span class="hint">›</span></div>
+          <div class="dcard"><span class="dsw l3"></span><div><b>本町地区</b> <span class="tag">Lv3</span> <span class="tag">主：旅人タロウ</span><small>取り返しまで：あと4回（直近30日）</small></div><span class="tt tori" style="width:24px;height:24px;font-size:11px">取</span></div>
+          <div class="dcard"><span class="dsw l0"></span><div><b>里山地区</b> <span class="tag">Lv0</span><small>まだ訪れていない ・ 次の目標：まず1か所を発見</small></div><span class="hint">›</span></div>
+          <div class="dcard"><span class="dsw fade"></span><div><b>湯の里地区</b> <span class="tag">Lv2</span> <span class="tag fade">色あせ中</span><small>最終訪問 75日前 ・ 再訪で復活＋おかえりボーナス</small></div><span class="hint">›</span></div>
+          <p class="hint" style="margin-top:14px">Lvは下がらない。色あせは見た目だけ。</p>
+        </div>
+        <span class="co" style="left:12px;top:40px">5</span>
+        <span class="co" style="left:12px;top:260px">6</span>
+        <span class="co" style="left:12px;top:470px">7</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>全画面</b>　地区カード一覧（成長Lv・色あせ状態・地区の主・次の目標）。色あせ間近カードは「カレンダーに追加」付き。</figcaption>
+  </figure>
+</section>
+
+<ol class="notes">
+  <li><span class="n">1</span>つまみは常に1行＋補助1行。再訪理由タグは 5 種で文字と形を固定（期・取・色・未・新）。</li>
+  <li><span class="n">2</span>スポットカード共通部品：状態アイコン（？／シルエット／カラー）、名前、種別タグ、距離、通った回数。タップで 04。</li>
+  <li><span class="n">3</span>再訪理由カード共通部品。優先順は 期限 → 取り返し → 色あせ → 未訪問 → 新着（仮）。通知でも同じカードを使う。</li>
+  <li><span class="n">4</span>色あせカードだけ「カレンダー」ボタン。色あせ7日前に出る「そろそろ」カード（4.4）。</li>
+  <li><span class="n">5</span>全画面の先頭に「そろそろ」カードを大きく。ICS を書き出してカレンダーに追加（基準C）。</li>
+  <li><span class="n">6</span>地区カード共通部品：成長スウォッチ（Lv0〜3／色あせ）、Lv タグ、主、次の目標。「次の目標」は網羅ではなく「通い」の目標にする。</li>
+  <li><span class="n">7</span>色あせ中の地区も Lv2 のまま表示。スウォッチだけ灰色＋破線（色覚配慮）。</li>
+</ol>
+
+<nav class="nav"><a href="02_map_near.html">← 02 地図（近接）</a><a href="04_spot.html">次：04 スポット詳細 →</a></nav>
+</body>
+</html>

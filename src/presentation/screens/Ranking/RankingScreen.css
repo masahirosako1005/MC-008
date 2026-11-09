@@ -1,0 +1,567 @@
+/*
+ * @file ランキング画面のスタイル（presentation/screens/Ranking）
+ * 基本はグレースケール＋アクセント1色。表彰台だけメダル色（金・銀は 08 演出の金・銀カードと同じ色、銅を追加）。
+ * 自分の行・枠はアクセント枠＋★／YOU でも示す（色だけに頼らない）。動きは prefers-reduced-motion: no-preference のときだけ。
+ */
+.ranking {
+  --medal-gold: #ecc75c;
+  --medal-gold-edge: #a87d12;
+  --medal-gold-ink: #4a3500;
+  --medal-silver: #e4e4e4;
+  --medal-silver-edge: #8a8a8a;
+  --medal-silver-ink: #333333;
+  --medal-bronze: #e2a877;
+  --medal-bronze-edge: #8f5524;
+  --medal-bronze-ink: #3d2108;
+}
+
+/* ---- 決着までのカウントダウン ---- */
+.finale {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0 0 0.625rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: var(--radius-m);
+  background: var(--ink);
+  color: var(--g0);
+  font-size: 0.75rem;
+}
+.finale__flag { color: var(--accent); font-size: 1rem; }
+.finale__text { flex: 1; }
+.finale__days { color: var(--accent); font-size: 0.9375rem; }
+.finale__prize {
+  font-size: 0.625rem;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 999px;
+  background: var(--medal-gold);
+  color: var(--medal-gold-ink);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ---- リーグタブ ---- */
+.league-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.375rem;
+  margin-bottom: 0.625rem;
+}
+.league-tab {
+  position: relative;
+  min-height: var(--tap);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.125rem;
+  border: 1px solid var(--g3);
+  border-radius: var(--radius-m);
+  background: var(--g0);
+  color: var(--g5);
+  font: inherit;
+  cursor: pointer;
+}
+.league-tab__name { font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
+.league-tab__rank { font-size: 0.75rem; color: var(--g4); font-weight: 700; }
+.league-tab[aria-selected="true"] {
+  border: 2px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.league-tab[aria-selected="true"] .league-tab__rank { color: var(--accent-strong); }
+.league-tab:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ---- リーグ説明 ---- */
+.ranking__tagline { margin: 0 0 0.5rem; font-size: 0.8125rem; color: var(--ink); }
+.ranking__icon { color: var(--accent-strong); margin-right: 0.25rem; }
+.ranking__rule { margin-top: 0.5rem; }
+
+/* ---- バトルカード（あなたの成績） ---- */
+.battle {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-l);
+  padding: 0.75rem 0.875rem 0.875rem;
+  background: linear-gradient(145deg, #2c2c2c 0%, var(--ink) 60%, #3a2414 100%);
+  color: var(--g0);
+  box-shadow: var(--shadow-pop);
+}
+.battle--podium { box-shadow: 0 0 0 2px var(--medal-gold), var(--shadow-pop); }
+.battle__head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.battle__league { font-size: 0.75rem; color: var(--g3); font-weight: 700; }
+.battle__change {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.0625rem 0.5rem;
+  border-radius: 999px;
+  background: var(--g5);
+  color: var(--g0);
+  white-space: nowrap;
+}
+.battle__change[data-kind="up"] { background: var(--accent); color: var(--on-accent); }
+.battle__main { display: flex; align-items: flex-end; justify-content: space-between; margin: 0.125rem 0 0.375rem; }
+.battle__rank { margin: 0; line-height: 1; }
+.battle__rank-num {
+  display: inline-block;
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+}
+.battle--podium .battle__rank-num { color: var(--medal-gold); }
+.battle__rank-unit { font-size: 1.25rem; font-weight: 700; margin-left: 0.125rem; }
+.battle__count { margin: 0 0 0.375rem; font-size: 0.875rem; display: flex; align-items: baseline; gap: 0.125rem; }
+.battle__count strong { font-size: 1.75rem; }
+.battle__count small { margin-left: 0.25rem; color: var(--g3); font-size: 0.6875rem; }
+.battle__gauge-wrap { display: flex; flex-direction: column; gap: 0.25rem; }
+.battle__target { font-size: 0.75rem; color: var(--g2); }
+.battle__gap { color: var(--accent); font-size: 0.875rem; }
+.gauge {
+  position: relative;
+  display: block;
+  height: 0.625rem;
+  border-radius: 999px;
+  background: #4a4a4a;
+  overflow: hidden;
+}
+.gauge__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--gauge, 0%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-strong), var(--accent) 70%, #ffb27a);
+}
+.battle__next { margin: 0.5rem 0 0; font-size: 0.875rem; font-weight: 700; color: var(--g0); }
+.battle__chaser { margin: 0.125rem 0 0; font-size: 0.75rem; color: var(--g3); }
+.battle__chaser::before { content: "⚠ "; }
+.battle__chaser--hot { color: #ffb27a; font-weight: 700; }
+.battle__note { margin: 0.25rem 0 0; font-size: 0.6875rem; color: var(--g3); }
+.battle .btn { margin-top: 0.625rem; width: 100%; }
+.battle--guest { background: var(--g1); color: var(--ink); box-shadow: none; border: 2px dashed var(--g3); }
+.battle__guest-title { margin: 0; font-weight: 700; }
+.battle--guest .battle__next { color: var(--g5); }
+.battle--guest .battle__note { color: var(--g4); }
+
+/* ---- 紙吹雪（飾り） ---- */
+.confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.confetti__piece {
+  position: absolute;
+  top: -0.5rem;
+  left: calc(50% + var(--x) * 1%);
+  width: 0.375rem;
+  height: 0.625rem;
+  border-radius: 1px;
+  background: var(--accent);
+  opacity: 0;
+  transform: rotate(var(--r));
+}
+.confetti__piece:nth-child(3n) { background: var(--medal-gold); }
+.confetti__piece:nth-child(3n + 1) { background: var(--g0); }
+
+/* ---- 表彰台 ---- */
+.podium-stage { position: relative; }
+.podium {
+  list-style: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1.25rem 0 0;
+  padding: 0;
+}
+.podium__slot {
+  position: relative;
+  flex: 1;
+  max-width: 6.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  font-size: 0.6875rem;
+  text-align: center;
+}
+.podium__crown { font-size: 1.5rem; line-height: 1; color: var(--medal-gold-edge); text-shadow: 0 1px 0 var(--medal-gold); }
+.podium__you {
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.podium__face {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--g1);
+  border: 3px solid var(--g3);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--g5);
+}
+.podium__slot[data-place="first"] .podium__face { width: 3.25rem; height: 3.25rem; border-color: var(--medal-gold); }
+.podium__slot[data-place="second"] .podium__face { border-color: var(--medal-silver-edge); }
+.podium__slot[data-place="third"] .podium__face { border-color: var(--medal-bronze); }
+.podium__name { font-weight: 700; color: var(--ink); }
+.podium__count { color: var(--g5); font-weight: 700; }
+.podium__block {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 0.375rem;
+  margin-top: 0.125rem;
+  border-radius: var(--radius-m) var(--radius-m) 0 0;
+  border: 2px solid;
+  transform-origin: bottom center;
+}
+.podium__medal {
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  background: var(--g0);
+  border: 2px solid currentColor;
+}
+.podium__rank { font-size: 1.375rem; font-weight: 800; line-height: 1.2; }
+.podium__slot[data-place="first"] .podium__block {
+  height: 6rem;
+  background: linear-gradient(180deg, #f6dd8c, var(--medal-gold));
+  border-color: var(--medal-gold-edge);
+  color: var(--medal-gold-ink);
+}
+.podium__slot[data-place="second"] .podium__block {
+  height: 4.5rem;
+  background: linear-gradient(180deg, #f4f4f4, var(--medal-silver));
+  border-color: var(--medal-silver-edge);
+  color: var(--medal-silver-ink);
+}
+.podium__slot[data-place="third"] .podium__block {
+  height: 3.5rem;
+  background: linear-gradient(180deg, #f0c9a6, var(--medal-bronze));
+  border-color: var(--medal-bronze-edge);
+  color: var(--medal-bronze-ink);
+}
+.podium__slot--me .podium__face { background: var(--accent); border-color: var(--accent-strong); color: var(--on-accent); }
+.podium__slot--me .podium__block { box-shadow: 0 0 0 3px var(--accent); }
+
+/* ---- 表彰台ライン ---- */
+.podium-line {
+  margin: 0;
+  padding: 0.3rem 0.5rem;
+  border-top: 2px dashed var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* ---- リスト ---- */
+.ranking-list { list-style: none; margin: 0; padding: 0; }
+.ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: var(--tap);
+  padding: 0 0.375rem;
+  border-bottom: 1px solid var(--g2);
+  font-size: 0.8125rem;
+}
+.ranking-row__rank {
+  flex: none;
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--g1);
+  color: var(--g5);
+  font-weight: 800;
+  font-size: 0.75rem;
+}
+.ranking-row__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ranking-row__count { color: var(--g5); font-weight: 700; }
+.ranking-row__mark { font-size: 0.625rem; }
+.ranking-row[data-mark="target"] { background: linear-gradient(90deg, var(--accent-soft), transparent 70%); }
+.ranking-row[data-mark="target"] .ranking-row__mark { border-color: var(--accent); color: var(--accent-strong); font-weight: 700; }
+.ranking-row[data-mark="chaser"] .ranking-row__mark { border-style: dashed; }
+.ranking-row--me {
+  position: relative;
+  background: var(--accent-soft);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-s);
+}
+.ranking-row--me .ranking-row__rank { background: var(--accent); color: var(--on-accent); }
+.ranking-row--me .ranking-row__name { font-weight: 800; }
+.ranking-row--me .ranking-row__name::before { content: "★ "; color: var(--accent-strong); }
+.ranking__lord-tag { font-size: 0.625rem; }
+
+/* ---- 地区の主 ---- */
+.ranking__lords { margin-top: 1rem; }
+.lord-card { align-items: center; gap: 0.5rem; padding: 0.5rem 0.5rem 0.5rem 0.625rem; min-height: var(--tap); cursor: pointer; }
+.lord-card__crown { font-size: 1.25rem; color: var(--g4); }
+.lord-card--me .lord-card__crown { color: var(--medal-gold-edge); }
+.lord-card__body { flex: 1; display: flex; flex-direction: column; gap: 0.125rem; }
+.lord-card__title { font-size: 0.8125rem; color: var(--ink); }
+.lord-card__sub { font-size: 0.75rem; color: var(--g5); }
+.lord-card--me { border-color: var(--accent); background: var(--accent-soft); }
+
+/* ---- 動き（動きを減らす設定では付けない） ---- */
+@media (prefers-reduced-motion: no-preference) {
+  .podium__block { animation: rk-rise 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+  .podium__slot[data-place="second"] .podium__block { animation-delay: 0.1s; }
+  .podium__slot[data-place="first"] .podium__block { animation-delay: 0.2s; }
+  .podium__slot[data-place="first"] .podium__block::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.75) 50%, transparent 70%);
+    transform: translateX(-120%);
+    animation: rk-shine 2.8s ease-in-out 0.9s infinite;
+  }
+  .podium__crown { animation: rk-bob 1.6s ease-in-out infinite; }
+  .battle { animation: rk-fade-up 0.35s ease-out both; }
+  .battle__change[data-kind="up"] { animation: rk-pulse 1.2s ease-in-out 3; }
+  .battle__rank-num--pop { animation: rk-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .gauge__fill { animation: rk-grow 0.9s ease-out 0.2s both; }
+  .battle__chaser--hot::before { display: inline-block; animation: rk-pulse 1s ease-in-out infinite; }
+  .ranking-row--me { animation: rk-glow 2s ease-in-out infinite; }
+  .confetti__piece { animation: rk-confetti 1.6s ease-in calc(var(--i) * 0.06s) 2 both; }
+}
+
+@keyframes rk-rise {
+  from { transform: scaleY(0.05); }
+  to { transform: scaleY(1); }
+}
+@keyframes rk-shine {
+  0%, 60% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+@keyframes rk-bob {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50% { transform: translateY(-0.25rem) rotate(6deg); }
+}
+@keyframes rk-fade-up {
+  from { opacity: 0; transform: translateY(0.5rem); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes rk-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+@keyframes rk-pop {
+  0% { transform: scale(0.4); opacity: 0.2; }
+  60% { transform: scale(1.25); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes rk-grow {
+  from { width: 0; }
+  to { width: var(--gauge, 0%); }
+}
+@keyframes rk-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 118, 44, 0.45); }
+  50% { box-shadow: 0 0 0 5px rgba(232, 118, 44, 0); }
+}
+@keyframes rk-confetti {
+  0% { opacity: 1; transform: translateY(0) rotate(var(--r)); }
+  100% { opacity: 0; transform: translateY(14rem) rotate(calc(var(--r) + 540deg)); }
+}
+
+/*
+ * ---- ビジュアル調整（デザインシステム：紙の地に白いカード、紺墨、金銀銅の質感） ----
+ * 上の構造はそのままに、色・影・角丸だけをトークン（tokens.css）へ寄せる。「あなた」の強調はバトルカードを主役にし、リストは控えめにする。
+ */
+.ranking {
+  --medal-gold: #f2bf2f;
+  --medal-gold-edge: #b9850c;
+  --medal-silver: #c7cfd9;
+  --medal-silver-edge: #8f9aa8;
+  --medal-bronze: #d39360;
+  --medal-bronze-edge: #9c5f33;
+}
+.finale { border-radius: var(--radius-pill); padding: 0.5rem 0.875rem; box-shadow: var(--shadow-2); }
+.league-tab { border: 0; background: var(--surface); box-shadow: var(--shadow-1); border-radius: var(--radius-m); }
+.league-tab__name { font-family: var(--font-display); font-weight: 800; }
+.league-tab[aria-selected="true"] { border: 0; background: var(--ink); color: #ffffff; box-shadow: 0 6px 16px rgba(17, 24, 39, 0.25); }
+.league-tab[aria-selected="true"] .league-tab__rank { color: #fde68a; }
+.league-tab--recommended::after { background: var(--gold); color: var(--ink); border-radius: var(--radius-pill); padding: 0 0.375rem; font-weight: 800; }
+.battle { background: radial-gradient(120% 90% at 100% 0%, rgba(232, 80, 58, 0.28), transparent 55%), linear-gradient(150deg, #2b3152 0%, var(--ink) 65%); box-shadow: var(--shadow-3); }
+.battle__rank-num, .battle__count strong { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+.gauge { background: rgba(255, 255, 255, 0.14); }
+
+.podium__face {
+  background: var(--surface);
+  border: 0;
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--g3), var(--shadow-2);
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--ink);
+}
+.podium__slot[data-place="first"] .podium__face { box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--medal-gold), 0 8px 20px rgba(185, 133, 12, 0.35); }
+.podium__slot[data-place="second"] .podium__face { box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--medal-silver-edge), var(--shadow-2); }
+.podium__slot[data-place="third"] .podium__face { box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--medal-bronze), var(--shadow-2); }
+.podium__name { font-family: var(--font-display); font-weight: 800; margin-top: 0.375rem; }
+.podium__count { font-family: var(--font-display); font-size: var(--fs-s); font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.podium__block {
+  border: 0;
+  border-radius: 0.875rem 0.875rem 0.25rem 0.25rem;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.65), inset 0 -10px 18px rgba(0, 0, 0, 0.12), 0 10px 22px rgba(60, 42, 20, 0.18);
+}
+.podium__slot[data-place="first"] .podium__block { background: var(--gold-grad); color: #4a3500; }
+.podium__slot[data-place="second"] .podium__block { background: var(--silver-grad); color: #2f3640; }
+.podium__slot[data-place="third"] .podium__block { background: var(--bronze-grad); color: #3d2108; }
+.podium__medal { border: 0; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18); color: inherit; }
+.podium__rank { font-family: var(--font-display); font-size: 1.75rem; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55); }
+.podium__slot--me .podium__face { background: var(--brand); color: #ffffff; }
+.podium__slot--me .podium__block { box-shadow: 0 0 0 3px var(--brand), 0 10px 22px rgba(60, 42, 20, 0.18); }
+.podium-line { border-top: 1.5px dashed var(--brand); background: linear-gradient(180deg, var(--brand-soft), transparent); border-radius: 0 0 var(--radius-m) var(--radius-m); }
+
+.ranking-list { margin-top: 0.75rem; background: var(--surface); border-radius: var(--radius-l); box-shadow: var(--shadow-1); overflow: hidden; padding: 0.25rem 0.5rem; }
+.ranking-row { border-bottom: 1px solid var(--hairline); min-height: 3rem; }
+.ranking-row:last-child { border-bottom: 0; }
+.ranking-row__rank { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+.ranking-row__count { font-family: var(--font-display); font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ranking-row--me { border: 0; border-radius: var(--radius-s); background: var(--brand-soft); }
+.lord-card--me { background: #fff8e1; }
+.lord-card--me .lord-card__crown { color: var(--gold); }
+
+/*
+ * ---- ラウンド2: 紙の世界観に戻す（濃色はバトルカード1枚だけ）。締切は白い帯、選択中タブは白い面＋朱の下線。
+ * 表彰台はメダル文字と順位の二重表示をやめ（順位の数字だけ）、アバターは地区色の枠（主の地区）で人らしく。
+ */
+.ranking { padding-bottom: 2.5rem; }
+.finale { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-1); }
+.finale__flag { color: var(--brand); }
+.finale__days { color: var(--brand-ink); }
+.finale__prize { background: #fef3c7; color: var(--gold-ink); }
+.league-tab { background: transparent; box-shadow: inset 0 0 0 1px var(--hairline-strong, rgba(17, 24, 39, 0.14)); color: var(--g5); }
+.league-tab[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-2); }
+.league-tab[aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  bottom: 0.3125rem;
+  height: 0.1875rem;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+}
+.league-tab[aria-selected="true"] .league-tab__rank { color: var(--brand-ink); }
+.battle__chaser::before {
+  content: "";
+  display: inline-block;
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-right: 0.25rem;
+  vertical-align: -0.125rem;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 1 21h22L12 2zm-1 7h2v6h-2V9zm0 8h2v2h-2v-2z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 1 21h22L12 2zm-1 7h2v6h-2V9zm0 8h2v2h-2v-2z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.podium__medal { display: none; }
+.podium__block { padding-top: 0.625rem; }
+.podium__slot[data-lord-district] { --district: var(--g3); }
+.podium__slot[data-lord-district="南森町"] { --district: var(--d-wisteria); }
+.podium__slot[data-lord-district="天満"] { --district: var(--d-mustard); }
+.podium__slot[data-lord-district="天六"] { --district: var(--d-leaf); }
+.podium__slot[data-lord-district="扇町"] { --district: var(--d-rose); }
+.podium__slot[data-lord-district="大川"] { --district: var(--d-sea); }
+.podium__slot[data-lord-district] .podium__face {
+  background: radial-gradient(circle at 35% 30%, #ffffff 0 35%, color-mix(in srgb, var(--district) 22%, #ffffff) 70%);
+  color: color-mix(in srgb, var(--district) 70%, #111827);
+}
+.podium__slot[data-place] .podium__face { box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--district, var(--g3)), var(--shadow-2); }
+.podium__slot[data-place="first"] .podium__face { box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--district, var(--medal-gold)), 0 0 0 8px var(--medal-gold), 0 8px 20px rgba(185, 133, 12, 0.3); }
+.ranking__lord-tag { background: color-mix(in srgb, var(--district, var(--brand)) 14%, #ffffff); color: color-mix(in srgb, var(--district, var(--brand)) 70%, #111827); }
+
+/*
+ * ---- ラウンド3: アクセントはコーラル1色。選択中タブは淡いコーラルの塗りピル（下線をやめる）。
+ * バトルカードは無地の濃色（にじみなし）。表彰台はフラットな白いカード＋上端の細いメダル色の線。アバターは人型の線アイコン＋地区色。
+ */
+.ranking svg.icon { width: 1em; height: 1em; display: inline-block; vertical-align: -0.125em; flex: none; }
+.league-tab__name { display: inline-flex; align-items: center; gap: 0.25rem; }
+.league-tab[aria-selected="true"] { background: var(--brand-soft); color: var(--brand-ink); box-shadow: inset 0 0 0 1.5px var(--brand); }
+.league-tab[aria-selected="true"]::before { content: none; }
+.league-tab[aria-selected="true"] .league-tab__rank { color: var(--brand-ink); }
+.league-tab--recommended::after { background: var(--ink); color: #ffffff; }
+.ranking__tagline { display: flex; align-items: center; gap: 0.375rem; color: var(--g5); }
+.ranking__icon { color: var(--brand); display: inline-flex; }
+.finale__flag { display: inline-flex; }
+.battle { background: var(--ink); }
+.battle__league { display: inline-flex; align-items: center; gap: 0.375rem; }
+.battle__rank-num { color: var(--brand); }
+.gauge__fill { background: var(--brand); }
+.battle .btn--primary { background: var(--brand-ink); box-shadow: none; }
+.battle__gauge-wrap ~ .battle__next { display: none; }
+.battle__chaser--hot { color: #ffb4a3; }
+
+.podium__crown { color: var(--gold); display: inline-flex; font-size: 1.5rem; }
+.podium__block {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-radius: var(--radius-m) var(--radius-m) 0.375rem 0.375rem;
+  box-shadow: 0 0 0 1px var(--hairline), 0 4px 12px rgba(17, 24, 39, 0.06);
+  border-top: 4px solid var(--g3);
+}
+.podium__slot[data-place="first"] .podium__block { border-top-color: #f5b700; }
+.podium__slot[data-place="second"] .podium__block { border-top-color: #9ca3af; }
+.podium__slot[data-place="third"] .podium__block { border-top-color: #b8693d; }
+.podium__rank { font-size: 1.75rem; text-shadow: none; }
+.podium__slot[data-place="first"] .podium__block::after { content: none; }
+.podium__face { position: relative; font-size: 0; color: transparent; background: color-mix(in srgb, var(--district, #9ca3af) 16%, #ffffff); }
+.podium__face::before {
+  content: "";
+  position: absolute;
+  inset: 22% 22% 14%;
+  background: color-mix(in srgb, var(--district, #6b7280) 75%, #111827);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4.5'/%3E%3Cpath d='M3 22c0-5 4-8.5 9-8.5s9 3.5 9 8.5z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4.5'/%3E%3Cpath d='M3 22c0-5 4-8.5 9-8.5s9 3.5 9 8.5z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.podium__slot--me .podium__face { background: var(--brand-soft); }
+.podium__slot--me .podium__face::before { background: var(--brand); }
+.podium__slot[data-place] .podium__face { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--district, var(--g3)); }
+.podium__slot[data-place="first"] .podium__face { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--district, #f5b700), 0 6px 16px rgba(17, 24, 39, 0.12); }
+.podium-line { margin-top: 1rem; border-top: 0; background: none; color: var(--g5); text-align: left; padding: 0 0.25rem; font-size: var(--fs-s); }
+.podium-line > span[aria-hidden="true"] { display: none; }
+.lord-card__crown { display: inline-flex; font-size: 1.25rem; }
+
+/* ---- ラウンド4: CTA は明るいコーラル（白文字は 19px 太字＝大きな文字の 3:1 以上）。メダルのチップはグレー＋線アイコン ---- */
+.battle .btn--primary { background: #f2512e; font-size: 1.1875rem; font-weight: 700; min-height: 3.25rem; }
+.finale__prize { background: var(--g1); color: var(--g5); box-shadow: inset 0 0 0 1px var(--hairline); display: inline-flex; align-items: center; gap: 0.25rem; }
+.finale__prize::before {
+  content: "";
+  width: 0.875rem;
+  height: 0.875rem;
+  background: #b45309;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 3h8l-2 6h-4z'/%3E%3Ccircle cx='12' cy='15' r='6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 3h8l-2 6h-4z'/%3E%3Ccircle cx='12' cy='15' r='6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+/* アバターは地区色のグラデに頭文字（人型の既定アイコンをやめる） */
+.podium__face { font-size: 1.125rem !important; color: #ffffff !important; font-weight: 700; background: linear-gradient(145deg, color-mix(in srgb, var(--district, #6b7280) 70%, #ffffff), var(--district, #6b7280)) !important; }
+.podium__face::before { content: none !important; }
+.podium__slot--me .podium__face { background: var(--brand) !important; }
+/* 表彰台は低く（72/56/40px）して4位以下を画面に入れる */
+.podium__slot[data-place="first"] .podium__block { height: 4.5rem !important; }
+.podium__slot[data-place="second"] .podium__block { height: 3.5rem !important; }
+.podium__slot[data-place="third"] .podium__block { height: 2.5rem !important; }
+.podium__block { padding-top: 0.25rem !important; justify-content: center; }
+.podium__rank { font-size: 1.375rem !important; line-height: 1; }
+.podium { margin-top: 0.75rem; }
+.ranking { padding-bottom: 4rem; }
+.podium-line { margin-bottom: 0.25rem; }
+/* あなたの顔は線の星アイコン（★の文字はやめる） */
+.podium__face .icon { width: 1.375rem; height: 1.375rem; stroke-width: 2; }
+.podium__face .icon path { fill: currentColor; }

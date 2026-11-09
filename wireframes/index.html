@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>N西市 再訪促進アプリ ワイヤフレーム一覧</title>
+<link rel="stylesheet" href="wf.css">
+<style>
+table{border-collapse:collapse;width:100%;max-width:1200px;margin:0 auto;background:#fff;font-size:13px}
+th,td{border:1px solid var(--g2);padding:6px 10px;text-align:left;vertical-align:top}
+th{background:var(--g1)}
+.wrap{max-width:1200px;margin:0 auto}
+.legend{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.legend>div{border:1px solid var(--g2);border-radius:10px;padding:10px 12px;background:#fff;min-width:220px;font-size:13px}
+.legend h3{margin:0 0 8px;font-size:13px;color:var(--g5)}
+.minitab{width:220px;height:48px;border:1px solid var(--g2);display:flex}
+.minitab .tab{font-size:10px}
+.minitab .tab .ic{width:16px;height:16px}
+.sw{display:inline-block;width:20px;height:20px;border-radius:4px;vertical-align:middle;margin-right:6px}
+.lrow{display:flex;align-items:center;gap:6px;margin:4px 0}
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>N西市 再訪促進アプリ ワイヤフレーム一覧</h1>
+  <p>コンセプト「街に通うほど、自分だけの街が育つ」。本一覧は <code>CLAUDE.md</code> 8章「今フェーズの成果物」に沿った画面ワイヤフレームの入口。実装はしない。</p>
+  <p class="meta">
+    <span class="badge acc">アクセント1色 = 色づき・現在地・主要操作</span>
+    <span class="badge">グレー = 未訪問・色あせ・補助情報</span>
+    <span class="badge">黒丸の番号 = 注記</span>
+    <span class="badge">数値はすべて（仮）</span>
+  </p>
+</header>
+
+<div class="wrap">
+<h2>画面一覧</h2>
+<table>
+  <tr><th>ファイル</th><th>画面</th><th>基準</th><th>遷移元</th><th>優先度</th><th>状態数</th></tr>
+  <tr><td><a href="01_map_wide.html">01_map_wide</a></td><td>地図（広域・地区）</td><td>B</td><td>下部タブ</td><td>Must</td><td>2</td></tr>
+  <tr><td><a href="02_map_near.html">02_map_near</a></td><td>地図（近接）</td><td>B</td><td>01</td><td>Must</td><td>3</td></tr>
+  <tr><td><a href="03_sheet.html">03_sheet</a></td><td>地図下シート</td><td>C</td><td>01, 02</td><td>Must</td><td>3</td></tr>
+  <tr><td><a href="04_spot.html">04_spot</a></td><td>スポット詳細</td><td>A, C</td><td>02, 03, 05</td><td>Must</td><td>2</td></tr>
+  <tr><td><a href="05_zukan.html">05_zukan</a></td><td>図鑑</td><td>B</td><td>下部タブ</td><td>Should</td><td>1</td></tr>
+  <tr><td><a href="06_mytown.html">06_mytown</a></td><td>マイ街</td><td>C</td><td>下部タブ</td><td>Should</td><td>1</td></tr>
+  <tr><td><a href="07_ranking.html">07_ranking</a></td><td>ランキング（3リーグ）</td><td>C</td><td>下部タブ, 06</td><td>Should</td><td>1</td></tr>
+  <tr><td><a href="08_effects.html">08_effects</a></td><td>演出（全画面）</td><td>C</td><td>04</td><td>Must</td><td>4</td></tr>
+  <tr><td><a href="09_demo_menu.html">09_demo_menu</a></td><td>デモメニュー</td><td>発表要件</td><td>歯車長押し</td><td>Must</td><td>2</td></tr>
+  <tr><td><a href="10_settings.html">10_settings</a></td><td>設定</td><td>A</td><td>06, 歯車</td><td>Should</td><td>1</td></tr>
+</table>
+
+<h2>実演シナリオ（3分）と画面の対応</h2>
+<table>
+  <tr><th>手順</th><th>見せるもの</th><th>使う画面</th><th>目安</th></tr>
+  <tr><td>1</td><td>広域地図 → 地区タップでズーム</td><td><a href="01_map_wide.html">01</a></td><td>0:20</td></tr>
+  <tr><td>2</td><td>地図タップで歩く → 80m円にスポットが入り「発見」</td><td><a href="02_map_near.html">02</a></td><td>0:30</td></tr>
+  <tr><td>3</td><td>40m以内で「訪問」 → 地区に色がつき建物が増える</td><td>02 → <a href="04_spot.html">04</a> → <a href="08_effects.html">08</a> → 01</td><td>0:40</td></tr>
+  <tr><td>4</td><td>デモメニューで+30日 → 地区が色あせ、下シートに「そろそろ」カード</td><td><a href="09_demo_menu.html">09</a> → 01 → <a href="03_sheet.html">03</a></td><td>0:30</td></tr>
+  <tr><td>5</td><td>ライバル行動 → 「取り返し」トリガーが出る</td><td>09 → 03</td><td>0:20</td></tr>
+  <tr><td>6</td><td>再訪 → 復活演出＋おかえりボーナス、金カード獲得</td><td>04 → 08（復活・金カード）</td><td>0:40</td></tr>
+</table>
+
+<h2>共通部品</h2>
+<div class="legend">
+  <div>
+    <h3>下部タブ（4つ）</h3>
+    <div class="minitab">
+      <div class="tab on"><span class="ic"></span>地図</div>
+      <div class="tab"><span class="ic"></span>図鑑</div>
+      <div class="tab"><span class="ic"></span>マイ街</div>
+      <div class="tab"><span class="ic"></span>ランキング</div>
+    </div>
+    <p class="hint">アバター・ランクは「マイ街」に統合。</p>
+  </div>
+  <div>
+    <h3>再訪理由タグ（下シート・通知で共通）</h3>
+    <div class="lrow"><span class="tt kigen">期</span>期限：クーポン・イベント終了が近い</div>
+    <div class="lrow"><span class="tt tori">取</span>取り返し：地区の主を奪われた</div>
+    <div class="lrow"><span class="tt iro">色</span>色あせ：間近、または色あせ中</div>
+    <div class="lrow"><span class="tt mi">未</span>未訪問：発見済みで未訪問がある</div>
+    <div class="lrow"><span class="tt shin">新</span>新着（将来）</div>
+    <p class="hint">表示順は上から優先（仮）。</p>
+  </div>
+  <div>
+    <h3>地区の成長段階と色あせ</h3>
+    <div class="lrow"><span class="sw dsw l0"></span>Lv0 輪郭のみ（未訪問）</div>
+    <div class="lrow"><span class="sw dsw l1"></span>Lv1 色づく</div>
+    <div class="lrow"><span class="sw dsw l2"></span>Lv2 建物が増える</div>
+    <div class="lrow"><span class="sw dsw l3"></span>Lv3 名所に装飾</div>
+    <div class="lrow"><span class="sw dsw fade"></span>色あせ中（彩度・明度のみ低下。Lvは下がらない）<span class="tag fade">色あせ</span></div>
+  </div>
+  <div>
+    <h3>スポットの状態</h3>
+    <div class="lrow spot"><span class="ic unk" style="width:28px;height:28px">？</span>未発見</div>
+    <div class="lrow spot"><span class="ic sil" style="width:28px;height:28px">■</span>発見済み（シルエット）</div>
+    <div class="lrow spot"><span class="ic vis" style="width:28px;height:28px">✓</span>訪問済み（カラー）</div>
+    <p class="hint">▲ = 名所、● = 店舗。</p>
+  </div>
+</div>
+
+<h2>読み方と制約</h2>
+<ul>
+  <li>各ページは 390×844 のスマホ枠を状態ごとに横に並べる。Canvas で描く部分は枠と注記で代替している。</li>
+  <li>各画面の見出しに「貢献する判断基準（A 初回満足度／B 未開拓への興味／C 再訪動機）」と「主な操作」を記す。</li>
+  <li>色あせは色だけでなく、破線枠と「色あせ」タグでも示す（色覚配慮）。</li>
+  <li>達成率（％、全n件中m件）はどの画面にも出さない。通った回数で達成感を出す。</li>
+  <li>主要操作はタップ2回以内、タップ領域44px以上。</li>
+</ul>
+</div>
+</body>
+</html>

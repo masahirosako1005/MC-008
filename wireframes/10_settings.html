@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10 設定 | N西市 WF</title>
+<link rel="stylesheet" href="wf.css">
+<style>
+.preview{border:1px solid var(--g2);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--g1)}
+.preview .l{display:block;margin:4px 0}
+.toggle{width:40px;height:22px;border-radius:11px;border:1.5px solid var(--g3);position:relative;display:inline-block;background:#fff}
+.toggle:after{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:var(--g3)}
+</style>
+</head>
+<body>
+<header class="page-head">
+  <a class="back" href="index.html">← 画面一覧</a>
+  <h1>10 設定</h1>
+  <p class="meta">
+    <span class="badge acc">基準 A 初回満足度</span>
+    <span class="badge">ファイル 10_settings</span>
+    <span class="badge">遷移元：06 マイ街の「設定」／どの画面でも歯車の通常タップ</span>
+    <span class="badge">遷移先：戻る</span>
+  </p>
+  <p><b>主な操作：</b>文字の大きさを 標準／大／特大 から選ぶ（即時反映）</p>
+</header>
+
+<section class="frames">
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/11/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="topbar"><span class="bk">‹ 戻る</span><span>設定</span><span class="gear" style="visibility:hidden">⚙</span></div>
+        <div class="scroll" style="top:48px">
+          <div class="sec">文字の大きさ</div>
+          <div class="seg" style="width:100%;display:flex"><span style="flex:1;text-align:center">標準</span><span class="on" style="flex:1;text-align:center">大</span><span style="flex:1;text-align:center">特大</span></div>
+          <div class="preview">
+            <span class="hint">プレビュー</span>
+            <span class="l" style="font-size:14px">標準：丸岡和菓子店 62m ・ 発見済み</span>
+            <span class="l" style="font-size:17px;font-weight:700">大：丸岡和菓子店 62m ・ 発見済み</span>
+            <span class="l" style="font-size:20px">特大：丸岡和菓子店 62m</span>
+          </div>
+          <p class="hint">地図のラベル・下シート・スポット詳細のすべてに反映。発表では「大」で見せる。</p>
+
+          <div class="sec">通知（将来）</div>
+          <div class="kv future"><span>色あせのお知らせ（7日前）</span><span class="toggle"></span></div>
+          <div class="kv future"><span>クーポン・イベントの期限</span><span class="toggle"></span></div>
+          <div class="kv future"><span>地区の主を奪われたとき</span><span class="toggle"></span></div>
+
+          <div class="sec">位置情報（将来）</div>
+          <div class="kv future"><span>位置情報の利用</span><span class="hint">このアプリの使用中のみ</span></div>
+          <p class="hint future">来訪データは地区単位で集計。個人の移動履歴は端末内を中心に扱う（10章）。</p>
+
+          <div class="sec">このアプリについて</div>
+          <div class="kv"><span>アプリ名</span><span class="hint">（仮称：かよいまち／まちそだて）</span></div>
+          <div class="kv"><span>バージョン</span><span class="hint">ワイヤフレーム版</span></div>
+        </div>
+        <span class="co" style="left:120px;top:62px">1</span>
+        <span class="co" style="left:100px;top:132px">2</span>
+        <span class="co" style="left:120px;top:302px">3</span>
+      </div>
+      <div class="tabbar"><div class="tab"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab on"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>設定</b>　文字拡大（標準／大／特大）が主役。通知・位置情報は将来項目として薄く置く。</figcaption>
+  </figure>
+</section>
+
+<ol class="notes">
+  <li><span class="n">1</span>文字の大きさは 3 段階。選んだ瞬間にプレビューと全画面へ反映（基準A。年配の同行者にも使える）。</li>
+  <li><span class="n">2</span>プレビューは実際のスポットカードの文言で見せる。</li>
+  <li><span class="n">3</span>通知・位置情報は将来項目。トグルは操作不可の見た目にしておき、方針（地区単位の集計）だけ文言で示す。</li>
+</ol>
+
+<nav class="nav"><a href="09_demo_menu.html">← 09 デモメニュー</a><a href="index.html">画面一覧へ →</a></nav>
+</body>
+</html>

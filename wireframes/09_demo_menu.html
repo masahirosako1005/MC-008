@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>09 デモメニュー | N西市 WF</title>
+<link rel="stylesheet" href="wf.css">
+<style>
+.bgmap{position:absolute;inset:0;top:48px;background:#f1ece6}
+.bubble{position:absolute;right:16px;top:92px;background:var(--ink);color:#fff;border-radius:10px;padding:6px 10px;font-size:12px;z-index:3}
+.bubble:before{content:"";position:absolute;right:10px;top:-8px;border:8px solid transparent;border-bottom-color:var(--ink);border-top:0}
+.modal .btn{margin:2px 0}
+</style>
+</head>
+<body>
+<header class="page-head">
+  <a class="back" href="index.html">← 画面一覧</a>
+  <h1>09 デモメニュー</h1>
+  <p class="meta">
+    <span class="badge acc">発表要件（実演の手順4・5で使用）</span>
+    <span class="badge">ファイル 09_demo_menu</span>
+    <span class="badge">遷移元：どの画面でも右上の歯車を長押し</span>
+    <span class="badge">遷移先：閉じて元の画面へ（状態が変わって見える）</span>
+  </p>
+  <p><b>主な操作：</b>日付を進める（+1／+30／+90日）／ライバル行動を起こす／旅人を切り替える／位置をリセットする</p>
+</header>
+
+<section class="frames">
+  <!-- 呼び出し -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/11/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="topbar"><span>N西市</span><span class="gear on">⚙</span></div>
+        <div class="bubble">長押し 0.8秒（仮）でデモメニュー<br><span style="color:#bbb">通常タップは設定</span></div>
+        <div class="bgmap"></div>
+        <div class="canvas-note" style="bottom:120px">地図（01 参照）</div>
+        <div class="sheet h-grip"><div class="grip"></div><div class="card" style="margin:0"><span class="tt mi">未</span><div>城下地区に発見済み・未訪問が2件<small>いちばん近い：丸岡和菓子店 62m</small></div></div></div>
+        <span class="co" style="left:320px;top:14px">1</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>呼び出し</b>　右上の歯車を長押し。通常タップは 10 設定。発表者だけが知っていればよい導線。</figcaption>
+  </figure>
+
+  <!-- メニュー -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/11/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="topbar"><span>N西市</span><span class="gear on">⚙</span></div>
+        <div class="bgmap"></div>
+        <div class="dim"></div>
+        <div class="modal">
+          <div style="display:flex;justify-content:space-between;align-items:center"><b>デモメニュー</b><span class="hint">× 閉じる</span></div>
+          <div class="kv"><span>デモ日付</span><span><b>2026/11/09（土）</b></span></div>
+          <div class="sec">日付進行</div>
+          <div class="row"><span class="btn">+1日</span><span class="btn pri">+30日 → 色あせ開始</span><span class="btn">+90日 → 最も薄く</span></div>
+          <div class="sec">ライバル行動</div>
+          <span class="btn" style="display:block;text-align:center">旅人タロウが 本町地区の主 を奪う</span>
+          <div class="hint">→ 下シートに「取り返し」カードが出る</div>
+          <div class="sec">旅人切替</div>
+          <div class="seg"><span>初回の人（Lv0・未発見）</span><span class="on">通い慣れた人</span></div>
+          <div class="sec">位置</div>
+          <span class="btn" style="display:block;text-align:center">位置リセット（城下地区の入口へ）</span>
+          <p class="hint" style="margin:12px 0 0">発表用の操作。本番ビルドでは非表示。</p>
+        </div>
+        <span class="co" style="left:12px;top:150px">2</span>
+        <span class="co" style="left:12px;top:220px">3</span>
+        <span class="co" style="left:12px;top:300px">4</span>
+        <span class="co" style="left:12px;top:380px">5</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>メニュー</b>　日付進行・ライバル行動・旅人切替・位置リセット。閉じると地図の色あせや下シートの変化が見える。</figcaption>
+  </figure>
+</section>
+
+<ol class="notes">
+  <li><span class="n">1</span>歯車長押しで表示（仮）。ステータスバーの「デモ日付」はデモメニューの日付と連動する。</li>
+  <li><span class="n">2</span>日付進行は 3 段階。+30日で色あせ開始、+90日で最も薄くなる（4.4）。実演の手順4では +30日 を使う。</li>
+  <li><span class="n">3</span>ライバル行動：旅人タロウが本町地区の主を奪う。閉じると 03 に「取」カードが出る（手順5）。</li>
+  <li><span class="n">4</span>旅人切替：初回の人（何も発見していない）と通い慣れた人（Lv・カードあり）を切り替えて、初回体験と再訪体験の両方を見せられる。</li>
+  <li><span class="n">5</span>位置リセット：実演を最初からやり直すための保険。</li>
+</ol>
+
+<nav class="nav"><a href="08_effects.html">← 08 演出</a><a href="10_settings.html">次：10 設定 →</a></nav>
+</body>
+</html>

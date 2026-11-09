@@ -1,0 +1,229 @@
+#!/usr/bin/env node
+/**
+ * @file 静的監査スクリプト（依存ライブラリなし / Node 18+）
+ * 使い方: node scripts/audit/static-audit.mjs [対象ディレクトリ...] [--json] [--warn-only]
+ * 既定の対象: src/
+ * 仕様: docs/07_audit_procedure.md §2
+ * 除外: 行末に `// audit-ignore: <check> <理由>` を書くとその行のそのチェックを除外（理由必須）
+ */
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
+
+const args = process.argv.slice(2);
+const asJson = args.includes('--json');
+const warnOnly = args.includes('--warn-only');
+const targets = args.filter((a) => !a.startsWith('--'));
+if (targets.length === 0) targets.push('src');
+
+const ROOT = process.cwd();
+const findings = [];
+
+/** 層の判定（パス → 層名）。src/ 直下のフォルダ名で決める */
+function layerOf(relPath) {
+  const p = relPath.split(sep).join('/');
+  const m = p.match(/(?:^|\/)(presentation|application|domain|infrastructure|Common)\//);
+  return m ? m[1] : null;
+}
+
+/** 許可される依存（docs/01_architecture.md §1.1） */
+const ALLOWED = {
+  presentation: new Set(['presentation', 'application', 'domain', 'Common']),
+  application: new Set(['application', 'domain', 'Common']),
+  domain: new Set(['domain', 'Common']),
+  infrastructure: new Set(['infrastructure', 'domain', 'application', 'Common']),
+  Common: new Set(['Common']),
+};
+
+/** 検査対象ファイルを再帰列挙 */
+function listFiles(dir) {
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    if (['node_modules', 'dist', '.git', 'coverage'].includes(name)) continue;
+    const full = join(dir, name);
+    const st = statSync(full);
+    if (st.isDirectory()) out.push(...listFiles(full));
+    else if (/\.(ts|tsx|js|mjs|jsx)$/.test(name) && !/\.d\.ts$/.test(name)) out.push(full);
+  }
+  return out;
+}
+
+/** 行に該当チェックの audit-ignore があるか（理由必須） */
+function ignored(line, check) {
+  const m = line.match(/\/\/\s*audit-ignore:\s*([\w-]+)\s+(\S.*)$/);
+  return !!m && m[1] === check;
+}
+
+function report(check, level, file, lineNo, message) {
+  findings.push({ check, level, file: relative(ROOT, file).split(sep).join('/'), line: lineNo, message });
+}
+
+/** 関数定義の開始行を検出（function 宣言 / export const アロー / クラスメソッド） */
+const FN_PATTERNS = [
+  /^\s*(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)\s*(?:<[^>]*>)?\s*\(/,
+  /^\s*(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*(?::[^=]+)?=>/,
+  /^\s*(?:(?:public|private|protected|static|readonly|override)\s+)*(?:async\s+)?(?!if\b|for\b|while\b|switch\b|catch\b|return\b|new\b|function\b|constructor\b)([A-Za-z_$][\w$]*)\s*(?:<[^>]*>)?\s*\([^)]*\)\s*(?::\s*[^{]+)?\{\s*$/,
+];
+const NOT_FN_NAMES = new Set(['if', 'for', 'while', 'switch', 'catch', 'return', 'constructor', 'super', 'else']);
+
+/** 直前の非空行が JSDoc の終端か（デコレータ行は読み飛ばす） */
+function hasJsDocBefore(lines, idx) {
+  let i = idx - 1;
+  while (i >= 0 && lines[i].trim() === '') i--;
+  if (i < 0) return false;
+  if (lines[i].trim().endsWith('*/')) return true;
+  if (/^\s*@/.test(lines[i])) return hasJsDocBefore(lines, i);
+  return false;
+}
+
+/** 関数本体の終了行（波括弧の対応で推定。式本体のアローは開始行） */
+function functionBodyEnd(lines, start) {
+  let depth = 0;
+  let seen = false;
+  for (let i = start; i < lines.length; i++) {
+    for (const ch of lines[i]) {
+      if (ch === '{') { depth++; seen = true; }
+      else if (ch === '}') depth--;
+    }
+    if (seen && depth <= 0) return i;
+    if (!seen && i > start + 2) return start;
+  }
+  return lines.length - 1;
+}
+
+/** 1 ファイルを監査 */
+function auditFile(file) {
+  const rel = relative(ROOT, file).split(sep).join('/');
+  const src = readFileSync(file, 'utf8');
+  const lines = src.split(/\r?\n/);
+  const layer = layerOf(rel);
+  const isTest = /\.test\.(ts|tsx|js)$/.test(rel) || rel.includes('/__tests__/');
+  const isLogging = rel.includes('/Common/logging/') || rel.endsWith('docs/templates/logger.ts');
+  const isTimeImpl = rel.includes('/infrastructure/time/') || rel.includes('/Common/utils/');
+  const isRandomImpl = rel.includes('/infrastructure/random/');
+  const isConstants = /\/constants\.ts$/.test(rel);
+
+  if (!isTest && !/^\s*\/\*\*[\s\S]{0,400}?@file/.test(src)) {
+    report('file-header-missing', 'warn', file, 1, 'ファイル先頭に @file コメントがありません（CM-03）');
+  }
+
+  lines.forEach((line, i) => {
+    const n = i + 1;
+    const code = line.replace(/\/\/(?!\s*audit-ignore).*$/, '');
+
+    // dependency-rule（01 §1.1）
+    const im = line.match(/from\s+['"]([^'"]+)['"]/) || line.match(/import\s*\(\s*['"]([^'"]+)['"]/);
+    if (im && layer && !ignored(line, 'dependency-rule')) {
+      const spec = im[1];
+      let target = null;
+      const alias = spec.match(/^@\/(presentation|application|domain|infrastructure|Common)\//);
+      if (alias) target = alias[1];
+      else if (spec.startsWith('.')) {
+        const relm = spec.match(/\/(presentation|application|domain|infrastructure|Common)\//);
+        target = relm ? relm[1] : layer;
+      }
+      if (target && !ALLOWED[layer].has(target)) {
+        report('dependency-rule', 'error', file, n, `${layer} → ${target} の依存は禁止 (${spec})`);
+      }
+      if (layer === 'domain' && /^(node:|fs$|path$|http|react|vue|@vue|svelte|solid-js)/.test(spec)) {
+        report('dependency-rule', 'error', file, n, `domain 層が外部モジュールに依存 (${spec})`);
+      }
+    }
+
+    // console-direct（LG-01）
+    if (!isLogging && /\bconsole\.(log|info|warn|error|debug|trace|table)\s*\(/.test(code) && !ignored(line, 'console-direct')) {
+      report('console-direct', 'error', file, n, 'console.* の直書き。Common/logging を使う（LG-01）');
+    }
+
+    // innerhtml / eval（SEC-14, SEC-23）
+    if (/\.(innerHTML|outerHTML)\s*\+?=|insertAdjacentHTML\s*\(|document\.write\s*\(|dangerouslySetInnerHTML/.test(code) && !ignored(line, 'innerhtml')) {
+      report('innerhtml', 'error', file, n, 'HTML 文字列の直接挿入（XSS）。textContent / DOM API を使う（SEC-14）');
+    }
+    if (/\beval\s*\(|new\s+Function\s*\(/.test(code) && !ignored(line, 'eval')) {
+      report('eval', 'error', file, n, 'eval / new Function は禁止（SEC-23）');
+    }
+
+    // date-now / math-random（DI-03, SEC-12）
+    if (!isTimeImpl && !isTest && /\bDate\.now\s*\(|new\s+Date\s*\(/.test(code) && !ignored(line, 'date-now')) {
+      const level = layer === 'domain' || layer === 'application' ? 'error' : 'warn';
+      report('date-now', level, file, n, '現在時刻は Clock ポート経由で取得する（DI-03）');
+    }
+    if (!isRandomImpl && !isTest && /\bMath\.random\s*\(/.test(code) && !ignored(line, 'math-random')) {
+      report('math-random', 'warn', file, n, '乱数は RandomSource ポート経由。ID/トークンには crypto を使う（SEC-12）');
+    }
+
+    // secret-pattern（SEC-11）
+    if (/(?:api[_-]?key|secret|password|passwd|token|authorization)\s*[:=]\s*['"][^'"]{8,}['"]/i.test(code) && !ignored(line, 'secret-pattern')) {
+      report('secret-pattern', 'error', file, n, '秘密情報らしきリテラル（SEC-11）');
+    }
+    if (/(?:AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,})/.test(code) && !ignored(line, 'secret-pattern')) {
+      report('secret-pattern', 'error', file, n, 'トークン形式の文字列（SEC-11）');
+    }
+
+    // any-type（03 §1）
+    if (!isTest && /:\s*any\b|as\s+any\b|<any>/.test(code) && !ignored(line, 'any-type')) {
+      report('any-type', 'warn', file, n, 'any の使用（03 §1）');
+    }
+
+    // todo-stale（04 §1.4）
+    if (/\/\/\s*(TODO|FIXME)\b(?!\()/.test(line) && !ignored(line, 'todo-stale')) {
+      report('todo-stale', 'warn', file, n, 'TODO/FIXME に担当・条件がありません（例: TODO(AI): 内容 期限）');
+    }
+
+    // magic-radius（01 §3-9）: 80/40 のリテラルが距離文脈で constants.ts 以外にある
+    if (!isConstants && !isTest && layer && /(^|[^\w.])(80|40)(?![\w.])/.test(code) && /(radius|meter|distance|dist\b|半径|距離|m\b)/i.test(line) && !ignored(line, 'magic-radius')) {
+      report('magic-radius', 'warn', file, n, '80/40 のリテラル。DISCOVERY_RADIUS_M / VISIT_RADIUS_M を使う');
+    }
+
+    // 関数検出 → jsdoc-missing / fnlog-missing / long-function
+    for (const re of FN_PATTERNS) {
+      const m = code.match(re);
+      if (!m) continue;
+      const name = m[1];
+      if (!name || NOT_FN_NAMES.has(name)) break;
+      if (!isTest && !hasJsDocBefore(lines, i) && !ignored(line, 'jsdoc-missing')) {
+        report('jsdoc-missing', 'error', file, n, `関数 ${name} に日本語 JSDoc がありません（CM-01）`);
+      }
+      const end = functionBodyEnd(lines, i);
+      const bodyLen = end - i + 1;
+      if (bodyLen > 50 && !ignored(line, 'long-function')) {
+        report('long-function', 'warn', file, n, `関数 ${name} が ${bodyLen} 行（上限 50）`);
+      }
+      if (!isTest && !isLogging && bodyLen > 3) {
+        const body = lines.slice(i, end + 1).join('\n');
+        if (!/\.fn\s*\(\s*['"`]/.test(body) && !ignored(line, 'fnlog-missing')) {
+          report('fnlog-missing', 'warn', file, n, `関数 ${name} に logger.fn() がありません（LG-02）`);
+        }
+      }
+      break;
+    }
+  });
+}
+
+for (const t of targets) {
+  const full = join(ROOT, t);
+  let st;
+  try {
+    st = statSync(full);
+  } catch {
+    console.error(`対象が存在しません: ${t}`);
+    continue;
+  }
+  const files = st.isDirectory() ? listFiles(full) : [full];
+  files.forEach(auditFile);
+}
+
+const errors = findings.filter((f) => f.level === 'error');
+const warns = findings.filter((f) => f.level === 'warn');
+
+if (asJson) {
+  console.log(JSON.stringify({ generatedAt: new Date().toISOString(), targets, summary: { errors: errors.length, warnings: warns.length }, findings }, null, 2));
+} else {
+  const byCheck = {};
+  for (const f of findings) (byCheck[f.check] ??= []).push(f);
+  for (const [check, list] of Object.entries(byCheck).sort()) {
+    console.log(`\n## ${check} (${list.length})`);
+    for (const f of list) console.log(`  ${f.level.toUpperCase().padEnd(5)} ${f.file}:${f.line}  ${f.message}`);
+  }
+  console.log(`\n=== 静的監査: error ${errors.length} / warn ${warns.length} / 対象 ${targets.join(', ')} ===`);
+}
+process.exit(errors.length > 0 && !warnOnly ? 1 : 0);

@@ -1,0 +1,149 @@
+/*
+ * @file デザイントークン（Common/ui/styles）
+ * コンセプト「街で使う、モダンな生活アプリ」：白とクールグレーの面＋地図アプリ風の淡いベースマップ＋アクセント1色（コーラル）。docs/08 §10。
+ * ブランド主色はコーラル（--brand）1色。地区色5色（--d-*。名前は旧来のまま）は地区の識別だけに使う。グレーはクールグレー系。
+ * Canvas 側の同じ色は src/Common/ui/theme/palette.ts（PALETTE）に置く。色を変えるときは両方を揃える。
+ * 文字拡大: html[data-text-scale] でルートフォント 16/18/20px（docs/08 §6）。サイズは rem で書く。
+ * フォント: Noto Sans JP（npm @fontsource/noto-sans-jp を Vite でバンドル＝self ホスト。CSP font-src 'self' を満たす）。
+ */
+@import "@fontsource/noto-sans-jp/400.css";
+@import "@fontsource/noto-sans-jp/500.css";
+@import "@fontsource/noto-sans-jp/700.css";
+
+:root {
+  /* ブランド主色（コーラル）。現在地・主要操作・選択中タブ・「あなた」にだけ使う */
+  --brand: #ff5a36;
+  --brand-ink: #d63d1f;          /* 白地の文字・白文字の塗りボタン（白とのコントラスト 5.0:1） */
+  --brand-soft: #ffede7;
+  --brand-grad: linear-gradient(135deg, #ff7a52 0%, #ff5a36 55%, #e8461f 100%); /* 主要ボタンはフラット（--brand-ink のベタ）。これは強調の帯など限られた所だけ */
+
+  /* 旧トークン名（他画面の CSS が参照）。ブランド色へ寄せる */
+  --accent: var(--brand);
+  --accent-soft: var(--brand-soft);
+  --accent-strong: var(--brand-ink);
+  --on-accent: #ffffff;
+
+  /* 文字色とクールグレー（--g4 以上は白地・薄いグレー地の小さな文字でもコントラスト 4.5:1 以上） */
+  --ink: #111827;
+  --g0: #ffffff;
+  --g1: #f5f6f8;
+  --g2: #e5e7eb;
+  --g3: #d1d5db;
+  --g4: #6b7280;
+  --g5: #374151;
+
+  /* 画面の地（クールグレー）。カードは白で浮かせる */
+  --paper: #f5f6f8;
+  --paper-2: #eef0f3;
+  --surface: #ffffff;
+  --hairline: rgba(17, 24, 39, 0.08);
+  --hairline-strong: rgba(17, 24, 39, 0.14);
+  --line: #e5e7eb;               /* 罫線（副ボタン・入力欄の枠） */
+  --page-bg: #e9ecf1;
+  --bezel: #1f2937;              /* PC 表示の端末枠 */
+  --bezel-edge: #4b5563;
+  --positive: #10b981;           /* 状態の点（旅人がいる・成功） */
+  --scrim: rgba(17, 24, 39, 0.45);
+  --fx-bg: rgba(17, 24, 39, 0.66);   /* 演出の幕（暗めの半透明＋背景ぼかし。中央に白いカード） */
+
+  /* 地区色（マスタの地区色と同じ5色。色相名で持ち、下の地区ID対応表で割り当てる）。-ink は白地の文字用（4.5:1 以上）、-soft は面の淡色 */
+  --d-wisteria: #6366f1;
+  --d-wisteria-ink: #4338ca;
+  --d-sea: #0ea5e9;
+  --d-sea-ink: #0369a1;
+  --d-mustard: #f59e0b;
+  --d-mustard-ink: #b45309;
+  --d-leaf: #10b981;
+  --d-leaf-ink: #047857;
+  --d-rose: #ec4899;
+  --d-rose-ink: #be185d;
+
+  /* 意味色 */
+  --gold: #f5b700;               /* 金カード・地区の主の王冠・1位 */
+  --gold-ink: #92400e;
+  --gold-grad: linear-gradient(160deg, #fde68a 0%, #f59e0b 55%, #b45309 100%);
+  --silver-grad: linear-gradient(160deg, #f9fafb 0%, #d1d5db 50%, #9ca3af 100%);
+  --bronze-grad: linear-gradient(160deg, #f3c6a5 0%, #d58a5a 50%, #b8693d 100%);
+  --sepia: #9ca3af;              /* 色あせ（クールグレー。名前は旧来のまま） */
+  --sepia-ink: #6b7280;
+  --sepia-soft: #f1f3f6;
+  --deadline: #e11d48;           /* 期限・クーポン */
+  --deadline-soft: #ffe4e9;
+  --unknown: #9ca3af;            /* 未発見 */
+  --discovered: #6b7280;         /* 発見済み（シルエット） */
+
+  /* フォント。見出し・本文とも Noto Sans JP（見出し 700、本文 400〜500。数字は tabular-nums） */
+  --font-display: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  --font-body: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-bold: 700;
+  --font: var(--font-body);
+
+  /* 文字サイズの段（24/18/15/13/11） */
+  --fs-xl: 1.5rem;
+  --fs-l: 1.125rem;
+  --fs-m: 0.9375rem;
+  --fs-s: 0.8125rem;
+  --fs-xs: 0.6875rem;
+
+  /* 寸法（rem: 16px 基準） */
+  --tap: 2.75rem;            /* 44px: 最小タップ領域 */
+  --statusbar-h: 2.75rem;    /* 44px */
+  --topbar-h: 3rem;          /* 48px */
+  --tabbar-h: 4rem;          /* 64px（PC 表示の端末枠ではホームバーの分 +8px） */
+  --gear-gap: 3.5rem;        /* 56px: 右上の歯車のために空ける幅 */
+  --sheet-peek-h: 7.5rem;    /* 120px: つまみ */
+  --sheet-half-h: 50%;       /* 半分 */
+  --sheet-full-gap: 3.5rem;  /* 56px: 全画面でも上部に残す高さ */
+  --gutter: 1rem;
+
+  --radius-s: 0.5rem;
+  --radius-control: 0.75rem;    /* 12px: ボタン・入力欄・アイコンの台座 */
+  --radius-m: 1rem;             /* 16px: カード */
+  --radius-l: 1.25rem;          /* 20px: 大きいカード・下シート */
+  --radius-pill: 999px;
+  --phone-radius: 44px;
+
+  /* 影（奥行き3段。ニュートラルなクールグレーの影＋ごく細い輪郭。docs/08 §10.2） */
+  --shadow-1: 0 0 0 1px rgba(17, 24, 39, 0.04), 0 1px 2px rgba(17, 24, 39, 0.06), 0 2px 8px rgba(17, 24, 39, 0.04);
+  --shadow-2: 0 0 0 1px rgba(17, 24, 39, 0.03), 0 1px 2px rgba(17, 24, 39, 0.06), 0 4px 12px rgba(17, 24, 39, 0.08);
+  --shadow-3: 0 0 0 1px rgba(17, 24, 39, 0.04), 0 12px 32px rgba(17, 24, 39, 0.14);
+  --shadow-sheet: 0 -1px 0 rgba(17, 24, 39, 0.06), 0 -10px 30px rgba(17, 24, 39, 0.10);
+  --shadow-pop: var(--shadow-3);
+  --focus-ring: 0 0 0 3px #ffffff, 0 0 0 5px var(--brand);
+
+  /* 重なり順 */
+  --z-screen: 1;
+  --z-sheet: 10;
+  --z-gear: 30;
+  --z-modal: 40;
+  --z-toast: 45;
+  --z-effect: 50;
+
+  --motion-fast: 0.15s;
+  --motion: 0.22s;
+}
+
+/*
+ * 地区色の割り当て。data-district-id（または data-district）を持つ要素の中で --district / --district-ink / --district-soft が使える。
+ * 地区IDはマスタ（public/master/districts.json）の id（舞台変更前の旧IDも残す）。未知の地区はブランド色のまま。
+ */
+[data-district-id], [data-district] { --district: var(--brand); --district-ink: var(--brand-ink); }
+[data-district-id="d_minamimori"], [data-district="d_minamimori"], [data-district-id="d_joka"], [data-district="d_joka"] { --district: var(--d-wisteria); --district-ink: var(--d-wisteria-ink); }
+[data-district-id="d_tenma"], [data-district="d_tenma"], [data-district-id="d_honmachi"], [data-district="d_honmachi"] { --district: var(--d-mustard); --district-ink: var(--d-mustard-ink); }
+[data-district-id="d_tenroku"], [data-district="d_tenroku"], [data-district-id="d_satoyama"], [data-district="d_satoyama"] { --district: var(--d-leaf); --district-ink: var(--d-leaf-ink); }
+[data-district-id="d_ogimachi"], [data-district="d_ogimachi"], [data-district-id="d_yunosato"], [data-district="d_yunosato"] { --district: var(--d-rose); --district-ink: var(--d-rose-ink); }
+[data-district-id="d_okawa"], [data-district="d_okawa"], [data-district-id="d_minato"], [data-district="d_minato"] { --district: var(--d-sea); --district-ink: var(--d-sea-ink); }
+[data-district-id], [data-district] { --district-soft: color-mix(in srgb, var(--district) 14%, #ffffff); }
+
+html { font-size: 16px; }
+html[data-text-scale="large"] { font-size: 18px; }
+html[data-text-scale="xlarge"] { font-size: 20px; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0s;
+    --motion: 0s;
+  }
+}

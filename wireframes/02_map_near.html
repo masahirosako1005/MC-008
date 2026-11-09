@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 地図（近接） | N西市 WF</title>
+<link rel="stylesheet" href="wf.css">
+</head>
+<body>
+<header class="page-head">
+  <a class="back" href="index.html">← 画面一覧</a>
+  <h1>02 地図（近接）</h1>
+  <p class="meta">
+    <span class="badge acc">基準 B 未開拓への興味</span>
+    <span class="badge">ファイル 02_map_near</span>
+    <span class="badge">遷移元：01（地区ズームでさらに寄る、または80m円にスポットが入ったとき）</span>
+    <span class="badge">遷移先：04 スポット詳細／03 下シート</span>
+  </p>
+  <p><b>主な操作：</b>地図タップで移動（デモ。本番はGPS）／スポットをタップして 04 へ／つまみの「訪問する」で 04 へ</p>
+</header>
+
+<section class="frames">
+  <!-- 状態A 発見前 -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/11/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="topbar"><span class="bk">‹ 地区へ</span><span>城下地区 <span class="tag">Lv2</span></span><span class="gear">⚙</span></div>
+        <div class="map" style="top:48px">
+          <svg viewBox="0 0 390 680" preserveAspectRatio="xMidYMin slice">
+            <rect width="390" height="680" fill="#f1ece6"/>
+            <path d="M0 150 L390 130 M0 420 L390 400 M120 0 L140 680 M280 0 L300 680" stroke="#fff" stroke-width="18" fill="none"/>
+            <!-- 足あと -->
+            <polyline points="40,640 70,560 110,500 150,430 170,340" fill="none" stroke="#e8762c" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>
+            <!-- 80m円 -->
+            <circle cx="170" cy="340" r="130" fill="#e8762c" fill-opacity=".08" stroke="#e8762c" stroke-dasharray="5 5"/>
+            <text x="150" y="222" font-size="10" fill="#e8762c">80m</text>
+            <!-- 訪問済み店舗 -->
+            <circle cx="110" cy="250" r="10" fill="#e8762c"/><text x="124" y="254" font-size="11" fill="#222">城下カフェ</text>
+            <!-- 発見済み名所 -->
+            <text x="60" y="520" font-size="18" fill="#8a8a8a">▲</text><text x="80" y="522" font-size="11" fill="#222">武家屋敷通り</text>
+            <!-- 未発見（円の外） -->
+            <circle cx="330" cy="420" r="10" fill="#fff" stroke="#999" stroke-dasharray="3 2"/><text x="326" y="424" font-size="10" fill="#777">？</text>
+            <!-- 現在地 -->
+            <circle cx="170" cy="340" r="10" fill="#e8762c" stroke="#fff" stroke-width="3"/>
+          </svg>
+          <div class="canvas-note">近接：周囲80m円・足あと（Canvas）</div>
+        </div>
+        <div class="sheet h-grip">
+          <div class="grip"></div>
+          <div class="card spot" style="margin:0"><span class="ic vis">✓</span><div>城下カフェ<small>いちばん近い ・ 95m ・ 訪問2回</small></div><span class="r"><span class="tt mi" style="display:inline-flex">未</span><small>未訪問 2件</small></span></div>
+        </div>
+        <span class="co" style="left:40px;top:560px">1</span>
+        <span class="co" style="left:130px;top:170px">2</span>
+        <span class="co" style="left:350px;top:390px">3</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>状態A：発見前</b>　80m円の外にある未発見スポットは「？」。歩いた軌跡が足あとで残る。</figcaption>
+  </figure>
+
+  <!-- 状態B 発見の瞬間 -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/11/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="topbar"><span class="bk">‹ 地区へ</span><span>城下地区 <span class="tag">Lv2</span></span><span class="gear">⚙</span></div>
+        <div class="toast">発見！ 丸岡和菓子店（図鑑にシルエット登録）</div>
+        <div class="map" style="top:48px">
+          <svg viewBox="0 0 390 680" preserveAspectRatio="xMidYMin slice">
+            <rect width="390" height="680" fill="#f1ece6"/>
+            <path d="M0 150 L390 130 M0 420 L390 400 M120 0 L140 680 M280 0 L300 680" stroke="#fff" stroke-width="18" fill="none"/>
+            <polyline points="40,640 70,560 110,500 150,430 170,340 230,360" fill="none" stroke="#e8762c" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>
+            <circle cx="230" cy="360" r="130" fill="#e8762c" fill-opacity=".08" stroke="#e8762c" stroke-dasharray="5 5"/>
+            <circle cx="110" cy="250" r="10" fill="#e8762c"/><text x="124" y="254" font-size="11" fill="#222">城下カフェ</text>
+            <text x="60" y="520" font-size="18" fill="#8a8a8a">▲</text><text x="80" y="522" font-size="11" fill="#222">武家屋敷通り</text>
+            <!-- 発見：シルエットに変化 -->
+            <circle cx="330" cy="420" r="14" fill="none" stroke="#e8762c" stroke-width="2"/>
+            <circle cx="330" cy="420" r="10" fill="#8a8a8a"/><text x="300" y="448" font-size="11" fill="#222">丸岡和菓子店</text>
+            <circle cx="230" cy="360" r="10" fill="#e8762c" stroke="#fff" stroke-width="3"/>
+          </svg>
+          <div class="canvas-note">発見演出：輪が広がる（Canvas）</div>
+        </div>
+        <div class="sheet h-grip">
+          <div class="grip"></div>
+          <div class="card spot" style="margin:0"><span class="ic sil">■</span><div>丸岡和菓子店<small>いちばん近い ・ 62m ・ 発見済み・未訪問</small></div><span class="r"><span class="tt mi" style="display:inline-flex">未</span></span></div>
+        </div>
+        <span class="co" style="left:12px;top:60px">4</span>
+        <span class="co" style="left:350px;top:390px">5</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>状態B：発見の瞬間</b>　地図をタップして歩き、80m円にスポットが入るとトーストが出て「？」がシルエットに変わる。</figcaption>
+  </figure>
+
+  <!-- 状態C 訪問できる距離 -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/11/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="topbar"><span class="bk">‹ 地区へ</span><span>城下地区 <span class="tag">Lv2</span></span><span class="gear">⚙</span></div>
+        <div class="map" style="top:48px">
+          <svg viewBox="0 0 390 680" preserveAspectRatio="xMidYMin slice">
+            <rect width="390" height="680" fill="#f1ece6"/>
+            <path d="M0 150 L390 130 M0 420 L390 400 M120 0 L140 680 M280 0 L300 680" stroke="#fff" stroke-width="18" fill="none"/>
+            <polyline points="40,640 70,560 110,500 150,430 170,340 230,360 300,400" fill="none" stroke="#e8762c" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>
+            <circle cx="300" cy="400" r="130" fill="#e8762c" fill-opacity=".06" stroke="#e8762c" stroke-dasharray="5 5"/>
+            <circle cx="300" cy="400" r="65" fill="#e8762c" fill-opacity=".12" stroke="#e8762c"/>
+            <text x="232" y="372" font-size="10" fill="#e8762c">40m</text>
+            <circle cx="110" cy="250" r="10" fill="#e8762c"/><text x="124" y="254" font-size="11" fill="#222">城下カフェ</text>
+            <text x="60" y="520" font-size="18" fill="#8a8a8a">▲</text><text x="80" y="522" font-size="11" fill="#222">武家屋敷通り</text>
+            <circle cx="330" cy="420" r="10" fill="#8a8a8a"/>
+            <rect x="246" y="438" width="120" height="22" rx="11" fill="#e8762c"/>
+            <text x="262" y="453" font-size="11" fill="#fff" font-weight="700">訪問できます ▸</text>
+            <circle cx="300" cy="400" r="10" fill="#e8762c" stroke="#fff" stroke-width="3"/>
+          </svg>
+          <div class="canvas-note">40m内：スポットに吹き出し、つまみに訪問ボタン</div>
+        </div>
+        <div class="sheet h-grip">
+          <div class="grip"></div>
+          <div class="card spot" style="margin:0"><span class="ic sil">■</span><div>丸岡和菓子店<small>22m ・ 発見済み・未訪問</small></div><span class="r btn pri">訪問する</span></div>
+        </div>
+        <span class="co" style="left:220px;top:330px">6</span>
+        <span class="co" style="left:330px;top:656px">7</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>状態C：訪問できる距離</b>　40m以内に入ると吹き出しと「訪問する」ボタンが出る。タップで 04 スポット詳細へ。</figcaption>
+  </figure>
+</section>
+
+<ol class="notes">
+  <li><span class="n">1</span>足あと。今日歩いた軌跡をアクセント色の点線で残す。再訪時は前回の足あとを薄く表示（仮）。</li>
+  <li><span class="n">2</span>80m円は破線。現在地（デモでは地図タップ位置）を中心に動く。</li>
+  <li><span class="n">3</span>未発見スポットは「？」。名前は出さない。</li>
+  <li><span class="n">4</span>発見トースト。同時に図鑑（05）にシルエットが登録される。発見だけでは地区は育たない（訪問で育つ）。</li>
+  <li><span class="n">5</span>「？」がシルエットに変わり名前が出る。輪が広がる発見演出（Canvas）。</li>
+  <li><span class="n">6</span>40m円（実線）。中に入ったスポットだけ「訪問できます」の吹き出しが付く。GPS誤差を見込んだ値（仮）。</li>
+  <li><span class="n">7</span>つまみに「訪問する」。タップで 04 に移動し、04 の訪問ボタンで確定。主要操作はここから2タップ以内。</li>
+</ol>
+
+<nav class="nav"><a href="01_map_wide.html">← 01 地図（広域・地区）</a><a href="03_sheet.html">次：03 地図下シート →</a></nav>
+</body>
+</html>

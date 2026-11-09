@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 図鑑 | N西市 WF</title>
+<link rel="stylesheet" href="wf.css">
+<style>
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.tile{border:1px solid var(--g2);border-radius:10px;padding:8px;text-align:center;font-size:11px;background:#fff}
+.tile .pic{height:72px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:6px}
+.tile .pic.unk{background:#fff;border:1.5px dashed var(--g3);color:var(--g4)}
+.tile .pic.sil{background:var(--g4);color:var(--g4)}
+.tile .pic.vis{background:var(--accent);color:#fff}
+.tile b{display:block;font-size:12px}
+.tile small{color:var(--g4)}
+.tile.unk b{color:var(--g4)}
+</style>
+</head>
+<body>
+<header class="page-head">
+  <a class="back" href="index.html">← 画面一覧</a>
+  <h1>05 図鑑</h1>
+  <p class="meta">
+    <span class="badge acc">基準 B 未開拓への興味</span>
+    <span class="badge">ファイル 05_zukan</span>
+    <span class="badge">遷移元：下部タブ「図鑑」</span>
+    <span class="badge">遷移先：04 スポット詳細（タイルをタップ）</span>
+  </p>
+  <p><b>主な操作：</b>地区タブを切り替える／タイルをタップしてスポット詳細へ／「？」をタップすると「80m以内に近づくと見つかる」と案内</p>
+</header>
+
+<section class="frames">
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/11/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="topbar"><span>図鑑</span><span class="gear">⚙</span></div>
+        <div class="scroll" style="top:48px">
+          <div class="seg" style="width:100%;display:flex"><span class="on" style="flex:1;text-align:center">城下</span><span style="flex:1;text-align:center">みなと</span><span style="flex:1;text-align:center">本町</span><span style="flex:1;text-align:center">里山</span><span style="flex:1;text-align:center">湯の里</span></div>
+          <div class="kv" style="margin-top:10px"><span><b>城下地区</b> <span class="tag">Lv2</span></span><span>通った回数 <b>12回</b> ・ 最近 11/2</span></div>
+          <div class="grid">
+            <div class="tile"><div class="pic vis">▲</div><b>N西城跡</b><small>通った 3回</small></div>
+            <div class="tile"><div class="pic sil">▲</div><b>武家屋敷通り</b><small>発見済み ・ まだ行っていない</small></div>
+            <div class="tile"><div class="pic vis">●</div><b>城下カフェ</b><small>通った 2回</small></div>
+            <div class="tile"><div class="pic sil">●</div><b>丸岡和菓子店</b><small>発見済み ・ まだ行っていない</small></div>
+            <div class="tile unk"><div class="pic unk">？</div><b>？？？</b><small>80m以内で見つかる</small></div>
+            <div class="tile"><div class="pic vis">●</div><b>城下茶寮</b><small>通った 1回</small></div>
+            <div class="tile unk"><div class="pic unk">？</div><b>？？？</b><small>&nbsp;</small></div>
+            <div class="tile"><div class="pic sil">●</div><b>御堀端ベーカリー</b><small>発見済み ・ まだ行っていない</small></div>
+            <div class="tile unk"><div class="pic unk">？</div><b>？？？</b><small>&nbsp;</small></div>
+            <div class="tile unk"><div class="pic unk">？</div><b>？？？</b><small>&nbsp;</small></div>
+            <div class="tile unk"><div class="pic unk">？</div><b>？？？</b><small>&nbsp;</small></div>
+            <div class="tile unk"><div class="pic unk">？</div><b>？？？</b><small>&nbsp;</small></div>
+          </div>
+          <p class="hint" style="margin-top:10px">通うほど絵が増える。全部そろえなくても街は育つ。</p>
+        </div>
+        <span class="co" style="left:100px;top:62px">1</span>
+        <span class="co" style="left:150px;top:106px">2</span>
+        <span class="co" style="left:12px;top:150px">3</span>
+        <span class="co" style="left:252px;top:150px">4</span>
+        <span class="co" style="left:12px;top:420px">5</span>
+      </div>
+      <div class="tabbar"><div class="tab"><span class="ic"></span>地図</div><div class="tab on"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>図鑑（城下地区）</b>　未発見＝「？」、発見済み＝シルエット、訪問済み＝カラー。達成率や「全n件中m件」は出さない。</figcaption>
+  </figure>
+</section>
+
+<ol class="notes">
+  <li><span class="n">1</span>地区別タブ。地区のテーマ（歴史／港／商店街／里山／温泉、仮）が見通しを良くする。</li>
+  <li><span class="n">2</span>ヘッダーは「通った回数」と「最近いつ」。達成率（％）や「全12件中5件」は表示しない。埋めることではなく通うことを主役にする（13章の変更点）。</li>
+  <li><span class="n">3</span>訪問済みタイル：カラーの絵と通った回数。回数が増えると絵が少し変わる（仮。季節違いなど）。</li>
+  <li><span class="n">4</span>発見済みタイル：シルエットと名前。「まだ行っていない」が未訪問トリガー（03）につながる。</li>
+  <li><span class="n">5</span>未発見タイル：「？」と無名。タップすると「80m以内に近づくと見つかる」。位置は教えない（基準B）。</li>
+</ol>
+
+<nav class="nav"><a href="04_spot.html">← 04 スポット詳細</a><a href="06_mytown.html">次：06 マイ街 →</a></nav>
+</body>
+</html>

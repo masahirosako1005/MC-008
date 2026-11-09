@@ -1,0 +1,32 @@
+{
+  "name": "nnishi-kayoimachi",
+  "private": true,
+  "version": "0.1.0",
+  "description": "N西市 再訪促進スマホWebアプリ（街に通うほど、自分だけの街が育つ）",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --mode demo",
+    "build": "tsc --noEmit && vite build",
+    "build:demo": "tsc --noEmit && vite build --mode demo --outDir dist-demo",
+    "preview": "vite preview",
+    "preview:demo": "vite preview --mode demo --outDir dist-demo",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "audit:static": "node scripts/audit/static-audit.mjs",
+    "master:build": "node scripts/master/build-master.mjs",
+    "master:check": "node scripts/master/check-master.mjs",
+    "master:hash": "node scripts/master/hash-master.mjs",
+    "e2e": "node scripts/e2e/demo-scenario.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "playwright-core": "^1.65.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "@fontsource/m-plus-rounded-1c": "^5.3.0",
+    "@fontsource/noto-sans-jp": "^5.3.1"
+  }
+}

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07 ランキング | N西市 WF</title>
+<link rel="stylesheet" href="wf.css">
+<style>
+.ltabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0 8px}
+.ltab{position:relative;border:1px solid var(--g3);border-radius:10px;text-align:center;font-size:11px;padding:5px 2px;line-height:1.35}
+.ltab b{display:block;font-size:12px}
+.ltab.on{border:2px solid var(--accent);background:var(--accent-soft)}
+.ltab .rec{position:absolute;top:-8px;right:4px;font-size:9px;background:var(--accent);color:#fff;border-radius:4px;padding:0 4px}
+.lead{font-size:12px;margin:0 0 6px}
+.mine{border:2px solid var(--accent);background:var(--accent-soft);border-radius:10px;padding:6px 10px;font-size:12px}
+.mine b.r{font-size:18px}
+.mine .nx{font-weight:700;display:block}
+.mine small{display:block;color:var(--g4);font-size:10px}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;height:150px;margin:10px 0 4px}
+.podium .p{width:96px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;font-size:11px;text-align:center}
+.podium .blk{width:100%;background:var(--g2);border:1px solid var(--g3);border-radius:8px 8px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;font-weight:700;font-size:15px}
+.podium .face{width:34px;height:34px;border-radius:50%;background:var(--g2);border:1px solid var(--g3);margin-bottom:3px}
+.lst .kv{align-items:center}
+.lst .rank{display:inline-block;width:22px;color:var(--g4)}
+.lst .me{border:2px solid var(--accent);background:var(--accent-soft);border-radius:6px}
+</style>
+</head>
+<body>
+<header class="page-head">
+  <a class="back" href="index.html">← 画面一覧</a>
+  <h1>07 ランキング</h1>
+  <p class="meta">
+    <span class="badge acc">基準 C 再訪動機（はじめましてリーグは B も）</span>
+    <span class="badge">ファイル 07_ranking</span>
+    <span class="badge">遷移元：下部タブ「ランキング」／06 マイ街</span>
+    <span class="badge">遷移先：01 地区ズーム（地区の主をタップ）</span>
+  </p>
+  <p><b>主な操作：</b>3リーグ（かよい／はじめまして／ルーキー）をタブで切り替える／自分の順位と「あと何回で何位」を見る／かよいリーグで地区の主と取り返しまでの回数を見る</p>
+</header>
+
+<section class="frames">
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/11/09</span><span>通い慣れた人</span></div>
+      <div class="screen">
+        <div class="topbar"><span>ランキング</span><span class="gear">⚙</span></div>
+        <div class="scroll" style="top:48px">
+          <div class="hint" style="text-align:center">11月 ・ 月末にリセット ・ 残り21日</div>
+          <div class="ltabs">
+            <div class="ltab on"><span class="rec">おすすめ</span><b>♛ かよい</b>7位</div>
+            <div class="ltab"><b>✦ はじめまして</b>8位</div>
+            <div class="ltab"><b>❀ ルーキー</b>卒業</div>
+          </div>
+          <p class="lead">♛ 同じ街に何度も通う人が輝くリーグ</p>
+          <div class="mine">あなたは <b class="r">7位</b>（5回）<span class="nx">あと2回で6位に上がれます</span></div>
+          <div class="podium">
+            <div class="p"><div class="face"></div>旅人ハナ<br><b>13回</b><div class="blk" style="height:60px">2</div></div>
+            <div class="p"><div class="face"></div>旅人タロウ<br><b>16回</b><div class="blk" style="height:85px">1</div></div>
+            <div class="p"><div class="face"></div>旅人ケン<br><b>11回</b><div class="blk" style="height:45px">3</div></div>
+          </div>
+          <div class="lst">
+            <div class="kv"><span><span class="rank">4</span>旅人ミオ</span><span>9回</span></div>
+            <div class="kv"><span><span class="rank">5</span>旅人ソラ <span class="tag">主：湯の里</span></span><span>8回</span></div>
+            <div class="kv"><span><span class="rank">6</span>旅人リク</span><span>7回</span></div>
+            <div class="kv me"><span><span class="rank">7</span>★ あなた <span class="tag">主：本町</span></span><span>5回</span></div>
+            <div class="kv"><span><span class="rank">7</span>旅人アオイ</span><span>5回</span></div>
+            <div class="kv"><span><span class="rank">…</span>（11位まで）</span><span></span></div>
+          </div>
+          <div class="hint">今月通った回数で順位を決めます。ポイントは順位に関係ありません</div>
+          <div class="sec">地区の主（直近30日）</div>
+          <div class="dcard"><span class="dsw l2"></span><div><b>城下地区</b> <span class="tag">主：旅人タロウ 7回</span><small>あなた 6回 ・ あと2回で主に</small></div><span class="hint">›</span></div>
+          <div class="dcard"><span class="dsw l3"></span><div><b>本町地区</b> <span class="tag">主：あなた</span><small>あなたが主です（9回）</small></div><span class="hint">›</span></div>
+        </div>
+        <span class="co" style="left:170px;top:72px">1</span>
+        <span class="co" style="left:330px;top:150px">2</span>
+        <span class="co" style="left:12px;top:250px">3</span>
+        <span class="co" style="left:330px;top:610px">4</span>
+      </div>
+      <div class="tabbar"><div class="tab"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab on"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>通い慣れた人（かよいリーグ）</b>　表彰台＋リスト。下段に地区の主と取り返しまでの回数。ルーキーは卒業済みで見学になる。</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/11/09</span><span>初回の人</span></div>
+      <div class="screen">
+        <div class="topbar"><span>ランキング</span><span class="gear">⚙</span></div>
+        <div class="scroll" style="top:48px">
+          <div class="hint" style="text-align:center">11月 ・ 月末にリセット ・ 残り21日</div>
+          <div class="ltabs">
+            <div class="ltab"><b>♛ かよい</b>11位</div>
+            <div class="ltab"><b>✦ はじめまして</b>10位</div>
+            <div class="ltab on"><span class="rec">おすすめ</span><b>❀ ルーキー</b>9位</div>
+          </div>
+          <p class="lead">❀ 使いはじめて30日までの人だけのリーグ。同じスタートラインで競えます</p>
+          <div class="mine">あなたは <b class="r">9位</b>（0回）<span class="nx">あと1回で7位に上がれます</span><small>ようこそ！使いはじめてから30日間参加できます</small></div>
+          <div class="podium">
+            <div class="p"><div class="face"></div>旅人ナギ<br><b>4回</b><div class="blk" style="height:60px">2</div></div>
+            <div class="p"><div class="face"></div>旅人ユイ<br><b>5回</b><div class="blk" style="height:85px">1</div></div>
+            <div class="p"><div class="face"></div>旅人ハル<br><b>3回</b><div class="blk" style="height:45px">3</div></div>
+          </div>
+          <div class="lst">
+            <div class="kv"><span><span class="rank">3</span>旅人メイ</span><span>3回</span></div>
+            <div class="kv"><span><span class="rank">5</span>旅人コウ</span><span>2回</span></div>
+            <div class="kv"><span><span class="rank">5</span>旅人サキ</span><span>2回</span></div>
+            <div class="kv"><span><span class="rank">7</span>旅人モモ</span><span>1回</span></div>
+            <div class="kv"><span><span class="rank">7</span>旅人レン</span><span>1回</span></div>
+            <div class="kv me"><span><span class="rank">9</span>★ あなた</span><span>0回</span></div>
+          </div>
+          <div class="hint">今月通った回数で順位を決めます。ポイントは順位に関係ありません</div>
+        </div>
+        <span class="co" style="left:300px;top:72px">5</span>
+        <span class="co" style="left:330px;top:205px">6</span>
+      </div>
+      <div class="tabbar"><div class="tab"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab on"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>初回の人（ルーキーリーグ）</b>　0回でも順位に載り、1回訪問するだけで順位が上がることを示す。</figcaption>
+  </figure>
+</section>
+
+<ol class="notes">
+  <li><span class="n">1</span>リーグタブ（月間リセット、4.6）。かよい＝今月通った回数／はじめまして＝今月はじめて訪れたスポット数／ルーキー＝使いはじめて30日（仮）以内の人だけの回数。各タブに自分の順位を添える。</li>
+  <li><span class="n">2</span>最初に開くのは自分が一番上位のリーグ（「おすすめ」）。同順位ならルーキー → はじめまして → かよい の順。</li>
+  <li><span class="n">3</span>自分の成績カード：順位と「あと何回で何位」。順位は回数・か所数で、ポイント稼ぎは影響しない（5章）。同数は同順位で、自分を上に並べる。</li>
+  <li><span class="n">4</span>地区の主カード（かよいリーグのみ）：直近30日の回数と、主になる／取り返すまでの回数。取り返し中は 03 と同じ「取」タグ。タップで 01 地区ズーム。</li>
+  <li><span class="n">5</span>初めての人はルーキーとはじめましてで上位を狙える。数値は PoC のダミー各10人（仮）。</li>
+  <li><span class="n">6</span>0回でも「あなた」の行を出し、次の一歩を具体的な回数で示す。30日を過ぎると「卒業」になり、見学として表示する。</li>
+</ol>
+
+<nav class="nav"><a href="06_mytown.html">← 06 マイ街</a><a href="08_effects.html">次：08 演出 →</a></nav>
+</body>
+</html>

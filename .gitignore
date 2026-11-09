@@ -1,0 +1,30 @@
+# 依存・ビルド成果物
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# 環境変数・秘密情報（SEC-11）
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+Password*.txt*
+password*.txt*
+secrets/
+
+# OS / エディタ
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# ログ
+*.log
+logs/
+
+# デモビルド・E2E 一時ファイル
+dist-demo/
+e2e-output/

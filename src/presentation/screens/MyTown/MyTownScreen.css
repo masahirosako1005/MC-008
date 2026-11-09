@@ -1,0 +1,333 @@
+/*
+ * @file マイ街画面のスタイル（presentation/screens/MyTown）
+ * デザイン: アプリ共通の「都会の生活アプリ」トーン（docs/08 §10）。画面幅いっぱいの街並み（Canvas）の下に、
+ * 白いカード（角丸 12〜16px・ニュートラルな影）、アクセントはコーラル1色。タブ・矢印・色あせは線のアイコン（Common/ui/icons）、
+ * 数字・ごほうび・持ち物の小さな絵は pixelSprites.ts（Canvas のフラットなアイコン。描画はイラスト担当）。
+ * 文字は最小限にし、状態はアイコン・★・ゲージ・ミニチュアの絵で見せる。色は tokens.css のトークンだけを使う。
+ * Canvas 側の色は myTownTheme.ts。サイズは rem（文字拡大に追従）。タップ対象は 44px 以上。動きは prefers-reduced-motion を尊重。
+ */
+.mytown {
+  /* 旧来の変数名（他の部品が参照していても §10 の色になるよう、トークンへ寄せる） */
+  --mt-ivory: var(--surface);
+  --mt-paper: var(--g1);
+  --mt-oat: var(--g2);
+  --mt-ink: var(--ink);
+  --mt-ink2: var(--g5);
+  --mt-muted: var(--g4);
+  --mt-line: var(--hairline);
+  --mt-clay: var(--brand);
+  --mt-clay-ink: var(--brand-ink);
+  --mt-olive: var(--d-leaf);
+  --mt-gold: var(--gold);
+  --mt-shadow: var(--shadow-1);
+  background: var(--paper);
+  color: var(--ink);
+  padding-top: 0;
+}
+.mytown .screen-message { color: var(--g4); padding-top: 3rem; }
+.mytown-sprite { display: block; flex: none; }
+
+/* 線のアイコンの入れ物（色あせバッジなど）。名前ごとの色、まだ持っていないものは薄く */
+.mytown-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; color: var(--g5); }
+.mytown-icon .icon { width: 1.125rem; height: 1.125rem; }
+.mytown-icon[data-icon="crown"],
+.mytown-icon[data-icon="coin"],
+.mytown-icon[data-icon="star"] { color: var(--gold-ink); }
+.mytown-icon[data-icon="crown"] .icon path:first-child,
+.mytown-icon[data-icon="star"] .icon path:first-child { fill: color-mix(in srgb, var(--gold) 45%, transparent); }
+.mytown-icon[data-icon="coin"] .icon path:first-child { fill: color-mix(in srgb, var(--gold) 30%, transparent); }
+.mytown-icon[data-icon="pin"] { color: var(--brand); }
+.mytown-icon[data-icon="clock"] { color: currentColor; }
+.mytown-icon[data-tint="gray"] { color: var(--g4); }
+.mytown-icon[data-tint="gray"] .icon path:first-child { fill: none; }
+.mytown-icon[data-tint="silhouette"] { color: var(--g3); }
+.mytown-icon[data-tint="silhouette"] .icon path:first-child { fill: none; }
+
+/* ---- 見出し・補足 ---- */
+.mytown-sub { display: flex; align-items: baseline; gap: 0.5rem; margin: 1.75rem 0 0.75rem; font-size: 1rem; font-weight: var(--fw-bold); line-height: 1.4; }
+.mytown-sub small { margin-left: auto; font-size: var(--fs-xs); font-weight: var(--fw-medium); color: var(--g4); }
+.mytown-hint { font-size: var(--fs-xs); line-height: 1.7; color: var(--g4); }
+
+/* ---- ヒーロー（画面幅いっぱいの街並み。下だけ角丸） ---- */
+.mytown-hero { position: relative; margin: 0 calc(-1 * var(--gutter)); border-radius: 0 0 1.5rem 1.5rem; overflow: hidden; box-shadow: 0 1px 0 var(--hairline); }
+.mytown-hero .mytown-strip__stage { height: 330px; }
+.mytown-hero__title { position: absolute; left: var(--gutter); top: 0.875rem; pointer-events: none; }
+.mytown-hero__kicker { font-size: 0.625rem; font-weight: var(--fw-bold); letter-spacing: 0.18em; color: var(--g5); }
+.mytown-hero__name {
+  display: inline-block;
+  margin-top: 0.25rem;
+  padding: 0.3125rem 0.875rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08), 0 4px 12px rgba(17, 24, 39, 0.08);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 1.125rem;
+  font-weight: var(--fw-bold);
+  line-height: 1.4;
+}
+
+/* ---- 街並み（Canvas 部品） ---- */
+.mytown-strip { position: relative; overflow: hidden; background: var(--g1); }
+.mytown-strip__stage { position: relative; height: 250px; touch-action: pan-y; cursor: grab; }
+.mytown-strip__stage:active { cursor: grabbing; }
+.mytown-strip__arrow {
+  position: absolute;
+  top: 58%;
+  transform: translateY(-50%);
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.1), 0 4px 12px rgba(17, 24, 39, 0.12);
+  color: var(--ink);
+  cursor: pointer;
+}
+.mytown-strip__arrow .icon { width: 1.375rem; height: 1.375rem; stroke-width: 2.1; }
+.mytown-strip__arrow--prev { left: 0.625rem; }
+.mytown-strip__arrow--next { right: 0.625rem; }
+.mytown-strip__arrow:disabled { opacity: 0; pointer-events: none; }
+
+/* ---- アバターのひと言（白い吹き出し） ---- */
+.mytown-headline { margin-top: 1rem; }
+.mytown-headline__row { display: flex; align-items: center; gap: 0.75rem; }
+.mytown-headline__row .mytown-portrait { border-radius: var(--radius-control); background: var(--surface); box-shadow: var(--shadow-1); }
+.mytown-headline__bubble {
+  position: relative;
+  flex: 1;
+  margin: 0;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  font-size: var(--fs-m);
+  font-weight: var(--fw-bold);
+  line-height: 1.55;
+}
+.mytown-headline__bubble::before {
+  content: '';
+  position: absolute;
+  left: -0.3125rem;
+  top: 50%;
+  width: 0.75rem;
+  height: 0.75rem;
+  background: inherit;
+  border-radius: 0.125rem;
+  transform: translateY(-50%) rotate(45deg);
+  box-shadow: -1px 1px 0 rgba(17, 24, 39, 0.04);
+}
+.mytown-headline--urgent .mytown-headline__bubble { background: #fff6f3; box-shadow: var(--shadow-1), inset 0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent); }
+.mytown-headline .btn { width: 100%; margin-top: 0.875rem; }
+
+/* ---- 数字の帯（1枚の白いカードに4つ。線のアイコン＋大きな数字） ---- */
+.mytown-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 1rem;
+  padding: 0.75rem 0.25rem;
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.mytown-stat { display: flex; flex-direction: column; align-items: center; gap: 0.125rem; padding: 0.125rem 0.25rem; min-width: 0; }
+.mytown-stat + .mytown-stat { border-left: 1px solid var(--hairline); }
+.mytown-stat .mytown-icon .icon { width: 1.25rem; height: 1.25rem; }
+.mytown-stat__value { font-size: 1.25rem; font-weight: var(--fw-bold); line-height: 1.25; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.mytown-stat__caption { font-size: 0.625rem; color: var(--g4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* ---- タブ（セグメント: 淡いグレーの溝に、選択中は白い面） ---- */
+.mytown-tabs { display: flex; gap: 0.25rem; margin-top: 1rem; padding: 0.25rem; border-radius: var(--radius-control); background: var(--g2); }
+.mytown-tab {
+  flex: 1;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border: 0;
+  border-radius: 0.5625rem;
+  background: transparent;
+  color: var(--g5);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.mytown-tab .icon { width: 1.125rem; height: 1.125rem; }
+.mytown-tab[aria-selected='true'] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08), 0 2px 6px rgba(17, 24, 39, 0.06); }
+.mytown-tab[aria-selected='true'] .icon { color: var(--brand); }
+.mytown-panel { padding-bottom: 1rem; }
+
+/* ---- 次のごほうび（白いカード＋アイコンの台座＋ブロックのゲージ） ---- */
+.mytown-goals__rail { display: flex; gap: 0.625rem; overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * var(--gutter)); padding: 0.125rem var(--gutter) 0.625rem; }
+.mytown-goals__rail::-webkit-scrollbar { display: none; }
+.mytown-goal {
+  flex: none;
+  width: 9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 0.75rem;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+}
+.mytown-goal--tap { cursor: pointer; }
+.mytown-goal__icon { position: relative; display: grid; place-items: center; width: 3.25rem; height: 3.25rem; border-radius: 50%; background: var(--g1); }
+.mytown-goal--gold .mytown-goal__icon { background: #fef3c7; }
+.mytown-goal--rank .mytown-goal__icon { background: var(--brand-soft); }
+.mytown-goal--item .mytown-goal__icon { background: var(--surface); outline: 1.5px dashed var(--g3); outline-offset: -1.5px; }
+.mytown-goal__icon .mytown-icon .icon { width: 1.625rem; height: 1.625rem; }
+.mytown-goal--gold .mytown-icon { color: var(--gold-ink); }
+.mytown-goal--gold .mytown-icon .icon path:first-child { fill: color-mix(in srgb, var(--gold) 35%, transparent); }
+.mytown-goal__q {
+  position: absolute;
+  right: -0.25rem;
+  top: -0.25rem;
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #ffffff;
+  font-size: 0.6875rem;
+  font-weight: var(--fw-bold);
+}
+.mytown-goal__title { font-size: var(--fs-xs); font-weight: var(--fw-bold); line-height: 1.4; min-height: 2.8em; color: var(--g5); }
+.mytown-goal__remain { font-size: 1.125rem; font-weight: var(--fw-bold); color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.mytown-goal__remain--hint { font-size: var(--fs-xs); font-weight: var(--fw-medium); color: var(--g4); line-height: 1.5; }
+.mytown-goal__go { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 1.75rem; padding: 0 0.625rem; border-radius: var(--radius-pill); background: var(--brand-soft); color: var(--brand-ink); font-size: var(--fs-xs); font-weight: var(--fw-bold); }
+.mytown-goal__go .mytown-icon { color: var(--brand); }
+.mytown-goal__go .mytown-icon .icon { width: 0.875rem; height: 0.875rem; }
+.mytown-gauge { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; width: 100%; }
+.mytown-gauge__block { display: block; height: 0.375rem; border-radius: 1px; background: var(--g2); }
+.mytown-gauge__block:first-child { border-radius: var(--radius-pill) 1px 1px var(--radius-pill); }
+.mytown-gauge__block:last-child { border-radius: 1px var(--radius-pill) var(--radius-pill) 1px; }
+.mytown-gauge__block--on { background: var(--ink); }
+.mytown-gauge--gold .mytown-gauge__block--on { background: var(--gold); }
+.mytown-gauge--silver .mytown-gauge__block--on { background: #9ca3af; }
+.mytown-gauge--rank .mytown-gauge__block--on { background: var(--brand); }
+
+/* ---- 地区のようす（ミニチュアの絵のタイル） ---- */
+.mytown-tiles__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; }
+.mytown-tile { display: flex; flex-direction: column; border-radius: var(--radius-m); background: var(--surface); box-shadow: var(--shadow-1); overflow: hidden; min-width: 0; }
+.mytown-tile--on { box-shadow: var(--shadow-1), 0 0 0 2px var(--brand); }
+.mytown-tile__pick { display: block; padding: 0; border: 0; background: none; cursor: pointer; }
+.mytown-tile__frame { position: relative; display: block; background: var(--g1); }
+.mytown-tile__art { display: block; width: 100%; height: auto; aspect-ratio: 160 / 104; }
+.mytown-tile__stars { position: absolute; left: 0.375rem; top: 0.375rem; display: flex; gap: 1px; padding: 0.1875rem 0.3125rem; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.92); box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08); }
+.mytown-tile__stars .mytown-icon .icon { width: 0.8125rem; height: 0.8125rem; stroke-width: 2; }
+.mytown-tile__badge {
+  position: absolute;
+  right: 0.375rem;
+  top: 0.375rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1875rem;
+  min-height: 1.375rem;
+  padding: 0 0.5rem 0 0.375rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+}
+.mytown-tile__badge .mytown-icon .icon { width: 0.875rem; height: 0.875rem; stroke-width: 2.1; }
+.mytown-tile__badge--warn { background: var(--brand-ink); color: #ffffff; }
+.mytown-tile__badge--warn .mytown-icon { color: #ffffff; }
+.mytown-tile__badge--gray { background: rgba(255, 255, 255, 0.94); color: var(--g5); outline: 1px dashed var(--sepia); outline-offset: -1px; }
+.mytown-tile__badge--lord { background: #fef3c7; color: var(--gold-ink); }
+.mytown-tile__badge--fog { width: 1.5rem; height: 1.5rem; min-height: 0; padding: 0; justify-content: center; color: var(--g4); font-size: var(--fs-s); outline: 1px dashed var(--g3); outline-offset: -1px; }
+.mytown-tile__foot { display: flex; align-items: center; gap: 0.375rem; padding: 0 0 0 0.75rem; min-height: 2.75rem; }
+.mytown-tile__dot { width: 0.5rem; height: 0.5rem; display: block; flex: none; border-radius: 50%; }
+.mytown-tile__name { flex: 1; min-width: 0; font-size: var(--fs-s); font-weight: var(--fw-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mytown-tile__visits { display: inline-flex; align-items: center; gap: 0.1875rem; font-size: var(--fs-s); font-weight: var(--fw-bold); color: var(--g5); font-variant-numeric: tabular-nums; }
+.mytown-tile__visits .mytown-icon { color: var(--g4); }
+.mytown-tile__visits .mytown-icon .icon { width: 0.9375rem; height: 0.9375rem; }
+.mytown-tile__pin { width: 2.75rem; height: 2.75rem; display: grid; place-items: center; border: 0; border-left: 1px solid var(--hairline); background: transparent; cursor: pointer; }
+.mytown-tile__pin .mytown-icon .icon { width: 1.25rem; height: 1.25rem; }
+.mytown-tile__pin:active { background: var(--brand-soft); }
+
+/* ---- コレクション（カード・思い出） ---- */
+.mytown-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+.mytown-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+  padding: 0.5rem 0.5rem 0.625rem;
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  min-width: 0;
+}
+.mytown-card--gold { background: linear-gradient(180deg, #fff8e1 0%, #ffffff 60%); box-shadow: var(--shadow-1), inset 0 0 0 1.5px color-mix(in srgb, var(--gold) 55%, transparent); }
+.mytown-card--silver { background: linear-gradient(180deg, #f3f4f6 0%, #ffffff 60%); box-shadow: var(--shadow-1), inset 0 0 0 1.5px #d1d5db; }
+.mytown-card--locked { box-shadow: none; outline: 1.5px dashed var(--g3); outline-offset: -1.5px; background: transparent; color: var(--g4); }
+.mytown-card__rank { align-self: flex-start; padding: 0 0.4375rem; border-radius: var(--radius-pill); background: var(--g1); color: var(--g5); font-size: 0.625rem; font-weight: var(--fw-bold); line-height: 1.6; }
+.mytown-card--gold .mytown-card__rank { background: #fef3c7; color: var(--gold-ink); }
+.mytown-card--gold .mytown-card__rank::before { content: '★ '; color: var(--gold); }
+.mytown-card__art { display: block; width: 100%; height: auto; aspect-ratio: 102 / 84; border-radius: 0.5rem; background: var(--g1); }
+.mytown-card__silhouette { display: grid; place-items: center; aspect-ratio: 102 / 84; border-radius: 0.5rem; background: var(--g1); color: var(--g3); font-size: 1.375rem; font-weight: var(--fw-bold); }
+.mytown-card__name { font-size: var(--fs-xs); font-weight: var(--fw-bold); line-height: 1.35; }
+.mytown-card__date { font-size: 0.625rem; color: var(--g4); font-variant-numeric: tabular-nums; }
+.mytown-memories { list-style: none; margin: 0; padding: 0 1rem; border-radius: var(--radius-m); background: var(--surface); box-shadow: var(--shadow-1); }
+.mytown-memory { display: flex; align-items: center; gap: 0.75rem; min-height: 3.5rem; padding: 0.625rem 0; }
+.mytown-memory + .mytown-memory { border-top: 1px solid var(--hairline); }
+.mytown-memory > .mytown-icon { width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--g1); }
+.mytown-memory--gold > .mytown-icon { background: #fef3c7; color: var(--gold-ink); }
+.mytown-memory--item > .mytown-icon { background: var(--brand-soft); color: var(--brand-ink); }
+.mytown-memory__body { display: flex; flex-direction: column; min-width: 0; }
+.mytown-memory__date { font-size: 0.625rem; color: var(--g4); font-variant-numeric: tabular-nums; }
+.mytown-memory__text { font-size: var(--fs-s); font-weight: var(--fw-bold); line-height: 1.5; }
+
+/* ---- 着せ替え ---- */
+.mytown-dress__preview { display: flex; align-items: center; gap: 0.75rem; margin-top: 1rem; padding: 0.5rem 1rem 0.5rem 0.5rem; border-radius: var(--radius-m); background: var(--surface); box-shadow: var(--shadow-1); }
+.mytown-dress__preview .mytown-portrait { border-radius: var(--radius-control); background: var(--g1); }
+.mytown-portrait { flex: none; }
+.mytown-items { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.mytown-items[aria-busy='true'] { opacity: 0.6; pointer-events: none; }
+.mytown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 3.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow var(--motion-fast), background var(--motion-fast);
+}
+.mytown-item__swatch { width: 2.5rem; height: 2.5rem; flex: none; display: grid; place-items: center; border-radius: 0.625rem; background: var(--g1); }
+.mytown-item__swatch .mytown-icon .icon { width: 1.375rem; height: 1.375rem; }
+.mytown-item__body { display: flex; flex-direction: column; min-width: 0; }
+.mytown-item__body b { font-size: var(--fs-s); font-weight: var(--fw-bold); }
+.mytown-item__body small { font-size: 0.625rem; color: var(--g4); line-height: 1.45; }
+.mytown-item--held { background: #fff6f3; box-shadow: var(--shadow-1), inset 0 0 0 1.5px var(--brand); }
+.mytown-item--held .mytown-item__swatch { background: var(--brand-soft); }
+.mytown-item--held .mytown-item__swatch .mytown-icon { color: var(--brand-ink); }
+.mytown-item--held small { color: var(--brand-ink); font-weight: var(--fw-bold); }
+.mytown-item--locked { background: transparent; box-shadow: none; outline: 1.5px dashed var(--g3); outline-offset: -1.5px; }
+.mytown-item--locked .mytown-item__swatch { background: transparent; }
+.mytown-item--locked b { color: var(--g4); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .mytown-goal--tap, .mytown-tile__pick, .mytown-item { transition: transform 0.12s; }
+  .mytown-goal--tap:active, .mytown-tile__pick:active, .mytown-item:active { transform: scale(0.98); }
+}

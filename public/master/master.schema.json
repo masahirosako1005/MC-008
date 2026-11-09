@@ -1,0 +1,363 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nnishi-kayoimachi:master-schema:1",
+  "title": "南森町周辺 マスタデータ",
+  "description": "public/master の7ファイルの構造（ドキュメント用）。各ファイルは $defs の対応する *File 定義に従う。件数・参照整合・座標の配置は scripts/master/check-master.mjs と MasterDataLoader が検証する（DI-13, SEC-22）。",
+  "anyOf": [
+    { "$ref": "#/$defs/DistrictsFile" },
+    { "$ref": "#/$defs/LandmarksFile" },
+    { "$ref": "#/$defs/ShopsFile" },
+    { "$ref": "#/$defs/ShopEventsFile" },
+    { "$ref": "#/$defs/RivalsFile" },
+    { "$ref": "#/$defs/MapFeaturesFile" },
+    { "$ref": "#/$defs/AmenityPointsFile" }
+  ],
+  "$defs": {
+    "DistrictsFile": {
+      "type": "object",
+      "description": "districts.json",
+      "required": ["schemaVersion", "city", "districts"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "city": { "$ref": "#/$defs/City" },
+        "districts": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/District" }
+        }
+      }
+    },
+    "LandmarksFile": {
+      "type": "object",
+      "description": "landmarks.json",
+      "required": ["schemaVersion", "landmarks"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "landmarks": {
+          "type": "array",
+          "minItems": 14,
+          "maxItems": 14,
+          "items": { "$ref": "#/$defs/Landmark" }
+        }
+      }
+    },
+    "ShopsFile": {
+      "type": "object",
+      "description": "shops.json",
+      "required": ["schemaVersion", "shops"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "shops": {
+          "type": "array",
+          "minItems": 66,
+          "maxItems": 66,
+          "items": { "$ref": "#/$defs/Shop" }
+        }
+      }
+    },
+    "ShopEventsFile": {
+      "type": "object",
+      "description": "shopEvents.json",
+      "required": ["schemaVersion", "shopEvents"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "shopEvents": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 200,
+          "items": { "$ref": "#/$defs/ShopEvent" }
+        }
+      }
+    },
+    "RivalsFile": {
+      "type": "object",
+      "description": "rivals.json",
+      "required": ["schemaVersion", "rivals"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "rivals": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": { "$ref": "#/$defs/Rival" }
+        }
+      }
+    },
+    "MapFeaturesFile": {
+      "type": "object",
+      "description": "mapFeatures.json（地図の背景と駅。© OpenStreetMap contributors）",
+      "required": ["schemaVersion", "attribution", "features", "stations"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "attribution": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "features": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": { "$ref": "#/$defs/MapFeature" }
+        },
+        "stations": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 50,
+          "items": { "$ref": "#/$defs/Station" }
+        }
+      }
+    },
+    "AmenityPointsFile": {
+      "type": "object",
+      "description": "amenityPoints.json（公衆トイレ・授乳室など。スポットではない）",
+      "required": ["schemaVersion", "attribution", "points"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "attribution": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "points": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 200,
+          "items": { "$ref": "#/$defs/AmenityPoint" }
+        }
+      }
+    },
+    "City": {
+      "type": "object",
+      "required": ["name", "origin", "bounds"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 20 },
+        "origin": { "$ref": "#/$defs/LatLng" },
+        "bounds": {
+          "type": "object",
+          "required": ["south", "west", "north", "east"],
+          "additionalProperties": false,
+          "properties": {
+            "south": { "$ref": "#/$defs/Latitude" },
+            "west": { "$ref": "#/$defs/Longitude" },
+            "north": { "$ref": "#/$defs/Latitude" },
+            "east": { "$ref": "#/$defs/Longitude" }
+          }
+        }
+      }
+    },
+    "District": {
+      "type": "object",
+      "required": ["id", "name", "shortName", "theme", "order", "color", "center", "entrance", "polygon"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/DistrictId" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 20 },
+        "shortName": { "type": "string", "minLength": 1, "maxLength": 8 },
+        "theme": {
+          "enum": ["門前町", "市場と食", "暮らし", "公園と路地", "川辺と桜"]
+        },
+        "order": { "type": "integer", "minimum": 1, "maximum": 99 },
+        "color": { "type": "string", "pattern": "^#[0-9a-f]{6}$" },
+        "center": { "$ref": "#/$defs/LatLng" },
+        "entrance": { "$ref": "#/$defs/LatLng", "description": "デモの位置リセット先。どのスポットからも 85m 以上離す" },
+        "polygon": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/LatLng" }
+        }
+      }
+    },
+    "Landmark": {
+      "type": "object",
+      "description": "名所",
+      "required": ["id", "districtId", "name", "lat", "lng", "category", "description", "amenities", "hours", "partner"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/LandmarkId" },
+        "districtId": { "$ref": "#/$defs/DistrictId" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 20 },
+        "lat": { "$ref": "#/$defs/Latitude" },
+        "lng": { "$ref": "#/$defs/Longitude" },
+        "category": { "type": "string", "minLength": 1, "maxLength": 12 },
+        "description": {
+          "type": "string",
+          "minLength": 40,
+          "maxLength": 70,
+          "description": "40〜70字の紹介文"
+        },
+        "amenities": {
+          "type": "array",
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/Amenity" }
+        },
+        "hours": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "例: '10:00–18:00（水休）'"
+        },
+        "partner": { "const": false }
+      }
+    },
+    "Shop": {
+      "type": "object",
+      "description": "店舗",
+      "required": ["id", "districtId", "name", "lat", "lng", "category", "description", "amenities", "hours", "partner"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/ShopId" },
+        "districtId": { "$ref": "#/$defs/DistrictId" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 20 },
+        "lat": { "$ref": "#/$defs/Latitude" },
+        "lng": { "$ref": "#/$defs/Longitude" },
+        "category": { "type": "string", "minLength": 1, "maxLength": 12 },
+        "description": {
+          "type": "string",
+          "minLength": 40,
+          "maxLength": 70,
+          "description": "40〜70字の紹介文"
+        },
+        "amenities": {
+          "type": "array",
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/Amenity" }
+        },
+        "hours": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "例: '10:00–18:00（水休）'"
+        },
+        "partner": { "type": "boolean" }
+      }
+    },
+    "ShopEvent": {
+      "type": "object",
+      "required": ["id", "spotId", "kind", "title", "description", "start", "end"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^c_[0-9a-z]{2,16}$" },
+        "spotId": { "$ref": "#/$defs/SpotId" },
+        "kind": {
+          "enum": ["coupon", "event"]
+        },
+        "title": { "type": "string", "minLength": 1, "maxLength": 30 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "start": { "$ref": "#/$defs/LocalDate" },
+        "end": { "$ref": "#/$defs/LocalDate" }
+      }
+    },
+    "Rival": {
+      "type": "object",
+      "required": ["id", "name", "patterns"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^r_[0-9a-z]{2,16}$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 20 },
+        "patterns": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "required": ["districtId", "intervalDays", "phase"],
+            "additionalProperties": false,
+            "properties": {
+              "districtId": { "$ref": "#/$defs/DistrictId" },
+              "intervalDays": { "type": "integer", "minimum": 1, "maximum": 60 },
+              "phase": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 59,
+                "description": "0..intervalDays-1"
+              }
+            }
+          }
+        }
+      }
+    },
+    "MapFeature": {
+      "type": "object",
+      "required": ["id", "kind", "name", "shape", "points"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^f_[0-9a-z_]{2,24}$" },
+        "kind": {
+          "enum": ["water", "park", "shrine", "campus", "arcade", "road", "rail"]
+        },
+        "name": { "type": "string", "minLength": 1, "maxLength": 20 },
+        "shape": {
+          "enum": ["line", "area"]
+        },
+        "widthM": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 300,
+          "description": "line の太さ（メートル）"
+        },
+        "points": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 40,
+          "items": { "$ref": "#/$defs/LatLng" }
+        }
+      }
+    },
+    "Station": {
+      "type": "object",
+      "required": ["id", "name", "lat", "lng", "lines"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^st_[0-9a-z_]{2,24}$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 20 },
+        "lat": { "$ref": "#/$defs/Latitude" },
+        "lng": { "$ref": "#/$defs/Longitude" },
+        "lines": { "type": "string", "minLength": 1, "maxLength": 40, "description": "路線名（表示用）" }
+      }
+    },
+    "AmenityPoint": {
+      "type": "object",
+      "required": ["id", "kind", "name", "lat", "lng", "note"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^a_[0-9a-z_]{2,24}$" },
+        "kind": {
+          "enum": ["toilet", "nursing", "aed"]
+        },
+        "name": { "type": "string", "minLength": 1, "maxLength": 20 },
+        "lat": { "$ref": "#/$defs/Latitude" },
+        "lng": { "$ref": "#/$defs/Longitude" },
+        "note": { "type": "string", "maxLength": 40, "description": "補足（例: 扇町公園内）" }
+      }
+    },
+    "Latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+    "Longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+    "LatLng": {
+      "type": "object",
+      "required": ["lat", "lng"],
+      "additionalProperties": false,
+      "properties": {
+        "lat": { "$ref": "#/$defs/Latitude" },
+        "lng": { "$ref": "#/$defs/Longitude" }
+      }
+    },
+    "DistrictId": { "type": "string", "pattern": "^d_[0-9a-z]{2,16}$" },
+    "SpotId": { "type": "string", "pattern": "^[ls]_[0-9a-z]{2,16}$" },
+    "LandmarkId": { "type": "string", "pattern": "^l_[0-9a-z]{2,16}$" },
+    "ShopId": { "type": "string", "pattern": "^s_[0-9a-z]{2,16}$" },
+    "Amenity": {
+      "enum": ["kids", "toilet", "nursing", "stroller", "rainOk", "parking"],
+      "description": "子連れ歓迎/トイレ/授乳室/ベビーカーOK/雨の日OK/駐車場"
+    },
+    "LocalDate": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "JST 暦日 YYYY-MM-DD"
+    }
+  }
+}

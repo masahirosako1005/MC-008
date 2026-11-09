@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 地図（広域・地区） | N西市 WF</title>
+<link rel="stylesheet" href="wf.css">
+</head>
+<body>
+<header class="page-head">
+  <a class="back" href="index.html">← 画面一覧</a>
+  <h1>01 地図（広域・地区）</h1>
+  <p class="meta">
+    <span class="badge acc">基準 B 未開拓への興味</span>
+    <span class="badge">ファイル 01_map_wide</span>
+    <span class="badge">遷移元：下部タブ「地図」（起動直後のホーム）</span>
+    <span class="badge">遷移先：02 近接／03 下シート／04 スポット詳細／09 デモメニュー</span>
+  </p>
+  <p><b>主な操作：</b>地区をタップしてズーム（広域→地区）／便利情報チップで絞り込み／下シートのつまみを引き上げる／右上の歯車を長押しでデモメニュー</p>
+</header>
+
+<section class="frames">
+  <!-- 状態A 広域 -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/11/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="topbar"><span>N西市</span><span class="gear">⚙</span></div>
+        <div class="chips"><span class="chip on">すべて</span><span class="chip">トイレ</span><span class="chip">子連れ歓迎</span><span class="chip">ベビーカーOK</span><span class="chip">雨の日OK</span></div>
+        <div class="map" style="top:84px">
+          <svg viewBox="0 0 390 640" preserveAspectRatio="xMidYMin slice">
+            <!-- 城下 Lv2 -->
+            <path d="M22 30 L186 24 L196 206 L30 218 Z" fill="#e8762c" fill-opacity=".65" stroke="#555" stroke-width="1.5"/>
+            <text x="40" y="60" font-size="14" font-weight="700" fill="#222">城下地区</text>
+            <text x="40" y="76" font-size="10" fill="#333">Lv2</text>
+            <text x="56" y="130" font-size="13">▲</text><text x="70" y="133" font-size="10" fill="#222">N西城跡</text>
+            <text x="96" y="186" font-size="13">▲</text><text x="110" y="189" font-size="10" fill="#222">武家屋敷通り</text>
+            <!-- 本町 Lv3 主 -->
+            <path d="M204 26 L368 36 L360 214 L206 204 Z" fill="#e8762c" stroke="#555" stroke-width="1.5"/>
+            <text x="222" y="62" font-size="14" font-weight="700" fill="#fff">本町地区</text>
+            <text x="222" y="78" font-size="10" fill="#fff">Lv3 ・ 主：旅人タロウ</text>
+            <text x="240" y="130" font-size="13" fill="#fff">▲</text><text x="254" y="133" font-size="10" fill="#fff">本町アーケード</text>
+            <text x="286" y="184" font-size="13" fill="#fff">▲</text><text x="300" y="187" font-size="10" fill="#fff">旧銀行館</text>
+            <!-- みなと Lv1 -->
+            <path d="M22 232 L190 224 L180 396 L26 406 Z" fill="#e8762c" fill-opacity=".35" stroke="#555" stroke-width="1.5"/>
+            <text x="44" y="266" font-size="14" font-weight="700" fill="#222">みなと地区</text>
+            <text x="44" y="282" font-size="10" fill="#333">Lv1</text>
+            <text x="70" y="330" font-size="13">▲</text><text x="84" y="333" font-size="10" fill="#222">大桟橋</text>
+            <text x="110" y="376" font-size="13">▲</text><text x="124" y="379" font-size="10" fill="#222">魚市場</text>
+            <!-- 里山 Lv0 未訪問 -->
+            <path d="M204 230 L368 240 L364 398 L198 392 Z" fill="#fff" stroke="#999" stroke-width="1.5" stroke-dasharray="6 4"/>
+            <text x="224" y="272" font-size="14" font-weight="700" fill="#777">里山地区</text>
+            <text x="224" y="288" font-size="10" fill="#777">Lv0 ・ まだ訪れていない</text>
+            <text x="250" y="340" font-size="13" fill="#999">▲</text><text x="264" y="343" font-size="10" fill="#777">棚田展望台</text>
+            <text x="300" y="378" font-size="13" fill="#999">？</text>
+            <!-- 湯の里 色あせ -->
+            <path d="M30 414 L360 406 L352 526 L36 534 Z" fill="#c4c4c4" fill-opacity=".7" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="6 4"/>
+            <text x="48" y="446" font-size="14" font-weight="700" fill="#555">湯の里地区</text>
+            <text x="48" y="462" font-size="10" fill="#555">Lv2 ・ 色あせ中（最終訪問 45日前）</text>
+            <rect x="262" y="432" width="56" height="18" rx="3" fill="#fff" stroke="#8a8a8a" stroke-dasharray="3 2"/>
+            <text x="270" y="445" font-size="10" fill="#555">色あせ</text>
+            <text x="110" y="500" font-size="13" fill="#777">▲</text><text x="124" y="503" font-size="10" fill="#555">湯の里源泉</text>
+            <text x="236" y="500" font-size="13" fill="#777">▲</text><text x="250" y="503" font-size="10" fill="#555">足湯公園</text>
+            <!-- 現在地 -->
+            <circle cx="160" cy="120" r="9" fill="#e8762c" stroke="#fff" stroke-width="3"/>
+          </svg>
+          <div class="canvas-note">地図・地区の絵は Canvas 描画（ここでは図形で代替）</div>
+        </div>
+        <div class="sheet h-grip">
+          <div class="grip"></div>
+          <div class="card" style="margin:0"><span class="tt tori">取</span><div>本町地区の主を旅人タロウに奪われた<small>いちばん近い：城下カフェ 95m</small></div><span class="r hint">▲ 引き上げ</span></div>
+        </div>
+        <span class="co" style="left:356px;top:90px">1</span>
+        <span class="co" style="left:340px;top:140px">2</span>
+        <span class="co" style="left:340px;top:346px">3</span>
+        <span class="co" style="left:340px;top:500px">4</span>
+        <span class="co" style="left:176px;top:190px">5</span>
+        <span class="co" style="left:12px;top:606px">6</span>
+        <span class="co" style="left:306px;top:14px">7</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>状態A：広域</b>　5地区の名前と名所だけを表示し、店舗は隠す。地区の色づき（Lv）と色あせが一目で分かる。</figcaption>
+  </figure>
+
+  <!-- 状態B 地区ズーム -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/11/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="topbar"><span class="bk">‹ 広域へ</span><span>城下地区 <span class="tag">Lv2</span></span><span class="gear">⚙</span></div>
+        <div class="chips"><span class="chip">すべて</span><span class="chip on">トイレ</span><span class="chip">子連れ歓迎</span><span class="chip">ベビーカーOK</span><span class="chip">雨の日OK</span></div>
+        <div class="map" style="top:84px">
+          <svg viewBox="0 0 390 640" preserveAspectRatio="xMidYMin slice">
+            <path d="M14 20 L376 12 L380 600 L10 612 Z" fill="#e8762c" fill-opacity=".18" stroke="#555" stroke-width="1.5"/>
+            <!-- 道路 -->
+            <path d="M40 120 L350 110 M60 300 L340 290 M80 480 L330 470 M120 30 L130 590 M250 20 L262 600" stroke="#fff" stroke-width="10" fill="none"/>
+            <!-- 名所 -->
+            <text x="150" y="90" font-size="18" fill="#e8762c">▲</text><text x="170" y="92" font-size="11" fill="#222">N西城跡 <tspan fill="#555">訪問3回</tspan></text>
+            <text x="60" y="400" font-size="18" fill="#8a8a8a">▲</text><text x="80" y="402" font-size="11" fill="#222">武家屋敷通り <tspan fill="#555">発見済み</tspan></text>
+            <!-- 店舗：訪問済み（色）／発見済み（シルエット）／未発見（？） -->
+            <circle cx="100" cy="200" r="9" fill="#e8762c"/><text x="114" y="204" font-size="11" fill="#222">城下カフェ <tspan fill="#555">訪問2回 ・ トイレ</tspan></text>
+            <circle cx="300" cy="230" r="9" fill="#8a8a8a"/><text x="314" y="234" font-size="11" fill="#222">丸岡和菓子店</text>
+            <circle cx="210" cy="360" r="9" fill="#e8762c"/><text x="224" y="364" font-size="11" fill="#222">城下茶寮 <tspan fill="#555">訪問1回 ・ トイレ</tspan></text>
+            <circle cx="300" cy="420" r="9" fill="#8a8a8a"/><text x="314" y="424" font-size="11" fill="#222">御堀端ベーカリー</text>
+            <circle cx="80" cy="478" r="9" fill="#fff" stroke="#999" stroke-dasharray="3 2"/><text x="76" y="482" font-size="10" fill="#777">？</text>
+            <circle cx="320" cy="488" r="9" fill="#fff" stroke="#999" stroke-dasharray="3 2"/><text x="316" y="492" font-size="10" fill="#777">？</text>
+            <circle cx="190" cy="484" r="9" fill="#fff" stroke="#999" stroke-dasharray="3 2"/><text x="186" y="488" font-size="10" fill="#777">？</text>
+            <!-- 現在地 + 80m -->
+            <circle cx="230" cy="250" r="90" fill="#e8762c" fill-opacity=".08" stroke="#e8762c" stroke-dasharray="4 4"/>
+            <circle cx="230" cy="250" r="9" fill="#e8762c" stroke="#fff" stroke-width="3"/>
+          </svg>
+          <div class="canvas-note">地区ズーム：店舗が見える。80m円の内側は 02 近接へ</div>
+        </div>
+        <div class="sheet h-grip">
+          <div class="grip"></div>
+          <div class="card spot" style="margin:0"><span class="ic sil">■</span><div>丸岡和菓子店<small>いちばん近い ・ 62m ・ 発見済み・未訪問</small></div><span class="r"><span class="tt mi" style="display:inline-flex">未</span></span></div>
+        </div>
+        <span class="co" style="left:96px;top:14px">8</span>
+        <span class="co" style="left:356px;top:90px">9</span>
+        <span class="co" style="left:330px;top:326px">10</span>
+        <span class="co" style="left:60px;top:530px">11</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+    </div>
+    <figcaption><b>状態B：地区ズーム（城下地区）</b>　地区をタップすると店舗が見える。訪問済みは色、発見済みはシルエット、未発見は「？」で位置だけ示す。</figcaption>
+  </figure>
+</section>
+
+<ol class="notes">
+  <li><span class="n">1</span>便利情報チップ（基準A）。広域では地区の絞り込みに使い、地区ズームで該当店舗だけを強調する。</li>
+  <li><span class="n">2</span>Lv3 の地区は濃い色＋名所に装飾。地区の主の名前を地区名の下に出す。奪われている場合は 03 の「取り返し」カードに連動。</li>
+  <li><span class="n">3</span>Lv0（未訪問）の地区は輪郭のみ＋破線。名所名は見せ、店舗は「？」すら見せない。興味の入口だけ残す（基準B）。</li>
+  <li><span class="n">4</span>色あせ中の地区は彩度・明度を下げ、破線枠と「色あせ」タグも付ける（色覚配慮）。Lv表記は変えない（Lvは下がらない）。</li>
+  <li><span class="n">5</span>現在地はアクセント色の点。広域では80m円は描かない。</li>
+  <li><span class="n">6</span>下シートのつまみ。いちばん近いスポットと、いちばん強い再訪理由1件だけを出す（詳細は 03）。</li>
+  <li><span class="n">7</span>歯車は通常タップで 10 設定、長押しで 09 デモメニュー。</li>
+  <li><span class="n">8</span>「‹ 広域へ」で戻る。地区名横に Lv タグ。</li>
+  <li><span class="n">9</span>「トイレ」チップON。該当店舗の名前に「・トイレ」を添え、該当しない店舗は薄くする（本図では省略）。</li>
+  <li><span class="n">10</span>80m円（破線）。円内に入ったスポットが「発見」になり、近接表示（02）に自動で切り替わる。</li>
+  <li><span class="n">11</span>未発見スポットは「？」で位置だけ示す（仮）。発表後に「？も見せない」案と比較する。</li>
+</ol>
+
+<nav class="nav"><a href="index.html">← 一覧</a><a href="02_map_near.html">次：02 地図（近接） →</a></nav>
+</body>
+</html>

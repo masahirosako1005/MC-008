@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>08 演出（全画面） | N西市 WF</title>
+<link rel="stylesheet" href="wf.css">
+<style>
+.bgmap{position:absolute;inset:0;background:#f1ece6}
+.ba{display:flex;gap:16px;align-items:center;margin:8px 0}
+.ba .dsw{width:84px;height:84px;border-radius:12px}
+.ba .arrow{font-size:28px;color:#fff}
+.bonus{margin-top:14px;border:1.5px solid var(--accent);color:#fff;border-radius:20px;padding:4px 14px;font-size:13px;background:rgba(232,118,44,.25)}
+/* 演出はステータスバー・タブバーも含めて全画面を覆う */
+.phone > .fx{z-index:8}
+</style>
+</head>
+<body>
+<header class="page-head">
+  <a class="back" href="index.html">← 画面一覧</a>
+  <h1>08 演出（全画面）</h1>
+  <p class="meta">
+    <span class="badge acc">基準 C 再訪動機</span>
+    <span class="badge">ファイル 08_effects</span>
+    <span class="badge">遷移元：04 訪問確定の直後（条件を満たしたとき）</span>
+    <span class="badge">遷移先：01 地図へ自動で戻る（2〜3秒、またはスキップ）</span>
+  </p>
+  <p><b>主な操作：</b>見るだけ。右上「スキップ」で即終了。複数条件を同時に満たした場合は 復活 → カード → 主交代 → アイテム の順に連続表示（仮）</p>
+</header>
+
+<section class="frames">
+  <!-- 金カード -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/12/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="bgmap"></div>
+        <span class="co" style="left:12px;top:60px">1</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+      <div class="fx">
+        <span class="skip">スキップ</span>
+        <div class="fxcard gold"><span class="big">金</span><b>本町地区</b><small>10回通いました</small></div>
+        <h3>金カード獲得！</h3>
+        <p>通い続けた証。マイ街のカード一覧に追加されました</p>
+      </div>
+    </div>
+    <figcaption><b>銀・金カード獲得</b>　同じ地区に3回（銀）／10回または四季（金）。カードの絵は Canvas。</figcaption>
+  </figure>
+
+  <!-- 地区の主交代 -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/12/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="bgmap"></div>
+        <span class="co" style="left:12px;top:60px">2</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+      <div class="fx">
+        <span class="skip">スキップ</span>
+        <div class="crown">主</div>
+        <h3>本町地区の主になりました</h3>
+        <p>旅人タロウから取り返しました</p>
+        <p>直近30日：あなた 13回 ／ タロウ 12回</p>
+      </div>
+    </div>
+    <figcaption><b>地区の主交代</b>　直近30日の訪問回数が最多になった瞬間。奪われたときは演出ではなく 03 の「取」カードで知らせる。</figcaption>
+  </figure>
+
+  <!-- アイテム獲得 -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/12/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="bgmap"></div>
+        <span class="co" style="left:12px;top:60px">3</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+      <div class="fx">
+        <span class="skip">スキップ</span>
+        <div class="ph" style="width:140px;height:140px;font-size:14px;background:#fff;color:var(--ink)">提灯（Canvas）</div>
+        <h3>アイテム獲得：提灯</h3>
+        <p>マイ街とアバターに飾れます</p>
+        <p class="hint" style="color:#bbb">入手条件：城下地区の秋まつり期間に訪問（イベント）</p>
+      </div>
+    </div>
+    <figcaption><b>アイテム獲得</b>　訪問・イベント参加で入手。Could 優先度のため、枠と文言のみ。</figcaption>
+  </figure>
+
+  <!-- 復活（おかえり） -->
+  <figure>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span class="demo">デモ 2026/12/09</span><span>●●●</span></div>
+      <div class="screen">
+        <div class="bgmap"></div>
+        <span class="co" style="left:12px;top:60px">4</span>
+        <span class="co" style="left:312px;top:466px">5</span>
+      </div>
+      <div class="tabbar"><div class="tab on"><span class="ic"></span>地図</div><div class="tab"><span class="ic"></span>図鑑</div><div class="tab"><span class="ic"></span>マイ街</div><div class="tab"><span class="ic"></span>ランキング</div></div>
+      <div class="fx">
+        <span class="skip">スキップ</span>
+        <div class="ba"><span class="dsw fade"></span><span class="arrow">→</span><span class="dsw l2"></span></div>
+        <h3>おかえり！</h3>
+        <p>湯の里地区が色を取り戻しました</p>
+        <p>45日ぶりの再訪 ・ Lv2 のまま、建物もそのまま</p>
+        <div class="bonus">今日はこの地区の獲得ポイント 1.5倍</div>
+      </div>
+    </div>
+    <figcaption><b>復活（おかえり）</b>　色あせ地区を再訪した瞬間。灰色の地区に色が戻るアニメーション（Canvas）＋おかえりボーナス。</figcaption>
+  </figure>
+</section>
+
+<ol class="notes">
+  <li><span class="n">1</span>カードは地区名と回数だけ。文言は「通いました」で、網羅ではなく通いへの報酬だと分かるようにする。演出中はタブバーも覆う。</li>
+  <li><span class="n">2</span>主交代は「取り返した」文脈を添える。奪われた側には演出を出さない（失う体験を作らない。5章）。</li>
+  <li><span class="n">3</span>アイテムは入手条件を一行で。イベント（店舗協力）が無くても基本ゲームは成立する。</li>
+  <li><span class="n">4</span>復活は色あせ→色づきの before／after を見せ、Lv と建物が減っていないことを言葉でも示す。</li>
+  <li><span class="n">5</span>おかえりボーナス（当日その地区の獲得ポイント1.5倍、仮）。実演の手順6で最後に見せる山場。</li>
+</ol>
+
+<nav class="nav"><a href="07_ranking.html">← 07 ランキング</a><a href="09_demo_menu.html">次：09 デモメニュー →</a></nav>
+</body>
+</html>

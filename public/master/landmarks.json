@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "landmarks": [
+    {
+      "id": "l_mm01",
+      "districtId": "d_minamimori",
+      "name": "大阪天満宮",
+      "lat": 34.69609,
+      "lng": 135.51277,
+      "category": "神社",
+      "description": "学問の神様・菅原道真公をまつる神社。「天満の天神さん」と呼ばれて親しまれ、夏の天神祭で知られる。",
+      "amenities": ["toilet", "kids", "stroller"],
+      "hours": "境内自由",
+      "partner": false
+    },
+    {
+      "id": "l_mm02",
+      "districtId": "d_minamimori",
+      "name": "天満天神繁昌亭",
+      "lat": 34.6968,
+      "lng": 135.51225,
+      "category": "寄席",
+      "description": "大阪天満宮の北側にある上方落語の寄席。2006年に開場した定席で、落語の公演を間近で楽しめる。",
+      "amenities": ["toilet", "rainOk"],
+      "hours": "公演により異なる",
+      "partner": false
+    },
+    {
+      "id": "l_mm03",
+      "districtId": "d_minamimori",
+      "name": "堀川戎神社",
+      "lat": 34.6997,
+      "lng": 135.50885,
+      "category": "神社",
+      "description": "「堀川のえべっさん」と親しまれる商売繁盛の神社。1月の十日戎は多くの参拝者でにぎわう。",
+      "amenities": ["kids"],
+      "hours": "境内自由",
+      "partner": false
+    },
+    {
+      "id": "l_tm01",
+      "districtId": "d_tenma",
+      "name": "天満市場",
+      "lat": 34.70659,
+      "lng": 135.51262,
+      "category": "市場",
+      "description": "生鮮食品や総菜の店が集まる市場。天神橋筋商店街のすぐそばにあり、地元の台所として親しまれている。",
+      "amenities": ["toilet", "rainOk"],
+      "hours": "店舗により異なる",
+      "partner": false
+    },
+    {
+      "id": "l_tm02",
+      "districtId": "d_tenma",
+      "name": "天神橋筋商店街（天四）",
+      "lat": 34.703,
+      "lng": 135.5112,
+      "category": "商店街",
+      "description": "南北約2.6kmに続く、日本一長いといわれる商店街の一角。アーケードの下を雨の日でも歩いて回れる。",
+      "amenities": ["rainOk", "stroller", "toilet"],
+      "hours": "店舗により異なる",
+      "partner": false
+    },
+    {
+      "id": "l_tm03",
+      "districtId": "d_tenma",
+      "name": "天満駅前の高架下",
+      "lat": 34.7049,
+      "lng": 135.51232,
+      "category": "飲食街",
+      "description": "JR天満駅の周りに小さな飲食店や立ち飲みが軒を連ねる一帯。夕方から夜は食べ歩きの人でにぎわう。",
+      "amenities": ["rainOk"],
+      "hours": "店舗により異なる",
+      "partner": false
+    },
+    {
+      "id": "l_tr01",
+      "districtId": "d_tenroku",
+      "name": "大阪くらしの今昔館",
+      "lat": 34.71047,
+      "lng": 135.51143,
+      "category": "博物館",
+      "description": "江戸時代の大坂の町並みを館内に実物大で再現した、住まいと暮らしの歴史を伝える博物館。",
+      "amenities": ["toilet", "rainOk", "kids"],
+      "hours": "開館時間内（休館日あり）",
+      "partner": false
+    },
+    {
+      "id": "l_tr02",
+      "districtId": "d_tenroku",
+      "name": "天神橋筋商店街 北の玄関（天六）",
+      "lat": 34.7111,
+      "lng": 135.5105,
+      "category": "商店街",
+      "description": "天神橋筋六丁目駅のそばにある商店街の北の入口。ここから南へアーケードの食べ歩きが始まる。",
+      "amenities": ["rainOk", "stroller"],
+      "hours": "店舗により異なる",
+      "partner": false
+    },
+    {
+      "id": "l_og01",
+      "districtId": "d_ogimachi",
+      "name": "扇町公園",
+      "lat": 34.70416,
+      "lng": 135.50915,
+      "category": "公園",
+      "description": "芝生の広場や木陰のベンチがある都心の公園。散歩やひと休みに向き、休日は家族連れでにぎわう。",
+      "amenities": ["kids", "toilet", "stroller"],
+      "hours": "終日開放",
+      "partner": false
+    },
+    {
+      "id": "l_og02",
+      "districtId": "d_ogimachi",
+      "name": "キッズプラザ大阪",
+      "lat": 34.70468,
+      "lng": 135.50985,
+      "category": "博物館",
+      "description": "遊びながら学べる子どものための博物館。体験型の展示が多く、雨の日の親子のお出かけにも向く。",
+      "amenities": ["kids", "toilet", "nursing", "stroller", "rainOk"],
+      "hours": "開館時間内（休館日あり）",
+      "partner": false
+    },
+    {
+      "id": "l_og03",
+      "districtId": "d_ogimachi",
+      "name": "中崎町の路地",
+      "lat": 34.7066,
+      "lng": 135.504,
+      "category": "町並み",
+      "description": "古い長屋や町家が残る路地に、カフェや雑貨店が点在する一帯。細い道をゆっくり歩いて巡りたい。",
+      "amenities": [],
+      "hours": "見学自由（店舗により異なる）",
+      "partner": false
+    },
+    {
+      "id": "l_ok01",
+      "districtId": "d_okawa",
+      "name": "造幣局（桜の通り抜け）",
+      "lat": 34.69519,
+      "lng": 135.52097,
+      "category": "名所",
+      "description": "貨幣をつくる造幣局の本局。毎年春の「桜の通り抜け」では、構内の桜並木が一般に公開される。",
+      "amenities": ["toilet"],
+      "hours": "構内の公開は春の通り抜けの期間など",
+      "partner": false
+    },
+    {
+      "id": "l_ok02",
+      "districtId": "d_okawa",
+      "name": "泉布観",
+      "lat": 34.6981,
+      "lng": 135.52145,
+      "category": "建築",
+      "description": "明治初期に造幣寮の応接所として建てられた洋風建築。国の重要文化財で、大川のほとりに立つ。",
+      "amenities": [],
+      "hours": "外観は見学自由（内部は公開日のみ）",
+      "partner": false
+    },
+    {
+      "id": "l_ok03",
+      "districtId": "d_okawa",
+      "name": "南天満公園",
+      "lat": 34.69197,
+      "lng": 135.5146,
+      "category": "公園",
+      "description": "大川の北岸に沿って細長く続く公園。川沿いの桜並木の下を散歩でき、春は花見の人でにぎわう。",
+      "amenities": ["kids", "toilet", "stroller"],
+      "hours": "終日開放",
+      "partner": false
+    }
+  ]
+}
