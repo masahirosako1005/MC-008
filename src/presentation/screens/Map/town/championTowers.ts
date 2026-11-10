@@ -11,6 +11,7 @@ import type { Point2D } from '@/Common/ui/canvas/geometry';
 import { PALETTE } from '@/Common/ui/theme/palette';
 import type { AvatarSprite } from '@/presentation/shared/avatarSprite';
 import { drawCrownGlyph, drawDistrictRibbon, shade } from '@/presentation/screens/Map/town/districtBanners';
+import type { BannerBox } from '@/presentation/screens/Map/town/districtBanners';
 import { TERRITORY_RIVAL_COLOR } from '@/presentation/screens/Map/town/townTypes';
 import type { DistrictMood } from '@/presentation/screens/Map/town/vitality';
 
@@ -52,36 +53,31 @@ export interface PlacedTower {
 }
 
 /**
+ * 自分のアバターをよけるための入力。
+ * 自分の位置は動かさない（2026-11-10 ユーザー指摘「ズームと同時に自分のアイコンの位置がずれていく」）ので、
+ * 自分が領主・王冠・旗・紙札に重なる地区では、台座のほうを横へずらして描く（台座は地区の印で、実際の位置を持たない）。
+ */
+export interface TowerDodge {
+  /** 自分のアバターと「あなた」の札が占める矩形（画面座標） */
+  readonly self: BannerBox;
+  /** 画面の幅（ずらした台座を画面の外へ出さない。CSS px） */
+  readonly width: number;
+  /** 地区ID → いまのずれ（CSS px。フレームをまたいで覚え、少しずつ寄せる。広域を出たら呼び出し側で空にする） */
+  readonly state: Map<string, number>;
+}
+
+/** 自分と、ずらした台座のあいだに空ける幅（CSS px） */
+const DODGE_GAP_PX = 6;
+/** ずらした台座と、ほかの台座のあいだに空ける幅（CSS px） */
+const DODGE_NEIGHBOR_GAP_PX = 8;
+
+/**
  * 台座の大きさ（引いて見るほど少し小さく）。
  * @param metersPerPx 縮尺
  * @returns 倍率
  */
 export function towerScaleOf(metersPerPx: number): number { // audit-ignore: fnlog-missing 毎フレーム描画
   return Math.min(1.08, Math.max(0.78, 3.4 / Math.max(0.1, metersPerPx)));
-}
-
-/** 自分の印を台座の横へずらすときの、台座の端からのすき間（CSS px） */
-const SELF_SIDE_GAP_PX = 26;
-/** 自分の印（アバター＋「あなた」の札）が占めるおおよその大きさ（足もとから。CSS px） */
-const SELF_MARK = { halfW: 18, up: 46, down: 30 } as const;
-
-/**
- * 広域で、自分の印が王者の台座に重なるときに描く位置を台座の横へずらす（どちらが自分か分かるように。見た目だけで現在地は変えない）。
- * @param p 自分の足もとの画面座標
- * @param towers 描いた台座
- * @param vpWidth 描画領域の幅
- * @returns 描く位置（重ならなければ p のまま）
- */
-export function selfMarkClearOfTowers(p: Point2D, towers: readonly PlacedTower[], vpWidth: number): Point2D { // audit-ignore: fnlog-missing 毎フレーム描画
-  for (const tower of towers) {
-    const hit = p.x + SELF_MARK.halfW > tower.x && p.x - SELF_MARK.halfW < tower.x + tower.w && p.y + SELF_MARK.down > tower.y && p.y - SELF_MARK.up < tower.y + tower.h;
-    if (!hit) continue;
-    const left = tower.x - SELF_SIDE_GAP_PX;
-    const right = tower.x + tower.w + SELF_SIDE_GAP_PX;
-    const toLeft = p.x < tower.x + tower.w / 2 ? left >= SELF_MARK.halfW : right > vpWidth - SELF_MARK.halfW;
-    return { x: toLeft ? left : right, y: p.y };
-  }
-  return p;
 }
 
 /**
@@ -91,13 +87,110 @@ export function selfMarkClearOfTowers(p: Point2D, towers: readonly PlacedTower[]
  * @param t 現在時刻（ミリ秒）
  * @param textScale 文字の拡大率
  * @param k 大きさ（towerScaleOf）
+ * @param dodge 自分のアバターをよける入力（無ければずらさない）
  * @returns 描いた台座（当たり判定用）
- * @sideEffect canvas に描く
+ * @sideEffect canvas に描く。dodge.state を更新する
  */
-export function drawChampionTowers(ctx: CanvasRenderingContext2D, towers: readonly ChampionTowerInput[], t: number, textScale: number, k: number): PlacedTower[] { // audit-ignore: fnlog-missing 毎フレーム描画
+export function drawChampionTowers(ctx: CanvasRenderingContext2D, towers: readonly ChampionTowerInput[], t: number, textScale: number, k: number, dodge?: TowerDodge): PlacedTower[] { // audit-ignore: fnlog-missing 毎フレーム描画
   const placed: PlacedTower[] = [];
-  for (const tower of [...towers].sort((a, b) => a.at.y - b.at.y)) placed.push(drawTower(ctx, tower, t, textScale, k));
+  const shifts = dodge === undefined ? undefined : towerShifts(ctx, towers, dodge, textScale, k);
+  for (const tower of [...towers].sort((a, b) => a.at.y - b.at.y)) placed.push(drawTower(ctx, tower, t, textScale, k, shifts?.get(tower.districtId) ?? 0));
   return placed;
+}
+
+/**
+ * 台座の部品（領主と王冠・石の台座・旗と紙札・色あせのタグ）が占めるおおよその矩形を、描く前に求める。
+ * 旗と紙札の幅は districtBanners の drawDistrictRibbon と同じ式。
+ * @param ctx 2D コンテキスト（文字の幅を測る）
+ * @param tower 台座
+ * @param textScale 文字の拡大率
+ * @param k 大きさ
+ * @returns 矩形（画面座標。ずらす前の位置）
+ */
+function towerParts(ctx: CanvasRenderingContext2D, tower: ChampionTowerInput, textScale: number, k: number): BannerBox[] { // audit-ignore: fnlog-missing 毎フレーム描画
+  const fx = tower.at.x;
+  const fy = tower.at.y + 6 * k;
+  const standY = fy - 21 * k;
+  const a = tower.lordName === undefined ? undefined : tower.avatar;
+  const lordHalf = a === undefined ? 14 * k : Math.max(a.footX, a.width - a.footX, 9 * k);
+  // 王冠は頭の上に 17k ほど浮く（揺れのぶんを足す）。主なしは「？」の玉
+  const lordTop = a === undefined ? standY - 32 * k : standY - a.footY - 20 * k;
+  ctx.save();
+  ctx.font = canvasFont(13 * k, 800, textScale);
+  const ribbonW = ctx.measureText(tower.name).width + 22 * k * textScale + (tower.isLordMe ? 16 * k : 0) + 26 * k;
+  ctx.font = canvasFont(10 * k, 800, textScale);
+  const tagW = tower.lordName === undefined ? 0 : Math.min(ctx.measureText(tower.lordName).width, 96 * k) + 26 * k + (tower.lordLost ? 30 * k : 0);
+  ctx.font = canvasFont(11, 700, textScale);
+  const fadeW = tower.fadeTag === undefined ? 0 : ctx.measureText(tower.fadeTag).width + 12;
+  ctx.restore();
+  const labelW = Math.max(ribbonW, tagW);
+  const labelTop = fy + 9 * k;
+  const parts: BannerBox[] = [
+    { x: fx - lordHalf, y: lordTop, w: lordHalf * 2, h: standY - lordTop },
+    { x: fx - 31 * k, y: standY - 6 * k, w: 62 * k, h: 36 * k },
+    { x: fx - labelW / 2, y: labelTop, w: labelW, h: (tower.lordName === undefined ? 22 : 39) * k * textScale + 6 * k },
+  ];
+  if (fadeW > 0) parts.push({ x: fx + ribbonW / 2 - 6 * k - fadeW / 2, y: labelTop + 2 * k * textScale - 17 * textScale, w: fadeW, h: 17 * textScale });
+  return parts;
+}
+
+/**
+ * 自分のアバターをよけるために、各台座を横へずらす幅を決める（重ならない台座は 0）。
+ * @param ctx 2D コンテキスト
+ * @param towers 台座
+ * @param dodge 自分の矩形・画面の幅・覚えているずれ
+ * @param textScale 文字の拡大率
+ * @param k 大きさ
+ * @returns 地区ID → ずらす幅（CSS px）
+ * @sideEffect dodge.state を更新する
+ */
+function towerShifts(ctx: CanvasRenderingContext2D, towers: readonly ChampionTowerInput[], dodge: TowerDodge, textScale: number, k: number): Map<string, number> { // audit-ignore: fnlog-missing 毎フレーム描画
+  const parts = new Map<string, BannerBox[]>();
+  for (const tower of towers) parts.set(tower.districtId, towerParts(ctx, tower, textScale, k));
+  const out = new Map<string, number>();
+  for (const tower of towers) {
+    const id = tower.districtId;
+    const prev = dodge.state.get(id);
+    const others: BannerBox[] = [];
+    for (const [otherId, boxes] of parts) if (otherId !== id) others.push(...boxes);
+    const target = dodgeTarget(parts.get(id) ?? [], others, dodge, prev ?? 0);
+    // 広域に入った最初のフレームはそのまま置き、あとは少しずつ寄せる（台座が跳ばないように）
+    const next = prev === undefined || Math.abs(target - prev) < 0.5 ? target : prev + (target - prev) * 0.2;
+    dodge.state.set(id, next);
+    out.set(id, next);
+  }
+  return out;
+}
+
+/**
+ * 台座1つをずらす幅を決める。向きは動きの小さいほう（前のフレームでずらしていればその向き）。
+ * ほかの台座にぶつかる・画面から出るなら反対側。
+ * @param own その台座の部品の矩形（ずらす前）
+ * @param others ほかの台座の部品の矩形
+ * @param dodge 自分の矩形・画面の幅
+ * @param prev 前のフレームのずれ（向きを保つ）
+ * @returns ずらす幅（CSS px。重ならなければ 0）
+ */
+function dodgeTarget(own: readonly BannerBox[], others: readonly BannerBox[], dodge: TowerDodge, prev: number): number { // audit-ignore: fnlog-missing 毎フレーム描画
+  const s = dodge.self;
+  const rows = own.filter((r) => r.y < s.y + s.h && r.y + r.h > s.y);
+  if (!rows.some((r) => r.x < s.x + s.w && r.x + r.w > s.x)) return 0;
+  const right = Math.max(...rows.map((r) => s.x + s.w + DODGE_GAP_PX - r.x));
+  const left = Math.min(...rows.map((r) => s.x - DODGE_GAP_PX - (r.x + r.w)));
+  const order = prev < 0 || (prev === 0 && -left < right) ? [left, right] : [right, left];
+  /**
+   * ずらした先が画面の中に収まるか。
+   * @param dx ずらす幅
+   * @returns 収まれば true
+   */
+  const inside = (dx: number): boolean => own.every((r) => r.x + dx >= 4 && r.x + r.w + dx <= dodge.width - 4); // audit-ignore: fnlog-missing 毎フレーム描画
+  /**
+   * ずらした先が、ほかの台座から離れているか。
+   * @param dx ずらす幅
+   * @returns 離れていれば true
+   */
+  const clear = (dx: number): boolean => !own.some((r) => others.some((o) => r.x + dx < o.x + o.w + DODGE_NEIGHBOR_GAP_PX && r.x + r.w + dx > o.x - DODGE_NEIGHBOR_GAP_PX && r.y < o.y + o.h && r.y + r.h > o.y)); // audit-ignore: fnlog-missing 毎フレーム描画
+  return order.find((dx) => inside(dx) && clear(dx)) ?? order.find((dx) => inside(dx)) ?? 0;
 }
 
 /**
@@ -121,11 +214,12 @@ export function hitTestTower(placed: readonly PlacedTower[], p: Point2D): string
  * @param t 現在時刻
  * @param textScale 文字の拡大率
  * @param k 大きさ
+ * @param dx 横へずらす幅（自分のアバターをよけるとき。CSS px）
  * @returns 描いた範囲
  * @sideEffect canvas に描く
  */
-function drawTower(ctx: CanvasRenderingContext2D, tower: ChampionTowerInput, t: number, textScale: number, k: number): PlacedTower { // audit-ignore: fnlog-missing 毎フレーム描画
-  const fx = tower.at.x;
+function drawTower(ctx: CanvasRenderingContext2D, tower: ChampionTowerInput, t: number, textScale: number, k: number, dx: number): PlacedTower { // audit-ignore: fnlog-missing 毎フレーム描画
+  const fx = tower.at.x + dx;
   const fy = tower.at.y + 6 * k;
   const standY = fy - 21 * k;
   const hasLord = tower.lordName !== undefined;

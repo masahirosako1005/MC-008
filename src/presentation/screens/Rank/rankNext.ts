@@ -200,7 +200,7 @@ export function createNextBody(dto: RankStatusDto, base: readonly string[]): HTM
 }
 
 /**
- * 特典ロードを横に送り、次の特典（無ければ最後の特典）を真ん中に置く。DOM に入れた後に呼ぶ。
+ * 特典ロードを横に送り、次の特典（無ければ最後の特典）を左から2つ目に置く。DOM に入れた後に呼ぶ。
  * @param root 「NEXT」のカード
  * @sideEffect 特典ロードの scrollLeft を変える
  */
@@ -209,6 +209,7 @@ export function centerNextPerk(root: HTMLElement): void {
   const road = root.querySelector<HTMLElement>('.rank-perks');
   const target = road?.querySelector<HTMLElement>('.rank-perk[data-state="next"]') ?? road?.querySelector<HTMLElement>('.rank-perk:last-child');
   if (road === null || road === undefined || target === null || target === undefined) return log.exit(undefined, '特典ロードなし');
-  road.scrollLeft = Math.max(0, target.offsetLeft - (road.clientWidth - target.offsetWidth) / 2);
+  // 次の特典を左から2つ目に置く（1つ前の獲得済みが左端。右端は次の1つが半分見えて切れる）
+  road.scrollLeft = Math.max(0, target.offsetLeft - parseFloat(getComputedStyle(road).paddingLeft) - target.offsetWidth);
   log.exit(undefined, `scrollLeft=${road.scrollLeft}`);
 }

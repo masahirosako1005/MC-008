@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>まちクエ 設計書</title>
+<link rel="stylesheet" href="assets/doc.css">
+<script src="assets/doc.js" defer></script>
+</head>
+<body>
+
+<header class="top">
+  <a class="logo" href="00_入口.html"><span class="pin"></span>まちクエ ドキュメント</a>
+  <nav>
+    <a href="00_入口.html">入口・場所</a>
+    <a href="01_要件定義書.html">要件定義書</a>
+    <a class="on" href="02_設計書.html">設計書</a>
+  </nav>
+</header>
+
+<div class="hero">
+  <div class="kicker">DESIGN</div>
+  <h1>まちクエ 設計書</h1>
+  <p class="lead">「どう作っているか」をまとめたもの。全体の構成、層とフォルダ、ドメインモデル、データ、API、認証、品質の決まり。各章に元の文書とコードの場所を付けています。</p>
+  <div class="meta">
+    <span>2026-11-10 時点</span>
+    <span>元文書：docs/01〜08・10〜13</span>
+    <span>コード：C:\AI-Sprint\workspace\MC-008\src</span>
+  </div>
+</div>
+
+<div class="layout">
+<aside class="toc"><p class="ttl">目次</p></aside>
+<main>
+
+<!-- 1 -->
+<section class="sec" id="system">
+  <h2>全体の構成</h2>
+  <div class="src"><b>元の文書</b><span>docs/09 §7</span><span>docs/12 §3</span><span>docs/11 §1</span></div>
+
+  <p>同じソース（<code>src/</code>）から、動かし方の違う3つの構成を作れます。</p>
+
+  <h3>① 発表デモ（既定）— 端末だけで動く</h3>
+  <div class="arch">
+    <div class="box user"><b>アプリ</b><small>index.html → src/main.ts</small></div>
+    <div class="arrow both">読み書き</div>
+    <div class="box db"><b>localStorage</b><small>旅人・台帳・領主・設定・装い</small></div>
+    <div class="arrow both">storage イベント</div>
+    <div class="box user"><b>店舗 CMS</b><small>cms.html → src/cmsMain.ts<br>（同じブラウザ）</small></div>
+  </div>
+  <p class="note"><code>npm run dev</code>（5173）。サーバーなし。CMS の登録は同じブラウザのアプリへすぐ届く。</p>
+
+  <h3>② 連携サーバー — 別の端末どうしをつなぐ</h3>
+  <div class="arch">
+    <div class="box user"><b>店舗 CMS（PC）</b><small>ID＋パスワードでログイン<br>別オリジン</small></div>
+    <div class="arrow">HTTP<br>/api/cms/*</div>
+    <div class="box srv"><b>連携サーバー</b><small>src/serverMain.ts<br>Node 標準（node:http・node:sqlite）<br>CMS のユースケースをサーバー側で実行</small></div>
+    <div class="arrow">スナップショット<br>＋ SSE</div>
+    <div class="box user"><b>アプリ（スマホ）</b><small>起動時に取得<br>前回の写しを保存</small></div>
+  </div>
+  <div class="arch" style="grid-template-columns: 1fr auto 1.25fr auto 1fr;">
+    <div></div><div></div>
+    <div class="box db"><b>SQLite</b><small>登録内容・変更履歴・CMS アカウント</small></div>
+    <div></div><div></div>
+  </div>
+  <p class="note"><code>npm run dev:backend</code>（サーバー 8787＋Vite 5174）／<code>npm run demo:backend</code>（8787）／<code>npm run demo:fresh</code>（8790、空の状態）。サーバーが止まっても、アプリは前回の写し → マスタだけ、の順で動く。</p>
+
+  <h3>③ 商用版 — 利用者データをサーバーに置く</h3>
+  <div class="arch">
+    <div class="box user"><b>アプリ（スマホ）</b><small>VITE_APP_BACKEND=server<br>外部ログイン（LINE・Google）</small></div>
+    <div class="arrow">https<br>/api/app/*</div>
+    <div class="box srv"><b>利用者 API</b><small>アプリと同じユースケース・domain を実行<br>距離・1日1回・EXP はサーバーが計算</small></div>
+    <div class="arrow both">SQL</div>
+    <div class="box db"><b>PostgreSQL</b><small>旅人・訪問・台帳・利用者・セッション<br>（この PC では PGlite）</small></div>
+  </div>
+  <p class="note"><code>npm run serve:app-local</code>（8787）。当面はローカルで動かす決定。段階0〜2 が完了（§12）。</p>
+
+  <h3>技術スタック</h3>
+  <div class="grid g4">
+    <div class="card"><h4>画面</h4><p>TypeScript 6（strict）＋Vite 8。<b>フレームワークなし</b>（Vanilla TS、DOM API のみ）。描画は Canvas 2D。</p></div>
+    <div class="card"><h4>テスト</h4><p>Vitest 5（テストファイル 172）。E2E は playwright-core＋ローカルの Edge。</p></div>
+    <div class="card"><h4>連携サーバー</h4><p>Node 標準だけ（<code>node:http</code>／<code>node:https</code>・<code>node:sqlite</code>）。依存パッケージなし。</p></div>
+    <div class="card"><h4>商用版の DB</h4><p>PostgreSQL。実行時の依存は <code>pg</code> だけ。テストは PGlite。</p></div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="sec" id="layers">
+  <h2>層の構成（DDD・疎結合）</h2>
+  <div class="src"><b>元の文書</b><span>docs/01_architecture.md</span></div>
+
+  <div class="layers">
+    <div class="layer p"><b>presentation</b><span>画面・Canvas 描画・入力処理・画面遷移</span><i>src/presentation/（222）</i></div>
+    <div class="downs">▼ 使う</div>
+    <div class="layer a"><b>application</b><span>ユースケース（1操作＝1クラス）・DTO・イベントの配送</span><i>src/application/（143）</i></div>
+    <div class="downs">▼ 使う</div>
+    <div class="layer d"><b>domain</b><span>ビジネスルール。純粋な TypeScript で<b>外部依存ゼロ</b>。リポジトリとポートは IF だけ</span><i>src/domain/（94）</i></div>
+    <div class="downs">▲ IF を実装する</div>
+    <div class="layer i"><b>infrastructure</b><span>保存（localStorage・SQLite・PostgreSQL）・API・GPS・時計・サーバー・DI</span><i>src/infrastructure/（141）</i></div>
+    <div class="layer c"><b>Common</b><span>共通 UI・ロガー・Result 型・ID 型・ユーティリティ（すべての層から使える）</span><i>src/Common/（58）</i></div>
+  </div>
+  <p class="note">（ ）はファイル数。2026-11-10 時点。</p>
+
+  <div class="callout"><b class="lbl">依存の向き（最重要）</b>依存は常に 外側 → 内側。domain は <code>fetch</code>・<code>localStorage</code>・DOM・<code>Date.now()</code>・<code>Math.random()</code> を使わない。違反は静的監査（<code>dependency-rule</code>）が見つける。</div>
+
+  <h3>参照してよい相手</h3>
+  <div class="tw"><table>
+    <tr><th>参照元 ＼ 参照先</th><th class="c">presentation</th><th class="c">application</th><th class="c">domain</th><th class="c">infrastructure</th><th class="c">Common</th></tr>
+    <tr><td><b>presentation</b></td><td class="c">○</td><td class="c">○</td><td class="c">○ 型だけ</td><td class="c"><b>×</b></td><td class="c">○</td></tr>
+    <tr><td><b>application</b></td><td class="c"><b>×</b></td><td class="c">○</td><td class="c">○</td><td class="c"><b>×</b> IF 経由</td><td class="c">○</td></tr>
+    <tr><td><b>domain</b></td><td class="c"><b>×</b></td><td class="c"><b>×</b></td><td class="c">○</td><td class="c"><b>×</b></td><td class="c">○ 一部</td></tr>
+    <tr><td><b>infrastructure</b></td><td class="c"><b>×</b></td><td class="c">○ IF 実装</td><td class="c">○ IF 実装</td><td class="c">○</td><td class="c">○</td></tr>
+    <tr><td><b>Common</b></td><td class="c"><b>×</b></td><td class="c"><b>×</b></td><td class="c"><b>×</b></td><td class="c"><b>×</b></td><td class="c">○</td></tr>
+  </table></div>
+
+  <h3>副作用はポート経由（差し替えで デモ／本番／テスト を切り替える）</h3>
+  <div class="tw"><table>
+    <tr><th>ポート（domain/ports）</th><th>本番の実装</th><th>デモ・テストの実装</th></tr>
+    <tr><td class="mono">Clock</td><td class="mono">SystemClock</td><td><span class="mono">DemoClock</span>（日付を進める）</td></tr>
+    <tr><td class="mono">GeoProvider</td><td class="mono">BrowserGeoProvider（GPS）</td><td><span class="mono">DemoGeoProvider</span>（地図タップで移動）</td></tr>
+    <tr><td class="mono">RandomSource</td><td class="mono">CryptoRandomSource</td><td class="mono">SeededRandomSource</td></tr>
+    <tr><td class="mono">*Repository</td><td>localStorage／サーバーの写し／PostgreSQL</td><td>メモリ・PGlite</td></tr>
+  </table></div>
+  <p class="note">組み立ては <code>src/infrastructure/di/container.ts</code> の1か所だけ。</p>
+</section>
+
+<!-- 3 -->
+<section class="sec" id="folders">
+  <h2>フォルダ構成（どこに何があるか）</h2>
+  <div class="src"><b>元の文書</b><span>docs/02_folder_structure.md</span><span>docs/08 §1</span></div>
+
+<pre class="tree"><span class="h">C:\AI-Sprint\workspace\MC-008\</span>
+├─ <span class="h">CLAUDE.md</span>                 <span class="c">企画書＋開発の必須ルール</span>
+├─ <span class="h">docs/</span>                     <span class="c">設計・規約・監査の文書（01〜13）</span>
+│   ├─ <span class="h">html/</span>                 <span class="c">★ この HTML（入口・要件定義書・設計書）</span>
+│   ├─ audit/                <span class="c">監査の記録</span>
+│   └─ templates/            <span class="c">ロガー・関数の雛形</span>
+├─ index.html                <span class="c">アプリの入口 → src/main.ts</span>
+├─ cms.html                  <span class="c">店舗 CMS の入口 → src/cmsMain.ts</span>
+├─ demo-fresh.cmd            <span class="c">空の状態で始めるデモ（ダブルクリック）</span>
+├─ <span class="h">src/</span>
+│   ├─ main.ts / cmsMain.ts / serverMain.ts   <span class="c">入口3つ（アプリ・CMS・サーバー）</span>
+│   ├─ <span class="h">presentation/</span>
+│   │   ├─ App/              <span class="c">タブ・ルーター（AppRouter.ts）・歯車</span>
+│   │   ├─ screens/          <span class="c">Launch Map Spot Zukan Avatar Ranking Rank Effects Settings Demo Login</span>
+│   │   ├─ cms/              <span class="c">店舗 CMS の画面</span>
+│   │   └─ shared/           <span class="c">画面どうしで共有（アバターの絵・写真）</span>
+│   ├─ <span class="h">application/</span>
+│   │   ├─ usecases/         <span class="c">exploration spot town reward competition avatar survey cms settings session demo</span>
+│   │   ├─ dto/  events/  ports/
+│   ├─ <span class="h">domain/</span>
+│   │   ├─ exploration/      <span class="c">旅人・訪問記録・距離・発見の規則</span>
+│   │   ├─ town/             <span class="c">地区・成長 Lv・色あせ</span>
+│   │   ├─ spot/             <span class="c">スポット・便利情報・営業時間</span>
+│   │   ├─ revisit/          <span class="c">クーポン・イベント・期間・再訪理由</span>
+│   │   ├─ reward/           <span class="c">ポイント台帳・カード・アイテム・ランク</span>
+│   │   ├─ competition/      <span class="c">領主・ランキング・ライバル</span>
+│   │   ├─ avatar/           <span class="c">部品カタログ・セット</span>
+│   │   └─ posting/ events/ ports/
+│   ├─ <span class="h">infrastructure/</span>
+│   │   ├─ di/               <span class="c">組み立て（container.ts ほか）</span>
+│   │   ├─ storage/          <span class="c">localStorage の保存と検証</span>
+│   │   ├─ master/           <span class="c">マスタの読み込みと検証</span>
+│   │   ├─ api/              <span class="c">サーバーの呼び出し（ブラウザ側）と API の道筋</span>
+│   │   ├─ server/           <span class="c">http/ sqlite/ pg/ app/ auth/ cli/（サーバー側）</span>
+│   │   └─ geo/ time/ random/ events/ demo/ json/
+│   └─ <span class="h">Common/</span>              <span class="c">ui/ logging/ result/ types/ utils/ constants/ qr/</span>
+├─ <span class="h">public/</span>
+│   ├─ master/               <span class="c">地区・名所・店舗・クーポン・ライバル・地図の背景（JSON）</span>
+│   └─ photos/               <span class="c">図鑑・スポット詳細の写真とクレジット</span>
+├─ <span class="h">scripts/</span>                  <span class="c">audit/ master/ e2e/ dev/ build/ photos/</span>
+├─ wireframes/               <span class="c">画面のワイヤーフレーム（01〜10）</span>
+└─ dist-*/ .data/            <span class="c">ビルドの成果物・ローカルの DB（自動生成）</span></pre>
+
+  <div class="grid g3">
+    <div class="card"><h4>画面はルートと同じ場所に</h4><p><code>#/spot/:id</code> → <code>screens/Spot/</code>。フォルダを見れば遷移がわかる。</p></div>
+    <div class="card"><h4>テストは隣に置く</h4><p>対象ファイルと同じフォルダに <code>*.test.ts</code>。</p></div>
+    <div class="card"><h4>共通部品は1か所</h4><p>2つ以上の画面・層で要るものは <code>src/Common/</code> へ。</p></div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="sec" id="routes">
+  <h2>画面とルート</h2>
+  <div class="src"><b>元の文書</b><span>docs/08 §6</span><b>コードの場所</b><span>src/presentation/App/AppRouter.ts</span></div>
+  <div class="tw"><table>
+    <tr><th>ルート（hash）</th><th>画面</th><th>フォルダ（src/presentation/）</th><th>ワイヤーフレーム</th></tr>
+    <tr><td class="mono">#/map、#/map/:districtId</td><td>地図（既定）</td><td class="mono">screens/Map/</td><td class="mono">01・02・03</td></tr>
+    <tr><td class="mono">#/spot/:spotId</td><td>スポット詳細</td><td class="mono">screens/Spot/</td><td class="mono">04</td></tr>
+    <tr><td class="mono">#/zukan、#/zukan/:districtId</td><td>図鑑／記録</td><td class="mono">screens/Zukan/</td><td class="mono">05</td></tr>
+    <tr><td class="mono">#/avatar</td><td>アバター</td><td class="mono">screens/Avatar/</td><td class="mono">06（旧マイ街）</td></tr>
+    <tr><td class="mono">#/ranking</td><td>ランキング</td><td class="mono">screens/Ranking/</td><td class="mono">07</td></tr>
+    <tr><td class="mono">#/rank</td><td>ランク</td><td class="mono">screens/Rank/</td><td>—</td></tr>
+    <tr><td class="mono">#/settings</td><td>設定</td><td class="mono">screens/Settings/</td><td class="mono">10</td></tr>
+    <tr><td class="mono">#/demo</td><td>デモメニュー（デモビルドだけ登録）</td><td class="mono">screens/Demo/</td><td class="mono">09</td></tr>
+    <tr><td>（URL なし）</td><td>全画面演出／起動／ログイン</td><td class="mono">screens/Effects/・Launch/・Login/</td><td class="mono">08</td></tr>
+  </table></div>
+  <ul class="note">
+    <li>パラメータは ID の parse 関数で検証し、不正なら地図へ。</li>
+    <li>DOM は <code>Common/ui/dom.ts</code> の <code>h()</code> だけで作る（<code>innerHTML</code> 禁止）。</li>
+    <li>presentation が受け取る入口は <code>AppServices</code> の1つだけ（ユースケースの束）。</li>
+    <li>幅 500px 以上では 390×844 のスマホ枠を中央に描く（発表用）。</li>
+  </ul>
+</section>
+
+<!-- 5 -->
+<section class="sec" id="domain">
+  <h2>ドメインモデル</h2>
+  <div class="src"><b>元の文書</b><span>docs/01 §2</span><span>docs/08 §3</span><b>コードの場所</b><span>src/domain/</span></div>
+
+  <div class="tw"><table>
+    <tr><th>コンテキスト</th><th>主役（集約など）</th><th>守る決まり（不変条件）</th><th>フォルダ</th></tr>
+    <tr><td class="nw"><b>探索</b></td><td class="mono">Traveler、VisitRecord、GeoPoint、Distance</td><td>発見・訪問は 80m 以内。同じスポットは1日1回。処理済みの操作 ID は無変更で返す</td><td class="mono">exploration/</td></tr>
+    <tr><td class="nw"><b>街</b></td><td class="mono">District、GrowthPolicy、FadePolicy</td><td><b>成長は下がらない</b>。色あせは最終訪問日からの日数で決まり、保存しない</td><td class="mono">town/</td></tr>
+    <tr><td class="nw"><b>スポット</b></td><td class="mono">Spot（Landmark／Shop）、Amenity</td><td>マスタ。必ず1つの地区に属する</td><td class="mono">spot/</td></tr>
+    <tr><td class="nw"><b>再訪動機</b></td><td class="mono">ShopEvent、Period、RevisitReason</td><td>期間は開始≦終了。理由の優先順位は定数（期限＞奪還＞色あせ＞未達成＞新着）</td><td class="mono">revisit/</td></tr>
+    <tr><td class="nw"><b>報酬</b></td><td class="mono">PointLedger、CardPolicy、TravelerRank</td><td>台帳は<b>追記専用</b>。残高は台帳から導出（<code>setBalance</code> を作らない）</td><td class="mono">reward/</td></tr>
+    <tr><td class="nw"><b>競争</b></td><td class="mono">LordshipBoard、LordPolicy、Ranking、Rival</td><td>領主は直近30日の最多。挑戦者が「上回った」ときだけ交代</td><td class="mono">competition/</td></tr>
+    <tr><td class="nw"><b>アバター</b></td><td class="mono">AvatarCatalog、AvatarSets</td><td>部品は通った実績から導出。奪われる条件は使わない</td><td class="mono">avatar/</td></tr>
+    <tr><td class="nw"><b>投稿</b></td><td class="mono">PostText</td><td>NFC 正規化・制御文字除去・1〜200字</td><td class="mono">posting/</td></tr>
+  </table></div>
+
+  <div class="callout"><b class="lbl">設計ガード「失う体験を作らない」</b>成長 Lv・カード・アイテム・部品は、<b>追記専用の訪問記録から毎回導出</b>する。保存しないので、構造的に減らせない。色あせ・廃れは表示用の値。</div>
+
+  <h3>クエスト達成（訪問）の流れ</h3>
+  <div class="flow">
+    <div class="step"><b>画面</b><small>ボタン → 操作 ID を発行</small></div>
+    <div class="step hot"><b>VisitSpotUseCase</b><small>位置を取る → 旅人を読む</small></div>
+    <div class="step"><b>traveler.visit()</b><small>domain が距離・1日1回を判定</small></div>
+    <div class="step"><b>保存</b><small>版数で楽観ロック</small></div>
+    <div class="step hot"><b>SpotVisited</b><small>イベントを発行</small></div>
+  </div>
+  <p class="note">そのあと、イベントを購読したユースケースが順に動く：</p>
+  <div class="flow">
+    <div class="step"><b>1 地区の変化</b><small>DistrictRevived<br>DistrictGrown</small></div>
+    <div class="step"><b>2 報酬</b><small>台帳に追記 → PointsAwarded<br>WelcomeBackBonusGranted<br>CardAwarded・ItemAcquired</small></div>
+    <div class="step"><b>3 領主の再判定</b><small>DistrictLordChanged</small></div>
+    <div class="step hot"><b>演出</b><small>画面はイベントを購読して表示<br>復活 → カード → 領主 → アイテム</small></div>
+  </div>
+  <p class="note">ユースケースは画面を直接呼ばない。途中で失敗しても訪問記録は残る。</p>
+
+  <h3>主な設計の決定（D1〜D17 から）</h3>
+  <div class="tw"><table>
+    <tr><th>#</th><th>項目</th><th>決定</th></tr>
+    <tr><td class="mono">D1</td><td>フレームワーク</td><td>Vanilla TypeScript＋Vite＋Vitest。依存を最小にし、<code>innerHTML</code> 禁止を守りやすくする</td></tr>
+    <tr><td class="mono">D2</td><td>訪問回数</td><td>訪問記録の件数（同じスポットは JST の暦日で1日1件）。カード・領主・ランキングはすべてこれで数える</td></tr>
+    <tr><td class="mono">D3</td><td>成長スコア</td><td>訪問したスポットの種類数＋訪問回数。Lv1≧1、Lv2≧5、Lv3≧10。建物数＝min(スコア, 12)</td></tr>
+    <tr><td class="mono">D5</td><td>色あせ</td><td>最終訪問からの日数 d。d&lt;23 fresh／23≦d&lt;30 soon／d≧30 fading／訪問なし never</td></tr>
+    <tr><td class="mono">D6</td><td>おかえり</td><td>訪問時に fading なら復活。当日その地区は基本点×1.5（差分を bonus の行で追記）</td></tr>
+    <tr><td class="mono">D7・D8</td><td>領主と奪還</td><td>同数なら現職維持。奪還に必要な回数＝領主の回数−自分の回数＋1</td></tr>
+    <tr><td class="mono">D9</td><td>ライバル</td><td>決定論的な模擬ライバル（<code>rivals.json</code>）。日付から純粋に計算</td></tr>
+    <tr><td class="mono">D11</td><td>ポイント</td><td>名所10・店舗15（店舗の回遊を促す）・購入10</td></tr>
+    <tr><td class="mono">D13</td><td>デモの日付</td><td>DemoClock＝実時刻＋ずらし日数。何度でも同じ流れで再現できる</td></tr>
+    <tr><td class="mono">D15</td><td>位置の保存</td><td>生の座標は保存しない。保存するのはスポット ID・日時・地区</td></tr>
+  </table></div>
+</section>
+
+<!-- 6 -->
+<section class="sec" id="data">
+  <h2>データ設計</h2>
+  <div class="src"><b>元の文書</b><span>docs/08 §5</span><span>docs/12 §4</span><span>docs/06</span></div>
+
+  <h3>マスタデータ（読み込んだら変えない）</h3>
+  <div class="tw"><table>
+    <tr><th>ファイル（public/master/）</th><th>中身</th></tr>
+    <tr><td class="mono">districts.json</td><td>地区5（ID・名前・テーマ・色・範囲・入口）</td></tr>
+    <tr><td class="mono">landmarks.json／shops.json</td><td>名所14／店舗66（位置・カテゴリ・紹介文・便利情報・営業時間・協力店）</td></tr>
+    <tr><td class="mono">shopEvents.json</td><td>クーポン・イベント（約15件、模擬）</td></tr>
+    <tr><td class="mono">rivals.json</td><td>模擬ライバル7人と背景活動</td></tr>
+    <tr><td class="mono">mapFeatures.json／amenityPoints.json</td><td>川・公園・道路・線路・駅／公衆トイレ（OpenStreetMap 由来、出典を表示）</td></tr>
+  </table></div>
+  <p class="note">作り方：<code>scripts/master/source/*.mjs</code> → <code>npm run master:build</code>／<code>master:check</code>／<code>master:hash</code>。読み込みは <code>MasterDataLoader</code> が構造・件数・ID・外部キー・地区の内側かを検証。</p>
+  <div class="tw"><table>
+    <tr><th>ID</th><th>地区</th><th>スポット ID の2字</th></tr>
+    <tr><td class="mono"><i class="dot" style="background:var(--d-mm)"></i>d_minamimori</td><td>南森町・天満宮地区</td><td class="mono">mm（例 l_mm01 大阪天満宮、s_mm01）</td></tr>
+    <tr><td class="mono"><i class="dot" style="background:var(--d-tm)"></i>d_tenma</td><td>天満地区</td><td class="mono">tm</td></tr>
+    <tr><td class="mono"><i class="dot" style="background:var(--d-tr)"></i>d_tenroku</td><td>天六地区</td><td class="mono">tr</td></tr>
+    <tr><td class="mono"><i class="dot" style="background:var(--d-og)"></i>d_ogimachi</td><td>扇町・中崎町地区</td><td class="mono">og</td></tr>
+    <tr><td class="mono"><i class="dot" style="background:var(--d-ok)"></i>d_okawa</td><td>大川沿い地区</td><td class="mono">ok</td></tr>
+  </table></div>
+
+  <h3>端末の保存（localStorage）— 構成①</h3>
+  <div class="tw"><table>
+    <tr><th>キー（P＝接頭辞）</th><th>中身</th></tr>
+    <tr><td class="mono">P+'traveler.'+id</td><td>旅人（発見・訪問・クーポン利用・処理済みの操作 ID）</td></tr>
+    <tr><td class="mono">P+'ledger.'+id</td><td>ポイント台帳（追記専用）</td></tr>
+    <tr><td class="mono">P+'lordship.'+id、P+'rivalActions.'+id</td><td>領主の盤、ライバル行動</td></tr>
+    <tr><td class="mono">P+'memories.'+id</td><td>訪問の思い出（写真1枚とメモ。写真24枚まで）</td></tr>
+    <tr><td class="mono">P+'settings'、P+'session'、P+'consent'</td><td>設定・いまの旅人・同意</td></tr>
+    <tr><td class="mono">P+'cms.snapshot'</td><td>CMS の公開スナップショットの写し</td></tr>
+    <tr><td class="mono">nnishi.demo.*</td><td>デモ専用（日付のずらし・CMS の上書き分）。本番と名前空間を分ける</td></tr>
+  </table></div>
+  <p class="note">保存形式は <code>{ schemaVersion, version, data }</code>。読むときは unknown → 検証済みの型へ。版数が合わなければ <code>CONFLICT</code>。未知の版は退避して <code>STORAGE_FAILED</code>。</p>
+
+  <h3>PostgreSQL の表 — 構成③</h3>
+  <div class="tw"><table>
+    <tr><th>版</th><th>表</th><th>中身</th><th>主な制約</th><th>状況</th></tr>
+    <tr><td class="c">1</td><td class="mono">travelers</td><td>旅人 ID・表示名・版数</td><td>版数で楽観ロック</td><td><span class="b done">済</span></td></tr>
+    <tr><td class="c">1</td><td class="mono">traveler_discoveries</td><td>発見</td><td>UNIQUE(旅人, スポット)。更新不可</td><td><span class="b done">済</span></td></tr>
+    <tr><td class="c">1</td><td class="mono">traveler_visits</td><td>訪問（スポット・地区・日時・暦日・操作 ID）</td><td>UNIQUE(旅人, スポット, 暦日)＝1日1回。更新不可</td><td><span class="b done">済</span></td></tr>
+    <tr><td class="c">1</td><td class="mono">traveler_redemptions</td><td>クーポン利用</td><td>UNIQUE(旅人, クーポン)。更新不可</td><td><span class="b done">済</span></td></tr>
+    <tr><td class="c">1</td><td class="mono">traveler_operations</td><td>処理済みの操作 ID（直近500件）</td><td>UNIQUE(旅人, 操作 ID)</td><td><span class="b done">済</span></td></tr>
+    <tr><td class="c">1</td><td class="mono">point_ledgers、ledger_entries</td><td>ポイント台帳（残高の列は持たない）</td><td>points ≧ 0。更新不可</td><td><span class="b done">済</span></td></tr>
+    <tr><td class="c">2</td><td class="mono">app_users、app_user_identities</td><td>利用者、外部ログインとの対応（提供元・sub）</td><td>UNIQUE(提供元, sub)</td><td><span class="b done">済</span></td></tr>
+    <tr><td class="c">2</td><td class="mono">app_sessions、app_login_states</td><td>セッション（トークンはハッシュで保存）、ログイン途中の state</td><td>期限・1回だけ使える</td><td><span class="b done">済</span></td></tr>
+    <tr><td class="c">3</td><td class="mono">avatar_outfits、league_rewards</td><td>選んだ装い、月末の報酬</td><td>—</td><td><span class="b todo">段階3</span></td></tr>
+  </table></div>
+  <ul class="note">
+    <li>訪問・発見・台帳の表は追記だけ。DB のトリガーが UPDATE を拒否する。</li>
+    <li>領主とランキングは <code>traveler_visits</code> から計算し、保存値を別に持たない。</li>
+    <li>形の版は <code>migrations.ts</code>。出した版の SQL は書き換えず、次の版として足す。</li>
+    <li>コードの場所：<code>src/infrastructure/server/pg/</code>。</li>
+  </ul>
+</section>
+
+<!-- 7 -->
+<section class="sec" id="api">
+  <h2>API</h2>
+  <div class="src"><b>元の文書</b><span>docs/09 §7.3</span><span>docs/12 §6</span><b>コードの場所</b><span>src/infrastructure/api/apiRoutes.ts</span><span>src/infrastructure/server/</span></div>
+
+  <p>応答はどれも <code>{ ok, value }</code>／<code>{ ok:false, error:{ code, message, details } }</code>。</p>
+
+  <h3>公開の API（アプリが使う）</h3>
+  <div class="tw"><table>
+    <tr><th>道筋</th><th>用途</th></tr>
+    <tr><td class="mono">GET /api/health</td><td>動作確認</td></tr>
+    <tr><td class="mono">GET /api/public/cms-snapshot</td><td>公開スナップショット（ETag。同じなら 304）</td></tr>
+    <tr><td class="mono">GET /api/public/cms-snapshot/stream</td><td>版番号の変化（SSE）</td></tr>
+  </table></div>
+
+  <h3>CMS の API（ログインした店舗・運営者）</h3>
+  <div class="tw"><table>
+    <tr><th>道筋</th><th>用途</th></tr>
+    <tr><td class="mono">GET /api/cms/shops、/api/cms/shops/:spotId</td><td>店舗の一覧・店舗の情報</td></tr>
+    <tr><td class="mono">PUT /api/cms/shops/:spotId/info</td><td>営業時間・便利情報の保存</td></tr>
+    <tr><td class="mono">POST /api/cms/shops/:spotId/events、…/events/:id/withdraw</td><td>クーポン・イベントの登録・取り下げ</td></tr>
+    <tr><td class="mono">GET /api/cms/shops/:spotId/visit-stats</td><td>来店データ（いまはダミー）</td></tr>
+    <tr><td class="mono">POST /api/auth/login、logout、password／GET /api/auth/me</td><td>ログイン・ログアウト・自分のパスワード変更・ログイン中の人</td></tr>
+    <tr><td class="mono">GET・POST /api/cms/accounts、PUT …/:id/shops、…/:id/status</td><td>アカウントの一覧・作成・担当店舗・停止と再開（運営者だけ）</td></tr>
+  </table></div>
+  <p class="note">失敗コード：未ログイン 401、他店・権限なし 403、ロック中 423、回数制限 429。道筋は <code>apiAuthRoutes.ts</code>。</p>
+
+  <h3>利用者 API（商用版。<code>/api/app/*</code>）</h3>
+  <div class="tw"><table>
+    <tr><th>道筋</th><th>用途</th><th>状況</th></tr>
+    <tr><td class="mono">auth/providers、auth/&lt;提供元&gt;/start、callback、auth/logout、me</td><td>外部ログイン・ログアウト・自分の情報</td><td><span class="b done">済</span></td></tr>
+    <tr><td class="mono">POST discoveries、visits、purchases、tickets/use</td><td>発見・訪問・購入・チケット</td><td><span class="b done">済</span></td></tr>
+    <tr><td class="mono">GET state</td><td>サーバーの記録の写し</td><td><span class="b done">済</span></td></tr>
+    <tr><td class="mono">GET lords、GET ranking、PUT avatar</td><td>領主・ランキング・装い</td><td><span class="b todo">段階3</span></td></tr>
+    <tr><td class="mono">GET export、DELETE me</td><td>書き出し・退会</td><td><span class="b todo">段階4</span></td></tr>
+  </table></div>
+
+  <h3>サーバーの守り</h3>
+  <div class="grid g3">
+    <div class="card"><h4>入口</h4><p>許可したホスト名だけ。書き込みは JSON だけ、Origin を照合、本文 16KB まで。</p></div>
+    <div class="card"><h4>回数制限</h4><p>書き込みは1つの相手につき1分 120回。SSE は全体 200本・相手ごと 10本。</p></div>
+    <div class="card"><h4>二重登録の防止</h4><p>操作 ID で冪等。訪問と加点は1つのトランザクション。速すぎる移動（時速 30km 超・仮）は断る。</p></div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="sec" id="auth">
+  <h2>認証</h2>
+  <div class="src"><b>元の文書</b><span>docs/09 §7.4</span><span>docs/12 §5</span><span>docs/13 §0</span></div>
+  <div class="grid g2">
+    <div class="card accent"><h4>店舗 CMS</h4><ul>
+      <li>ID＋パスワード（scrypt でハッシュ化）</li>
+      <li>Cookie <code>cms_session</code>：12時間／無操作 60分</li>
+      <li>5回失敗で15分ロック、ログインは 10回/分</li>
+      <li>ロール：運営者／店舗。店舗は担当店舗だけ（サーバー側で照合）</li>
+      <li>アプリと別オリジン。TLS か中継が無いと起動しない</li>
+      <li><span class="b todo">未</span> 2要素認証（TOTP）、メールでの再設定</li>
+    </ul><p class="where">src/infrastructure/server/auth/・cli/</p></div>
+    <div class="card accent"><h4>利用者アプリ（商用版）</h4><ul>
+      <li>外部ログイン：OpenID Connect の認可コード＋PKCE</li>
+      <li>受け取るのは提供元と利用者 ID（sub）だけ</li>
+      <li>Cookie <code>app_session</code>：HttpOnly・Secure・SameSite=Strict。30日／無操作 14日（仮）</li>
+      <li>提供元の追加は設定だけ（LINE・Google の設定は入っている）</li>
+      <li><span class="b todo">未</span> 実物の LINE・Google での確認、ログアウトのボタン</li>
+    </ul><p class="where">src/infrastructure/server/app/（oidc/ ほか）</p></div>
+  </div>
+  <div class="flow">
+    <div class="step"><b>start</b><small>state・nonce・PKCE を作る</small></div>
+    <div class="step"><b>提供元で同意</b><small>LINE・Google</small></div>
+    <div class="step"><b>callback</b><small>state の照合・コードの交換<br>ID トークンの検証</small></div>
+    <div class="step"><b>利用者を探す／作る</b></div>
+    <div class="step hot"><b>セッションの Cookie</b><small>アプリへ戻す</small></div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="sec" id="ui">
+  <h2>見た目の設計（色・書体・絵）</h2>
+  <div class="src"><b>元の文書</b><span>docs/10_color_system.md</span><b>コードの場所</b><span>src/Common/ui/styles/tokens.css</span><span>src/Common/ui/theme/palette.ts</span></div>
+
+  <div class="sw">
+    <div><i style="background:#bc5b1b"></i><span><b>ブランド</b>#bc5b1b</span></div>
+    <div><i style="background:#a54c14"></i><span><b>濃い塗り・文字</b>#a54c14</span></div>
+    <div><i style="background:#f6f0e6"></i><span><b>地（ベージュ）</b>#f6f0e6</span></div>
+    <div><i style="background:#2a211b"></i><span><b>文字（墨）</b>#2a211b</span></div>
+    <div><i style="background:#20150e"></i><span><b>夜の盤</b>#20150e</span></div>
+    <div><i style="background:#ffcf8a"></i><span><b>光</b>#ffcf8a</span></div>
+  </div>
+  <div class="sw">
+    <div><i style="background:#8577b8"></i><span><b>南森町</b>#8577b8</span></div>
+    <div><i style="background:#d6a23c"></i><span><b>天満</b>#d6a23c</span></div>
+    <div><i style="background:#6f9e6a"></i><span><b>天六</b>#6f9e6a</span></div>
+    <div><i style="background:#cf7186"></i><span><b>扇町</b>#cf7186</span></div>
+    <div><i style="background:#4f93a8"></i><span><b>大川</b>#4f93a8</span></div>
+  </div>
+  <p class="note">地区の5色はマスタ <code>public/master/districts.json</code> の値。</p>
+
+  <div class="grid g3">
+    <div class="card"><h4>主役の色は1つ</h4><p>ブランドのオレンジは「あなた」「いま押す所」「選択中」「現在地」だけ。1画面で塗りの主ボタンは1つ。</p></div>
+    <div class="card"><h4>意味の色は意味にだけ</h4><p>成功＝緑、注意＝琥珀、急ぎ＝赤。ご褒美は 銅→銀→金→白金→伝説 の1本のはしご。</p></div>
+    <div class="card"><h4>値は2か所だけ</h4><p>CSS は tokens.css、Canvas は palette.ts。直書きは静的監査（color-literal）が知らせる。</p></div>
+    <div class="card"><h4>書体</h4><p>LINE Seed JP の1書体（太さ 400／700／800）。</p></div>
+    <div class="card"><h4>絵</h4><p>アイコン・絵は Canvas で自作。描画は <code>draw(ctx, viewModel)</code> の純粋関数。</p></div>
+    <div class="card"><h4>白文字</h4><p>濃い地か濃いふちの上にだけ置く。</p></div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="sec" id="rules">
+  <h2>コードの決まりと品質ゲート</h2>
+  <div class="src"><b>元の文書</b><span>CLAUDE.md §14</span><span>docs/03・04・05・06・07</span><span>docs/08 §7</span></div>
+
+  <div class="grid g3">
+    <div class="card"><h4>コメント</h4><p>すべての関数に日本語 JSDoc（何を・なぜ・引数・戻り値・副作用）。ファイル先頭に <code>@file</code>。</p></div>
+    <div class="card"><h4>ログ</h4><p>関数の先頭で <code>logger.fn()</code>。<code>console.*</code> 直書き禁止。座標・トークンは出さない。</p></div>
+    <div class="card"><h4>エラー</h4><p>失敗は <code>Result</code> で返す。外部データは境界で検証。</p></div>
+    <div class="card"><h4>数値</h4><p>80m・30日・90日・×1.5 などは <code>constants.ts</code> に名前付きで、（仮）と明記。</p></div>
+    <div class="card"><h4>デモの切り離し</h4><p>デモ関連は <code>isDemoBuild</code> で本番から除外。保存の名前空間も分ける。</p></div>
+    <div class="card"><h4>使わないコードは消す</h4><p>静的監査の orphan-file／unused-export が見つける。</p></div>
+  </div>
+
+  <h3>監査の表</h3>
+  <div class="tw"><table>
+    <tr><th>種類</th><th>ID</th><th>文書</th><th>直近の記録</th></tr>
+    <tr><td>セキュリティ</td><td class="mono">SEC-01〜30、PRV-01〜07</td><td class="mono">docs/05</td><td class="mono">docs/audit/20261109_security.md、20261110_redteam.md</td></tr>
+    <tr><td>データ完全性</td><td class="mono">DI-01〜25</td><td class="mono">docs/06</td><td class="mono">docs/audit/20261110_integrity.md</td></tr>
+    <tr><td>手順・静的監査</td><td>—</td><td class="mono">docs/07</td><td class="mono">scripts/audit/static-audit.mjs</td></tr>
+  </table></div>
+
+  <h3>コマンド</h3>
+  <div class="tw"><table>
+    <tr><th>コマンド</th><th>内容</th><th>ポート</th></tr>
+    <tr><td class="mono">npm run check</td><td><b>完了前に必ず</b>。型検査 → 静的監査 → テスト</td><td>—</td></tr>
+    <tr><td class="mono">npm run dev</td><td>アプリ（デモの版）を開発用に起動</td><td class="mono">5173</td></tr>
+    <tr><td class="mono">npm run demo:fresh</td><td>空の状態で始めるデモ（ビルド・DB 作り直し・まっさらなブラウザ）</td><td class="mono">8790</td></tr>
+    <tr><td class="mono">npm run dev:backend</td><td>連携サーバー＋Vite</td><td class="mono">8787＋5174</td></tr>
+    <tr><td class="mono">npm run demo:backend</td><td>連携つきのデモ（画面と API を1つのオリジンで）</td><td class="mono">8787</td></tr>
+    <tr><td class="mono">npm run serve:app-local</td><td>商用版（サーバー接続版）をこの PC で</td><td class="mono">8787</td></tr>
+    <tr><td class="mono">npm run build／build:backend</td><td>本番ビルド／サーバーのビルド</td><td>—</td></tr>
+    <tr><td class="mono">npm run e2e／e2e:backend</td><td>通し確認（ヘッドレスの Edge）</td><td>—</td></tr>
+    <tr><td class="mono">npm run master:build／check／hash</td><td>マスタデータの生成・検査・ハッシュ</td><td>—</td></tr>
+  </table></div>
+</section>
+
+<!-- 11 -->
+<section class="sec" id="ops">
+  <h2>運用</h2>
+  <div class="src"><b>元の文書</b><span>docs/11_backend_operations.md</span></div>
+  <div class="grid g4">
+    <div class="card"><h4>ビルド</h4><p><code>npm run build:backend</code>。Dockerfile あり。</p></div>
+    <div class="card"><h4>起動</h4><p>TLS か中継（nginx の例あり）。systemd の例あり。秘密は 0600 のファイルから。</p></div>
+    <div class="card"><h4>アカウント</h4><p>最初の運営者はコマンドラインで作る。パスワードは画面に映らない入力で。</p></div>
+    <div class="card"><h4>バックアップ</h4><p>SQLite の手順あり。PostgreSQL の手順はこれから。</p></div>
+  </div>
+  <p class="note">ホスティングは未決（当面はローカル）。</p>
+</section>
+
+<!-- 12 -->
+<section class="sec" id="status">
+  <h2>進み具合</h2>
+  <div class="src"><b>元の文書</b><span>docs/12 §6・§7</span><span>docs/13</span><span>docs/09 §8</span></div>
+
+  <h3>商用版バックエンドの段階</h3>
+  <div class="stages">
+    <div class="stage done"><b>0 土台</b>PostgreSQL の接続・形の版・リポジトリ<br><span class="b done">完了</span></div>
+    <div class="stage done"><b>1 ログイン</b>外部ログイン・セッション<br><span class="b done">完了</span>（実物は未確認）</div>
+    <div class="stage done"><b>2 訪問</b>発見・訪問・購入・チケットをサーバーで<br><span class="b done">完了</span></div>
+    <div class="stage todo"><b>3 競争と装い</b>領主・ランキング・月末の報酬・装い<br><span class="b todo">未</span></div>
+    <div class="stage todo"><b>4 個人データと運用</b>書き出し・退会・監視・負荷試験<br><span class="b todo">未</span></div>
+    <div class="stage todo"><b>5 CMS の統合</b>SQLite → PostgreSQL、複数台<br><span class="b todo">未</span></div>
+  </div>
+
+  <h3>できていること／まだのこと</h3>
+  <div class="tw"><table>
+    <tr><th>範囲</th><th>できていること</th><th>まだのこと（主なもの）</th></tr>
+    <tr><td class="nw"><b>アプリ（デモ）</b></td><td>全画面（起動・地図・図鑑/記録・アバター・ランキング・ランク・設定・演出）、実演の6手順</td><td>—</td></tr>
+    <tr><td class="nw"><b>店舗 CMS</b></td><td>店舗情報・クーポン/イベント・来店データ（ダミー）・アンケート、ログイン・ロール・別オリジン・TLS</td><td>2要素認証、掲載確認、店舗の追加、店頭 QR、実データ</td></tr>
+    <tr><td class="nw"><b>連携サーバー</b></td><td>登録内容の保存、公開スナップショット、SSE、変更履歴</td><td>ホスティング</td></tr>
+    <tr><td class="nw"><b>商用版</b></td><td>外部ログインの仕組み、訪問などの API、アプリのサーバー接続版</td><td>実物の LINE・Google、本物の PostgreSQL、領主・ランキング、退会</td></tr>
+    <tr><td class="nw"><b>品質</b></td><td>テスト 1,738 件成功、静的監査 error 0、セキュリティ演習 Critical 0</td><td>CI（定義は済み、リモート未設定）、監視、負荷試験</td></tr>
+  </table></div>
+
+  <div class="callout warn"><b class="lbl">読むときの注意</b>docs/01・02 には初期の値（訪問 40m、マイ街、架空の N西市の地区名など）が残っている箇所があります。この HTML は新しい決定（CLAUDE.md・docs/08 §6・§9）に合わせています。</div>
+</section>
+
+</main>
+</div>
+<footer>まちクエ 設計書（HTML 版）｜元の文書が正。食い違いがあれば docs/ を優先し、この HTML を直す。</footer>
+</body>
+</html>

@@ -14,7 +14,7 @@ import { h } from '@/Common/ui/dom';
 import { createTopBar } from '@/Common/ui/TopBar';
 import type { AppContext } from '@/presentation/App/AppContext';
 import type { Screen } from '@/presentation/App/Screen';
-import { createDataPanelItems } from '@/presentation/screens/Settings/DataPanel';
+import { closeDataConfirm, createDataPanelItems } from '@/presentation/screens/Settings/DataPanel';
 import {
   FUTURE_NOTIFICATIONS,
   PREVIEW_SPOT,
@@ -197,6 +197,7 @@ class SettingsController {
     const log = logger.fn('unmount');
     this.disposed = true;
     this.scaleButtons.clear();
+    closeDataConfirm();
     log.exit(undefined);
   }
 

@@ -188,6 +188,8 @@ export class ShopVoices {
     for (const v of this.voices) {
       const p = placed.find((q) => q.spot.id === v.spotId);
       if (p === undefined || p.pin <= 0) continue;
+      // 画面の外のお店の声は出さない（吹き出しだけが画面の中へ寄って、ほかのピンを隠すため）
+      if (p.x < 0 || p.x > ctx.canvas.clientWidth) continue;
       const tip = p.y - p.pin - 12 - (p.spot.today !== undefined ? 18 : 4);
       const rect = drawVoice(ctx, p.x, tip, v, now, textScale, taken, avoid);
       if (rect !== undefined) hits.push({ spotId: v.spotId, ...rect });

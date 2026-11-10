@@ -408,8 +408,28 @@ function drawSelfAvatar(ctx: CanvasRenderingContext2D, at: Point2D, avatar: Avat
   if (input.facingLeft === true) ctx.scale(-1, 1);
   ctx.drawImage(avatar.image, -avatar.footX, -avatar.footY, avatar.width, avatar.height);
   ctx.restore();
-  // 広域でも「あなた」を添える（王者の台座のアバターと見分ける。輪が小さいぶん札も少し上）
-  if (input.hideSelfTag !== true) drawNameTag(ctx, 'あなた', { x: at.x, y: at.y + (input.zoom === 'wide' ? 15 : 19) }, { fill: PALETTE.brandInk, text: PALETTE.white, scale: input.textScale });
+  // 広域でも「あなた」を添える（王者の台座のアバターと見分ける）。広域は足もとに台座・旗が来るので、札は頭の上に出す
+  if (input.hideSelfTag !== true) drawNameTag(ctx, 'あなた', { x: at.x, y: input.zoom === 'wide' ? at.y - avatar.footY - WIDE_SELF_TAG_GAP_PX - (SELF_TAG_H_PX * input.textScale) / 2 : at.y + 19 }, { fill: PALETTE.brandInk, text: PALETTE.white, scale: input.textScale });
+}
+
+/** 広域で、自分のアバターの頭と「あなた」の札のあいだに空ける高さ（CSS px） */
+const WIDE_SELF_TAG_GAP_PX = 6;
+/** 名札の高さ（CSS px、拡大前。drawNameTag と同じ） */
+const SELF_TAG_H_PX = 16;
+/** 「あなた」の札の幅の半分（CSS px、拡大前のおおよそ） */
+const SELF_TAG_HALF_W_PX = 22;
+
+/**
+ * 広域で、自分のアバターと頭の上の「あなた」の札が占める矩形を返す（王者の台座をよけさせる判定用）。
+ * @param at 現在地（足もと。画面座標）
+ * @param avatar 自分のアバターのドット絵
+ * @param textScale 文字の拡大率
+ * @returns 矩形（画面座標）
+ */
+export function wideSelfBox(at: Point2D, avatar: AvatarSprite, textScale: number): { x: number; y: number; w: number; h: number } { // audit-ignore: fnlog-missing 毎フレーム描画
+  const half = Math.max(avatar.footX, avatar.width - avatar.footX, SELF_TAG_HALF_W_PX * textScale);
+  const up = avatar.footY + WIDE_SELF_TAG_GAP_PX + SELF_TAG_H_PX * textScale + 2;
+  return { x: at.x - half, y: at.y - up, w: half * 2, h: up + 6 };
 }
 
 /**

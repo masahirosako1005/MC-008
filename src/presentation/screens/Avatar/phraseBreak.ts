@@ -16,6 +16,15 @@ type CharKind = 'kanji' | 'hira' | 'kata' | 'other';
 /** カタカナの連なりを単語分割にかける最小の長さ（これより短いものは1語として扱う） */
 const LONG_KATAKANA = 6;
 
+/** 次の行に落としてよい最後のまとまりの最小の文字数（これより短いまとまりは前から離さない＝1〜3文字だけの行を作らない） */
+const MIN_TAIL = 4;
+
+/** 部品のマスで、語の途中では分けない短い名前の最大の文字数（「金魚すくいの金魚」「天満切子のグラス」＝8字。「大」のマスなら1行に入る） */
+const SHORT_NAME = 8;
+
+/** この語の前では折らない（敬称・接尾語。「天神／さんの常連王」にしない） */
+const NO_BREAK_BEFORE: readonly string[] = ['さん', 'ちゃん', 'くん', 'さま', 'たち'];
+
 /**
  * 文字の種類を調べる（長音「ー」はカタカナ、「々」は漢字として扱う）。
  * @param ch 1文字
@@ -100,11 +109,99 @@ export function splitPhrases(text: string): string[] {
 }
 
 /**
+ * 1つにまとめた名前を、前の方の語の切れ目で2つに分ける（「金魚すくいの金魚」→「金魚／すくいの金魚」）。
+ * 切れ目はブラウザの単語分割。両側が2文字以上の語で、後ろに MIN_TAIL 文字以上が残る所だけ。敬称の前（天神／さん）では切らない。
+ * @param text 名前
+ * @returns 2つに分けた結果（分けられる所が無ければ undefined）
+ */
+function splitAtHead(text: string): string[] | undefined { // audit-ignore: fnlog-missing 名前ごとに呼ぶ小さな分割（avoidShortTail がログを出す）
+  if (typeof Intl.Segmenter !== 'function') return undefined;
+  const words = [...new Intl.Segmenter('ja', { granularity: 'word' }).segment(text)].map((s) => [...s.segment]);
+  const total = words.reduce((sum, w) => sum + w.length, 0);
+  let best: { readonly at: number; readonly gap: number } | undefined;
+  let at = 0;
+  for (let i = 0; i < words.length - 1; i += 1) {
+    const prev = words[i] ?? [];
+    const next = words[i + 1] ?? [];
+    at += prev.length;
+    const bothWords = [prev, next].every((w) => w.length >= 2 && w.every((ch) => kindOf(ch) !== 'other'));
+    if (!bothWords || total - at < MIN_TAIL || NO_BREAK_BEFORE.some((s) => next.join('').startsWith(s))) continue;
+    const gap = Math.abs(total - at * 2);
+    if (best === undefined || gap < best.gap) best = { at, gap };
+  }
+  if (best === undefined) return undefined;
+  const chars = words.flat();
+  return [chars.slice(0, best.at).join(''), chars.slice(best.at).join('')];
+}
+
+/**
+ * 最後のまとまりが短い（1〜3文字）ときに、そこでは折らないようにまとまりを組み直す（「金魚すくいの／金魚」と短い行を落とさない）。
+ * 手前に別の区切りがあればそこで折り、無ければ前の方の語の切れ目を探す。どちらも無ければ元のまま返す。
+ * @param pieces splitPhrases の結果
+ * @returns 組み直したまとまり（つなげると元の名前に戻る）
+ */
+export function avoidShortTail(pieces: readonly string[]): string[] {
+  const log = logger.fn('avoidShortTail', { count: pieces.length });
+  const last = pieces[pieces.length - 1];
+  const before = pieces[pieces.length - 2];
+  if (last === undefined || before === undefined || [...last].length >= MIN_TAIL) return log.exit([...pieces], 'そのまま');
+  const merged = [...pieces.slice(0, -2), before + last];
+  if (merged.length > 1) return log.exit(merged, '手前の区切りで折る');
+  return log.exit(splitAtHead(before + last) ?? [...pieces]);
+}
+
+/**
+ * アバターの部品の名前を、折り返してよいまとまりに分ける（部品のマス用）。
+ * 区切りが1つだけの短い名前（SHORT_NAME 字まで）は、その区切りのまま返す＝「金魚／すくいの金魚」「天満／切子のグラス」と一続きの言葉を割らない
+ * （幅があれば1行、無ければ「金魚すくいの／金魚」）。それ以外は avoidShortTail と同じ。
+ * @param text 部品の名前
+ * @returns まとまりの並び（つなげると元の名前に戻る）
+ */
+export function partNamePhrases(text: string): string[] {
+  const log = logger.fn('partNamePhrases', { length: text.length });
+  const pieces = splitPhrases(text);
+  if (pieces.length === 2 && [...text].length <= SHORT_NAME) return log.exit(pieces, '短い名前は元の区切り');
+  return log.exit(avoidShortTail(pieces));
+}
+
+/**
+ * アバターの部品の名前を、語の区切りにだけ折り返しの位置を入れた子要素の並びにする（部品のマス用。h() の children に渡す）。
+ * @param text 部品の名前
+ * @returns 文字列と wbr の並び
+ */
+export function partNameNodes(text: string): (string | HTMLElement)[] {
+  const log = logger.fn('partNameNodes', { length: text.length });
+  return log.exit(partNamePhrases(text).flatMap((piece, i) => (i === 0 ? [piece] : [h('wbr'), piece])));
+}
+
+/**
  * 名前を、語の区切りにだけ折り返しの位置を入れた子要素の並びにする（h() の children に渡す）。
  * @param text 名前
  * @returns 文字列と wbr の並び
  */
 export function phraseNodes(text: string): (string | HTMLElement)[] {
   const log = logger.fn('phraseNodes', { length: text.length });
-  return log.exit(splitPhrases(text).flatMap((piece, i) => (i === 0 ? [piece] : [h('wbr'), piece])));
+  return log.exit(avoidShortTail(splitPhrases(text)).flatMap((piece, i) => (i === 0 ? [piece] : [h('wbr'), piece])));
+}
+
+/**
+ * 文の最後の MIN_TAIL 文字を折り返さないまとまりにする（「ランク「ベテラン冒険者」／になる」と短い行を落とさない）。
+ * @param text 文（手に入れ方など）
+ * @returns 文字列と、折り返さない末尾の要素（短い文はそのまま）
+ */
+export function tailKeptNodes(text: string): (string | HTMLElement)[] {
+  const log = logger.fn('tailKeptNodes', { length: text.length });
+  const chars = [...text];
+  if (chars.length <= MIN_TAIL) return log.exit([text], '短い');
+  return log.exit([chars.slice(0, -MIN_TAIL).join(''), h('span', { class: 'phrase-tail', text: chars.slice(-MIN_TAIL).join('') })]);
+}
+
+/**
+ * 名前のいちばん長いまとまりの文字数（1行に入らない長い語があるかの判定に使う）。
+ * @param text 名前
+ * @returns 文字数
+ */
+export function longestPhrase(text: string): number {
+  const log = logger.fn('longestPhrase', { length: text.length });
+  return log.exit(Math.max(...avoidShortTail(splitPhrases(text)).map((piece) => [...piece].length)));
 }

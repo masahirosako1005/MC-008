@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>まちクエ 要件定義書</title>
+<link rel="stylesheet" href="assets/doc.css">
+<script src="assets/doc.js" defer></script>
+</head>
+<body>
+
+<header class="top">
+  <a class="logo" href="00_入口.html"><span class="pin"></span>まちクエ ドキュメント</a>
+  <nav>
+    <a href="00_入口.html">入口・場所</a>
+    <a class="on" href="01_要件定義書.html">要件定義書</a>
+    <a href="02_設計書.html">設計書</a>
+  </nav>
+</header>
+
+<div class="hero">
+  <div class="kicker">REQUIREMENTS</div>
+  <h1>まちクエ 要件定義書</h1>
+  <p class="lead">N西市 再訪促進スマホWebアプリ「まちクエ」と、店舗向け CMS の「何を作るか」をまとめたもの。元の文書（CLAUDE.md・docs/09・docs/13）を1枚に整理しています。</p>
+  <div class="meta">
+    <span>2026-11-10 時点</span>
+    <span>元文書：CLAUDE.md／docs/09／docs/12／docs/13</span>
+    <span>（仮）＝暫定値。発表後に調整</span>
+  </div>
+</div>
+
+<div class="layout">
+<aside class="toc"><p class="ttl">目次</p></aside>
+<main>
+
+<!-- 1 -->
+<section class="sec" id="overview">
+  <h2>このアプリは何か</h2>
+  <div class="src"><b>元の文書</b><span>CLAUDE.md 冒頭・§1</span></div>
+
+  <div class="callout big">観光地を「一度で消費する場所」から「何度も訪れて育てる場所」へ変える。</div>
+
+  <div class="grid g3">
+    <div class="card accent"><h4>アプリ名</h4><p><b>まちクエ</b>（街がクエストの場所）<br>一言：この街が、クエストになる。</p></div>
+    <div class="card accent"><h4>コンセプト</h4><p>街に通うほど、自分だけの街が育つ。</p></div>
+    <div class="card accent"><h4>形</h4><p>スマホ縦型の Web アプリ（基準幅 390px）＋店舗向け CMS</p></div>
+  </div>
+
+  <h3>背景と課題</h3>
+  <div class="grid g3">
+    <div class="card"><h4>利用者</h4><p>名所を回り終えると「コンプリートした」と感じ、再訪する理由がなくなる。</p></div>
+    <div class="card"><h4>地域</h4><p>新規客の獲得は高くつく。リピーターが店舗と周辺を回遊することが、収益と賑わいに直結する。</p></div>
+    <div class="card"><h4>既存アプリ</h4><p>スタンプラリー型（網羅＝ゴール）が多く、達成した瞬間に離脱する。</p></div>
+  </div>
+  <div class="callout"><b class="lbl">狙い</b>「網羅」をゴールにせず、「通い続けること」自体を楽しく・価値あるものにする。</div>
+
+  <h3>既存サービスとの違い</h3>
+  <div class="tw"><table>
+    <tr><th>既存</th><th>弱点</th><th>まちクエ</th></tr>
+    <tr><td>スタンプラリー型</td><td>埋めたら終わる</td><td>「完成しない街」で終わりを作らない</td></tr>
+    <tr><td>位置情報ゲーム</td><td>現地の観光と無関係に遊べる</td><td>実在スポットの訪問と便利情報が軸</td></tr>
+    <tr><td>観光情報サイト</td><td>初回の情報提供で止まる</td><td>色あせと復活で「また行く理由」を作り続ける</td></tr>
+  </table></div>
+</section>
+
+<!-- 2 -->
+<section class="sec" id="target">
+  <h2>だれのためか（ターゲットと提供価値）</h2>
+  <div class="src"><b>元の文書</b><span>CLAUDE.md §2・§3</span></div>
+
+  <div class="callout"><b class="lbl">主ターゲット</b>観光地から車・電車で1時間圏内に住み、週末に気軽に出かける近隣観光客。</div>
+  <div class="grid g3">
+    <div class="card"><h4>子連れファミリー</h4><p>トイレ・休憩・ベビーカー情報を重視。1回は短く、回数で楽しむ。</p></div>
+    <div class="card"><h4>カップル・友人同士</h4><p>期間限定イベント・新店に反応しやすい。</p></div>
+    <div class="card"><h4>一人歩き・散歩好き</h4><p>未開拓スポットの発見、通った回数の積み上げに反応しやすい。</p></div>
+  </div>
+  <p class="note">副次ターゲット：観光地側（店舗・自治体・DMO）。店舗協力なしでも成立し、協力すると来店導線とクーポン配信が得られる。</p>
+
+  <h3>提供価値</h3>
+  <div class="grid g2">
+    <div class="card soft"><h4>利用者</h4><ul>
+      <li><b>初回</b>：迷わない・困らない（便利情報、近隣スポットと距離、次に行く理由）</li>
+      <li><b>2回目以降</b>：まだ知らない場所が見える、自分の街が育つ、戻ると「おかえり」と迎えられる</li>
+    </ul></div>
+    <div class="card soft"><h4>地域</h4><ul>
+      <li>来訪頻度と回遊範囲の増加。名所だけでなく店舗への送客</li>
+      <li>期間限定イベント・クーポンの告知先を持てる</li>
+      <li>地区別・曜日別の来訪傾向が見える（将来）</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="sec" id="criteria">
+  <h2>開発判断基準（迷ったらここ）</h2>
+  <div class="src"><b>元の文書</b><span>CLAUDE.md §5</span></div>
+  <p>すべての機能は次のどれかに貢献すること。貢献先を言えない機能は入れない。この文書では <span class="b A">A</span> <span class="b B">B</span> <span class="b C">C</span> の印で示します。</p>
+  <div class="grid g3">
+    <div class="card"><h4><span class="b A">A</span> 初回満足度の向上</h4><p>はじめてでも迷わない・困らない。</p></div>
+    <div class="card"><h4><span class="b B">B</span> 未開拓への興味</h4><p>まだ知らない場所に行きたくなる。</p></div>
+    <div class="card"><h4><span class="b C">C</span> 再訪動機</h4><p>また行く理由がある。</p></div>
+  </div>
+  <h3>あわせて守る4つの原則</h3>
+  <div class="grid g4">
+    <div class="card"><h4>現実の体験が先</h4><p>歩かずに稼げる仕組みは作らない。</p></div>
+    <div class="card"><h4>片手で直感的に</h4><p>主要操作はタップ2回以内、タップ領域 44px 以上。</p></div>
+    <div class="card"><h4>失う体験を作らない</h4><p>色あせ・廃れは見た目だけ。Lv・カード・図鑑・EXP は減らない。</p></div>
+    <div class="card"><h4>店舗協力なしで成立</h4><p>協力店の機能は上乗せ。</p></div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="sec" id="loop">
+  <h2>ゲームの仕組み</h2>
+  <div class="src"><b>元の文書</b><span>CLAUDE.md §4</span><span>docs/08 §0（D1〜D17）</span></div>
+
+  <h3>舞台</h3>
+  <div class="kpis">
+    <div class="kpi"><div class="n">5<small>地区</small></div><div class="l">地区ごとにテーマと色</div></div>
+    <div class="kpi"><div class="n">14<small>か所</small></div><div class="l">名所（実在の名前と位置）</div></div>
+    <div class="kpi"><div class="n">66<small>軒</small></div><div class="l">店舗（架空の名前。うち協力店 36）</div></div>
+    <div class="kpi"><div class="n">80<small>m</small></div><div class="l">発見・クエスト達成の半径（仮）</div></div>
+  </div>
+  <p class="note">企画上の名前は「N西市」。地図は大阪・南森町周辺を模している（2026-11-09 決定）。</p>
+  <div class="tw"><table>
+    <tr><th>地区</th><th>テーマ</th><th>名所の例</th></tr>
+    <tr><td><i class="dot" style="background:var(--d-mm)"></i>南森町・天満宮地区</td><td>門前町（開始地区）</td><td>大阪天満宮、天満天神繁昌亭、堀川戎神社</td></tr>
+    <tr><td><i class="dot" style="background:var(--d-tm)"></i>天満地区</td><td>市場と食</td><td>天満市場、天神橋筋商店街（天四）、天満駅前の高架下</td></tr>
+    <tr><td><i class="dot" style="background:var(--d-tr)"></i>天六地区</td><td>暮らし</td><td>大阪くらしの今昔館、商店街 北の玄関</td></tr>
+    <tr><td><i class="dot" style="background:var(--d-og)"></i>扇町・中崎町地区</td><td>公園と路地</td><td>扇町公園、キッズプラザ大阪、中崎町の路地</td></tr>
+    <tr><td><i class="dot" style="background:var(--d-ok)"></i>大川沿い地区</td><td>川辺と桜</td><td>造幣局（桜の通り抜け）、泉布観、南天満公園</td></tr>
+  </table></div>
+
+  <h3>コアループ</h3>
+  <div class="flow">
+    <div class="step"><b>歩く</b><small>本番は GPS<br>デモは地図タップ</small></div>
+    <div class="step"><b>発見</b><small>80m 以内<br>図鑑にシルエット</small></div>
+    <div class="step hot"><b>クエスト達成</b><small>訪問（チェックイン）<br>EXP・地区が育つ・領地</small></div>
+    <div class="step fade"><b>色あせ</b><small>30日で開始<br>90日で最も薄く</small></div>
+    <div class="step"><b>クエスト</b><small>「次に訪れる理由」<br>を出す</small></div>
+    <div class="step hot"><b>再訪 → 復活</b><small>おかえりボーナス<br>当日その地区 ×1.5</small></div>
+  </div>
+  <p class="loopnote">↺ くり返すほど街が育つ。終わり（コンプリート）は作らない。</p>
+
+  <h3>数値ルール（すべて仮）</h3>
+  <div class="tw"><table>
+    <tr><th>項目</th><th>値</th><th>補足</th></tr>
+    <tr><td>発見／クエスト達成の半径</td><td class="nw"><b>80m ／ 80m</b></td><td>地図に描く円と同じ。訪問は当初 40m → 80m に変更</td></tr>
+    <tr><td>同じスポットの記録</td><td class="nw"><b>1日1回</b></td><td>JST の暦日。歩かずに稼げないようにする</td></tr>
+    <tr><td>EXP</td><td class="nw"><b>名所 10・店舗 15・購入 10</b></td><td>購入はレジの QR、同じお店・同じ日は1回、80m 以内</td></tr>
+    <tr><td>色あせ</td><td class="nw"><b>30日で開始、90日で最大</b></td><td>7日前に「そろそろ」カード（カレンダーに追加できる）</td></tr>
+    <tr><td>おかえりボーナス</td><td class="nw"><b>×1.5</b></td><td>色あせた地区に戻った当日、その地区の EXP</td></tr>
+    <tr><td>地区の成長</td><td class="nw"><b>Lv0 → 1 → 2 → 3</b></td><td>スコア＝訪問したスポットの種類数＋訪問回数。Lv1≧1、Lv2≧5、Lv3≧10。<b>下がらない</b></td></tr>
+    <tr><td>銀カード／金カード</td><td class="nw"><b>同じ地区に 3回／10回</b></td><td>金は「四季すべてで訪問」でも</td></tr>
+    <tr><td>領主（地区の主）</td><td class="nw"><b>直近30日の最多</b></td><td>現職を「上回った」ときだけ交代。奪われると「奪還」クエスト</td></tr>
+    <tr><td>ランク（累計 EXP）</td><td class="nw"><b>0／50／150／400／800</b></td><td>見習い冒険者 → 冒険者 → ベテラン冒険者 → 街の英雄 → 街の伝説（銅・銀・金・白金・伝説）</td></tr>
+    <tr><td>期限のクエスト</td><td class="nw"><b>残り7日以内</b></td><td>発見済みスポットのクーポン・イベントだけ</td></tr>
+  </table></div>
+
+  <h3>クエスト（再訪理由）の5種別</h3>
+  <p class="note">下シートと通知で共通。アイコンと色を固定し、上から順に優先して出す。</p>
+  <div class="grid g5">
+    <div class="card"><h4>1 期限</h4><p>クーポン・イベントの終了が近い</p></div>
+    <div class="card"><h4>2 奪還</h4><p>領主の座をライバルに奪われた</p></div>
+    <div class="card"><h4>3 色あせ</h4><p>色あせ間近、または色あせ中</p></div>
+    <div class="card"><h4>4 未達成</h4><p>発見済みでまだ行っていない</p></div>
+    <div class="card"><h4>5 新着</h4><p>新しいスポット・季節限定（将来）</p></div>
+  </div>
+
+  <h3>報酬（「網羅」ではなく「通い」に出す）</h3>
+  <div class="grid g2">
+    <div class="card"><h4>ランキング（月間リセット・3リーグ）</h4><ul>
+      <li><b>かよいリーグ</b>：今月の訪問回数</li>
+      <li><b>はじめましてリーグ</b>：今月はじめて訪れたスポット数（初めての人ほど有利）</li>
+      <li><b>ルーキーリーグ</b>：使いはじめて30日以内の人だけ</li>
+      <li>報酬はすべてアバターの部品。ポイントは出さない</li>
+    </ul></div>
+    <div class="card"><h4>順位報酬（月末 23:59 の順位）</h4><ul>
+      <li>1位：催太鼓の投げ頭巾＋称号＋金メダル</li>
+      <li>2位：天神さんの神牛（相棒）＋銀メダル</li>
+      <li>3位：天満切子のグラス＋銅メダル</li>
+      <li>4〜5位：寄席の扇子＋月桂冠／6位以下：手ぬぐい＋応援フラッグ</li>
+      <li>キープ報酬：表彰台 24時間、1位 72時間</li>
+    </ul></div>
+    <div class="card"><h4>EXP の特典</h4><p>累計 EXP が決まった数に届くとアバターの部品。ランクアップ（50・150・400・800）は称号、その間と先（25・100・220・300・500・650・1000・1200）は髪の色・服の色・称号。</p></div>
+    <div class="card"><h4>チケット・アイテム</h4><p>クーポン期間中にそのお店でクエスト達成するとチケット獲得。地図の左下から QR で見せて使う。アバターの部品（約200点）はすべて「通った実績」で手に入る。</p></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="sec" id="screens">
+  <h2>アプリの機能要件（画面ごと）</h2>
+  <div class="src"><b>元の文書</b><span>CLAUDE.md §6</span><b>コードの場所</b><span>src/presentation/screens/&lt;画面&gt;/</span></div>
+
+  <p>下部タブは5つ：<b>地図／図鑑/記録／アバター／ランキング／ランク</b>。設定は右上の歯車から。</p>
+  <div class="tw"><table>
+    <tr><th>画面</th><th>URL</th><th>求めること</th><th>基準</th><th>コードの場所</th></tr>
+    <tr><td class="nw"><b>起動</b></td><td class="mono">?launch=0/1</td><td>ゲームのタイトル画面風。スプラッシュ（％ゲージ）→ 自分の街が現れる開始画面 → 「スタート」。文字は最小限</td><td class="nw"><span class="b C">C</span></td><td class="mono">screens/Launch/</td></tr>
+    <tr><td class="nw"><b>地図</b></td><td class="mono">#/map</td><td>広域（手描き風の街＋各地区の王者の台座）／中間（吹き出し）／詳細（80m の円・お店の声）。ドラッグで移動、お店をタップすると道に沿って歩き、カードでクエスト達成。便利情報フィルタ。陣取りはお店単位で、自分の領地はにぎわい、奪われた所は廃れて見える（見た目だけ）。左下に EXP とチケット</td><td class="nw"><span class="b B">B</span> <span class="b C">C</span></td><td class="mono">screens/Map/<br>screens/Map/town/</td></tr>
+    <tr><td class="nw"><b>地図の下シート</b></td><td>—</td><td>3段階（つまみ／半分／全画面）。いちばん近いスポットと距離、クエスト（再訪理由）カード、地区カード、「カレンダーに追加」</td><td class="nw"><span class="b C">C</span></td><td class="mono">screens/Map/Sheet/</td></tr>
+    <tr><td class="nw"><b>スポット詳細</b></td><td class="mono">#/spot/:id</td><td>写真・説明・便利情報・営業時間、距離、クエスト達成ボタン（80m 以内で有効）、クーポン・イベント、自分の訪問履歴。お店には「アンケート」（訪問したお店だけ・匿名）</td><td class="nw"><span class="b A">A</span> <span class="b C">C</span></td><td class="mono">screens/Spot/</td></tr>
+    <tr><td class="nw"><b>図鑑／記録</b></td><td class="mono">#/zukan</td><td>全地区のカードを1つの格子に。地区・状態で絞り込み。未発見＝薄い絵、発見済み＝シルエット、達成済み＝カラー写真。レア度★1〜★4（獲得した★4 はキラキラ）。<b>達成率は出さない</b>。「記録」に切り替えると訪問の年表、各回に自分の写真1枚とメモ</td><td class="nw"><span class="b B">B</span> <span class="b C">C</span></td><td class="mono">screens/Zukan/</td></tr>
+    <tr><td class="nw"><b>アバター</b></td><td class="mono">#/avatar</td><td>着せ替え画面。動くステージ、15 カテゴリ（髪型・顔・服・帽子・相棒・エモート・オーラ・背景・称号…）、レア度 N／R／SR／SSR、ご当地・季節の部品、記念撮影。持っていない部品は白黒で並べ、試着と手に入れ方を出す</td><td class="nw"><span class="b B">B</span> <span class="b C">C</span></td><td class="mono">screens/Avatar/</td></tr>
+    <tr><td class="nw"><b>ランキング</b></td><td class="mono">#/ranking</td><td>表彰台（上位3名）＋リスト、3リーグをタブで切替。自分の順位と「あと何回で何位」。台の正面に報酬の絵、段の帯、獲得時の全画面演出。領主は5地区のタイル</td><td class="nw"><span class="b C">C</span></td><td class="mono">screens/Ranking/</td></tr>
+    <tr><td class="nw"><b>ランク</b></td><td class="mono">#/rank</td><td>ゲームのステータス画面風。段の紋章と累計 EXP、ランクロード、NEXT（ランクアップ・次の特典まで「あと○EXP」）、特典ロード、クーポン（持っている／もうすぐ）</td><td class="nw"><span class="b C">C</span></td><td class="mono">screens/Rank/</td></tr>
+    <tr><td class="nw"><b>演出</b></td><td>—</td><td>全画面。復活（おかえり）→ 銀・金カード → 領主交代 → アイテム獲得。2〜3秒でスキップ可</td><td class="nw"><span class="b C">C</span></td><td class="mono">screens/Effects/</td></tr>
+    <tr><td class="nw"><b>設定</b></td><td class="mono">#/settings</td><td>文字の大きさ（標準／大／特大）、データの書き出し・読み込み・全削除</td><td class="nw"><span class="b A">A</span></td><td class="mono">screens/Settings/</td></tr>
+    <tr><td class="nw"><b>デモメニュー</b></td><td class="mono">#/demo</td><td>歯車を長押し。日付進行（+1／+30／+90日）、ライバル行動、旅人切替、位置リセット。<b>本番ビルドには入れない</b></td><td class="nw">発表</td><td class="mono">screens/Demo/</td></tr>
+    <tr><td class="nw"><b>ログイン</b></td><td>—</td><td>商用版（サーバー接続版）だけ。アプリ名と外部ログインのボタンだけ</td><td>—</td><td class="mono">screens/Login/</td></tr>
+  </table></div>
+
+  <h3>全画面に共通の要件</h3>
+  <div class="grid g4">
+    <div class="card"><h4>文字は最小限</h4><p>説明文・ヒント・手順を足さない。言葉より絵と動きで見せる。</p></div>
+    <div class="card"><h4>絵はすべて自作</h4><p>アイコン・絵は Canvas で描く。絵文字・アイコンフォント・既製画像は使わない。</p></div>
+    <div class="card"><h4>色だけに頼らない</h4><p>色あせは透明度と小さなアイコンでも示す（色覚配慮）。</p></div>
+    <div class="card"><h4>写真</h4><p>名所は実写、店舗はカテゴリの「イメージ」写真。Wikimedia Commons の利用可能なものだけ、出典を表示。</p></div>
+  </div>
+
+  <h3>機能の優先度</h3>
+  <div class="tw"><table>
+    <tr><th>優先度</th><th>機能</th><th>基準</th></tr>
+    <tr><td><span class="b must">Must</span></td><td>地図（広域→地区→近接）、発見、訪問</td><td><span class="b B">B</span></td></tr>
+    <tr><td><span class="b must">Must</span></td><td>地区成長、色あせ、復活、おかえりボーナス</td><td><span class="b C">C</span></td></tr>
+    <tr><td><span class="b must">Must</span></td><td>下シートのクエストカード（そろそろ、奪還）</td><td><span class="b C">C</span></td></tr>
+    <tr><td><span class="b must">Must</span></td><td>ライバル行動による領主交代と奪還</td><td><span class="b C">C</span></td></tr>
+    <tr><td><span class="b must">Must</span></td><td>金カード獲得演出、復活演出、デモメニュー</td><td><span class="b C">C</span></td></tr>
+    <tr><td><span class="b should">Should</span></td><td>図鑑、アバター、ランキング、銀カード、クーポン・イベントの期限</td><td><span class="b B">B</span> <span class="b C">C</span></td></tr>
+    <tr><td><span class="b should">Should</span></td><td>便利情報フィルタ、設定（文字拡大）</td><td><span class="b A">A</span></td></tr>
+    <tr><td><span class="b could">Could</span></td><td>アイテム、優待、投稿・紹介、新着、滞在目安・混みやすい時間</td><td><span class="b A">A</span> <span class="b B">B</span> <span class="b C">C</span></td></tr>
+  </table></div>
+</section>
+
+<!-- 6 -->
+<section class="sec" id="cms">
+  <h2>店舗 CMS の要件</h2>
+  <div class="src"><b>元の文書</b><span>docs/09_store_cms_requirements.md</span><b>コードの場所</b><span>cms.html</span><span>src/presentation/cms/</span></div>
+
+  <p>店舗と運営者（自治体・DMO）が、店舗情報・クーポン・イベント・店頭 QR を登録し、来訪の集計を見るための管理画面。</p>
+  <div class="grid g3">
+    <div class="card soft"><h4>付加機能である</h4><p>店舗が参加しなくても、CMS が止まっていても、アプリは成立する。</p></div>
+    <div class="card soft"><h4>失う体験を作らない</h4><p>クーポンの取り下げ・協力店の解除・閉店をしても、利用者の Lv・カード・図鑑・EXP は減らさない。</p></div>
+    <div class="card soft"><h4>集計値だけを渡す</h4><p>店舗には個人を特定できる形で出さない。5人未満は「少数」と表示。</p></div>
+  </div>
+
+  <h3>ロールと権限</h3>
+  <div class="tw"><table>
+    <tr><th>操作</th><th class="c">店舗</th><th class="c">運営者</th></tr>
+    <tr><td>営業時間・臨時休業・便利情報の編集</td><td class="c">自店</td><td class="c">○</td></tr>
+    <tr><td>名前・カテゴリ・紹介文・写真の編集</td><td class="c">自店（申請）</td><td class="c">○</td></tr>
+    <tr><td>位置・地区・協力店フラグ・公開状態の変更</td><td class="c">×</td><td class="c">○</td></tr>
+    <tr><td>自店のクーポン・イベントの登録（協力店だけ）</td><td class="c">自店（申請）</td><td class="c">○</td></tr>
+    <tr><td>掲載中のクーポン・イベントの取り下げ</td><td class="c">自店</td><td class="c">○</td></tr>
+    <tr><td>店頭 QR の発行・再発行・失効（協力店だけ）</td><td class="c">自店</td><td class="c">○</td></tr>
+    <tr><td>来訪データの閲覧</td><td class="c">自店の集計</td><td class="c">全体の集計</td></tr>
+    <tr><td>アカウントの承認・停止、掲載確認、カテゴリ辞書、名所の編集</td><td class="c">×</td><td class="c">○</td></tr>
+  </table></div>
+  <p class="note">店舗 ID はサーバー側のセッションから決める。画面の出し分けだけでは権限の確認とみなさない。</p>
+
+  <h3>機能要件のまとまり</h3>
+  <div class="tw"><table>
+    <tr><th>まとまり</th><th>要件 ID</th><th>要点</th><th>基準</th><th>フェーズ</th></tr>
+    <tr><td class="nw"><b>アカウント</b></td><td class="mono nw">CMS-A01〜A09</td><td>参加申請と承認、招待メール、ログイン・再設定、運営者は2要素認証必須、回数制限、停止・再開</td><td>—</td><td class="nw"><span class="b ph">2</span></td></tr>
+    <tr><td class="nw"><b>店舗情報</b></td><td class="mono nw">CMS-S01〜S12</td><td>営業時間・便利情報6種（すぐ公開）、臨時休業、名前・カテゴリ・紹介文・写真（掲載確認の後）、プレビュー、変更履歴</td><td><span class="b A">A</span></td><td class="nw"><span class="b ph">1</span> <span class="b ph">2</span></td></tr>
+    <tr><td class="nw"><b>クーポン・イベント</b></td><td class="mono nw">CMS-E01〜E14</td><td>題名30字・説明80字・期間（最長90日）、1店3件まで、掲載中は短縮と取り下げだけ、状態遷移、ガイドライン</td><td><span class="b C">C</span></td><td class="nw"><span class="b ph">1</span> <span class="b ph">2</span></td></tr>
+    <tr><td class="nw"><b>店頭 QR</b></td><td class="mono nw">CMS-Q01〜Q10</td><td>署名付きトークンの URL、OS 標準のカメラで読む、<b>QR だけでは確定しない</b>（位置情報と併用）、再発行で前の QR は失効</td><td><span class="b C">C</span></td><td class="nw"><span class="b ph">3</span></td></tr>
+    <tr><td class="nw"><b>来訪データ</b></td><td class="mono nw">CMS-D01〜D08</td><td>訪問数・再訪率・曜日別・時間帯別、施策の効果、少数の秘匿、個人単位は出さない</td><td><span class="b C">C</span></td><td class="nw"><span class="b ph">3</span></td></tr>
+    <tr><td class="nw"><b>運営者の機能</b></td><td class="mono nw">CMS-O01〜O12</td><td>新しい店舗の追加、協力店の認定・解除、掲載確認（承認・差し戻し）、休業・閉店、緊急の非公開、監査ログ</td><td><span class="b B">B</span> <span class="b C">C</span></td><td class="nw"><span class="b ph">2</span></td></tr>
+    <tr><td class="nw"><b>アンケート</b></td><td class="mono nw">CMS-V01〜V07</td><td>満足度・きっかけ・よかった・気になった・また来たい・ひとこと。集計、改善ポイント3つ、施策の打ち時</td><td><span class="b A">A</span> <span class="b C">C</span></td><td class="nw"><span class="b ph">1</span> <span class="b ph">2</span></td></tr>
+    <tr><td class="nw"><b>アプリへの反映</b></td><td class="mono nw">APP-01〜APP-11</td><td>版番号付きの公開スナップショットを配る。取れないときは前回の写しで動く。新着クエスト、閉店の表示</td><td><span class="b A">A</span> <span class="b B">B</span></td><td class="nw"><span class="b ph">2</span></td></tr>
+  </table></div>
+
+  <h3>クーポン・イベントの状態</h3>
+  <div class="flow">
+    <div class="step"><b>下書き</b></div>
+    <div class="step"><b>確認待ち</b><small>差し戻しで下書きへ</small></div>
+    <div class="step"><b>掲載予定</b></div>
+    <div class="step hot"><b>掲載中</b><small>開始日から</small></div>
+    <div class="step fade"><b>終了</b><small>終了日の翌日</small></div>
+  </div>
+  <p class="note">掲載予定・掲載中からは「取り下げ」できる。アプリへ配るのは 掲載予定・掲載中・終了 だけ。</p>
+
+  <h3>フェーズ</h3>
+  <div class="grid g3">
+    <div class="card accent"><h4><span class="b ph">1</span> 発表デモ</h4><p>「店舗が登録すると、街の再訪理由が増える」を見せる。クーポン登録 → アプリの「期限」カード、営業時間・便利情報の編集 → スポット詳細に反映。</p><p><span class="b done">実装済み</span></p></div>
+    <div class="card accent"><h4><span class="b ph">2</span> 本番の最小版</h4><p>認証とロール、掲載確認、運営者機能、スナップショット配信、写真、監査ログ。</p><p><span class="b part">一部実装</span> ログイン・ロール・配信は済み</p></div>
+    <div class="card accent"><h4><span class="b ph">3</span> データ連携</h4><p>店頭 QR、来訪データ（実データ）、クーポン利用の集計。アプリから訪問記録をサーバーへ送ることが前提。</p><p><span class="b todo">未着手</span></p></div>
+  </div>
+
+  <h3>CMS の画面</h3>
+  <div class="tw"><table>
+    <tr><th>ID</th><th>画面</th><th>主な要素</th><th>ロール</th></tr>
+    <tr><td class="mono">C01</td><td>ログイン</td><td>ID・パスワード、2要素認証、再設定</td><td>共通</td></tr>
+    <tr><td class="mono">C02</td><td>ホーム</td><td>掲載の状態、期限の近いクーポン、今週の来訪</td><td>店舗</td></tr>
+    <tr><td class="mono">C03</td><td>店舗情報</td><td>営業時間、臨時休業、便利情報、プレビュー、変更履歴</td><td>店舗</td></tr>
+    <tr><td class="mono">C04・C05</td><td>クーポン・イベント</td><td>状態別の一覧、登録・編集、文字数カウンタ、プレビュー</td><td>店舗</td></tr>
+    <tr><td class="mono">C06</td><td>店頭 QR</td><td>QR の表示、POP、再発行、失効</td><td>店舗</td></tr>
+    <tr><td class="mono">C07</td><td>来訪データ</td><td>訪問数・再訪率・曜日別・時間帯別</td><td>店舗</td></tr>
+    <tr><td class="mono">C09</td><td>アンケート</td><td>満足度、改善ポイント、施策の打ち時</td><td>店舗</td></tr>
+    <tr><td class="mono">O01〜O07</td><td>運営者の画面</td><td>参加申請、掲載確認、スポット管理、カテゴリ辞書、全体の集計、監査ログ、店舗アカウント</td><td>運営者</td></tr>
+  </table></div>
+</section>
+
+<!-- 7 -->
+<section class="sec" id="nfr">
+  <h2>非機能要件</h2>
+  <div class="src"><b>元の文書</b><span>docs/05（SEC・PRV）</span><span>docs/06（DI）</span><span>docs/09 §4</span><span>docs/12 §2</span></div>
+  <div class="grid g2">
+    <div class="card"><h4>セキュリティ</h4><ul>
+      <li><b>サーバーが正</b>：端末が送るのは「訪問したい」という意図だけ。距離・1日1回・EXP はサーバーが計算</li>
+      <li>すべての API でロールと担当店舗をサーバー側で確認</li>
+      <li>CMS はアプリと別オリジン。Cookie は HttpOnly・Secure・SameSite</li>
+      <li>入力はテキストとしてだけ表示（<code>innerHTML</code>・<code>eval</code> 禁止）</li>
+      <li>回数制限（ログイン・書き込み）、秘密情報をリポジトリに入れない</li>
+    </ul></div>
+    <div class="card"><h4>データ完全性</h4><ul>
+      <li>外部データは境界で検証してから使う</li>
+      <li>訪問・発見・台帳は<b>追記だけ</b>。残高や Lv は記録から導出し、保存しない</li>
+      <li>操作 ID で二重登録を防ぐ、版数で同時編集を検出</li>
+      <li>失敗は <code>Result</code> で返す</li>
+    </ul></div>
+    <div class="card"><h4>プライバシー</h4><ul>
+      <li><b>座標を残さない</b>：保存するのはスポット ID・地区・日時だけ</li>
+      <li><b>集めない</b>：外部ログインから受け取るのは提供元と利用者 ID だけ（メール・氏名・写真は要求しない）</li>
+      <li>店舗には集計値だけ。写真の EXIF（撮影位置）を消す</li>
+    </ul></div>
+    <div class="card"><h4>使いやすさ・可用性</h4><ul>
+      <li>スマホ片手、主要操作はタップ2回以内、タップ領域 44px 以上、文字拡大3段階</li>
+      <li>CMS は幅 360px から、IT に不慣れな店員でも使える</li>
+      <li>CMS や API が止まっても、アプリは前回の写しで動く</li>
+    </ul></div>
+  </div>
+  <h3>品質の決まり（完了の条件）</h3>
+  <div class="callout"><code>npm run check</code>（型検査 → 静的監査 → テスト）で error 0。直近の全体実行はテスト <b>1,738 件</b>すべて成功（2026-11-10、docs/12 §7）。</div>
+</section>
+
+<!-- 8 -->
+<section class="sec" id="words">
+  <h2>用語と画面の呼び方</h2>
+  <div class="src"><b>元の文書</b><span>CLAUDE.md §11・§11.1</span></div>
+  <p class="note">文書・コードは左の言葉、画面（UI）は右の言葉を使う。</p>
+  <div class="tw"><table>
+    <tr><th>文書・コードの言葉</th><th>画面の呼び方</th><th>意味</th></tr>
+    <tr><td>スポット</td><td>スポット</td><td>名所と店舗の総称（「施設」は使わない）</td></tr>
+    <tr><td>旅人</td><td><b>冒険者</b></td><td>利用者</td></tr>
+    <tr><td>発見</td><td>発見</td><td>80m 以内に入り、図鑑にシルエットが載る</td></tr>
+    <tr><td>訪問（チェックイン）</td><td><b>クエスト達成</b></td><td>80m 以内（地図の円の中）で訪問操作をする</td></tr>
+    <tr><td>再訪理由</td><td><b>クエスト</b></td><td>下シートのカード。期限／奪還／色あせ／未達成／新着</td></tr>
+    <tr><td>地区の主</td><td><b>領主</b></td><td>直近30日の訪問回数が最多の人</td></tr>
+    <tr><td>取り返し</td><td><b>奪還</b></td><td>領主の座を奪い返す</td></tr>
+    <tr><td>陣地</td><td><b>領地</b></td><td>自分が通うお店（お店単位）</td></tr>
+    <tr><td>ポイント</td><td><b>EXP</b></td><td>累計でランクが上がる。減らない</td></tr>
+    <tr><td>色あせ／復活</td><td>色あせ／復活</td><td>未訪問期間で見た目が薄くなる／再訪で戻る。進捗は減らない</td></tr>
+  </table></div>
+</section>
+
+<!-- 9 -->
+<section class="sec" id="risk">
+  <h2>指標・リスク・発表</h2>
+  <div class="src"><b>元の文書</b><span>CLAUDE.md §7・§9・§10</span></div>
+  <div class="grid g2">
+    <div class="card"><h4>指標（将来）</h4><ul>
+      <li>30日以内再訪率</li>
+      <li>1人あたり訪問地区数・訪問店舗数</li>
+      <li>色あせ通知からの再訪率</li>
+      <li>初回利用時の「困らなかった」評価</li>
+    </ul></div>
+    <div class="card"><h4>リスクと対応</h4><ul>
+      <li>GPS 誤差・なりすまし → 80m 判定、本番は店頭 QR を併用</li>
+      <li>色あせが不快 → 見た目だけ、復活は一瞬</li>
+      <li>店舗情報の鮮度 → 協力なしで成立、協力店から更新</li>
+      <li>位置情報の扱い → 地区単位で集計</li>
+    </ul></div>
+  </div>
+  <h3>発表の実演シナリオ（3分）</h3>
+  <div class="flow">
+    <div class="step"><b>1 広域地図</b><small>地区をタップ</small></div>
+    <div class="step"><b>2 歩く</b><small>「発見」</small></div>
+    <div class="step hot"><b>3 チェックイン</b><small>にぎわう・育つ</small></div>
+    <div class="step fade"><b>4 +30日</b><small>色あせ・「そろそろ」</small></div>
+    <div class="step"><b>5 ライバル</b><small>「奪還」が出る</small></div>
+    <div class="step hot"><b>6 再訪</b><small>復活・金カード</small></div>
+  </div>
+  <p class="note">空の状態から始めるデモは <code>npm run demo:fresh</code>（または直下の <code>demo-fresh.cmd</code> をダブルクリック）。</p>
+</section>
+
+<!-- 10 -->
+<section class="sec" id="open">
+  <h2>未決事項と、本番までに残っているもの</h2>
+  <div class="src"><b>元の文書</b><span>CLAUDE.md §12</span><span>docs/09 §10（U1〜U12）</span><span>docs/12 §8（B1〜B7）</span><span>docs/13</span></div>
+
+  <h3>決めてもらうこと（主なもの）</h3>
+  <div class="tw"><table>
+    <tr><th>#</th><th>項目</th><th>論点</th></tr>
+    <tr><td class="mono">B1・U1</td><td>ホスティングと DB の置き場所</td><td>当面はローカル。クラウドか社内 VM かは公開を決めるときに</td></tr>
+    <tr><td class="mono">B2・B4</td><td>外部ログインの登録、本番ドメイン</td><td>LINE・Google のどれから出すか。<code>app.</code>／<code>admin.</code> の2ドメイン</td></tr>
+    <tr><td class="mono">B3</td><td>ログインを求めるタイミング</td><td>案：見るだけはログインなし、クエスト達成で初めて求める</td></tr>
+    <tr><td class="mono">B7</td><td>プライバシーポリシー・利用規約</td><td>位置情報・外部ログイン・店舗へ渡す集計値。法務の確認</td></tr>
+    <tr><td class="mono">U5</td><td>新しい店舗の参加方法</td><td>申請制か、運営者からの招待制か</td></tr>
+    <tr><td class="mono">U12</td><td>掲載確認の体制</td><td>誰が、どれくらいの時間で確認するか</td></tr>
+    <tr><td class="mono">U3・U6</td><td>店頭 QR・クーポン利用の確かめ方</td><td>固定 QR＋GPS か、動的な QR か</td></tr>
+    <tr><td class="mono">U8</td><td>架空の店舗 → 実在の店舗</td><td>同意・確認・切り替えの手順</td></tr>
+    <tr><td class="mono">—</td><td>仮の数値の確定</td><td>80m、30日／90日、カード条件 など</td></tr>
+  </table></div>
+
+  <h3>本番までの未実装（「必須」のもの）</h3>
+  <div class="grid g2">
+    <div class="card"><h4>ログイン・アカウント</h4><ul>
+      <li><span class="mono">C-1</span> CMS の2要素認証（TOTP）</li>
+      <li><span class="mono">A-1</span> LINE・Google の登録と実物での通し確認</li>
+      <li><span class="mono">A-2・A-3</span> ログアウトのボタン、セッション切れの導線</li>
+      <li><span class="mono">A-4</span> 退会（全削除）</li>
+      <li><span class="mono">A-6</span> 位置情報の同意、ポリシー・規約の掲載</li>
+    </ul></div>
+    <div class="card"><h4>データ・CMS・基盤</h4><ul>
+      <li><span class="mono">D-1</span> 領主・ランキングを実際の利用者から計算</li>
+      <li><span class="mono">D-2</span> CMS のクーポンをサーバーの訪問に反映</li>
+      <li><span class="mono">S-1・S-2・S-5</span> 掲載確認、緊急の非公開、店舗の追加</li>
+      <li><span class="mono">I-1〜I-3</span> ホスティング、本物の PostgreSQL、バックアップ</li>
+      <li><span class="mono">I-5・I-6・I-9</span> CI、監視、秘密の管理</li>
+    </ul></div>
+  </div>
+  <p class="note">全件（優先度つき）は <code>docs/13_production_gaps.md</code>。</p>
+</section>
+
+</main>
+</div>
+<footer>まちクエ 要件定義書（HTML 版）｜元の文書が正。食い違いがあれば CLAUDE.md・docs/ を優先し、この HTML を直す。</footer>
+</body>
+</html>

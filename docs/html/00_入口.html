@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>まちクエ ドキュメントの入口</title>
+<link rel="stylesheet" href="assets/doc.css">
+<script src="assets/doc.js" defer></script>
+</head>
+<body>
+
+<header class="top">
+  <a class="logo" href="00_入口.html"><span class="pin"></span>まちクエ ドキュメント</a>
+  <nav>
+    <a class="on" href="00_入口.html">入口・場所</a>
+    <a href="01_要件定義書.html">要件定義書</a>
+    <a href="02_設計書.html">設計書</a>
+  </nav>
+</header>
+
+<div class="hero">
+  <div class="kicker">MACHI QUEST</div>
+  <h1>まちクエ ドキュメントの入口</h1>
+  <p class="lead">N西市 再訪促進アプリ「まちクエ」の要件定義書と設計書（HTML 版）。読みたいほうを選んでください。</p>
+</div>
+
+<div class="layout" style="grid-template-columns: minmax(0, 1fr);">
+<main>
+
+  <div class="doors" style="margin-bottom: 22px;">
+    <a class="door" href="01_要件定義書.html">
+      <div class="k">何を作るか</div>
+      <h2>要件定義書</h2>
+      <p>コンセプト、ターゲット、ゲームの仕組み、画面ごとの機能、店舗 CMS、非機能要件、未決事項。</p>
+      <ul>
+        <li>このアプリは何か</li>
+        <li>ターゲットと提供価値</li>
+        <li>開発判断基準 A／B／C</li>
+        <li>ゲームの仕組みと数値</li>
+        <li>画面ごとの機能要件</li>
+        <li>店舗 CMS の要件</li>
+        <li>非機能要件</li>
+        <li>用語・未決事項</li>
+      </ul>
+      <span class="go">要件定義書を開く →</span>
+    </a>
+    <a class="door" href="02_設計書.html">
+      <div class="k">どう作っているか</div>
+      <h2>設計書</h2>
+      <p>全体の構成、層とフォルダ、ドメインモデル、データ、API、認証、色、品質の決まり、進み具合。</p>
+      <ul>
+        <li>全体の構成（3つ）</li>
+        <li>層の構成（DDD）</li>
+        <li>フォルダ構成</li>
+        <li>画面とルート</li>
+        <li>ドメインモデル</li>
+        <li>データ設計・API</li>
+        <li>認証・見た目</li>
+        <li>品質ゲート・進み具合</li>
+      </ul>
+      <span class="go">設計書を開く →</span>
+    </a>
+  </div>
+
+  <section class="sec" id="where">
+    <h2>この HTML の場所</h2>
+    <p>エクスプローラーのアドレス欄に貼ると開けます。</p>
+    <h4>フォルダ</h4>
+    <div class="path"><span class="p">C:\AI-Sprint\workspace\MC-008\docs\html</span><button data-copy="C:\AI-Sprint\workspace\MC-008\docs\html">コピー</button></div>
+    <h4>ファイル</h4>
+    <div class="path"><span class="p">C:\AI-Sprint\workspace\MC-008\docs\html\00_入口.html</span><button data-copy="C:\AI-Sprint\workspace\MC-008\docs\html\00_入口.html">コピー</button></div>
+    <div class="path"><span class="p">C:\AI-Sprint\workspace\MC-008\docs\html\01_要件定義書.html</span><button data-copy="C:\AI-Sprint\workspace\MC-008\docs\html\01_要件定義書.html">コピー</button><a class="open" href="01_要件定義書.html">開く</a></div>
+    <div class="path"><span class="p">C:\AI-Sprint\workspace\MC-008\docs\html\02_設計書.html</span><button data-copy="C:\AI-Sprint\workspace\MC-008\docs\html\02_設計書.html">コピー</button><a class="open" href="02_設計書.html">開く</a></div>
+    <p class="note">デスクトップのショートカット「まちクエ 要件定義書・設計書」からも、このページが開きます。</p>
+
+<pre class="tree"><span class="h">C:\AI-Sprint\workspace\MC-008\</span>
+├─ CLAUDE.md                     <span class="c">企画書（元の文書）</span>
+└─ <span class="h">docs\</span>
+    ├─ 01_architecture.md … 13_production_gaps.md   <span class="c">元の文書（Markdown）</span>
+    └─ <span class="h">html\</span>                     <span class="c">★ ここ</span>
+        ├─ <span class="h">00_入口.html</span>          <span class="c">このページ</span>
+        ├─ <span class="h">01_要件定義書.html</span>
+        ├─ <span class="h">02_設計書.html</span>
+        └─ assets\               <span class="c">doc.css・doc.js（見た目と目次）</span></pre>
+  </section>
+
+  <section class="sec" id="sources">
+    <h2>元の文書の場所</h2>
+    <p>HTML は次の文書をまとめたものです。<b>元の文書が正</b>で、食い違いがあれば元の文書を優先します。場所はすべて <code>C:\AI-Sprint\workspace\MC-008\</code> の下。</p>
+    <div class="tw"><table>
+      <tr><th>文書</th><th>中身</th><th>HTML のどこに</th></tr>
+      <tr><td class="mono">CLAUDE.md</td><td>企画書（背景・ターゲット・ゲーム設計・画面・発表・用語）＋開発の必須ルール</td><td>要件定義書 1〜5・8・9</td></tr>
+      <tr><td class="mono">docs\01_architecture.md</td><td>層の構成、依存の向き、ドメインモデル</td><td>設計書 2・5</td></tr>
+      <tr><td class="mono">docs\02_folder_structure.md</td><td>フォルダ構成、画面遷移表</td><td>設計書 3・4</td></tr>
+      <tr><td class="mono">docs\03_coding_standards.md</td><td>命名・関数・Result 型・テスト・Git</td><td>設計書 10</td></tr>
+      <tr><td class="mono">docs\04_comment_and_logging.md</td><td>日本語 JSDoc、関数単位のデバッグログ</td><td>設計書 10</td></tr>
+      <tr><td class="mono">docs\05_security_checklist.md</td><td>セキュリティ監査表（SEC・PRV）</td><td>要件定義書 7／設計書 10</td></tr>
+      <tr><td class="mono">docs\06_data_integrity_checklist.md</td><td>データ完全性の監査表（DI）</td><td>要件定義書 7／設計書 10</td></tr>
+      <tr><td class="mono">docs\07_audit_procedure.md</td><td>監査手順、静的監査スクリプト</td><td>設計書 10</td></tr>
+      <tr><td class="mono">docs\08_implementation_design.md</td><td>実装設計書（決定 D1〜D17、型、デモシード、舞台、品質ゲート）</td><td>設計書 4〜6</td></tr>
+      <tr><td class="mono">docs\09_store_cms_requirements.md</td><td>店舗 CMS の要件定義、連携サーバー、ログイン</td><td>要件定義書 6／設計書 1・7・8</td></tr>
+      <tr><td class="mono">docs\10_color_system.md</td><td>色の体系</td><td>設計書 9</td></tr>
+      <tr><td class="mono">docs\11_backend_operations.md</td><td>連携サーバーの本番運用</td><td>設計書 11</td></tr>
+      <tr><td class="mono">docs\12_user_backend_design.md</td><td>商用版バックエンド（PostgreSQL・外部ログイン・段階0〜5）</td><td>設計書 1・6〜8・12</td></tr>
+      <tr><td class="mono">docs\13_production_gaps.md</td><td>本番に向けた未実装の一覧</td><td>要件定義書 10／設計書 12</td></tr>
+      <tr><td class="mono">docs\audit\</td><td>監査の記録（セキュリティ・データ完全性・演習）</td><td>設計書 10</td></tr>
+    </table></div>
+  </section>
+
+  <section class="sec" id="code">
+    <h2>コードと動かし方の場所</h2>
+    <div class="grid g3">
+      <div class="card"><h4>ソースコード</h4><p>層ごとに分かれています（presentation／application／domain／infrastructure／Common）。</p><p class="where">C:\AI-Sprint\workspace\MC-008\src</p></div>
+      <div class="card"><h4>マスタデータ・写真</h4><p>地区・名所・店舗・クーポン、図鑑の写真。</p><p class="where">C:\AI-Sprint\workspace\MC-008\public</p></div>
+      <div class="card"><h4>ワイヤーフレーム</h4><p>画面ごとの HTML（01〜10）。</p><p class="where">C:\AI-Sprint\workspace\MC-008\wireframes\index.html</p></div>
+      <div class="card"><h4>デモを空の状態で始める</h4><p>ダブルクリックで起動（8790）。</p><p class="where">C:\AI-Sprint\workspace\MC-008\demo-fresh.cmd</p></div>
+      <div class="card"><h4>開発用に起動</h4><p><code>npm run dev</code>（5173）</p><p class="where">C:\AI-Sprint\workspace\MC-008 で実行</p></div>
+      <div class="card"><h4>完了前の確認</h4><p><code>npm run check</code>（型 → 静的監査 → テスト）</p><p class="where">C:\AI-Sprint\workspace\MC-008 で実行</p></div>
+    </div>
+  </section>
+
+</main>
+</div>
+<footer>まちクエ ドキュメント（HTML 版）｜2026-11-10 作成</footer>
+</body>
+</html>

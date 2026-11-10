@@ -12,13 +12,16 @@ import { createAvatarIcon, iconText } from '@/presentation/screens/Avatar/avatar
 import type { AvatarIconName } from '@/presentation/screens/Avatar/avatarIcons';
 import { REMOVABLE_SLOTS, remainingTextOf } from '@/presentation/screens/Avatar/avatarScreenModel';
 import { createOutfitThumb, createPartThumb } from '@/presentation/screens/Avatar/partThumb';
-import { phraseNodes } from '@/presentation/screens/Avatar/phraseBreak';
+import { longestPhrase, partNameNodes, phraseNodes, tailKeptNodes } from '@/presentation/screens/Avatar/phraseBreak';
 import { HAIR_COLORS, SKIN_COLORS, TOP_COLORS, splitPartId } from '@/presentation/shared/avatar/avatarLook';
 
 const logger = createLogger('presentation/screens/Avatar/AvatarPanels');
 
 /** サムネイルの一辺（CSS px） */
 const THUMB_PX = 64;
+
+/** 部品のマス（4列）の1行に入らない語の文字数（11px で 7 文字までは入る） */
+const LONG_PHRASE = 8;
 
 /** 色のチップの色（枠 → 種類 → 色） */
 const CHIP_COLORS: Readonly<Record<string, Readonly<Record<string, string>>>> = { hairColor: HAIR_COLORS, skin: SKIN_COLORS, topColor: TOP_COLORS };
@@ -111,7 +114,8 @@ function createPartCell(part: AvatarPartDto, input: PartListInput, index = 0): H
     style: { '--i': String(index % 12) },
   }, [
     h('span', { class: 'avatar-item__art' }, [createPartThumb(part.id, input.preview, THUMB_PX), createPlaceTag(part)]),
-    h('span', { class: 'avatar-item__name' }, phraseNodes(part.name)),
+    // 1行に入らない長い語（イルミネーション）がある名前は、字間を少し詰めて割らずに出す（CSS の --long）
+    h('span', { class: ['avatar-item__name', longestPhrase(part.name) >= LONG_PHRASE ? 'avatar-item__name--long' : undefined] }, partNameNodes(part.name)),
     // 手に入れ方の文はマスには出さない（「あと◯回」と土地・季節の札で足りる。文は押したときの詳しい情報と読み上げ名に出す）
     createRarityTag(part.rarity),
     part.isNew ? h('span', { class: 'avatar-badge avatar-badge--new', text: 'NEW' }) : undefined,
@@ -243,7 +247,9 @@ export function createTitleList(input: PartListInput, onClear: () => void): HTML
     const plate = h('button', {
       class: ['avatar-title', `avatar-title--${p.rarity.toLowerCase()}`, p.owned ? undefined : 'avatar-title--locked', on ? 'avatar-title--on' : undefined, input.tryOnId === p.id ? 'avatar-title--trying' : undefined],
       attrs: { type: 'button', 'aria-pressed': on ? 'true' : 'false', 'data-testid': `avatar-part-${p.id}` },
-    }, [createRarityTag(p.rarity), h('b', {}, phraseNodes(p.name)), p.owned ? h('small', { text: on ? '着用中' : p.hint }) : h('small', {}, [iconText('lock', `${remainingTextOf(p)}・${p.hint}`, 13)]), p.isNew ? h('span', { class: 'avatar-badge avatar-badge--new', text: 'NEW' }) : undefined]);
+    }, [createRarityTag(p.rarity), h('b', {}, phraseNodes(p.name)),
+      // 手に入れ方の文は、最後の数文字だけが次の行に落ちないようにする（tailKeptNodes）
+      p.owned ? h('small', {}, tailKeptNodes(on ? '着用中' : p.hint)) : h('small', {}, [h('span', { class: 'avatar-icon-text' }, [createAvatarIcon('lock', 13), h('span', {}, tailKeptNodes(`${remainingTextOf(p)}・${p.hint}`))])]), p.isNew ? h('span', { class: 'avatar-badge avatar-badge--new', text: 'NEW' }) : undefined]);
     return onTap(plate, () => input.onPick(p));
   });
   const none = onTap(h('button', { class: ['avatar-title', 'avatar-title--none'], text: 'なし', attrs: { type: 'button', 'aria-label': '称号をつけない' } }), onClear);

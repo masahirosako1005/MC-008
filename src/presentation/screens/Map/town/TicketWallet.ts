@@ -308,7 +308,7 @@ class TicketWallet {
     const area = h('div', { class: 'ticket-qr__actions' });
     const use = h('button', { class: ['btn', 'btn--primary', 'ticket-qr__use'], attrs: { type: 'button', 'data-testid': 'ticket-use' }, text: '使う' });
     const cancel = h('button', { class: 'btn', attrs: { type: 'button', 'data-testid': 'ticket-use-cancel' }, text: 'やめる' });
-    const confirm = h('button', { class: ['btn', 'btn--primary'], attrs: { type: 'button', 'data-testid': 'ticket-use-confirm' }, text: '使用済みにする' });
+    const confirm = h('button', { class: ['btn', 'btn--primary'], attrs: { type: 'button', 'data-testid': 'ticket-use-confirm' }, text: '使った' });
     const ask = h('div', { class: 'ticket-qr__confirm', attrs: { role: 'group', 'aria-label': '使用済みにする' } }, [cancel, confirm]);
     ask.hidden = true;
     use.addEventListener('click', userAction('ticket-use', () => {

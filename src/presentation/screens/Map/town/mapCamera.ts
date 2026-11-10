@@ -25,7 +25,7 @@ const INERTIA_STOP = 0.02;
 /** ホイール1目盛りあたりの拡大率の指数 */
 const WHEEL_ZOOM_RATE = 0.0016;
 /** 追従するとき、画面の端からこの割合より内側にアイコンを保つ */
-const FOLLOW_MARGIN_RATIO = 0.24;
+export const FOLLOW_MARGIN_RATIO = 0.24;
 
 /** カメラ操作の通知 */
 export interface MapCameraHooks {
@@ -111,7 +111,8 @@ export function keepInside(camera: Camera, vp: Viewport, point: Point2D, topInse
   const usableH = Math.max(1, viewAnchor(vp).y * 2);
   const mx = vp.width * FOLLOW_MARGIN_RATIO;
   const my = usableH * FOLLOW_MARGIN_RATIO;
-  const top = Math.min(Math.max(my, topInset), usableH / 2);
+  // 上の余白は下の境（usableH - my）までにとどめる（超えると上下の境が入れ替わり、点が行ったり来たりする）
+  const top = Math.min(Math.max(my, topInset), Math.max(usableH / 2, usableH - my));
   const dx = point.x < mx ? point.x - mx : point.x > vp.width - mx ? point.x - (vp.width - mx) : 0;
   const dy = point.y < top ? point.y - top : point.y > usableH - my ? point.y - (usableH - my) : 0;
   if (dx === 0 && dy === 0) return camera;

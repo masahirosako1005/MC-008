@@ -9,17 +9,26 @@
  * すること（起動のたびに毎回）:
  *   1. 連携サーバー（dist-server）と、アプリ＋CMS（dist-demo-fresh）をいまのソースからデモビルドする＝最新版
  *      - VITE_CMS_BACKEND=server：CMS の登録がアプリへ届く（別の端末どうしでもつながる）
- *      - VITE_DEMO_START=first  ：保存済みの旅人が無いとき「初回の人」（記録なし）で始める
+ *      - 最初の旅人は「通い慣れた人」（図鑑 36／80 枚・EXP 600・アバターの部品と特典を一部取得済み）。
+ *        2026-11-10 ユーザー指示「図鑑とかアバターとか特典は一部を取得済に」。前に試した記録・写真・アンケート・CMS の登録は残らない
+ *      - --empty のときだけ VITE_DEMO_START=first：「初回の人」（記録なし・EXP 0）で始める
  *   2. CMS の DB（.data/demo-fresh/）を消して作り直す＝CMS の登録・版が空
  *   3. 連携サーバーを起動し、まっさらなプロファイルのブラウザ（Edge か Chrome）でアプリと CMS を開く＝localStorage が空
+ *      ブラウザは最大化し、スマホ枠（390×844＝iPhone 12〜14 の大きさ）が縦に欠けずに入るよう、このウィンドウだけ表示倍率を下げる
+ *      （ノート PC では画面の高さが足りず、枠が縦に詰まって寸胴に見えるため。2026-11-10）
  *
  * オプション:
  *   --port 8790      ポート（ふだんの 5173・demo:backend の 8787 とは別にしてある）
  *   --host 0.0.0.0   スマホから開くとき。スマホ側の空の状態は、スマホのシークレット（プライベート）タブで開いて作る
+ *   --empty          何も取得していない「初回の人」で始める（既定は一部取得済みの「通い慣れた人」）
  *   --no-open        ブラウザを開かない（URL だけ表示）
+ *   --no-touch       アプリのタブをスマホの指の操作にしない（ふつうのマウス操作のまま）
+ *
+ * スマホの指の操作（既定）: アプリのタブだけ、マウスの押しながらの移動がスワイプになる（scripts/dev/touchEmulation.mjs。CMS のタブはマウスのまま）。
+ * このスクリプトが動いている間だけ効く。あとから同じウィンドウで開いたアプリのタブにも数秒で効く。
  *
  * デモの途中で空に戻すとき: このスクリプトを止めて（Ctrl+C）もう一度起動する。
- * 獲得済みの状態を見せたいとき: アプリ右上の歯車を長押し → デモメニューの旅人切替「通い慣れた人」。
+ * 何も取得していない状態を見せたいとき: アプリ右上の歯車を長押し → デモメニューの旅人切替「初回の人」（または --empty で起動）。
  * ふだんの `npm run dev`（5173）・`npm run demo:backend`（8787）には影響しない（出力先・DB・ブラウザのプロファイルが別）。
  */
 import { spawn, spawnSync } from 'node:child_process';
@@ -30,6 +39,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defaultTlsDir, ensureDevCertificates } from './devCert.mjs';
+import { emulateTouch } from './touchEmulation.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const VITE = join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js');
@@ -41,6 +51,10 @@ const DATA_DIR = join(ROOT, '.data', 'demo-fresh');
 const PROFILE_PREFIX = 'machiquest-demo-';
 /** 自分の PC だけを指すホスト名 */
 const LOOPBACK_HOSTS = ['127.0.0.1', 'localhost', '::1'];
+/** スマホ枠を欠けずに出すのに要る高さ（CSS px）：枠 844 ＋ 上下の余白 40 ＋ ブラウザのタブ・アドレスバーのぶん 90（実測 約80） */
+const FRAME_NEEDED_HEIGHT = 844 + 40 + 90;
+/** 表示倍率の下限（これより小さくすると文字が読めない） */
+const MIN_SCALE = 0.75;
 /** サーバーの起動を待つ最長の時間（ミリ秒） */
 const READY_TIMEOUT_MS = 30_000;
 
@@ -96,6 +110,23 @@ function findBrowser() {
 }
 
 /**
+ * スマホ枠が縦に欠けずに入る表示倍率を返す（いまの画面の倍率で入るなら undefined＝そのまま）。
+ * 画面の実際の高さ（ピクセル）と、タスクバーを除いた高さから求める。
+ * @returns {number | undefined} ブラウザに渡す表示倍率（0.05 刻み）
+ */
+function frameScale() {
+  const script = 'Add-Type -AssemblyName System.Windows.Forms; $s=[System.Windows.Forms.Screen]::PrimaryScreen; ' +
+    '$v=(Get-CimInstance Win32_VideoController | Where-Object CurrentVerticalResolution | Select-Object -First 1).CurrentVerticalResolution; ' +
+    '"$($s.Bounds.Height) $($s.WorkingArea.Height) $v"';
+  const result = spawnSync('powershell', ['-NoProfile', '-Command', script], { encoding: 'utf8' });
+  const [logical, work, physical] = (result.stdout ?? '').trim().split(' ').map(Number);
+  if (!(logical > 0 && work > 0 && physical > 0)) return undefined;
+  const current = physical / logical;
+  const fit = Math.floor(((work * current) / FRAME_NEEDED_HEIGHT) * 20) / 20;
+  return fit >= current ? undefined : Math.max(MIN_SCALE, fit);
+}
+
+/**
  * 前回までのデモのブラウザのプロファイルを消す（使用中で消せないものは残す）。
  */
 function removeOldProfiles() {
@@ -111,9 +142,10 @@ function removeOldProfiles() {
 
 /**
  * まっさらなプロファイルのブラウザで URL を開く。
- * @param {string[]} urls 開く URL（1つ目が手前のタブ）
+ * @param {string[]} urls 開く URL（1つ目が手前のタブ＝アプリ）
+ * @param {boolean} touch アプリのタブをスマホの指の操作にするか
  */
-function openFreshBrowser(urls) {
+async function openFreshBrowser(urls, touch) {
   const browser = findBrowser();
   if (browser === undefined) {
     console.log('[demo] Edge・Chrome が見つかりません。シークレット（InPrivate）ウィンドウで上の URL を開いてください');
@@ -121,9 +153,17 @@ function openFreshBrowser(urls) {
   }
   removeOldProfiles();
   const profile = mkdtempSync(join(tmpdir(), PROFILE_PREFIX));
-  const args = [`--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-sync', '--new-window', ...urls];
+  const scale = frameScale();
+  const args = [
+    `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-sync', '--start-maximized',
+    ...(scale === undefined ? [] : [`--force-device-scale-factor=${scale}`]), ...(touch ? ['--remote-debugging-port=0'] : []), '--new-window', ...urls,
+  ];
   spawn(browser, args, { detached: true, stdio: 'ignore' }).unref();
   console.log('[demo] まっさらなブラウザを開きました（このウィンドウの中だけが空の状態です。ふだんのブラウザで開くと前の記録が残っています）');
+  if (!touch) return;
+  const app = urls[0] ?? '';
+  const done = await emulateTouch({ profileDir: profile, matches: (url) => url.startsWith(app) && !url.includes('cms.html') });
+  console.log(done ? '[demo] アプリのタブはスマホの指の操作です（マウスを押しながら動かすとスワイプ）' : '[demo] スマホの指の操作にできませんでした（マウス操作のまま使えます）');
 }
 
 const port = option('--port', '8790');
@@ -133,7 +173,7 @@ if (!existsSync(VITE)) throw new Error('node_modules/vite がありません。n
 
 console.log('[demo] いまのソースからビルドします（1分ほど）');
 build(['-c', 'vite.server.config.ts', '--mode', 'demo']);
-build(['--mode', 'demo', '--outDir', APP_OUT, '--emptyOutDir'], { VITE_CMS_BACKEND: 'server', VITE_DEMO_START: 'first' });
+build(['--mode', 'demo', '--outDir', APP_OUT, '--emptyOutDir'], { VITE_CMS_BACKEND: 'server', VITE_DEMO_START: process.argv.includes('--empty') ? 'first' : 'regular' });
 
 // CMS の DB を空にする（このスクリプト専用のフォルダ。前回のサーバーが動いたままなら消せないので止めてもらう）
 try {
@@ -176,4 +216,4 @@ if (tls !== undefined) {
   console.log(`[demo] スマホで警告を出さないには ${tls.caCertPath} をスマホに入れて信頼してください（発表後は消す）`);
 }
 console.log('[demo] 止めるとき・空に戻すとき: Ctrl+C で止めて、もう一度起動');
-if (!noOpen) openFreshBrowser([local, `${local}cms.html`]);
+if (!noOpen) await openFreshBrowser([local, `${local}cms.html`], !process.argv.includes('--no-touch'));

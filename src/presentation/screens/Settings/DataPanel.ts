@@ -10,6 +10,7 @@ import { createButton } from '@/Common/ui/Button';
 import { h } from '@/Common/ui/dom';
 import { saveTextFile } from '@/Common/ui/download';
 import { openModal } from '@/Common/ui/Modal';
+import type { ModalHandle } from '@/Common/ui/Modal';
 import type { AppContext } from '@/presentation/App/AppContext';
 import { DATA_TEXTS, deleteConfirmText } from '@/presentation/screens/Settings/settingsModel';
 
@@ -20,6 +21,20 @@ const EXPORT_MIME = 'application/json';
 
 /** 読み込むファイルの大きさの上限（バイト。仮）。中身の検証はユースケースが行う（ImportDataUseCase） */
 const IMPORT_MAX_BYTES = 8 * 1024 * 1024;
+
+/** 開いている確認ダイアログ（画面を離れるときに閉じる。無ければ undefined） */
+let openConfirm: ModalHandle | undefined;
+
+/**
+ * 開いている確認ダイアログを閉じる（設定画面を離れるとき。確認の層を次の画面に残さない）。
+ * @sideEffect モーダルを閉じる
+ */
+export function closeDataConfirm(): void {
+  const log = logger.fn('closeDataConfirm', { open: openConfirm !== undefined });
+  openConfirm?.close();
+  openConfirm = undefined;
+  log.exit(undefined);
+}
 
 /**
  * データを書き出して、ファイルとして保存させる。結果はトーストで知らせる。
@@ -63,7 +78,8 @@ async function importData(ctx: AppContext, content: string): Promise<void> {
  */
 function confirmImport(ctx: AppContext, content: string): void {
   const log = logger.fn('confirmImport', { length: content.length });
-  openModal({
+  openConfirm?.close();
+  openConfirm = openModal({
     title: DATA_TEXTS.importConfirmTitle,
     body: DATA_TEXTS.importConfirmBody,
     testId: 'settings-import-confirm',
@@ -120,7 +136,8 @@ async function deleteAllData(ctx: AppContext): Promise<void> {
  */
 function confirmDelete(ctx: AppContext): void {
   const log = logger.fn('confirmDelete');
-  openModal({
+  openConfirm?.close();
+  openConfirm = openModal({
     title: DATA_TEXTS.confirmTitle,
     body: deleteConfirmText(ctx.services.isDemo),
     testId: 'settings-delete-confirm',

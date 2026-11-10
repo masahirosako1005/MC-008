@@ -104,6 +104,10 @@ export interface PlacedSpot {
   readonly pin: number;
   /** 中間の吹き出し（中間で吹き出しを置けたときだけ。置けなければ点だけ） */
   readonly callout?: MiddleCallout;
+  /** 写真ピンを足もとから持ち上げる高さ（CSS px。自分のアバターが手前に立っているときだけ。名前の札は足もとのまま） */
+  readonly lift?: number;
+  /** 写真ピンを横へずらす幅（CSS px。持ち上げる場所が無いとき。名前の札は足もとのまま） */
+  readonly pinDx?: number;
 }
 
 /** 画面に重ねた当たり判定（お店の声の吹き出しなど。置いたスポットの配列ごとに覚える） */
@@ -268,12 +272,148 @@ export function spotLabelBoxes(placed: readonly PlacedSpot[], input: SceneInput)
   const boxes: { x: number; y: number; w: number; h: number }[] = [];
   for (const p of placed) {
     if (input.hidden?.has(p.spot.id) === true) continue;
-    if (p.pin > 0) boxes.push({ ...p.hit });
+    // 写真ピンは、上の今日の札・選択の矢印まで含める（歩いている途中に「あなた」の札が「あと2日」の札へ重ならないように）
+    if (p.pin > 0) boxes.push({ ...p.hit }, pinBox(p, p.spot.id === input.selectedId));
     if (!p.label) continue;
     const w = (p.spot.name?.length ?? 0) * 11 * input.textScale + 8;
     boxes.push({ x: p.x - w / 2, y: p.y + 3, w, h: 15 * input.textScale });
   }
   return boxes;
+}
+
+/**
+ * 写真ピンが占める矩形（白い縁・しっぽ・上の今日の札・選択の矢印まで。今日の札は写真より広いことがあるので幅も合わせる）。
+ * 持ち上げているピン（lift）は持ち上げた位置で返す（矢印は付かない）。
+ * @param p 置いたスポット（写真ピン）
+ * @param selected 選択中か（上に矢印が付く）
+ * @returns 矩形（画面座標）
+ */
+function pinBox(p: PlacedSpot, selected: boolean): { x: number; y: number; w: number; h: number } { // audit-ignore: fnlog-missing 毎フレーム描画
+  const lift = p.lift ?? 0;
+  const tag = p.spot.today === undefined ? 0 : p.spot.today.tag.length * 12 + 12;
+  const half = Math.max(p.pin / 2 + PIN_FRAME_PX, tag / 2);
+  const bottom = p.y - lift;
+  const top = bottom - p.pin - PIN_TAIL_PX - PIN_FRAME_PX * 2 - (p.spot.today === undefined ? 0 : 18) - (selected && lift === 0 ? 22 : 0);
+  return { x: p.x + (p.pinDx ?? 0) - half, y: top, w: half * 2, h: bottom - top };
+}
+
+/**
+ * 2つの矩形が重なるか。
+ * @param a 矩形
+ * @param b 矩形
+ * @returns 重なれば true
+ */
+function boxesOverlap(a: { readonly x: number; readonly y: number; readonly w: number; readonly h: number }, b: { readonly x: number; readonly y: number; readonly w: number; readonly h: number }): boolean { // audit-ignore: fnlog-missing 毎フレーム描画
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+/**
+ * 写真ピンを横へずらした先が空いているか（画面の中で、ほかのスポットの絵・名前の札に重ならない）。
+ * @param p ずらす写真ピン
+ * @param at ずらした先の矩形
+ * @param placed 置いたスポット
+ * @param input 描画の入力
+ * @param hidden 描いていないスポット（判定から除く）
+ * @returns 空いていれば true
+ */
+function pinSideFree(p: PlacedSpot, at: { readonly x: number; readonly y: number; readonly w: number; readonly h: number }, placed: readonly PlacedSpot[], input: SceneInput, hidden: ReadonlySet<string> | undefined): boolean { // audit-ignore: fnlog-missing 毎フレーム描画
+  if (at.x < 4 || at.x + at.w > input.vp.width - 4) return false;
+  return !placed.some((o) => {
+    if (o === p || hidden?.has(o.spot.id) === true) return false;
+    const labelW = o.label ? (o.spot.name?.length ?? 0) * 11 * input.textScale + 8 : 0;
+    return boxesOverlap(at, o.hit) || (o.label && boxesOverlap(at, { x: o.x - labelW / 2, y: o.y + 3, w: labelW, h: 15 * input.textScale }));
+  });
+}
+
+/** 自分のアバターをよけている写真ピンの状態（スポットID → 今の持ち上げ幅・横のずれ・よけ方。0＝頭の上、1＝右、-1＝左） */
+export type PinLiftState = Map<string, { lift: number; dx: number; side: 0 | 1 | -1 }>;
+
+/**
+ * 自分のアバターが写真ピンの手前に立つとき、そのピンを頭の上へ持ち上げる（着いたお店の写真が隠れないように。詳細の表示だけ）。
+ * 名前の札は足もとのまま。動かす幅は毎フレーム少しずつ寄せる（急に飛ばない）。歩いている間は行き先のピンだけ（通りすがりのピンは動かさない）。
+ * 持ち上げた先が上の部品の下に入るとき（地図が狭いとき）は、空いている横（右→左）へずらす。どこも空いていなければ動かさない。
+ * @param placed 置いたスポット
+ * @param input 描画の入力
+ * @param body 自分のアバターが占める矩形（現在地が無ければ undefined）
+ * @param walk 歩いているか・行き先のスポット・持ち上げてよい上端（上の浮いた部品の下端。CSS px）・描いていないスポット（横の空きの判定から除く）
+ * @param state よけている状態（呼び出し側が持ち、毎フレーム渡す）
+ * @returns 動かした後の並び（動かすものが無ければ placed そのもの）
+ * @sideEffect state を更新する
+ */
+export function liftPins(placed: PlacedSpot[], input: SceneInput, body: { readonly x: number; readonly y: number; readonly w: number; readonly h: number } | undefined, walk: { readonly walking: boolean; readonly targetId?: string; readonly minTop: number; readonly hidden?: ReadonlySet<string> }, state: PinLiftState): PlacedSpot[] { // audit-ignore: fnlog-missing 毎フレーム描画
+  if (input.tier !== 'near' || body === undefined) {
+    state.clear();
+    return placed;
+  }
+  const footY = body.y + body.h - PIN_LIFT_FOOT_PX;
+  const seen = new Set<string>();
+  const out = placed.map((p) => {
+    if (p.pin === 0) return p;
+    const id = p.spot.id;
+    const box = pinBox(p, false);
+    // 足もとがピンの根もとの近く（横は写真の幅の中、縦は少し奥〜手前）にあるとき、体が写真に重なる
+    const dy = footY - p.y;
+    // 歩いて向かっている行き先のピンと、もう持ち上げているピンは、体が重なる少し手前から持ち上げる（着く直前にピンと今日の札が顔にかからないように）
+    const lead = state.has(id) || (walk.walking && id === walk.targetId);
+    const onPin = Math.abs(body.x + body.w / 2 - p.x) < box.w / 2 + body.w / 2 + (lead ? PIN_LIFT_LEAD_SIDE_PX : -6) && dy > -(lead ? PIN_LIFT_LEAD_BEHIND_PX : PIN_LIFT_BEHIND_PX) && dy < body.h - PIN_LIFT_FOOT_PX - PIN_TAIL_PX && (!walk.walking || id === walk.targetId);
+    // しっぽの先が頭のすぐ上に来る高さ・体の横に並ぶ幅
+    const full = Math.max(0, p.y - body.y + 2);
+    const shift = box.w / 2 + body.w / 2 + 6;
+    const fitsUp = box.y - full >= walk.minTop;
+    let st = state.get(id);
+    if (st === undefined && !onPin) return p;
+    /**
+     * そのよけ方ができるか（頭の上＝上の部品の下に入らない。横＝ずらした先が空いている）。
+     * @param side よけ方（0＝頭の上・1＝右・-1＝左）
+     * @returns できれば true
+     */
+    const free = (side: 0 | 1 | -1): boolean => (side === 0 ? fitsUp : pinSideFree(p, { ...box, x: box.x + side * shift }, placed, input, walk.hidden)); // audit-ignore: fnlog-missing 毎フレーム描画
+    // 今のよけ方が続けられる間は変えない（地図が動いて場所がふさがったら選び直す）
+    const side = !onPin ? undefined : st !== undefined && free(st.side) ? st.side : free(0) ? 0 : free(1) ? 1 : free(-1) ? -1 : undefined;
+    if (st === undefined) {
+      if (side === undefined) return p;
+      st = { lift: 0, dx: 0, side };
+    } else if (side !== undefined) st.side = side;
+    const wanted = side !== undefined;
+    const targetLift = wanted && st.side === 0 ? full : 0;
+    const targetDx = wanted ? st.side * shift : 0;
+    st.lift = Math.abs(targetLift - st.lift) < 0.5 ? targetLift : st.lift + (targetLift - st.lift) * 0.22;
+    st.dx = Math.abs(targetDx - st.dx) < 0.5 ? targetDx : st.dx + (targetDx - st.dx) * 0.22;
+    if (st.lift === 0 && st.dx === 0) return p;
+    state.set(id, st);
+    seen.add(id);
+    return { ...p, lift: st.lift, pinDx: st.dx, hit: { ...p.hit, x: p.hit.x + st.dx, y: p.hit.y - st.lift } };
+  });
+  for (const id of [...state.keys()]) if (!seen.has(id)) state.delete(id);
+  return seen.size > 0 ? out : placed;
+}
+
+/**
+ * 自分のアバターをよけて動かしている写真ピンが占める矩形を返す（声の吹き出しを重ねないための判定用）。
+ * @param placed 置いたスポット
+ * @returns 矩形（画面座標）
+ */
+export function liftedPinBoxes(placed: readonly PlacedSpot[]): { x: number; y: number; w: number; h: number }[] { // audit-ignore: fnlog-missing 毎フレーム描画
+  return placed.filter((p) => p.pin > 0 && ((p.lift ?? 0) > 0 || (p.pinDx ?? 0) !== 0)).map((p) => pinBox(p, false));
+}
+
+/**
+ * 自分のアバターより手前（下）にある写真ピンを、アバターの上に描き直す（奥から歩いて来るとき、アバターがピンと今日の札の上に乗って見えないように）。
+ * よけて動かしているピンと、足もとがピンの根もとのすぐ近くにあるピン（liftPins が頭の上へ持ち上げる範囲）は描き直さない。
+ * @param ctx 2D コンテキスト
+ * @param placed 置いたスポット
+ * @param input 描画の入力
+ * @param body 自分のアバターが占める矩形
+ * @sideEffect canvas に描く
+ */
+export function drawPinsOver(ctx: CanvasRenderingContext2D, placed: readonly PlacedSpot[], input: SceneInput, body: { readonly x: number; readonly y: number; readonly w: number; readonly h: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  if (input.tier !== 'near') return;
+  const footY = body.y + body.h - PIN_LIFT_FOOT_PX;
+  for (const p of placed) {
+    if (p.pin === 0 || input.hidden?.has(p.spot.id) === true || (p.lift ?? 0) > 0 || (p.pinDx ?? 0) !== 0) continue;
+    if (p.y - footY < PIN_LIFT_BEHIND_PX || !boxesOverlap(body, pinBox(p, p.spot.id === input.selectedId))) continue;
+    drawOneSpot(ctx, p, input);
+  }
 }
 
 /**
@@ -362,6 +502,14 @@ function drawOneSpot(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneI
 const PIN_TAIL_PX = 9;
 /** 写真ピンの白い縁の太さ（CSS px） */
 const PIN_FRAME_PX = 3;
+/** 自分のアバターの矩形の下端から足もとまで（MapScreen の SELF_BODY.down と同じ。CSS px） */
+const PIN_LIFT_FOOT_PX = 12;
+/** 足もとがピンの根もとよりこれだけ奥（上）にあっても、ピンを頭の上へ持ち上げる（CSS px） */
+const PIN_LIFT_BEHIND_PX = 40;
+/** 歩いて向かっている行き先のピンは、足もとがこれだけ奥（上）にある時点から持ち上げ始める（ピンの上の今日の札が顔に届く前。CSS px） */
+const PIN_LIFT_LEAD_BEHIND_PX = 84;
+/** 同じく、体と写真のあいだが横にこれだけ空いている時点から持ち上げ始める（CSS px） */
+const PIN_LIFT_LEAD_SIDE_PX = 24;
 
 /**
  * 寄り具合ごとの写真ピンの大きさ（強調中は少し大きく）。
@@ -429,7 +577,10 @@ function drawShopPin(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneI
   const size = p.pin;
   const bob = s.today?.hot === true ? Math.sin(input.t / 260) * 1.5 : 0;
   const left = p.x - size / 2;
-  const top = p.y - size - PIN_TAIL_PX - PIN_FRAME_PX + bob;
+  const lift = p.lift ?? 0;
+  // 横へずらすときは、影・しっぽごと全体を動かす（呼び出し側の save/restore の中）
+  if (p.pinDx !== undefined && p.pinDx !== 0) ctx.translate(Math.round(p.pinDx), 0);
+  const top = p.y - lift - size - PIN_TAIL_PX - PIN_FRAME_PX + bob;
   const radius = Math.max(4, size * 0.24);
   const f = PIN_FRAME_PX;
   const ring = s.today?.hot === true ? '#ffc83d' : s.want ? '#ff8fab' : s.status === 'visited' ? TERRITORY_MINE_COLOR : '#ffffff';
@@ -442,7 +593,7 @@ function drawShopPin(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneI
     ctx.scale(squash[0], squash[1]);
     ctx.translate(-p.x, -p.y);
   }
-  drawPinFrame(ctx, { x: p.x, tipY: p.y, left, top, size, radius, ring });
+  drawPinFrame(ctx, { x: p.x, tipY: p.y - lift, left, top, size, radius, ring });
   drawGoodsPhoto(ctx, s.goods?.icon ?? 'gift', left, top, size, { silhouette, radius });
   if (s.status === 'visited' && s.fade > 0.05) {
     ctx.fillStyle = `rgba(238, 238, 238, ${Math.min(0.6, s.fade * 0.6)})`;
@@ -453,7 +604,8 @@ function drawShopPin(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneI
   if (silhouette) drawQuestion(ctx, p.x, top + size / 2, size, input.textScale);
   if (s.today !== undefined && input.tier !== 'wide') drawTodayTag(ctx, p.x, top - f - 2, s.today.tag, s.today.hot, input.textScale);
   drawMarks(ctx, p, input, left + size + f, top + 2);
-  if (s.id === input.selectedId) drawSelectArrow(ctx, p.x, top - f - (s.today !== undefined ? 16 : 3), input.t);
+  // 持ち上げている間（自分がそこに立っている）は矢印を出さない
+  if (s.id === input.selectedId && lift === 0) drawSelectArrow(ctx, p.x, top - f - (s.today !== undefined ? 16 : 3), input.t);
 }
 
 /**
@@ -799,9 +951,10 @@ export function drawDiscoveryRing(ctx: CanvasRenderingContext2D, at: Point2D, k:
  * @param vp 描画領域
  * @param textScale 文字の拡大率
  * @param lift 下端から持ち上げる高さ（CSS px。お店カードを開いている間はカードのすぐ上へ逃がす。0 なら右下のすみ）
+ * @param avoid 持ち上げた帯を重ねない矩形（選んだお店のピン・名前の札・自分のアバター。重なる間は描かない）
  * @sideEffect canvas に描く
  */
-export function drawAttribution(ctx: CanvasRenderingContext2D, text: string, vp: Viewport, textScale: number, lift = 0): void { // audit-ignore: fnlog-missing 毎フレーム描画
+export function drawAttribution(ctx: CanvasRenderingContext2D, text: string, vp: Viewport, textScale: number, lift = 0, avoid: readonly { readonly x: number; readonly y: number; readonly w: number; readonly h: number }[] = []): void { // audit-ignore: fnlog-missing 毎フレーム描画
   ctx.save();
   ctx.font = canvasFont(10, 400, textScale);
   ctx.textAlign = 'right';
@@ -809,6 +962,11 @@ export function drawAttribution(ctx: CanvasRenderingContext2D, text: string, vp:
   const bandH = Math.round(14 * textScale);
   const bandW = Math.ceil(ctx.measureText(text).width) + 12;
   const bottom = vp.height - lift;
+  // カードのすぐ上へ逃がした帯が、選んだお店のピン・名前の札・自分のアバターに重なる間は描かない（地図が狭いとき。カードを閉じれば右下のすみに出る）
+  if (lift > 0 && avoid.some((r) => boxesOverlap({ x: vp.width - bandW - 10, y: bottom - bandH, w: bandW, h: bandH }, r))) {
+    ctx.restore();
+    return;
+  }
   ctx.globalAlpha = 0.88;
   ctx.fillStyle = PALETTE.paper;
   ctx.beginPath();

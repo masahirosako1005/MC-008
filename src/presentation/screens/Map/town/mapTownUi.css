@@ -834,3 +834,49 @@
 .map-spot-card__actions:has(.map-spot-card__purchase[hidden]) .map-spot-card__detail,
 .map-spot-card__actions:has(.map-spot-card__detail[hidden]) .map-spot-card__purchase { grid-column: 1 / -1; }
 .map-spot-card__checkin[data-state="done"] { color: var(--success-ink); }
+
+/*
+ * ---- UI/UX 改善 3周目（2026-11-10。評価 eval_r2 の N2・N6） ----
+ */
+/* 近くの一覧を開いている間は、下の左右の浮いた部品を出さない（一覧の下端から数 px はみ出して見えるため） */
+.map-area:has(.map-nearby[data-open="1"]) .map-territory-hud,
+.map-area:has(.map-nearby[data-open="1"]) .map-zoom-toggle,
+.map-area:has(.map-nearby[data-open="1"]) .map-ticket-button,
+.map-area:has(.map-nearby[data-open="1"]) .map-locate { visibility: hidden; }
+
+/* お店カードの店名は語の区切り（SpotCard が入れる wbr・空白）でだけ折る。1語が入らないときだけ途中で折る */
+.map-spot-card__name { word-break: keep-all; overflow-wrap: anywhere; }
+
+/*
+ * 文字「大」「特大」: 文字だけを大きくし、カードの余白・写真・丸ボタンは標準と同じ大きさにとどめる
+ * （rem のままだとカードが画面の半分を超え、上に残る地図が 100〜150px になる）。
+ */
+html[data-text-scale="large"] .map-spot-card,
+html[data-text-scale="xlarge"] .map-spot-card { padding: 16px; }
+html[data-text-scale="large"] .map-spot-card__head,
+html[data-text-scale="xlarge"] .map-spot-card__head { gap: 12px; padding-right: 36px; }
+html[data-text-scale="large"] .map-spot-card__thumb,
+html[data-text-scale="xlarge"] .map-spot-card__thumb { width: 52px; height: 52px; }
+html[data-text-scale="large"] .map-spot-card__want,
+html[data-text-scale="xlarge"] .map-spot-card__want,
+html[data-text-scale="large"] .map-spot-card__close,
+html[data-text-scale="xlarge"] .map-spot-card__close { width: 44px; height: 44px; }
+html[data-text-scale="large"] .map-spot-card__today,
+html[data-text-scale="xlarge"] .map-spot-card__today,
+html[data-text-scale="large"] .map-spot-card__amenities,
+html[data-text-scale="xlarge"] .map-spot-card__amenities,
+html[data-text-scale="large"] .map-spot-card__actions,
+html[data-text-scale="xlarge"] .map-spot-card__actions { margin-top: 12px; }
+html[data-text-scale="large"] .map-spot-card__actions,
+html[data-text-scale="xlarge"] .map-spot-card__actions { gap: 8px; }
+
+/*
+ * ---- UI/UX 改善 4周目（2026-11-10。評価 eval_r3 の R3・R4） ----
+ * 文字「大」「特大」でも、お店カードのボタンの高さはほかの画面のボタンと同じ決まり（.btn の 3rem＝大 54px・特大 60px）。
+ * 特大は、ボタンが高くなるぶん3つを横1段に並べ（主を広く）、カードの上に地図を 200px 残す。
+ */
+html[data-text-scale="xlarge"] .map-spot-card { bottom: 12px; }
+html[data-text-scale="xlarge"] .map-spot-card__actions { display: flex; flex-wrap: nowrap; }
+html[data-text-scale="xlarge"] .map-spot-card__actions[hidden] { display: none; }
+html[data-text-scale="xlarge"] .map-spot-card__actions .btn { flex: none; padding-left: 10px; padding-right: 10px; white-space: nowrap; }
+html[data-text-scale="xlarge"] .map-spot-card__actions .map-spot-card__checkin { flex: 1 1 auto; min-width: 0; }

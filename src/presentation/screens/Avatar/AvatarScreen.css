@@ -204,27 +204,38 @@
   gap: 0.25rem;
   padding: 0.375rem var(--gutter) 0.5rem;
   overflow-x: auto;
+  /*
+   * 送った先は、左右の端のタブが同じ幅（タブの約 35%）だけのぞく位置に止める（止まる位置＝各タブの左端。先頭は右端が半分、末尾は左端が半分）。
+   * のぞく幅 ＝（列の幅 − すき間 − 間に入る5つぶんのタブとすき間）÷ 2。それにすき間 0.25rem を足した値が、止まるタブの左端の位置
+   */
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: calc((100% - 1.5rem - 5 * (100% - var(--gutter) - 1.25rem) / 5.5) / 2 + 0.25rem);
   scrollbar-width: none;
   background: var(--kr-bg);
   border-bottom: 1.5px solid var(--kr-line);
 }
 .avatar-tabs::-webkit-scrollbar { display: none; }
+/* タブの幅は「5つ半」が画面に入る幅（特大は4つ半）: 右端で次のタブが半分だけ見えて、横に送れると分かる */
 .avatar-tab {
   position: relative;
-  flex: none;
+  flex: 0 0 calc((100% + var(--gutter) - 1.25rem) / 5.5);
+  scroll-snap-align: start;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.1875rem;
-  min-width: 3.75rem;
+  min-width: 0;
   min-height: 2.75rem;
-  padding: 0.3125rem 0.5rem 0.375rem;
+  padding: 0.3125rem 0 0.375rem;
   border: 0;
   border-radius: var(--radius-m);
   background: transparent;
   color: var(--kr-sub);
   cursor: pointer;
 }
+html[data-text-scale="xlarge"] .avatar-tab { flex-basis: calc((100% + var(--gutter) - 1rem) / 4.5); }
+/* 特大は間に入るタブが4つ */
+html[data-text-scale="xlarge"] .avatar-tabs { scroll-padding-inline: calc((100% - 1.25rem - 4 * (100% - var(--gutter) - 1rem) / 4.5) / 2 + 0.25rem); }
 .avatar-tab__bubble { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 50%; background: #fff; }
 .avatar-tab__icon { display: block; color: var(--kr-sub); }
 .avatar-tab[aria-selected="true"] .avatar-tab__icon { color: var(--kr-ink); stroke-width: 2.1; }
@@ -337,6 +348,12 @@ html[data-text-scale="xlarge"] .avatar-grid { grid-template-columns: repeat(3, m
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
+/*
+ * 1行に入らない長い語（イルミネーション＝8字）がある名前: 字間を少し詰めてマスの内側に収める（字の形と大きさは隣と同じ。語を割らない・省略しない）。
+ * 標準は4列なので -0.17em、特大は3列で 1px だけ足りないので -0.1em。「大」は3列で 8字が入るので詰めない。
+ */
+html:not([data-text-scale="large"]) .avatar-item__name--long { letter-spacing: -0.17em; }
+html[data-text-scale="xlarge"] .avatar-item__name--long { letter-spacing: -0.1em; }
 /* まだ持っていない部品は白黒（枠・器・絵・札から色を抜く。2026-11-10 ユーザー指示）。押すと上に手に入れ方が出る */
 .avatar-item--locked { --frame: linear-gradient(var(--g3), var(--g3)); --card: linear-gradient(180deg, #fff, var(--g1)); --well: var(--g1); animation: none; }
 .avatar-item--locked .avatar-item__art canvas { filter: grayscale(1); opacity: 0.7; }
@@ -552,7 +569,11 @@ html[data-text-scale="xlarge"] .avatar-grid { grid-template-columns: repeat(3, m
 
 /* 称号 */
 .avatar-titles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
-html[data-text-scale="xlarge"] .avatar-titles { grid-template-columns: minmax(0, 1fr); } /* 特大は1列（2列では6字の称号が入らない） */
+/* 大・特大は1列（2列では 8字の称号「天神さんの常連王」が入らず、「常連王」だけが次の行に落ちる） */
+html[data-text-scale="large"] .avatar-titles,
+html[data-text-scale="xlarge"] .avatar-titles { grid-template-columns: minmax(0, 1fr); }
+/* 文の最後の数文字は折り返さない（phraseBreak の tailKeptNodes。「になる」だけを次の行に落とさない） */
+.phrase-tail { white-space: nowrap; }
 .avatar-title {
   --frame: linear-gradient(var(--g3), var(--g3));
   --card: linear-gradient(#fff, #fff);

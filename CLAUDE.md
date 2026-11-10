@@ -364,6 +364,7 @@ PCブラウザのスマホ表示。スマホ枠を表示し、文字は拡大設
 | `docs/12_user_backend_design.md` | 利用者データのサーバー（商用版）設計。PostgreSQL・外部ログイン・サーバーが正（SEC-21）、段階0〜5 と状況、未決事項 B1〜B7 |
 | `docs/13_production_gaps.md` | 本番運用に向けた未実装の一覧（CMS・アプリのログイン、サーバーに移っていないデータ、CMS の運用機能、基盤）。優先度と進める順 |
 | `docs/templates/` | `logger.ts`（ロガー雛形）、`function_template.ts`（関数・ユースケース雛形） |
+| `docs/html/` | 要件定義書・設計書の HTML 版（人が読む用のまとめ。`00_入口.html` から開く。2026-11-10）。元の文書が正で、元を変えたら該当の章を直す |
 
 ### 必須ルール（MUST）
 1. 依存は 外側→内側 のみ。domain は `fetch`／`localStorage`／DOM／`Date.now()`／`Math.random()` を使わない（ポート経由）。
@@ -382,6 +383,6 @@ PCブラウザのスマホ表示。スマホ枠を表示し、文字は拡大設
 ### 技術スタック
 TypeScript 6（strict）＋ Vite 8 ＋ Vitest 5。フレームワークなし（Vanilla TS、DOM API のみ）に決定（2026-11-09、docs/08 D1）。永続化は LocalStorage から始め、リポジトリ IF 経由で REST へ差し替え可能にする。E2E は playwright-core＋ローカル Edge（`npm run e2e`）。
 店舗CMS とアプリをつなぐ連携サーバーは TypeScript＋Node 標準（`node:http`／`node:https`・`node:sqlite`、依存パッケージなし）。`npm run dev:backend`／`npm run demo:backend`。詳細は docs/09 §7.3（2026-11-09）。
-発表・デモを空の状態で始めるときは `npm run demo:fresh`（直下の `demo-fresh.cmd` をダブルクリックでも同じ。`scripts/dev/demo-fresh.mjs`）：いまのソースをビルドし、CMS の DB を作り直し、まっさらなプロファイルのブラウザでアプリと CMS を開く（8790）。`VITE_DEMO_START=first` で最初の旅人が「初回の人」になる（2026-11-10）。
+発表・デモを空の状態で始めるときは `npm run demo:fresh`（直下の `demo-fresh.cmd` をダブルクリックでも同じ。`scripts/dev/demo-fresh.mjs`）：いまのソースをビルドし、CMS の DB を作り直し、まっさらなプロファイルのブラウザでアプリと CMS を開く（8790）。最初の旅人は一部取得済みの「通い慣れた人」（ユーザー指示。`--empty` を付けると `VITE_DEMO_START=first` で「初回の人」＝記録なし）（2026-11-10）。ブラウザは最大化し、スマホ枠 390×844 が欠けないよう表示倍率を自動で下げる。アプリのタブはスマホの指の操作（マウスを押しながら動かすとスワイプ。`scripts/dev/touchEmulation.mjs`、`--no-touch` で切る）。
 本番向け（ログイン・ロール・担当店舗の認可、CMS の別オリジン、TLS、アカウントのコマンドライン）は docs/09 §7.4、運用手順は docs/11_backend_operations.md、ビルドは `npm run build:backend`（2026-11-09）。
 商用版の利用者データ（訪問・EXP・ランキング）は PostgreSQL に置く（2026-11-10 ユーザー決定。実行時の依存は `pg` だけ、テストは PGlite）。認証は外部ログイン（LINE・Google）。設計と段階は docs/12、コードは `src/infrastructure/server/pg/`。

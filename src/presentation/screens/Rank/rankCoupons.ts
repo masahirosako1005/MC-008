@@ -143,13 +143,13 @@ export function createCouponBody(coupons: RankCouponsDto, handlers: CouponHandle
   const held =
     coupons.held.length === 0
       ? undefined
-      : h('ul', { class: 'rank-coupons__row', attrs: { 'aria-label': '持っているクーポン', 'data-testid': 'rank-coupons-held' } }, coupons.held.map((t, i) => heldTicket(t, i, handlers.onOpenTicket)));
+      : h('ul', { class: 'rank-coupons__row', attrs: { 'aria-label': '手持ちのクーポン', 'data-testid': 'rank-coupons-held' } }, coupons.held.map((t, i) => heldTicket(t, i, handlers.onOpenTicket)));
   const upcoming =
     coupons.upcoming.length === 0
       ? undefined
       : h('ul', { class: 'rank-coupons__row', attrs: { 'aria-label': 'もうすぐもらえるクーポン', 'data-testid': 'rank-coupons-upcoming' } }, coupons.upcoming.map((c, i) => upcomingCoupon(c, i, handlers.onOpenSpot)));
   return log.exit([
-    subHead('持っている', coupons.held.length),
+    subHead('手持ち', coupons.held.length), // 図鑑の「手持ち」と同じ言葉
     ...(held === undefined ? [] : [held]),
     ...(upcoming === undefined ? [] : [subHead('もうすぐ', coupons.upcoming.length), upcoming]),
   ]);

@@ -12,6 +12,7 @@ import { formatDistance } from '@/Common/ui/format';
 import { createIcon } from '@/Common/ui/icons';
 import { userAction } from '@/Common/ui/userAction';
 import { amenityLabel } from '@/presentation/shared/labels';
+import { phraseNodes } from '@/presentation/screens/Avatar/phraseBreak';
 import type { GoodsInfo } from '@/presentation/screens/Map/town/goods';
 import { paintGoodsPhoto } from '@/presentation/screens/Map/town/goodsPhoto';
 import { amenityIconOf, createMapLineIcon } from '@/presentation/screens/Map/town/mapLineIcons';
@@ -211,7 +212,7 @@ function renderCard(parts: SpotCardParts, model: SpotCardModel): void {
   parts.root.dataset.spotId = model.id;
   paintThumb(parts, model, unknown);
   parts.eyebrow.textContent = eyebrowText(model, unknown);
-  parts.name.textContent = unknown || model.name === undefined ? '？？？' : model.name;
+  parts.name.replaceChildren(...(unknown || model.name === undefined ? ['？？？'] : nameNodes(model.name, model.goods?.label)));
   parts.goods.textContent = goodsText(model, unknown);
   parts.goods.hidden = parts.goods.textContent === '';
   parts.today.hidden = model.today === undefined;
@@ -228,6 +229,20 @@ function renderCard(parts: SpotCardParts, model: SpotCardModel): void {
   parts.root.hidden = false;
   parts.root.dataset.open = '1';
   log.exit(undefined);
+}
+
+/**
+ * 店名を、語の区切りにだけ折り返しの位置（wbr）を入れた並びにする（CSS は word-break: keep-all。2行になるとき語の途中で割らない）。
+ * 店名に看板商品の名前が入っていれば、その前でだけ折る（「福まる／どら焼き本舗」）。無ければ文字の種類の変わり目（アバター・図鑑と同じ分け方）。
+ * @param name 店名
+ * @param goodsLabel 看板商品の名前（無ければ undefined）
+ * @returns 文字列と wbr の並び
+ */
+function nameNodes(name: string, goodsLabel: string | undefined): (string | HTMLElement)[] {
+  const log = logger.fn('nameNodes', { length: name.length });
+  const at = goodsLabel === undefined || goodsLabel === '' ? -1 : name.indexOf(goodsLabel);
+  if (at > 0) return log.exit([name.slice(0, at), h('wbr'), name.slice(at)], '看板商品の前');
+  return log.exit(phraseNodes(name));
 }
 
 /**

@@ -342,7 +342,14 @@ export function bubblePath(ctx: CanvasRenderingContext2D, box: Box, radius: numb
  * @sideEffect canvas に描く
  */
 export function drawMiddleBubbles(ctx: CanvasRenderingContext2D, placed: readonly PlacedSpot[], input: SceneInput): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  for (const p of placed) if (p.callout === undefined) drawSpotDot(ctx, p, input);
+  // 浮いている部品（上の絞り込みの列・お店の列・下の左右の部品）と地区の旗の下に入る点は描かない（部品の端から半分だけのぞいて見えるため。選択中は描く）
+  const reserved = input.reserved ?? [];
+  const r = DOT_R + 3;
+  for (const p of placed) {
+    if (p.callout !== undefined) continue;
+    if (p.spot.id !== input.selectedId && reserved.some((b) => p.x + r > b.x && p.x - r < b.x + b.w && p.y + r > b.y && p.y - r < b.y + b.h)) continue;
+    drawSpotDot(ctx, p, input);
+  }
   for (const p of placed) if (p.callout !== undefined) drawCallout(ctx, p, p.callout, input);
 }
 

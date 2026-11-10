@@ -29,7 +29,7 @@ import { createWalker, discoverNearby } from '@/presentation/screens/Map/Walker'
 import type { Walker } from '@/presentation/screens/Map/Walker';
 import { createZoomToggle, middleDistrictOf } from '@/presentation/screens/Map/ZoomToggle';
 import type { ZoomToggleHandle } from '@/presentation/screens/Map/ZoomToggle';
-import { AVATAR_DOT_PX, SELF_AVATAR_SCALE, drawPeople, hitTestPerson, personMessageOf, placeTravelers, walkPhaseOf } from '@/presentation/screens/Map/mapPeople';
+import { AVATAR_DOT_PX, SELF_AVATAR_SCALE, drawPeople, hitTestPerson, personMessageOf, placeTravelers, walkPhaseOf, wideSelfBox } from '@/presentation/screens/Map/mapPeople';
 import type { PlacedPerson } from '@/presentation/screens/Map/mapPeople';
 import { createMapFilterBar } from '@/presentation/screens/Map/town/MapFilterBar';
 import { createNearbyPanel } from '@/presentation/screens/Map/town/NearbyPanel';
@@ -38,7 +38,7 @@ import type { MapFilterBarHandle } from '@/presentation/screens/Map/town/MapFilt
 import { openMapPrefsPanel } from '@/presentation/screens/Map/town/MapPrefsPanel';
 import { createSpotCard } from '@/presentation/screens/Map/town/SpotCard';
 import type { SpotCardHandle, SpotCardPhase } from '@/presentation/screens/Map/town/SpotCard';
-import { MapCameraController } from '@/presentation/screens/Map/town/mapCamera';
+import { FOLLOW_MARGIN_RATIO, MapCameraController } from '@/presentation/screens/Map/town/mapCamera';
 import { MapEffects } from '@/presentation/screens/Map/town/mapEffects';
 import { CheckInShow, IMPACT_MS } from '@/presentation/screens/Map/town/checkinShow';
 import { buzz, playCoin, playFanfare, playGrow, playPress, playStamp, unlockSound } from '@/presentation/screens/Map/town/mapSound';
@@ -50,7 +50,7 @@ import { createSideShopList } from '@/presentation/screens/Map/town/SideShopList
 import type { SideShopItem, SideShopListHandle } from '@/presentation/screens/Map/town/SideShopList';
 import { drawRisingBuildings, drawSelfBeacon, riseDuration, risingBuildingsOf } from '@/presentation/screens/Map/town/townSceneExtras';
 import { openChampionPopup } from '@/presentation/screens/Map/town/ChampionPopup';
-import { TOWER_AVATAR_SCALE, drawChampionTowers, hitTestTower, selfMarkClearOfTowers, towerScaleOf } from '@/presentation/screens/Map/town/championTowers';
+import { TOWER_AVATAR_SCALE, drawChampionTowers, hitTestTower, towerScaleOf } from '@/presentation/screens/Map/town/championTowers';
 import type { ChampionTowerInput, PlacedTower } from '@/presentation/screens/Map/town/championTowers';
 import { drawMiddleDistrictBanners, middleBannerBoxes } from '@/presentation/screens/Map/town/districtBanners';
 import { MoodFx } from '@/presentation/screens/Map/town/moodFx';
@@ -70,8 +70,8 @@ import type { TerritoryModel } from '@/presentation/screens/Map/town/territory';
 import { generateTown } from '@/presentation/screens/Map/town/townGenerator';
 import { routeTo } from '@/presentation/screens/Map/town/townPath';
 import { TownRenderer, gridTransform } from '@/presentation/screens/Map/town/townRenderer';
-import { drawAttribution, drawCheckInCircle, drawDiscoveryRing, drawLabelsOver, drawRoute, drawSpots, hiddenUnder, hitTestScene, placeSpots, spotLabelBoxes } from '@/presentation/screens/Map/town/townScene';
-import type { PlacedSpot, SceneInput, SceneSpot, SceneTier } from '@/presentation/screens/Map/town/townScene';
+import { drawAttribution, drawCheckInCircle, drawDiscoveryRing, drawLabelsOver, drawPinsOver, drawRoute, drawSpots, hiddenUnder, hitTestScene, liftPins, liftedPinBoxes, placeSpots, spotLabelBoxes } from '@/presentation/screens/Map/town/townScene';
+import type { PinLiftState, PlacedSpot, SceneInput, SceneSpot, SceneTier } from '@/presentation/screens/Map/town/townScene';
 import { CELL_M } from '@/presentation/screens/Map/town/townTypes';
 import type { TownGrid } from '@/presentation/screens/Map/town/townTypes';
 import { avatarLookOfTown, avatarSpriteFor } from '@/presentation/shared/avatarSprite';
@@ -94,6 +94,14 @@ const FOCUS_TOP_PX = 56;
 const FOCUS_TOP_STRIP_PX = 124;
 /** 上の部品の下に空けておく高さ（写真ピン・自分のアバターの背丈ぶん。CSS px） */
 const FOCUS_HEADROOM_PX = 56;
+/** お店カードの上に残る地図がこれより低いと「狭い」とみなす（上の絞り込みの列の下からカードの上端まで。CSS px） */
+const CRAMPED_MAP_PX = 260;
+/** 地図が狭いとき、上の部品の下に空けておく高さ（今日の札つきの写真ピン約 90px＋アバターの背丈 66px＋すき間。CSS px） */
+const CRAMPED_HEADROOM_PX = 172;
+/** 地図が狭いとき、自分の足もとからカードの上端までに空けておく高さ（お店の名前の札 1 枚ぶん。CSS px、文字の拡大前） */
+const CRAMPED_FOOT_ROOM_PX = 24;
+/** 歩き終えてから「あなた」の札を出さない時間（ミリ秒。ピンを頭の上へ持ち上げ終わるまで） */
+const SELF_TAG_SETTLE_MS = 400;
 /** 自分のアバターが占める矩形（足もとからの 左右の半分・上・下。CSS px。声の吹き出し・名前の札との重なりの判定用） */
 const SELF_BODY = { half: 20, up: 64, down: 12 } as const;
 /** 現在地ボタンで、これより引いて見ていたら寄る（1 CSS px あたりのメートル） */
@@ -259,6 +267,8 @@ class MapScreenController implements Screen {
   private placed: PlacedSpot[] = [];
   /** 浮いている部品の下になるので描いていないスポット（詳細の表示。タップでも拾わない） */
   private hiddenSpots: ReadonlySet<string> = new Set();
+  /** 自分のアバターの頭の上へ持ち上げている写真ピン（スポットID → 今の持ち上げ幅。詳細の表示） */
+  private readonly pinLift: PinLiftState = new Map();
   private prefs: MapPrefs = loadMapPrefs();
   private filters: ReadonlySet<MapFilterId> = new Set();
   private travelers: readonly OtherTravelerDto[] = [];
@@ -268,6 +278,8 @@ class MapScreenController implements Screen {
   private cardTarget: CardTarget | undefined;
   /** 歩いて向かっているスポット */
   private walkTarget: string | undefined;
+  /** 歩き終えた時刻（performance.now()。直後は「あなた」の札を出さない） */
+  private walkStoppedAt = Number.NEGATIVE_INFINITY;
   /** 歩いている自分をカメラが追うか（利用者が地図を動かしたらやめる） */
   private following = false;
   private rings: { spotId: string; startedAt: number }[] = [];
@@ -277,6 +289,8 @@ class MapScreenController implements Screen {
   private readonly moodFx = new MoodFx();
   /** 広域に描いた王者の台座（タップの当たり判定） */
   private towers: readonly PlacedTower[] = [];
+  /** 自分のアバターをよけて横へずらしている台座（地区ID → いまのずれ。広域の表示） */
+  private readonly towerShift = new Map<string, number>();
   /** 開いている王者の情報カードを閉じる関数 */
   private championClose: (() => void) | undefined;
   /** 広域の手描き風のイラストの街（2026-11-10 ユーザー指示「広域のグレー部分が殺風景。楽しそうな町に」） */
@@ -340,6 +354,11 @@ class MapScreenController implements Screen {
       this.walker = createWalker(this.ctx, {
         onStep: (position): void => this.handleWalkStep(position),
         onDiscovered: (spots): void => this.handleDiscovered(spots),
+        // お店カードの上に残る地図が狭いあいだ（文字「大」「特大」）は、発見のトーストを出さない（見つけたお店のピンに重なる。地図の上の「発見！」は出る）
+        quietDiscovery: (): boolean => { // audit-ignore: fnlog-missing 歩行の刻みごとに呼ぶ小さな判定
+          const vp = this.viewport();
+          return vp !== undefined && this.isCramped(vp);
+        },
         onStop: (arrived): void => this.handleWalkStop(arrived),
       });
     } else this.startPolling();
@@ -937,6 +956,8 @@ class MapScreenController implements Screen {
    */
   private focusViewport(vp: Viewport): Viewport { // audit-ignore: fnlog-missing 歩行の毎フレームで呼ぶ
     const bottom = this.visibleBottom(vp);
+    // 地図が狭いとき（文字「大」「特大」のお店カード）は、自分をカードのすぐ上（名前の札 1 枚ぶん上）まで下げてよい（頭の上に行き先のピンを出す高さを残す）
+    if (this.isCramped(vp)) return { ...vp, bottomInset: Math.max(0, vp.height - (bottom - CRAMPED_FOOT_ROOM_PX * textScaleFactor()) / (1 - FOLLOW_MARGIN_RATIO)) };
     return { ...vp, bottomInset: Math.max(0, vp.height - bottom) };
   }
 
@@ -949,6 +970,16 @@ class MapScreenController implements Screen {
   }
 
   /**
+   * 歩いている自分を追うとき、自分の足もとを保つ上端。
+   * 地図が狭いとき（文字「大」「特大」のお店カード）は、着いたお店の写真ピンを頭の上に出せる高さ（ピン＋アバターの背丈）を上に空ける。
+   * @param vp 描画領域
+   * @returns 上端（canvas 内 CSS px）
+   */
+  private followTop(vp: Viewport): number { // audit-ignore: fnlog-missing 歩行の毎フレームで呼ぶ
+    return this.isCramped(vp) ? FOCUS_TOP_PX + CRAMPED_HEADROOM_PX : this.focusTop();
+  }
+
+  /**
    * 地図が見えている下端（カードが開いていればカードの上端、無ければ下シートのつまみの上）。
    * @param vp 描画領域
    * @returns 下端（canvas 内 CSS px）
@@ -957,6 +988,15 @@ class MapScreenController implements Screen {
     const card = this.card;
     const top = card !== undefined && card.isOpen() ? card.element.offsetTop - 8 : Number.POSITIVE_INFINITY;
     return Math.max(120, Math.min(vp.height - vp.bottomInset, top));
+  }
+
+  /**
+   * お店カードを開いていて、その上に残る地図が狭いか（文字「大」「特大」でカードが高くなったとき）。
+   * @param vp 描画領域
+   * @returns 狭ければ true
+   */
+  private isCramped(vp: Viewport): boolean { // audit-ignore: fnlog-missing 毎フレーム描画
+    return this.card?.isOpen() === true && this.visibleBottom(vp) - FOCUS_TOP_PX < CRAMPED_MAP_PX;
   }
 
   /**
@@ -976,7 +1016,9 @@ class MapScreenController implements Screen {
     const widthM = (box.east - box.west) * (111_000 * Math.cos((box.north * Math.PI) / 180));
     const heightM = (box.north - box.south) * 111_000;
     const fit = Math.max(widthM / Math.max(1, vp.width - 70), heightM / Math.max(1, bottom - top - 70));
-    const keep = camera.metersPerPx >= WALK_VIEW_MPP[0] && camera.metersPerPx <= WALK_VIEW_MPP[1] && fit <= camera.metersPerPx;
+    // 地図が狭いとき（文字「大」「特大」のお店カード）は、詳細の表示から引かない（引くと吹き出しが狭い所に集まって重なる。歩く間は自分を追う）
+    const stayNear = this.isCramped(vp) && tierOf(camera.metersPerPx) === 'near';
+    const keep = camera.metersPerPx >= WALK_VIEW_MPP[0] && camera.metersPerPx <= WALK_VIEW_MPP[1] && (fit <= camera.metersPerPx || stayNear);
     const mpp = keep ? camera.metersPerPx : Math.min(WALK_VIEW_MPP[1], Math.max(WALK_VIEW_MPP[0], fit));
     const anchorY = usableHeight(vp) / 2;
     const desiredY = (top + bottom) / 2;
@@ -1586,6 +1628,7 @@ class MapScreenController implements Screen {
     const log = logger.fn('handleWalkStop', { arrived, target: this.walkTarget });
     const target = this.walkTarget;
     this.walkTarget = undefined;
+    this.walkStoppedAt = performance.now();
     this.updateCanvasState();
     void this.loadData().then(() => this.afterWalk(target, arrived));
     log.exit(undefined);
@@ -1689,7 +1732,7 @@ class MapScreenController implements Screen {
     if (live !== undefined) {
       this.position = live;
       this.fx.addDust(live, t);
-      if (this.following) ctl.follow(live, (camera, ll) => project(camera, vp, ll), this.focusViewport(vp), this.focusTop());
+      if (this.following) ctl.follow(live, (camera, ll) => project(camera, vp, ll), this.focusViewport(vp), this.followTop(vp));
     }
     const camera = ctl.current(t);
     beginFrame(surface.ctx, size);
@@ -1740,19 +1783,25 @@ class MapScreenController implements Screen {
     // 領地のマス（境界線・面）は描かない（2026-11-10 ユーザー指示「マスの概念はいらない」）。にぎわい／廃れは地面の絵（townArtSimple・広域のイラスト）で見せる
     if (this.rise !== undefined && (!drawRisingBuildings(ctx, this.rise, tr, vp, t) || t - this.rise.startedAt > riseDuration(this.rise))) this.rise = undefined;
     const self = this.position === undefined ? undefined : project(camera, vp, this.position);
-    // 広域では、王者の台座に重なるときだけ自分の印（円・光・アバター）を台座の横へずらして描く（どちらが自分か分かるように。台座の位置は前のフレームのもの）
-    const selfMark = self === undefined || tier !== 'wide' ? self : selfMarkClearOfTowers(self, this.towers, vp.width);
+    // 自分の印（円・光・アバター）は、どの縮尺でも現在地にそのまま描く。広域で王者の台座に重なっても横へずらさない
+    // （2026-11-10 ユーザー指摘「ズームと同時に自分のアイコンの位置がずれていく」。ずらす幅が縮尺で変わり、街の上を滑って見えた）。
+    // 台座より手前に描き、「あなた」の札と足もとの光で見分ける
+    const selfMark = self;
     // 詳細の表示では、浮いている部品（上の絞り込みの列・下の左右の部品・お店カード）の下に札・ピン・吹き出しを入れない
     const floats = tier === 'near' ? this.sideListBox() : [];
     const band = { top: Math.max(0, ...floats.filter((b) => b.y < vp.height * 0.4).map((b) => b.y + b.h)), bottom: Math.min(vp.height, ...floats.filter((b) => b.y >= vp.height * 0.4).map((b) => b.y)) };
-    if (selfMark !== undefined) drawCheckInCircle(ctx, selfMark, VISIT_RADIUS_M / camera.metersPerPx, tier === 'near' ? `達成エリア ${VISIT_RADIUS_M}m` : undefined, textScale, t, band);
+    if (selfMark !== undefined) drawCheckInCircle(ctx, selfMark, VISIT_RADIUS_M / camera.metersPerPx, tier === 'near' && !this.placed.some((p) => (p.lift ?? 0) > 0) && !this.isCramped(vp) ? `達成エリア ${VISIT_RADIUS_M}m` : undefined, textScale, t, band);
     const route = this.walker?.remainingRoute(t) ?? [];
     if (route.length > 1) drawRoute(ctx, route.map((p) => project(camera, vp, p)), t);
     const base = this.sceneInput(camera, vp, tier, t, textScale);
     this.fx.drawUnder(ctx, (ll) => project(camera, vp, ll), t);
     // 広域は地区のブロックが主役なので、お店・名所は描かない
-    this.placed = tier === 'wide' ? [] : placeSpots(this.spots, base);
-    this.hiddenSpots = hiddenUnder(this.placed, floats, textScale, this.cardTarget?.spotId);
+    // 自分のアバターが手前に立った写真ピンは頭の上へ持ち上げる（着いたお店の写真が隠れないように）
+    this.placed = tier === 'wide' ? [] : liftPins(placeSpots(this.spots, base), base, selfMark === undefined ? undefined : selfBodyBox(selfMark), { walking: this.walker?.isWalking() === true, ...(this.cardTarget === undefined ? {} : { targetId: this.cardTarget.spotId }), minTop: band.top, hidden: this.hiddenSpots }, this.pinLift);
+    // カードを開いているスポットは、カードの下では隠さないが、上の絞り込みの列の下に入る間は描かない（列のすき間からピンが欠けて見えるため）
+    const underFloats = hiddenUnder(this.placed, floats, textScale, this.cardTarget?.spotId);
+    const underTop = this.cardTarget === undefined ? underFloats : hiddenUnder(this.placed.filter((p) => p.spot.id === this.cardTarget?.spotId), floats.filter((b) => b.y < vp.height * 0.4), textScale, undefined);
+    this.hiddenSpots = underTop === underFloats || underTop.size === 0 ? underFloats : new Set([...underFloats, ...underTop]);
     const input: SceneInput = this.hiddenSpots.size === 0 ? base : { ...base, hidden: this.hiddenSpots };
     drawSpots(ctx, this.placed, input);
     this.drawRings(ctx, camera, vp, t);
@@ -1761,35 +1810,47 @@ class MapScreenController implements Screen {
       this.voices.update(this.placed, t, this.dto?.today ?? '', this.hiddenSpots);
       // 声の吹き出しは、浮いている部品に加えて、自分のアバターと「達成エリア」の札にも重ねない（詳細の表示）
       const circleTop = selfMark === undefined ? 0 : selfMark.y - VISIT_RADIUS_M / camera.metersPerPx;
-      const own = selfMark === undefined || tier !== 'near' ? [] : [selfBodyBox(selfMark), { x: selfMark.x - 56, y: circleTop - 18, w: 112, h: 18 }];
-      bubbles = this.voices.draw(ctx, this.placed, t, textScale, [...floats, ...own]);
+      const own = selfMark === undefined || tier !== 'near' ? [] : [selfBodyBox(selfMark), { x: selfMark.x - 56, y: circleTop - 18, w: 112, h: 18 }, ...liftedPinBoxes(this.placed)];
+      // お店カードの上に残る地図が狭いあいだ（文字「大」「特大」）は、声の吹き出しを出さない（アバター・ピン・札で埋まるため）
+      if (!this.isCramped(vp)) bubbles = this.voices.draw(ctx, this.placed, t, textScale, [...floats, ...own]);
     }
     // 地区の札はスポットの上に重ねる。広域は王者の台座（領主のアバター＋布の旗）、中間は布の旗だけ
-    if (tier === 'wide') this.towers = drawChampionTowers(ctx, this.towerInputs(camera, vp, dpr), t, textScale, towerScaleOf(camera.metersPerPx));
+    // 自分が領主・王冠・旗・紙札に重なる地区は、台座のほうを横へずらす（自分の位置は動かさない）
+    const avatar = this.avatarLook === undefined ? undefined : avatarSpriteFor(this.avatarLook, { scale: SELF_AVATAR_SCALE[tier] * SELF_AVATAR_BOOST, dotPx: AVATAR_DOT_PX, dpr });
+    if (tier === 'wide') this.towers = drawChampionTowers(ctx, this.towerInputs(camera, vp, dpr), t, textScale, towerScaleOf(camera.metersPerPx), selfMark === undefined || avatar === undefined ? undefined : { self: wideSelfBox(selfMark, avatar, textScale), width: vp.width, state: this.towerShift });
     else {
       this.towers = [];
+      this.towerShift.clear();
       if (tier === 'district') drawMiddleDistrictBanners(ctx, vm.districts, camera, vp, this.lordInfoByDistrict(), textScale);
     }
     this.moodFx.draw(ctx, (ll) => project(camera, vp, ll), vp, t, textScale);
     const attribution = this.dto?.backdrop.attribution;
     // 出典は右下のすみ。お店カードを開いている間はカードのすぐ上へ逃がす（カードの下端に半分かからないように）
     const cardEl = this.card?.isOpen() === true ? this.card.element : undefined;
-    if (attribution !== undefined) drawAttribution(ctx, `トイレ位置 ${attribution}`, vp, textScale, cardEl === undefined ? 0 : Math.max(0, vp.height - cardEl.offsetTop + 4));
+    const selfBody = selfMark === undefined ? undefined : selfBodyBox(selfMark);
+    if (attribution !== undefined) drawAttribution(ctx, `トイレ位置 ${attribution}`, vp, textScale, cardEl === undefined ? 0 : Math.max(0, vp.height - cardEl.offsetTop + 4), cardEl === undefined ? [] : [...(selfBody === undefined ? [] : [selfBody]), ...spotLabelBoxes(this.placed, input)]);
     // 自分は街に埋もれないよう、足もとに光る目印を置き、アバターも少し大きく描く
     if (selfMark !== undefined) drawSelfBeacon(ctx, selfMark, t, tier);
-    const avatar = this.avatarLook === undefined ? undefined : avatarSpriteFor(this.avatarLook, { scale: SELF_AVATAR_SCALE[tier] * SELF_AVATAR_BOOST, dotPx: AVATAR_DOT_PX, dpr });
     const heading = this.walker?.heading();
     if (heading !== undefined && heading !== 0) this.facingLeft = heading < 0;
     // その地区によく来ている人（ほかの冒険者）のアバターは地図に出さない（2026-11-10 ユーザー指示）。自分と王者の台座だけを描く。
     // travelers は王者のカード（よく行く地区）で使うので取得は残す
     this.placedPeople = placeTravelers([], vm, { camera, viewport: vp, zoom: tier, self });
     // 「あなた」の札は、お店の声の吹き出し・お店の名前の札と重なる間は出さない（文字どうしを重ねない）
-    const tag = selfMark === undefined ? undefined : { x: selfMark.x - 28, y: selfMark.y + 6, w: 56, h: 26 };
-    const hideSelfTag = tag !== undefined && [...bubbles, ...spotLabelBoxes(this.placed, input)].some((r) => tag.x < r.x + r.w && tag.x + tag.w > r.x && tag.y < r.y + r.h && tag.y + tag.h > r.y);
+    const tag = selfMark === undefined ? undefined : { x: selfMark.x - 28 * textScale, y: selfMark.y + 6, w: 56 * textScale, h: 26 * textScale };
+    // 中間の表示では、お店の吹き出し（札つき）と重なる間も出さない
+    const callouts = tier !== 'district' ? [] : this.placed.flatMap((p) => (p.callout === undefined ? [] : [{ x: p.callout.x, y: p.callout.y - (p.callout.tag === undefined ? 0 : 12), w: p.callout.w, h: p.callout.h + (p.callout.tag === undefined ? 0 : 12) }]));
+    // 写真ピンを頭の上へ持ち上げている間と、歩き終えた直後も出さない（着いた瞬間に札が一瞬だけ出て消えるのを防ぐ）
+    const settling = this.placed.some((p) => (p.lift ?? 0) > 0 || (p.pinDx ?? 0) !== 0) || t - this.walkStoppedAt < SELF_TAG_SETTLE_MS;
+    const hideSelfTag = tag !== undefined && tier !== 'wide' && (settling || [...bubbles, ...callouts, ...spotLabelBoxes(this.placed, input)].some((r) => tag.x < r.x + r.w && tag.x + tag.w > r.x && tag.y < r.y + r.h && tag.y + tag.h > r.y));
     drawPeople(ctx, { people: this.placedPeople, self: selfMark, zoom: tier, textScale, walkPhase: this.walker?.isWalking() === true ? walkPhaseOf(t) : undefined, avatar, facingLeft: this.facingLeft, dpr, hideSelfTag });
     // 詳細では、自分・ほかの旅人に隠れたお店の名前の札を人より手前に描き直す
     const bodies = this.placedPeople.map((p) => ({ x: p.at.x - 16, y: p.at.y - 46, w: 32, h: 52 }));
-    if (selfMark !== undefined) bodies.push(selfBodyBox(selfMark));
+    // 自分より手前（下）にある写真ピンは自分の上に描き直す（奥から歩いて来るとき、ピンと今日の札の上に乗って見えないように）
+    if (selfBody !== undefined) {
+      drawPinsOver(ctx, this.placed, input, selfBody);
+      bodies.push(selfBody);
+    }
     drawLabelsOver(ctx, this.placed, input, bodies);
     this.show.drawOnMap(ctx, (ll) => project(camera, vp, ll), t);
     this.fx.drawOver(ctx, (ll) => project(camera, vp, ll), t, textScale);

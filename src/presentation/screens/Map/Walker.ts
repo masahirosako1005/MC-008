@@ -41,6 +41,8 @@ export interface WalkerHooks {
   onDiscovered(spots: readonly DiscoveredSpotDto[]): void;
   /** 歩行が終わった（arrived=false は途中で止まった） */
   onStop(arrived: boolean): void;
+  /** 発見のトーストを出さないか（地図が狭いあいだ。無ければ出す） */
+  quietDiscovery?(): boolean;
 }
 
 /** デモの歩行 */
@@ -226,14 +228,15 @@ export function appendFootprint(footprints: { lat: number; lng: number }[], poin
 /**
  * 発見判定を呼び、新しく見つかったスポットごとに「発見！」トーストを出す。
  * @param ctx 画面コンテキスト
+ * @param quiet トーストを出さない（地図が狭く、トーストが見つけたお店のピンに重なるとき。地図の上の「発見！」の演出は出る）
  * @returns 新しく発見したスポット（失敗時は空配列）
  * @sideEffect services.discover を呼ぶ（発見記録の保存）。トーストを表示する
  */
-export async function discoverNearby(ctx: AppContext): Promise<readonly DiscoveredSpotDto[]> {
-  const log = logger.fn('discoverNearby');
+export async function discoverNearby(ctx: AppContext, quiet = false): Promise<readonly DiscoveredSpotDto[]> {
+  const log = logger.fn('discoverNearby', { quiet });
   const result = await ctx.services.discover.execute({ operationId: newOperationId() });
   if (!result.ok) return log.fail([], result.error.code);
-  for (const spot of result.value.newlyDiscovered) ctx.toast.show(`発見！ ${spot.name}`, { kind: 'discover' });
+  if (!quiet) for (const spot of result.value.newlyDiscovered) ctx.toast.show(`発見！ ${spot.name}`, { kind: 'discover' });
   return log.exit(result.value.newlyDiscovered);
 }
 
@@ -439,7 +442,7 @@ class DemoWalker implements Walker {
    */
   private async discover(): Promise<void> {
     const log = logger.fn('discover');
-    const found = await discoverNearby(this.ctx);
+    const found = await discoverNearby(this.ctx, this.hooks.quietDiscovery?.() === true);
     if (found.length > 0 && !this.destroyed) this.hooks.onDiscovered(found);
     log.exit(undefined);
   }

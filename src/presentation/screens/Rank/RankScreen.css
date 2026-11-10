@@ -925,3 +925,54 @@
 html:is([data-text-scale="large"], [data-text-scale="xlarge"]) .rank-road__node { --eh: 36px; width: 68px; }
 html:is([data-text-scale="large"], [data-text-scale="xlarge"]) .rank-road__node[data-state="current"] { --eh: 46px; }
 html:is([data-text-scale="large"], [data-text-scale="xlarge"]) .rank-road__node[data-next="true"]::before { top: calc(var(--eh) / 2 - 24px); left: calc(50% - 24px); width: 48px; height: 48px; }
+
+/*
+ * ---- UI/UX 改善 3周目（2026-11-10）：明るい地の仕上げ ----
+ * 地の上の段の色の文字（「RANK 4」「EXP」）は段のいちばん濃い色（--t-ink。光の筋の上でも 7:1 以上）。
+ * 見出し・面・余白はほかの明るい画面と同じ：見出し＝13px・太字・g5（.section-title と同じ形）、面＝白いカード＋入れ子の g1、カードの内側 16px・間隔 12px。
+ * 横に流れる列（特典ロード・クーポン）は、右端で次の1つが半分見えて切れる幅にする（列の幅から決めるので、文字の大きさを変えても同じ）。
+ */
+.rank-hero__kicker, .rank-hero__pt { color: var(--t-ink); }
+/* 次の段の名前は、色のついた地の上なので --g5（4.5:1 以上） */
+.rank-road__name { color: var(--g5); }
+.rank-hero + .rank-card { margin-top: 0.75rem; }
+.rank-card { padding: 1rem; }
+.rank-head { gap: 0.375rem; min-height: 0; margin-bottom: 0.5rem; }
+.rank-head::after { content: none; }
+.rank-head__icon { display: none; } /* 見出しは文字だけ（ほかの画面の .section-title と同じ形。左のアイコンは出さない） */
+.rank-head__title { font-family: var(--font-display); font-size: var(--fs-s); font-weight: var(--fw-bold); line-height: 1.4; letter-spacing: 0.02em; color: var(--g5); }
+.rank-head__pill { margin-left: auto; }
+.rank-goal, .rank-goal[data-kind="perk"], .rank-rule { background: var(--g1); box-shadow: none; }
+.rank-coupon { background: var(--g1); }
+.rank-coupon__top { background: var(--g2); }
+.rank-coupon__shop { color: var(--g4); }
+.rank-perks {
+  container-type: inline-size;
+  margin: 0.5rem -1rem -0.375rem;
+  padding: 0.875rem 1rem 0.375rem;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: 1rem;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000000 1rem, #000000 calc(100% - 1rem), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000000 1rem, #000000 calc(100% - 1rem), transparent);
+}
+.rank-perk { width: 4.75rem; width: calc((100cqw + 1rem) / 4.5); scroll-snap-align: start; }
+html[data-text-scale="xlarge"] .rank-perk { width: calc((100cqw + 1rem) / 3.5); }
+.rank-coupons__row {
+  container-type: inline-size;
+  margin: 0 -1rem;
+  padding: 0.125rem 1rem 0.375rem;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: 1rem;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000000 1rem, #000000 calc(100% - 1rem), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000000 1rem, #000000 calc(100% - 1rem), transparent);
+}
+.rank-coupons__row > li { scroll-snap-align: start; }
+/* 2枚＋3枚目が半分（すき間 0.5rem×2 を引く）。特大は1枚＋半分 */
+.rank-coupon { width: 40cqw; }
+html:is([data-text-scale="large"], [data-text-scale="xlarge"]) .rank-coupon { width: calc((100cqw + 0.5rem) / 1.5); }
+/* 「600 / 800」は折らない。特大では「あと○EXP」をゲージの下の行へ（名前とゲージの幅を残す） */
+.rank-goal__nums { white-space: nowrap; }
+html[data-text-scale="xlarge"] .rank-goal { grid-template-columns: 3.25rem minmax(0, 1fr); row-gap: 0; }
+html[data-text-scale="xlarge"] .rank-goal__left { grid-column: 2; justify-content: flex-end; }
+/* 標準・大は、2行とも「題／名前」の2段にそろえる（「ランクアップ 街の伝説」だけ折れて、箱の高さが行ごとに変わるのを防ぐ）。特大は幅があるので2行とも横1段 */
+html:not([data-text-scale="xlarge"]) .rank-goal__name { flex: 0 0 100%; }

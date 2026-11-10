@@ -233,6 +233,8 @@ button:disabled { cursor: default; }
   white-space: nowrap;
 }
 .top-bar:has(.top-bar__back) .top-bar__title { font-size: var(--fs-l); line-height: 1.35; }
+/* 文字の大きさ「大・特大」でも題は 24px まで（バーの高さは固定。地図の「○○地区 Lv2」の Lv が「…」で消えない） */
+html:is([data-text-scale="large"], [data-text-scale="xlarge"]) .top-bar:not(:has(.top-bar__back)) .top-bar__title { font-size: 24px; }
 .top-bar__subtitle {
   display: flex;
   align-items: center;
