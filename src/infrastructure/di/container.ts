@@ -3,8 +3,8 @@
  * 本番／デモ／テストの切替はここだけで行う（docs/01 §3-3、docs/02 §5）。デモ用ユースケースは demo モードのときだけ登録する（SEC-02）。
  * イベント連鎖は SpotVisited → 地区の変化 → 報酬 → 地区の主 の順に購読登録する（docs/08 §4.2、DI-11）。
  */
-import { CMS_BACKEND } from '@/Common/constants/env';
-import type { CmsBackend } from '@/Common/constants/env';
+import { APP_BACKEND, CMS_BACKEND } from '@/Common/constants/env';
+import type { AppBackend, CmsBackend } from '@/Common/constants/env';
 import { createLogger } from '@/Common/logging/logger';
 import { ok } from '@/Common/result/Result';
 import type { Result } from '@/Common/result/Result';
@@ -24,13 +24,22 @@ import { GetNearbySpotsUseCase } from '@/application/usecases/exploration/GetNea
 import { GetRevisitReasonsUseCase } from '@/application/usecases/exploration/GetRevisitReasonsUseCase';
 import { VisitSpotUseCase } from '@/application/usecases/exploration/VisitSpotUseCase';
 import { AwardVisitRewardsUseCase } from '@/application/usecases/reward/AwardVisitRewardsUseCase';
+import { ReconcileVisitRewardsUseCase } from '@/application/usecases/reward/ReconcileVisitRewardsUseCase';
+import { RecordPurchaseUseCase } from '@/application/usecases/reward/RecordPurchaseUseCase';
 import { EnsureTravelerUseCase } from '@/application/usecases/session/EnsureTravelerUseCase';
 import { GetAppStatusUseCase } from '@/application/usecases/session/GetAppStatusUseCase';
 import { GetSpotDetailUseCase } from '@/application/usecases/spot/GetSpotDetailUseCase';
 import { GetZukanUseCase } from '@/application/usecases/spot/GetZukanUseCase';
+import { GetVisitLogUseCase } from '@/application/usecases/spot/GetVisitLogUseCase';
+import { SaveVisitMemoryUseCase } from '@/application/usecases/spot/SaveVisitMemoryUseCase';
+import { SubmitShopSurveyUseCase } from '@/application/usecases/survey/SubmitShopSurveyUseCase';
+import { LocalStorageSurveyResponseRepository } from '@/infrastructure/storage/LocalStorageSurveyResponseRepository';
+import { LocalStorageVisitMemoryRepository } from '@/infrastructure/storage/LocalStorageVisitMemoryRepository';
 import { GetRankingUseCase } from '@/application/usecases/competition/GetRankingUseCase';
 import { GetOtherTravelersUseCase } from '@/application/usecases/competition/GetOtherTravelersUseCase';
 import { GetRankStatusUseCase } from '@/application/usecases/reward/GetRankStatusUseCase';
+import { GetTicketsUseCase } from '@/application/usecases/reward/GetTicketsUseCase';
+import { UseTicketUseCase } from '@/application/usecases/reward/UseTicketUseCase';
 import { EvaluateDistrictChangeUseCase } from '@/application/usecases/town/EvaluateDistrictChangeUseCase';
 import { GetAvatarClosetUseCase } from '@/application/usecases/avatar/GetAvatarClosetUseCase';
 import { SaveAvatarUseCase } from '@/application/usecases/avatar/SaveAvatarUseCase';
@@ -39,10 +48,17 @@ import { GetTownStateUseCase } from '@/application/usecases/town/GetTownStateUse
 import { GetSettingsUseCase } from '@/application/usecases/settings/GetSettingsUseCase';
 import { UpdateTextScaleUseCase } from '@/application/usecases/settings/UpdateTextScaleUseCase';
 import { ExportDataUseCase } from '@/application/usecases/settings/ExportDataUseCase';
+import { ImportDataUseCase } from '@/application/usecases/settings/ImportDataUseCase';
 import { DeleteAllDataUseCase } from '@/application/usecases/settings/DeleteAllDataUseCase';
 import type { Clock } from '@/domain/ports/Clock';
 import type { GeoProvider } from '@/domain/ports/GeoProvider';
 import type { ApiClientDeps } from '@/infrastructure/api/requestApi';
+import { buildHttpPlayUseCases } from '@/infrastructure/api/HttpPlayUseCase';
+import { ServerPointLedgerRepository, ServerSessionRepository, ServerTravelerRepository } from '@/infrastructure/api/ServerPlayRepositories';
+import { ServerPlayState } from '@/infrastructure/api/ServerPlayState';
+import type { SessionRepository } from '@/application/ports/SessionRepository';
+import type { TravelerRepository } from '@/domain/exploration/TravelerRepository';
+import type { PointLedgerRepository } from '@/domain/reward/PointLedgerRepository';
 import { buildServerCmsReflection } from '@/infrastructure/di/cmsServerReflection';
 import { DemoControlAdapter } from '@/infrastructure/demo/DemoControlAdapter';
 import { InMemoryEventBus } from '@/infrastructure/events/InMemoryEventBus';
@@ -66,6 +82,7 @@ import { LocalStorageRivalActionRepository } from '@/infrastructure/storage/Loca
 import { LocalStorageAvatarRepository } from '@/infrastructure/storage/LocalStorageAvatarRepository';
 import { LocalStorageSessionRepository } from '@/infrastructure/storage/LocalStorageSessionRepository';
 import { LocalStorageSettingsRepository } from '@/infrastructure/storage/LocalStorageSettingsRepository';
+import { parseJsonText } from '@/infrastructure/json/parseJsonText';
 import { LocalStorageDataPort } from '@/infrastructure/storage/LocalStorageDataPort';
 import { LocalStorageTravelerRepository } from '@/infrastructure/storage/LocalStorageTravelerRepository';
 import { DemoClock } from '@/infrastructure/time/DemoClock';
@@ -90,6 +107,10 @@ export interface ContainerOptions {
   readonly cmsBackend?: CmsBackend;
   /** 連携サーバーの呼び出し（テストで起点と fetch を渡す） */
   readonly cmsApi?: ApiClientDeps;
+  /** 利用者の記録の置き場所（省略時は APP_BACKEND。'server' は利用者データのサーバー＝docs/12） */
+  readonly appBackend?: AppBackend;
+  /** 利用者データのサーバーの呼び出し（テストで起点と fetch を渡す） */
+  readonly appApi?: ApiClientDeps;
 }
 
 /** 時計・位置・デモ操作のポート一式 */
@@ -124,8 +145,9 @@ function buildPorts(opts: ContainerOptions, store: KeyValueStore): Ports {
  * @param spots スポットの参照（デモは店舗CMS の登録内容を重ねたもの）
  * @returns 全ユースケース共通の依存
  */
-function buildBaseDeps(opts: ContainerOptions & { readonly store: KeyValueStore }, master: LoadedMaster, spots: SpotRepository) {
-  const log = logger.fn('buildBaseDeps', { mode: opts.mode });
+function buildBaseDeps(opts: ContainerOptions & { readonly store: KeyValueStore; readonly server?: ServerPlayState }, master: LoadedMaster, spots: SpotRepository) {
+  const log = logger.fn('buildBaseDeps', { mode: opts.mode, server: opts.server !== undefined });
+  const server = opts.server;
   const store = opts.store;
   const repo = { store, prefix: PREFIX_BY_MODE[opts.mode] };
   const ports = buildPorts(opts, store);
@@ -133,12 +155,17 @@ function buildBaseDeps(opts: ContainerOptions & { readonly store: KeyValueStore 
   const bus = new InMemoryEventBus();
   return log.exit({
     ...ports,
-    session: new LocalStorageSessionRepository(repo),
+    // 商用版（server）：旅人と台帳はサーバーの記録の写しを読むだけ。書き込みはサーバーの API が行う（SEC-21、docs/12 §3）
+    session: (server === undefined ? new LocalStorageSessionRepository(repo) : new ServerSessionRepository(server)) as SessionRepository,
     avatars: new LocalStorageAvatarRepository(repo),
     settings: new LocalStorageSettingsRepository(repo),
+    memories: new LocalStorageVisitMemoryRepository(repo),
+    surveys: new LocalStorageSurveyResponseRepository(repo),
+    // アンケートは、回答が店舗CMS に届く構成（デモで、同じブラウザの cms.html が読む）のときだけ出す。連携サーバーへ送る経路はまだ無い（docs/09 CMS-V07）
+    surveyEnabled: opts.mode === 'demo' && (opts.cmsBackend ?? CMS_BACKEND) !== 'server',
     userData: new LocalStorageDataPort(repo),
-    travelers: new LocalStorageTravelerRepository(repo),
-    ledgers: new LocalStoragePointLedgerRepository(repo),
+    travelers: (server === undefined ? new LocalStorageTravelerRepository(repo) : new ServerTravelerRepository(server)) as TravelerRepository,
+    ledgers: (server === undefined ? new LocalStoragePointLedgerRepository(repo) : new ServerPointLedgerRepository(server)) as PointLedgerRepository,
     lordships: new LocalStorageLordshipRepository(repo),
     rivalActions: new LocalStorageRivalActionRepository(repo),
     spots,
@@ -163,15 +190,15 @@ type BaseDeps = ReturnType<typeof buildBaseDeps>;
  * @param updateLords 地区の主の再判定ユースケース
  * @sideEffect EventBus に3つのハンドラを登録する
  */
-function registerVisitHandlers(base: BaseDeps, updateLords: UpdateDistrictLordUseCase): void {
-  const log = logger.fn('registerVisitHandlers');
+function registerVisitHandlers(base: BaseDeps, updateLords: UpdateDistrictLordUseCase, serverSide: boolean): void {
+  const log = logger.fn('registerVisitHandlers', { serverSide });
   const evaluate = new EvaluateDistrictChangeUseCase(base);
   const award = new AwardVisitRewardsUseCase(base);
   const handlers = [
     { name: 'EvaluateDistrictChange', run: evaluate.handle.bind(evaluate) },
     { name: 'AwardVisitRewards', run: award.handle.bind(award) },
     { name: 'UpdateDistrictLord', run: updateLords.handle.bind(updateLords) },
-  ];
+  ].filter((handler) => !serverSide || handler.name === 'UpdateDistrictLord'); // 商用版：地区の変化と加点はサーバーが済ませ、イベントで届く
   for (const handler of handlers) {
     base.bus.subscribe('SpotVisited', async (event) => {
       const result = await handler.run(event);
@@ -282,20 +309,27 @@ function buildServices(base: BaseDeps, updateLords: UpdateDistrictLordUseCase, c
     position: new GetCurrentPositionUseCase(base),
     discover: new DiscoverNearbySpotsUseCase(base),
     visit: new VisitSpotUseCase(base),
+    purchase: new RecordPurchaseUseCase(base),
     nearby: new GetNearbySpotsUseCase(base),
     reasons: new GetRevisitReasonsUseCase(base),
     spotDetail: new GetSpotDetailUseCase(base),
     zukan: new GetZukanUseCase(base),
+    visitLog: new GetVisitLogUseCase(base),
+    saveVisitMemory: new SaveVisitMemoryUseCase(base),
+    ...(base.surveyEnabled ? { submitSurvey: new SubmitShopSurveyUseCase(base) } : {}),
     town: new GetTownStateUseCase(base),
     myTown: new GetMyTownUseCase(base),
     avatar: new GetAvatarClosetUseCase(base),
     saveAvatar: new SaveAvatarUseCase(base),
     rankStatus: new GetRankStatusUseCase(base),
+    tickets: new GetTicketsUseCase(base),
+    useTicket: new UseTicketUseCase(base),
     ranking: new GetRankingUseCase(base),
     travelers: new GetOtherTravelersUseCase(base),
     settings: new GetSettingsUseCase(base),
     updateTextScale: new UpdateTextScaleUseCase(base),
     exportData: new ExportDataUseCase(base),
+    importData: new ImportDataUseCase({ userData: base.userData, demo: base.demo, parseJson: (text) => parseJsonText(text, 'userDataImport') }),
     deleteAllData: new DeleteAllDataUseCase(base),
     demo,
   });
@@ -306,7 +340,7 @@ function buildServices(base: BaseDeps, updateLords: UpdateDistrictLordUseCase, c
  * デモでは起動のたびに位置を開始地区（南森町・天満宮地区）の入口へ置く（位置はメモリのみ＝PRV-03）。
  * @param opts コンテナ設定
  * @returns 成功: AppServices。失敗: マスタ検証エラー（起動中止＝DI-13）／STORAGE_FAILED 等
- * @sideEffect 旅人が無ければ作成して保存する（EnsureTravelerUseCase）
+ * @sideEffect 旅人が無ければ作成して保存する（EnsureTravelerUseCase）。商用版（server）ではサーバーへつなぐ
  */
 export async function createContainer(opts: ContainerOptions): Promise<Result<AppServices>> {
   const log = logger.fn('createContainer', { mode: opts.mode });
@@ -314,12 +348,23 @@ export async function createContainer(opts: ContainerOptions): Promise<Result<Ap
   if (!master.ok) return log.fail(master);
   const store = opts.store ?? new LocalStorageKeyValueStore();
   const cms = await buildCmsReflection(opts, master.value, store);
-  const base = buildBaseDeps({ ...opts, store }, master.value, cms.spots);
+  // 商用版：ログイン中か確かめ、サーバーの記録を読む（ログインしていなければ UNAUTHENTICATED。main がログインの画面を出す）
+  const server = (opts.appBackend ?? APP_BACKEND) === 'server' ? await ServerPlayState.connect(opts.appApi ?? {}) : undefined;
+  if (server !== undefined && !server.ok) return log.fail(server);
+  const base = buildBaseDeps({ ...opts, store, ...(server === undefined ? {} : { server: server.value }) }, master.value, cms.spots);
   const updateLords = new UpdateDistrictLordUseCase(base);
-  registerVisitHandlers(base, updateLords);
-  const ensured = await new EnsureTravelerUseCase(base).execute();
+  registerVisitHandlers(base, updateLords, server !== undefined);
+  const ensured = server === undefined ? await new EnsureTravelerUseCase(base).execute() : ok({ travelerId: server.value.travelerId, profile: 'user' as const });
   if (!ensured.ok) return log.fail(ensured);
-  const services = buildServices(base, updateLords, cms);
+  if (server === undefined) {
+    // 端末版：前回、訪問だけ保存できて加点が抜けたものがあれば付け直す（DI-11。失敗しても起動は続け、次の起動でまた試す）
+    const reconciled = await new ReconcileVisitRewardsUseCase({ ...base, award: new AwardVisitRewardsUseCase(base) }).execute();
+    if (!reconciled.ok) log.warn('抜けた加点の確認に失敗', { code: reconciled.error.code });
+  }
+  const local = buildServices(base, updateLords, cms);
+  const services: AppServices = server === undefined
+    ? local
+    : { ...local, ...buildHttpPlayUseCases({ api: opts.appApi ?? {}, geo: base.geo, state: server.value, events: base.bus }) };
   if (services.demo) {
     const placed = await services.demo.resetPosition.execute();
     if (!placed.ok) return log.fail(placed);

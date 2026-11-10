@@ -1,15 +1,14 @@
 /**
  * @file ステージの上に重ねる表示と、ステージの下の操作の列（presentation/screens/Avatar 層。DOM 部品）
- * 上に重ねる: 称号の札＋ニックネーム・ランク（左上）、持っている部品の数・NEW（右上）、試着中の帯（上中央）、ポーズの切替（左下）。
- * 下の操作: 元に戻す・おまかせ・保存の状態。
- * 印はすべて canvas で描く（avatarIcons）。ポーズのボタンには、いまの装いのミニアバターがそのポーズをとる絵を描く。
+ * 上に重ねる: 称号の札＋ニックネーム・ランク（左上）、持っている部品の数・NEW（右上）、試着中の印（右上の歯車の下。アバターに重ねない）、ポーズの切替（左下）。
+ * 下の操作: 元に戻す・おまかせ・撮影（3つとも副ボタン）。保存の状態はステージの右下に小さく出す。
+ * 印は線だけのアイコン（avatarIcons）。ポーズのボタンには、いまの装いのミニアバターがそのポーズをとる絵を描く。
  */
 import type { AvatarClosetDto, AvatarPartDto } from '@/application/dto/Dto';
 import { createLogger, setCorrelationId } from '@/Common/logging/logger';
 import { normalizeDpr } from '@/Common/ui/canvas/CanvasBase';
 import { h, setStyle } from '@/Common/ui/dom';
 import { createAvatarIcon, iconText } from '@/presentation/screens/Avatar/avatarIcons';
-import { remainingTextOf } from '@/presentation/screens/Avatar/avatarScreenModel';
 import { stageLookOf } from '@/presentation/shared/avatar/avatarLook';
 import type { AvatarLook, AvatarPose } from '@/presentation/shared/avatar/avatarLook';
 import { drawAvatar } from '@/presentation/shared/avatar/avatarPaint';
@@ -31,7 +30,7 @@ const POSE_ART_PX = 38;
 export type SaveState = 'saved' | 'saving' | 'error';
 
 /** 保存の状態の文言 */
-const SAVE_TEXT: Readonly<Record<SaveState, string>> = { saved: '保存ずみ', saving: '保存中…', error: '保存できませんでした' };
+const SAVE_TEXT: Readonly<Record<SaveState, string>> = { saved: '保存ずみ', saving: '保存中', error: '保存失敗' };
 
 /** createStageOverlay の入力 */
 export interface StageOverlayInput {
@@ -53,7 +52,7 @@ export interface StageOverlayHandle {
   readonly element: HTMLElement;
   /** ステージの下の操作の列 */
   readonly actions: HTMLElement;
-  update(outfit: readonly string[], tryOnId: string | undefined, parts: readonly AvatarPartDto[], setName?: string): void;
+  update(outfit: readonly string[], tryOnId: string | undefined, parts: readonly AvatarPartDto[]): void;
   setSaveState(state: SaveState): void;
 }
 
@@ -90,24 +89,14 @@ function createMeta(parts: readonly AvatarPartDto[]): HTMLElement {
 }
 
 /**
- * 試着中の帯を作る。
- * @param parts すべての部品
+ * 試着中の印を作る（「試着中」の一語だけ。名前・手に入れ方・進み具合は下の詳しい情報に出すので、ステージには重ねない）。
  * @param tryOnId 試着中の部品
- * @param setName 試着中のセット（部品より先に出す）
  * @returns 要素（試着していなければ undefined）
  */
-function createTryOnRibbon(parts: readonly AvatarPartDto[], tryOnId: string | undefined, setName?: string): HTMLElement | undefined {
-  const log = logger.fn('createTryOnRibbon', { tryOnId, setName });
-  if (setName !== undefined && tryOnId === undefined) {
-    return log.exit(h('div', { class: 'avatar-tryon', attrs: { role: 'status' } }, [h('div', { class: 'avatar-tryon__row' }, [h('b', { text: '試着中' }), h('span', { text: setName })])]));
-  }
-  const part = parts.find((p) => p.id === tryOnId);
-  if (part === undefined) return log.exit(undefined);
-  const left = remainingTextOf(part);
-  return log.exit(h('div', { class: 'avatar-tryon', attrs: { role: 'status' } }, [
-    h('div', { class: 'avatar-tryon__row' }, [h('b', { text: '試着中' }), h('span', { text: part.name }), left === '' ? undefined : h('em', { text: left })]),
-    h('small', { class: 'avatar-tryon__hint' }, [iconText('key', part.hint, 12)]),
-  ]));
+function createTryOnRibbon(tryOnId: string | undefined): HTMLElement | undefined {
+  const log = logger.fn('createTryOnRibbon', { tryOnId });
+  if (tryOnId === undefined) return log.exit(undefined);
+  return log.exit(h('div', { class: 'avatar-tryon', text: '試着中', attrs: { role: 'status' } }));
 }
 
 /**
@@ -177,9 +166,10 @@ export function createStageOverlay(input: StageOverlayInput): StageOverlayHandle
   const ribbon = h('div', { class: 'avatar-overlay__ribbon' });
   const meta = h('div', { class: 'avatar-overlay__meta' });
   const poses = createPoseBar(input.onPose);
-  const element = h('div', { class: 'avatar-overlay' }, [top, ribbon, meta, poses.element]);
   const statusText = h('span', { text: SAVE_TEXT.saved });
+  // 保存の状態はボタンではないので、操作の列ではなくステージの右下に小さく出す
   const status = h('span', { class: 'avatar-actions__status', attrs: { role: 'status', 'data-testid': 'avatar-save-state' }, dataset: { state: 'saved' } }, [createAvatarIcon('check', 14, 'avatar-actions__check'), statusText]);
+  const element = h('div', { class: 'avatar-overlay' }, [top, ribbon, meta, poses.element, status]);
   /**
    * 操作の列のボタンを作る。
    * @param icon アイコン
@@ -188,23 +178,24 @@ export function createStageOverlay(input: StageOverlayInput): StageOverlayHandle
    * @returns ボタン
    */
   const action = (icon: 'undo' | 'random' | 'photo', label: string, handler: () => void): HTMLElement => { // audit-ignore: fnlog-missing 2回だけ呼ぶボタンの組み立て
-    const b = h('button', { class: ['avatar-action', icon === 'random' ? 'avatar-action--primary' : undefined], attrs: { type: 'button', 'data-testid': `avatar-action-${label}` } }, [createAvatarIcon(icon, 20), label]);
+    const b = h('button', { class: 'avatar-action', attrs: { type: 'button', 'data-testid': `avatar-action-${label}` } }, [createAvatarIcon(icon, 20), label]);
     b.addEventListener('click', handler);
     return b;
   };
-  const actions = h('div', { class: 'avatar-actions' }, [action('undo', '戻す', input.onUndo), action('random', 'おまかせ', input.onRandom), action('photo', '撮影', input.onPhoto), status]);
+  // 3つとも副ボタン（白＋細い枠）。着せ替えの主役は下の部品の格子なので、ベタ塗りのボタンは置かない
+  const actions = h('div', { class: 'avatar-actions' }, [action('undo', '戻す', input.onUndo), action('random', 'おまかせ', input.onRandom), action('photo', '撮影', input.onPhoto)]);
   /**
    * 表示を装いに合わせる。
    * @param outfit 表示している装い
    * @param tryOnId 試着中の部品
    * @param parts すべての部品
    */
-  const update = (outfit: readonly string[], tryOnId: string | undefined, parts: readonly AvatarPartDto[], setName?: string): void => {
+  const update = (outfit: readonly string[], tryOnId: string | undefined, parts: readonly AvatarPartDto[]): void => {
     const updateLog = logger.fn('update', { tryOnId });
     top.replaceChildren(createNamePlate(input.closet, parts, outfit));
     meta.replaceChildren(createMeta(parts));
     poses.draw(stageLookOf(outfit).avatar);
-    const r = createTryOnRibbon(parts, tryOnId, setName);
+    const r = createTryOnRibbon(tryOnId);
     ribbon.replaceChildren(...(r === undefined ? [] : [r]));
     updateLog.exit(undefined);
   };

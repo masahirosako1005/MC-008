@@ -27,6 +27,19 @@ export interface ExportDataDto {
   readonly entryCount: number;
 }
 
+/** 書き出したファイルを読み込む入力（確認ダイアログで「置き換える」を押したときだけ confirmed を true にする） */
+export interface ImportDataInput {
+  /** 選んだファイルの中身（未検証の文字列） */
+  readonly content: string;
+  readonly confirmed: boolean;
+}
+
+/** 読み込んだ結果 */
+export interface ImportDataOutput {
+  /** 書き戻した保存データの件数 */
+  readonly written: number;
+}
+
 /** すべてのデータを削除する入力（確認ダイアログで「削除する」を押したときだけ true を渡す） */
 export interface DeleteAllDataInput {
   readonly confirmed: boolean;

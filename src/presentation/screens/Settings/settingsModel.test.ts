@@ -6,13 +6,10 @@ import {
   FUTURE_NOTIFICATIONS,
   TEXT_SCALE_OPTIONS,
   aboutRows,
-  dataNote,
   deleteConfirmText,
-  locationNote,
   locationUsageText,
   nextScaleForKey,
   saveFailedMessage,
-  textScaleNote,
 } from '@/presentation/screens/Settings/settingsModel';
 
 describe('TEXT_SCALE_OPTIONS', () => {
@@ -50,38 +47,34 @@ describe('設定画面の文言', () => {
     expect(FUTURE_NOTIFICATIONS).toHaveLength(3);
   });
 
-  it('位置情報はデモでは使わないと示し、本番は使用中のみ。補足は地区単位の集計方針（CLAUDE.md 10 章）', () => {
-    expect(locationUsageText(true)).toBe('使いません（デモ版）');
-    expect(locationUsageText(false)).toBe('アプリの使用中のみ');
-    expect(locationNote(true)).toContain('地図をタップ');
-    expect(locationNote(false)).not.toContain('デモ');
-    expect(locationNote(false)).toContain('地区ごと');
+  it('通知の呼び方は CLAUDE.md 11.1（領主）。括弧書きの補足は付けない', () => {
+    expect(FUTURE_NOTIFICATIONS).toContain('領主を奪われたとき');
+    expect(FUTURE_NOTIFICATIONS.join('')).not.toMatch(/[（(]/);
   });
 
-  it('「発表では大がおすすめ」はデモ版だけに出す', () => {
-    expect(textScaleNote(true)).toContain('発表では「大」');
-    expect(textScaleNote(false)).not.toContain('発表');
+  it('位置情報はデモではオフ、本番は使用中のみ（括弧書き・開発向けの言葉は出さない）', () => {
+    expect(locationUsageText(true)).toBe('オフ');
+    expect(locationUsageText(false)).toBe('使用中のみ');
   });
 
-  it('このアプリについて：アプリ名とバージョン（デモ版と添える）', () => {
+  it('このアプリについて：アプリ名とバージョン（デモでも括弧書きを付けない）', () => {
     expect(aboutRows(true)).toEqual([
       { label: 'アプリ名', value: APP_DISPLAY_NAME },
-      { label: 'バージョン', value: `${APP_VERSION}（デモ版）` },
+      { label: 'バージョン', value: APP_VERSION },
     ]);
     expect(aboutRows(false)[1]?.value).toBe(APP_VERSION);
   });
 
-  it('削除の確認文は元に戻せないことと、先に書き出せることを伝える。デモは最初のデモの状態に戻ると添える', () => {
+  it('削除の確認文は元に戻せないことを短く伝える（開発向けの言葉・括弧書きなし）', () => {
     expect(deleteConfirmText(false)).toContain('元には戻せません');
-    expect(deleteConfirmText(false)).toContain('データを書き出す');
-    expect(deleteConfirmText(false)).not.toContain('デモ');
-    expect(deleteConfirmText(true)).toContain('最初のデモの状態');
+    expect(deleteConfirmText(true)).toBe(deleteConfirmText(false));
+    expect(deleteConfirmText(true)).not.toMatch(/デモ|[（(]/);
   });
 
-  it('データの補足：デモはお店の CMS の内容が消えないこと、本番はお店に個人のデータを渡さないこと（PRV-04）', () => {
-    expect(dataNote(true)).toContain('CMS');
-    expect(dataNote(false)).toContain('地区ごとの集計');
-    expect(DATA_TEXTS.exported(7)).toBe('データを書き出しました（7件）');
+  it('ボタンは 2〜6 字、書き出しの結果は件数を添える', () => {
+    expect(DATA_TEXTS.exportButton).toBe('書き出す');
+    expect(DATA_TEXTS.deleteButton).toBe('全削除');
+    expect(DATA_TEXTS.exported(7)).toBe('7件を書き出しました');
   });
 
   it('保存に失敗したら、戻した大きさの名前を添えて知らせる', () => {

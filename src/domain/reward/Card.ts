@@ -23,21 +23,3 @@ export interface EarnedCard {
   /** 条件を満たした訪問の暦日 */
   readonly earnedOn: LocalDate;
 }
-
-/**
- * 未検証の値がカードのランクか判定する型ガード。
- * @param value 判定する値
- * @returns 'silver' または 'gold' なら true
- */
-export function isCardRank(value: unknown): value is CardRank {
-  return value === 'silver' || value === 'gold';
-}
-
-/**
- * 未検証の値がカードの獲得理由か判定する型ガード。
- * @param value 判定する値
- * @returns 'visits' または 'seasons' なら true
- */
-export function isCardReason(value: unknown): value is CardReason {
-  return value === 'visits' || value === 'seasons';
-}

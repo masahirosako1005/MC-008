@@ -2,11 +2,13 @@
  * @file エントリポイント。DI コンテナを作って App を起動するだけ（docs/02 §1）。
  * 想定外の例外はグローバルハンドラで捕まえてログに残し、画面には内部情報を出さない（docs/03 §5、SEC-26）。
  */
-import { isDemoBuild } from '@/Common/constants/env';
+import { APP_BACKEND, isDemoBuild } from '@/Common/constants/env';
 import { createLogger, setCorrelationId } from '@/Common/logging/logger';
 import { h } from '@/Common/ui/dom';
+import { loadLoginOptions } from '@/infrastructure/di/appLogin';
 import { createContainer } from '@/infrastructure/di/container';
 import { App } from '@/presentation/App/App';
+import { renderLoginScreen } from '@/presentation/screens/Login/LoginScreen';
 
 const logger = createLogger('main');
 
@@ -55,6 +57,12 @@ async function bootstrap(): Promise<void> {
   const root = document.getElementById('app');
   if (!root) return log.fail(undefined, '#app がありません');
   const services = await createContainer({ mode: isDemoBuild ? 'demo' : 'production' });
+  if (!services.ok && APP_BACKEND === 'server' && services.error.code === 'UNAUTHENTICATED') {
+    // 商用版でログインしていない：ログインの画面を出す（docs/12 §5）
+    const options = await loadLoginOptions();
+    renderLoginScreen(root, options.ok ? options.value : []);
+    return log.exit(undefined, 'login');
+  }
   if (!services.ok) {
     renderStartupError(root, services.error.message);
     return log.fail(undefined, services.error.code);

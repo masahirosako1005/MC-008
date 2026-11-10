@@ -3,12 +3,15 @@
  * 1. 起動スプラッシュ（index.html の静的な1枚）と同じ絵から始め、経過時間をそろえて続きから動かす（つなぎ目を見せない）
  * 2. 旅人の状態（ランク・町・再訪理由・アバター・時刻）を読み込む（失敗しても一般的な内容で進む）。終わるとゲージが 100% になり、ロゴが光を溜める
  * 3. 閃光 → ピンの頭から円が広がって街が現れる → ロゴがタイトルへ飛び、タイトルが叩きつけられる（火花・画面の揺れ・回る光）
- *    地区の建物が伸び、ピンが落ち、自分のアバターが歩いてくる。ステータスの数字は数え上げる
- * 4. 「TAP TO START」。どこをタップしても始まる（ボタンが出るまでのタップは早送り）。Esc でも閉じる
+ *    地区の建物が伸び、ピンが落ち、自分のアバターが歩いてくる
+ *    主役は大きなタイトル（ロゴ・地名・アプリ名・ひとこと）。下は TODAY の細い帯・スタート・名札（呼び名とランク）だけ。
+ *    ステータスのパネルや数え上げは置かない（結果発表の画面に見えるため。2026-11-10 ユーザー指示）
+ * 4. 「スタート」。どこをタップしても始まる（ボタンが出るまでのタップは早送り）。Esc でも閉じる
  * 文字は最小限（説明文・ヒント・手順は出さない）。下の画面（ルーター）は裏で先に表示し、閉じるまで inert（操作・読み上げの対象外）。
  * 動きを減らす設定（prefers-reduced-motion）では、最後の1枚を静止画で出す。
  * 基準: C（再訪動機。通いの積み上げと今日の行く理由を最初に見せる）、B（未訪問の地区を「？」で見せる）。
  */
+import { prefersReducedMotion } from '@/Common/ui/a11y/reducedMotion';
 import '@/presentation/screens/Launch/Launch.css';
 import type { AppServices } from '@/application/AppServices';
 import { APP_VERSION } from '@/Common/constants/env';
@@ -23,7 +26,7 @@ import { avatarSpriteFor } from '@/presentation/shared/avatarSprite';
 import type { AvatarLook, AvatarSprite } from '@/presentation/shared/avatarSprite';
 import { createLaunchLogo } from '@/presentation/screens/Launch/launchLogo';
 import { buildLaunchModel, launchModeOf } from '@/presentation/screens/Launch/launchModel';
-import type { LaunchChip, LaunchInput, LaunchModel } from '@/presentation/screens/Launch/launchModel';
+import type { LaunchInput, LaunchModel } from '@/presentation/screens/Launch/launchModel';
 import { drawLaunchScene, planLaunchScene, SCENE_TIMING, sceneLayoutOf } from '@/presentation/screens/Launch/launchScene';
 import type { ScenePlan } from '@/presentation/screens/Launch/launchScene';
 
@@ -49,6 +52,8 @@ const SETTLED_T = SCENE_TIMING.settled + 200;
 const AVATAR_SCALE = 0.72;
 /** アプリ名（1文字ずつ光らせる） */
 const APP_NAME = 'まちクエ';
+/** アプリの一言（スプラッシュと同じ） */
+const TAGLINE = 'この街が、クエストになる。';
 /** タイトルが叩きつけられたときの火花の本数 */
 const SPARK_COUNT = 12;
 
@@ -75,15 +80,6 @@ export function shouldShowLaunch(): boolean {
   const log = logger.fn('shouldShowLaunch');
   if (typeof window === 'undefined') return log.exit(false, 'DOM なし');
   return log.exit(launchModeOf({ search: window.location.search, webdriver: window.navigator.webdriver === true }) === 'show');
-}
-
-/**
- * 動きを減らす設定かを返す。
- * @returns 減らすなら true
- */
-function prefersReducedMotion(): boolean {
-  const log = logger.fn('prefersReducedMotion');
-  return log.exit(typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 }
 
 /**
@@ -178,7 +174,7 @@ function buildStage(): { readonly stage: HTMLElement; readonly logo: SVGSVGEleme
 }
 
 /**
- * タイトル（回る光・ロゴの着地点・地名・光沢のアプリ名・火花）を作る。
+ * タイトル（回る光・ロゴの着地点・地名・光沢のアプリ名・ひとこと・火花）を作る。画面の主役なので、ロゴを上にして縦に大きく積む。
  * アプリ名は1文字ずつ「白いふち（::before）＋光沢のグラデーション＋走る光」の3層にする。
  * @returns タイトルとロゴの着地点
  */
@@ -194,7 +190,7 @@ function buildBrand(): { readonly brand: HTMLElement; readonly slot: HTMLElement
   );
   const brand = h('header', { class: 'launch__brand' }, [
     h('span', { class: 'launch__rays', attrs: { 'aria-hidden': 'true' } }),
-    h('div', { class: 'launch__lockup' }, [slot, h('div', { class: 'launch__name' }, [h('span', { class: 'launch__place', text: '南森町' }), title])]),
+    h('div', { class: 'launch__lockup' }, [slot, h('div', { class: 'launch__name' }, [h('span', { class: 'launch__place', text: '南森町' }), title, h('p', { class: 'launch__tagline', text: TAGLINE })])]),
     h('span', { class: 'launch__burst', attrs: { 'aria-hidden': 'true' } }, repeatEl('i', SPARK_COUNT)),
     h('span', { class: 'launch__glints', attrs: { 'aria-hidden': 'true' } }, repeatEl('i', 5)),
   ]);
@@ -202,48 +198,36 @@ function buildBrand(): { readonly brand: HTMLElement; readonly slot: HTMLElement
 }
 
 /**
- * ステータス1つ（アイコン＋値。数字は CSS の counter で数え上げる）を作る。
- * @param chip ステータス
- * @param i 並び順（入場のずれ）
- * @returns li 要素
+ * 名札（呼び名・ランク・領主をつとめる地区の数）を作る。セーブデータの1行として下に小さく置く。
+ * はじめての人・ランクが取れなかったときは出さない。
+ * @param model 開始画面の内容
+ * @returns 名札。出さないなら undefined
  */
-function buildChip(chip: LaunchChip, i: number): HTMLElement {
-  const log = logger.fn('buildChip', { icon: chip.icon });
-  const value = chip.count === undefined
-    ? h('span', { class: 'launch__chip-value', text: chip.value })
-    : h('span', { class: 'launch__chip-value' }, [
-      h('span', { class: 'launch__count', style: { '--to': String(Math.max(0, Math.round(chip.count))) } }),
-      h('span', { class: 'launch__unit', text: chip.unit ?? '' }),
-    ]);
-  return log.exit(h('li', { class: 'launch__chip', dataset: { icon: chip.icon }, style: { '--i': String(i) } }, [
-    h('span', { class: 'visually-hidden', text: `${chip.label} ${chip.value}` }),
-    h('span', { class: 'launch__chip-icon', attrs: { 'aria-hidden': 'true' } }, [createIcon(chip.icon)]),
-    h('span', { attrs: { 'aria-hidden': 'true' } }, [value]),
+function buildPlate(model: LaunchModel): HTMLElement | undefined {
+  const log = logger.fn('buildPlate', { isFirst: model.isFirst });
+  const rank = model.chips.find((chip) => chip.icon === 'rank');
+  if (model.isFirst || rank === undefined) return log.exit(undefined, '名札なし');
+  const lord = model.lordCount > 0 ? ` 地区の領主 ${model.lordCount}` : '';
+  return log.exit(h('p', { class: 'launch__plate', attrs: { 'aria-label': `${model.headline} ${rank.value}${lord}` } }, [
+    h('span', { class: 'launch__plate-icon', attrs: { 'aria-hidden': 'true' } }, [createIcon('rank')]),
+    h('span', { class: 'launch__plate-name', attrs: { 'aria-hidden': 'true' }, text: model.headline }),
+    h('span', { class: 'launch__plate-rank', attrs: { 'aria-hidden': 'true' }, text: rank.value }),
+    model.lordCount > 0 ? h('span', { class: 'launch__plate-lord', attrs: { 'aria-hidden': 'true' } }, [createIcon('crown'), h('span', { text: `×${model.lordCount}` })]) : undefined,
   ]));
 }
 
 /**
- * ステータスのパネル（WELCOME BACK・呼び名・地区の主・3つのステータス・TODAY の帯）を作る。
+ * TODAY の帯（いちばん強い再訪理由1件）を作る。
  * @param model 開始画面の内容
- * @returns パネル
+ * @returns 帯。理由が無ければ undefined
  */
-function buildCard(model: LaunchModel): HTMLElement {
-  const log = logger.fn('buildCard', { isFirst: model.isFirst, chips: model.chips.length, hasReason: model.reason !== undefined });
-  const top = h('div', { class: 'launch__card-top' }, [
-    h('span', { class: 'launch__eyebrow', text: model.eyebrow }),
-    model.lordCount > 0 ? h('span', { class: 'launch__lord', attrs: { 'aria-label': `地区の領主 ${model.lordCount}` } }, [createIcon('crown'), h('span', { text: `×${model.lordCount}` })]) : undefined,
-  ]);
-  const chips = model.chips.length === 0 ? undefined : h('ul', { class: 'launch__chips' }, model.chips.map(buildChip));
-  const reason = model.reason === undefined ? undefined : h('div', { class: 'launch__reason', dataset: { kind: model.reason.kind } }, [
+function buildReason(model: LaunchModel): HTMLElement | undefined {
+  const log = logger.fn('buildReason', { hasReason: model.reason !== undefined });
+  if (model.reason === undefined) return log.exit(undefined, '理由なし');
+  return log.exit(h('div', { class: 'launch__reason', dataset: { kind: model.reason.kind } }, [
     h('span', { class: 'launch__reason-tag', text: 'TODAY' }),
     h('span', { class: 'launch__reason-icon', attrs: { 'aria-hidden': 'true' } }, [createIcon(REASON_ICONS[model.reason.kind] ?? 'sparkle')]),
     h('span', { class: 'launch__reason-title', attrs: { 'aria-label': `${model.reason.label} ${model.reason.title}` }, text: model.reason.title }),
-  ]);
-  return log.exit(h('section', { class: 'launch__card', attrs: { 'aria-label': model.eyebrow } }, [
-    top,
-    h('h2', { class: 'launch__headline', text: model.headline }),
-    chips,
-    reason,
   ]));
 }
 
@@ -288,12 +272,13 @@ interface SceneParts {
   readonly art: HTMLElement;
   readonly brand: HTMLElement;
   readonly slot: HTMLElement;
-  readonly card: HTMLElement;
+  /** 下の帯（TODAY の帯・スタート・名札）。街並みの地面はこの上端に合わせる */
+  readonly foot: HTMLElement;
   readonly cta: HTMLButtonElement;
 }
 
 /**
- * 街の場面（絵の入れ物・四隅の影・タイトル・ステータスのパネル・TAP TO START・版）を作る。
+ * 街の場面（絵の入れ物・四隅の影・タイトル・下の帯＝TODAY の帯／スタート／名札・版）を作る。
  * @param model 開始画面の内容
  * @returns 部品
  */
@@ -301,21 +286,18 @@ function buildScene(model: LaunchModel): SceneParts {
   const log = logger.fn('buildScene');
   const art = h('div', { class: 'launch__art' });
   const { brand, slot } = buildBrand();
-  const card = buildCard(model);
   const cta = h('button', { class: 'launch__start', attrs: { type: 'button', 'data-testid': 'launch-start', 'aria-label': model.cta } }, [
-    h('span', { class: 'launch__start-chev', attrs: { 'aria-hidden': 'true' } }),
-    h('span', { class: 'launch__start-label', attrs: { 'aria-hidden': 'true' }, text: 'TAP TO START' }),
-    h('span', { class: 'launch__start-chev launch__start-chev--r', attrs: { 'aria-hidden': 'true' } }),
+    h('span', { class: 'launch__start-label', attrs: { 'aria-hidden': 'true' }, text: 'スタート' }),
   ]);
+  const foot = h('div', { class: 'launch__foot' }, [buildReason(model), cta, buildPlate(model)]);
   const ui = h('div', { class: 'launch__ui' }, [
     brand,
     h('div', { class: 'launch__spacer' }),
-    card,
-    cta,
+    foot,
     h('span', { class: 'launch__version', attrs: { 'aria-hidden': 'true' }, text: `Ver.${APP_VERSION}` }),
   ]);
   const scene = h('div', { class: 'launch__scene' }, [art, h('div', { class: 'launch__vignette' }), ui]);
-  return log.exit({ scene, art, brand, slot, card, cta });
+  return log.exit({ scene, art, brand, slot, foot, cta });
 }
 
 /** 飛ぶロゴが途中で上へふくらむ高さ（px） */
@@ -565,7 +547,7 @@ export function mountLaunchScreen(phone: HTMLElement, services: AppServices): La
 }
 
 /**
- * 街の絵を描き続ける係（大きさ・タイトル・カードの位置が変わったら計画を作り直す）。
+ * 街の絵を描き続ける係（大きさ・タイトル・下の帯の位置が変わったら計画を作り直す）。
  */
 class LaunchSceneLoop {
   private readonly parts: SceneParts;
@@ -605,7 +587,7 @@ class LaunchSceneLoop {
     this.observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(() => {
       if (this.surface !== undefined) this.layout(this.surface.size());
     });
-    this.observer?.observe(parts.card);
+    this.observer?.observe(parts.foot);
     this.observer?.observe(parts.brand);
     if (this.surface !== undefined) this.layout(this.surface.size());
     if (!reduced) this.frameId = window.requestAnimationFrame(this.onFrame);
@@ -621,13 +603,13 @@ class LaunchSceneLoop {
   }
 
   /**
-   * 割り付けと計画を作り直して描く（タイトルの下端・カードの上端に合わせる）。
+   * 割り付けと計画を作り直して描く（タイトルの下端・下の帯の上端に合わせる）。
    * @param size canvas の大きさ
    * @sideEffect 計画・アバター画像を作り直し、1フレーム描く
    */
   private layout(size: CanvasSize): void {
     const log = logger.fn('layout', { width: size.width, height: size.height });
-    const bounds = { titleBottom: this.parts.brand.offsetTop + this.parts.brand.offsetHeight, cardTop: this.parts.card.offsetTop };
+    const bounds = { titleBottom: this.parts.brand.offsetTop + this.parts.brand.offsetHeight, cardTop: this.parts.foot.offsetTop };
     this.plan = planLaunchScene(this.model.districts, this.model.sky, sceneLayoutOf(size, bounds));
     this.avatar = avatarSpriteFor(this.look, { scale: AVATAR_SCALE, dotPx: 2, dpr: size.dpr });
     this.draw();

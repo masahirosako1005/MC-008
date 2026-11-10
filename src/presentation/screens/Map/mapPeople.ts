@@ -18,9 +18,46 @@ import type { MapZoom } from '@/presentation/screens/Map/ZoomState';
 import { avatarSpriteFor } from '@/presentation/shared/avatarSprite';
 import type { AvatarLook, AvatarSprite } from '@/presentation/shared/avatarSprite';
 import { personColorOfId, personLookOf } from '@/presentation/shared/personLook';
-import { drawCrown } from '@/presentation/screens/Map/mapPins';
 
 const logger = createLogger('presentation/screens/Map/mapPeople');
+
+/**
+ * 王冠（地区の主）を描く。
+ * @param ctx 2D コンテキスト
+ * @param at 王冠の中心
+ * @param size 幅（CSS px）
+ * @sideEffect ctx に描画する
+ */
+function drawCrown(ctx: CanvasRenderingContext2D, at: Point2D, size: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const w = size;
+  const hgt = size * 0.72;
+  const x = at.x - w / 2;
+  const y = at.y - hgt / 2;
+  ctx.save();
+  ctx.shadowColor = 'rgba(42, 33, 27, 0.2)';
+  ctx.shadowBlur = 3;
+  ctx.shadowOffsetY = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y + hgt * 0.28);
+  ctx.lineTo(x + w * 0.26, y + hgt * 0.55);
+  ctx.lineTo(x + w * 0.5, y);
+  ctx.lineTo(x + w * 0.74, y + hgt * 0.55);
+  ctx.lineTo(x + w, y + hgt * 0.28);
+  ctx.lineTo(x + w * 0.88, y + hgt);
+  ctx.lineTo(x + w * 0.12, y + hgt);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, y, 0, y + hgt);
+  g.addColorStop(0, '#ffe38a');
+  g.addColorStop(1, PALETTE.goldDeep);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.strokeStyle = PALETTE.white;
+  ctx.lineWidth = 1.2;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  ctx.restore();
+}
 
 /** ほかの旅人の色（人ごとに固定。ランキングと共通なので shared/personLook に置く） */
 export { PERSON_COLORS } from '@/presentation/shared/personLook';
@@ -80,6 +117,8 @@ export interface PeopleDrawInput {
   readonly facingLeft?: boolean;
   /** 端末のピクセル比（ほかの旅人のアバター画像を作るのに使う。無ければほかの旅人は丸いバッジで描く） */
   readonly dpr?: number;
+  /** 「あなた」の札を出さない（お店の声の吹き出しが札の所に重なるとき。吹き出しの文字を隠さない） */
+  readonly hideSelfTag?: boolean;
 }
 
 /**
@@ -274,7 +313,7 @@ function drawOtherPerson(ctx: CanvasRenderingContext2D, person: PlacedPerson, in
 function drawOtherBadge(ctx: CanvasRenderingContext2D, person: PlacedPerson, input: PeopleDrawInput): void { // audit-ignore: fnlog-missing 毎フレーム描画
   const { at, radius: r, color } = person;
   ctx.save();
-  ctx.shadowColor = 'rgba(17, 24, 39, 0.28)';
+  ctx.shadowColor = 'rgba(42, 33, 27, 0.28)';
   ctx.shadowBlur = 4;
   ctx.shadowOffsetY = 1.5;
   ctx.fillStyle = PALETTE.white;
@@ -334,11 +373,11 @@ function drawSelfBadge(ctx: CanvasRenderingContext2D, at: Point2D, input: People
   ctx.clip();
   drawPersonGlyph(ctx, body, r);
   ctx.restore();
-  if (input.zoom !== 'wide') drawNameTag(ctx, 'あなた', { x: at.x, y: at.y + r + 17 }, { fill: PALETTE.brandInk, text: PALETTE.white, scale: input.textScale });
+  if (input.zoom !== 'wide' && input.hideSelfTag !== true) drawNameTag(ctx, 'あなた', { x: at.x, y: at.y + r + 17 }, { fill: PALETTE.brandInk, text: PALETTE.white, scale: input.textScale });
 }
 
 /**
- * 自分のアバター（マイ街と同じドット絵）を現在地に立たせる。足元に朱の輪と光を敷き、地区・詳細では「あなた」を添える。
+ * 自分のアバター（マイ街と同じドット絵）を現在地に立たせる。足元に朱の輪と光を敷き、「あなた」を添える。
  * 歩いているときは1歩ごとに1ドット弾み、左へ歩くときは左右反転して進む向きを向く。
  * @param ctx 2D コンテキスト
  * @param at 現在地（CSS px。足元）
@@ -369,7 +408,8 @@ function drawSelfAvatar(ctx: CanvasRenderingContext2D, at: Point2D, avatar: Avat
   if (input.facingLeft === true) ctx.scale(-1, 1);
   ctx.drawImage(avatar.image, -avatar.footX, -avatar.footY, avatar.width, avatar.height);
   ctx.restore();
-  if (input.zoom !== 'wide') drawNameTag(ctx, 'あなた', { x: at.x, y: at.y + 19 }, { fill: PALETTE.brandInk, text: PALETTE.white, scale: input.textScale });
+  // 広域でも「あなた」を添える（王者の台座のアバターと見分ける。輪が小さいぶん札も少し上）
+  if (input.hideSelfTag !== true) drawNameTag(ctx, 'あなた', { x: at.x, y: at.y + (input.zoom === 'wide' ? 15 : 19) }, { fill: PALETTE.brandInk, text: PALETTE.white, scale: input.textScale });
 }
 
 /**
@@ -383,7 +423,7 @@ function drawSelfAvatar(ctx: CanvasRenderingContext2D, at: Point2D, avatar: Avat
 function drawFeet(ctx: CanvasRenderingContext2D, at: Point2D, r: number, swing: number | undefined): void { // audit-ignore: fnlog-missing 毎フレーム描画
   const ground = at.y + r + 5;
   ctx.save();
-  ctx.fillStyle = 'rgba(17, 24, 39, 0.16)';
+  ctx.fillStyle = 'rgba(42, 33, 27, 0.16)';
   ctx.beginPath();
   ctx.ellipse(at.x, ground + 1.5, r * 0.85, r * 0.2, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -428,7 +468,7 @@ function drawNameTag(ctx: CanvasRenderingContext2D, text: string, at: Point2D, s
   ctx.font = canvasFont(10, 700, style.scale);
   const w = ctx.measureText(text).width + 10 * style.scale;
   const hgt = 16 * style.scale;
-  drawRoundRect(ctx, { x: at.x - w / 2, y: at.y - hgt / 2, width: w, height: hgt }, hgt / 2, { fill: style.fill, stroke: 'rgba(17, 24, 39, 0.12)', lineWidth: 1 });
+  drawRoundRect(ctx, { x: at.x - w / 2, y: at.y - hgt / 2, width: w, height: hgt }, hgt / 2, { fill: style.fill, stroke: 'rgba(42, 33, 27, 0.12)', lineWidth: 1 });
   ctx.fillStyle = style.text;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';

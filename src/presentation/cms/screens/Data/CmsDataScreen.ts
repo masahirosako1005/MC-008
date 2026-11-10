@@ -68,16 +68,16 @@ function kpiStrip(stats: CmsVisitStatsDto): HTMLElement {
  * 棒の高さは「いちばん多い値＝描く場所の高さの100%」に比例させ、値の数字は棒の子として棒の上に置く。棒の無い項目（休・少数）は下端に数字だけを置く。
  * @param title 見出し
  * @param counts 項目
- * @param opts 棒の下の名前の作り方・低いグラフにするか・直近を強調するか
+ * @param opts 棒の下の名前の作り方・低いグラフにするか・直近を強調するか・読み上げに付ける単位（既定は「回」。アンケートの画面でも使う）・値の書き方（既定は整数のまま）
  * @returns 要素
  */
-function columnChart(title: string, counts: readonly CmsCountDto[], opts: { readonly label?: (c: CmsCountDto) => string; readonly short?: boolean; readonly latest?: boolean } = {}): HTMLElement {
+export function columnChart(title: string, counts: readonly CmsCountDto[], opts: { readonly label?: (c: CmsCountDto) => string; readonly short?: boolean; readonly latest?: boolean; readonly unit?: string; readonly format?: (value: number) => string } = {}): HTMLElement {
   const log = logger.fn('columnChart', { title, count: counts.length });
   const max = Math.max(1, ...counts.map((c) => c.value ?? 0));
   const top = largest(counts);
   const cols = counts.map((c, i) => {
     const latest = opts.latest === true && i === counts.length - 1;
-    const text = c.note !== undefined ? '休' : c.suppressed || c.value === undefined ? '少数' : String(c.value);
+    const text = c.note !== undefined ? '休' : c.suppressed || c.value === undefined ? '少数' : opts.format?.(c.value) ?? String(c.value);
     const value = h('span', { class: ['cms-col__value', c.value === undefined && 'cms-col__value--muted'], text });
     const bar = c.value === undefined ? undefined : h('span', {
       class: ['cms-col__bar', c === top && opts.latest !== true && 'cms-col__bar--top', latest && 'cms-col__bar--latest'],
@@ -88,7 +88,7 @@ function columnChart(title: string, counts: readonly CmsCountDto[], opts: { read
       h('span', { class: 'cms-col__label', text: opts.label?.(c) ?? c.label }),
     ]);
   });
-  const summary = `${title}：${counts.map((c) => `${c.label} ${countText(c, '回')}`).join('、')}`;
+  const summary = `${title}：${counts.map((c) => `${c.label} ${countText(c, opts.unit ?? '回')}`).join('、')}`;
   return log.exit(h('section', { class: 'cms-chart' }, [h('h2', { class: 'cms-section__title', text: title }), h('div', { class: ['cms-cols', opts.short === true && 'cms-cols--short'], attrs: { role: 'img', 'aria-label': summary } }, cols)]));
 }
 

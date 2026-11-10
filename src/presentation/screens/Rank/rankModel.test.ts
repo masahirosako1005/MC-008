@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AppStatusDto, LeagueDto, RankStatusDto, RankingDto } from '@/application/dto/Dto';
-import { historyIconOf, isNearRankUp, leagueMedalsOf, rankProgressOf, settingTilesOf, shortDateOf } from '@/presentation/screens/Rank/rankModel';
+import type { LeagueDto, RankStatusDto, RankingDto } from '@/application/dto/Dto';
+import { historyIconOf, historyTextOf, isNearRankUp, leagueMedalsOf, nextGoalsOf, perkLinkFillsOf, rankProgressOf, shortDateOf } from '@/presentation/screens/Rank/rankModel';
 import { tierOf } from '@/presentation/screens/Rank/rankEmblem';
 
 /** 段（RANK_THRESHOLDS と同じ並び） */
@@ -33,9 +33,6 @@ function rankDto(over: Partial<RankStatusDto> = {}): RankStatusDto {
     ...over,
   };
 }
-
-/** テスト用のアプリ状態 */
-const STATUS: AppStatusDto = { today: '2026-12-09', dateLabel: '2026/12/09（水）', timeLabel: '9:41', isDemo: true, travelerProfile: 'regular', dayOffset: 30 };
 
 /**
  * テスト用のリーグを作る。
@@ -110,26 +107,47 @@ describe('表示の小物', () => {
     expect(historyIconOf({ ...base, kind: 'welcomeBack', spotKind: 'shop' })).toBe('sparkle');
     expect(historyIconOf({ ...base, kind: 'visit', spotKind: 'shop' })).toBe('shop');
     expect(historyIconOf({ ...base, kind: 'visit', spotKind: 'landmark' })).toBe('star');
+    expect(historyIconOf({ ...base, kind: 'purchase', spotKind: 'shop' })).toBe('coin');
+  });
+
+  it('お買い物の行は「{お店}でお買い物」、それ以外はスポット名', () => {
+    const base = { date: '2026-11-10', spotName: '城下カフェ', districtName: '', points: 10, spotKind: 'shop' as const };
+    expect(historyTextOf({ ...base, kind: 'purchase' })).toBe('城下カフェでお買い物');
+    expect(historyTextOf({ ...base, kind: 'visit' })).toBe('城下カフェ');
   });
 });
 
-describe('settingTilesOf', () => {
-  it('デモでは短い値とアイコンで6マス（日付は進めた日数の札付き）', () => {
-    const tiles = settingTilesOf({ status: STATUS, textScale: 'large', isDemo: true, nickname: '通い慣れた人' });
-    expect(tiles.map((t) => t.key)).toEqual(['textScale', 'traveler', 'location', 'date', 'storage', 'build']);
-    expect(Object.fromEntries(tiles.map((t) => [t.key, t.value]))).toEqual({
-      textScale: '大', traveler: '通い慣れた人', location: 'タップ歩行', date: '12/9', storage: '端末内', build: 'デモ版',
-    });
-    expect(tiles.find((t) => t.key === 'date')?.badge).toBe('+30日');
-    expect(tiles.find((t) => t.key === 'traveler')?.badge).toBe('デモ');
-    expect(tiles.every((t) => t.icon !== undefined || t.glyph !== undefined)).toBe(true);
+describe('つぎの目標（nextGoalsOf・perkLinkFillsOf）', () => {
+  /** 特典（25 獲得済み・50 獲得済み（段1）・100 次・150 まだ（段2）） */
+  const PERKS: NonNullable<RankStatusDto['perks']> = [
+    { at: 25, parts: [{ id: 'hairColor.akane', name: 'あかね色', rarity: 'R' }], state: 'earned' },
+    { at: 50, rankIndex: 1, parts: [{ id: 'title.adventurer', name: '一人前の冒険者', rarity: 'R' }], state: 'earned' },
+    { at: 100, parts: [{ id: 'topColor.ruby', name: 'ルビー', rarity: 'R' }], state: 'next' },
+    { at: 150, rankIndex: 2, parts: [{ id: 'title.veteran', name: '歴戦の冒険者', rarity: 'SR' }], state: 'locked' },
+  ];
+
+  it('ランクアップはいまの段の下限→次の段、特典は直前の特典→次の特典のゲージ', () => {
+    const goals = nextGoalsOf(rankDto({ points: 60, perks: PERKS }));
+    expect(goals.rank).toEqual({ from: 50, to: 150, remaining: 90, percent: 10, index: 2, name: '常連', isTop: false });
+    expect(goals.perk).toMatchObject({ from: 50, to: 100, remaining: 40, percent: 20 });
+    expect(goals.perk?.perk.at).toBe(100);
   });
 
-  it('本番は GPS・本番。状態が読めなくてもマスはそろう', () => {
-    const tiles = settingTilesOf({ status: undefined, textScale: 'normal', isDemo: false, nickname: 'あなた' });
-    expect(tiles.find((t) => t.key === 'location')?.value).toBe('GPS');
-    expect(tiles.find((t) => t.key === 'date')?.value).toBe('—');
-    expect(tiles.find((t) => t.key === 'build')?.value).toBe('本番');
-    expect(tiles.find((t) => t.key === 'traveler')?.badge).toBeUndefined();
+  it('最初の特典の前は 0 から、特典が無い・全部獲得なら特典のゲージは出さない', () => {
+    const first = PERKS.map((p) => ({ ...p, state: p.at === 25 ? 'next' : 'locked' }) as const);
+    expect(nextGoalsOf(rankDto({ points: 10, perks: first })).perk).toMatchObject({ from: 0, to: 25, remaining: 15, percent: 40 });
+    expect(nextGoalsOf(rankDto()).perk).toBeUndefined();
+    expect(nextGoalsOf(rankDto({ perks: PERKS.map((p) => ({ ...p, state: 'earned' }) as const) })).perk).toBeUndefined();
+  });
+
+  it('最上段はランクアップのゲージが満タンで、残りは 0', () => {
+    const top = rankDto({ rank: { name: '街の名士', index: 4 }, points: 900 });
+    expect(nextGoalsOf(top).rank).toEqual({ from: 800, to: 800, remaining: 0, percent: 100, index: 4, name: '街の名士', isTop: true });
+  });
+
+  it('特典をつなぐ線は、届いた区間は満タン・途中は割合・届いていない区間と最後は 0', () => {
+    expect(perkLinkFillsOf(PERKS, 60)).toEqual([100, 20, 0, 0]);
+    expect(perkLinkFillsOf(PERKS, 150)).toEqual([100, 100, 100, 0]);
+    expect(perkLinkFillsOf(PERKS, 0)).toEqual([0, 0, 0, 0]);
   });
 });

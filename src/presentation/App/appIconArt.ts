@@ -1,6 +1,8 @@
 /**
  * @file アプリのシェルのオリジナルアイコン（presentation/App 層。Canvas 描画）
  * 下部タブ（地図・図鑑・アバター・ランキング・ランク）と右上の歯車を、アイコン素材を使わず canvas で描く（2026-11-09 ユーザー指示）。
+ * 2026-11-10 から下部タブは Common/ui/icons の線だけのアイコンを使う（ユーザー指示「色を排除してラインだけ」）。歯車も同日の UI/UX 改善で線のアイコンにそろえた（GearMenu）。
+ * audit-ignore: orphan-file 色つきの絵（タブ・歯車）は、線だけの方針を見直すときに戻せるよう残している（いまは未使用）
  * 絵は 24×24 の座標で描き、表示の大きさと端末の解像度に合わせて拡大する。面の明暗だけのフラットなイラスト（docs/08 §10.5）。
  * 選んでいないタブの淡い表示は CSS（filter）で行い、絵は1種類だけ持つ。
  */
@@ -17,9 +19,9 @@ export type AppIconName = 'map' | 'zukan' | 'avatar' | 'ranking' | 'rank' | 'gea
 
 /** 色 */
 const C = {
-  ink: '#2b2b33', white: '#ffffff', accent: '#3d7dff', accentDeep: '#1556d6', gold: '#f5b700', goldDeep: '#d97706', goldLight: '#ffe082',
+  ink: '#2b2b33', white: '#ffffff', accent: '#d07534', accentDeep: '#a54c14', gold: '#f5b700', goldDeep: '#d97706', goldLight: '#ffe082',
   silver: '#cfd6df', silverDeep: '#9aa5b4', bronze: '#e0a46e', bronzeDeep: '#b9773f', navy: '#334a7a', sky: '#8ccaf0', skyDeep: '#5aa7dc',
-  mint: '#cdebd5', mintDeep: '#9fd8b2', paper: '#f4f7fb', blue: '#4a6fa5', blueDeep: '#36557f', slate: '#4b5563', gray: '#c7ccd4',
+  mint: '#cdebd5', mintDeep: '#9fd8b2', paper: '#f8f3ea', blue: '#4a6fa5', blueDeep: '#36557f', slate: '#5a4e44', gray: '#c7ccd4',
 } as const;
 
 /**
@@ -119,7 +121,7 @@ const PAINTERS: Readonly<Record<AppIconName, (ctx: CanvasRenderingContext2D) => 
   avatar: (ctx) => {
     const head = AVATAR_FOCUS.head;
     const s = 24 / Math.max(head.w, head.h);
-    dot(ctx, 12, 13, 11, '#e8f0ff');
+    dot(ctx, 12, 13, 11, '#fbeee0');
     drawAvatar(ctx, { ...DEFAULT_LOOK, outfitColor: C.accent }, { x: 12 - (head.x + head.w / 2) * s, y: 12.5 - (head.y + head.h / 2) * s, scale: s });
   },
   /** ランキング: 金・銀・銅の表彰台と王冠 */

@@ -1,9 +1,10 @@
 /**
  * @file 気持ちいいチェックインの演出（presentation/screens/Map/town 層。毎フレーム描く）
  * 2026-11-09 ユーザー指示「チェックインをもっと快感ある気持ちいいチェックインにしてほしい」。
- * ため（ピンが縮む）→ 衝撃（ピンが伸びて弾み、画面が白く光る・星がはじける）→ ごほうび（上から帯が降りて EXP・領地のマス・連続を数え上げる）。
+ * ため（ピンが縮む）→ 衝撃（ピンが伸びて弾み、画面が白く光る・星がはじける）→ ごほうび（上から帯が降りて EXP・チケット・連続を数え上げる）。
  * スタンプ・紙吹雪・コインは mapEffects、音は mapSound、揺れは MapEffects.shake。色はブランドの色（PALETTE）。座標はログに出さない。
  */
+import { easeOutBack, easeOutCubic } from '@/Common/ui/canvas/easing';
 import { createLogger } from '@/Common/logging/logger';
 import { canvasFont } from '@/Common/ui/canvas/drawUtils';
 import type { Point2D } from '@/Common/ui/canvas/geometry';
@@ -25,6 +26,8 @@ const BURST_MS = 850;
 export const BANNER_MS = 2600;
 /** 帯が降りる・上がる時間（ミリ秒） */
 const BANNER_SLIDE_MS = 280;
+/** 見出しと数字がはねて出るときの行き過ぎの強さ（既定より少し強め） */
+const POP_OVERSHOOT = 1.9;
 
 /** 帯に出す内容 */
 export interface BannerContent {
@@ -33,32 +36,14 @@ export interface BannerContent {
   /** 見出しの下の1行（購入のときの「お買い物スタンプ n個目」など。exp が 0 のとき EXP の代わりに出す） */
   readonly note?: string;
   readonly exp: number;
+  /** 互換のため残す（2026-11-10 ユーザー指示「領地のマスの概念はいらない」で帯には出さない） */
   readonly gained: number;
+  /** チケットを獲得したとき（例「チケット獲得！」。2026-11-10） */
+  readonly ticket?: string;
   /** 今日何軒目か（2以上で「n軒目！」） */
   readonly combo: number;
   /** 地区が育ったとき（例「南森町 Lv3」） */
   readonly levelUp?: string;
-}
-
-/**
- * 0..1 の進みを、勢いよく出て止まる形にする。
- * @param k 進み
- * @returns なめらかにした進み
- */
-function easeOutCubic(k: number): number { // audit-ignore: fnlog-missing 毎フレーム描画で呼ぶ純粋な算術ヘルパー
-  const c = Math.min(1, Math.max(0, k));
-  return 1 - (1 - c) ** 3;
-}
-
-/**
- * はねる形（少し行き過ぎて戻る）。
- * @param k 進み
- * @returns なめらかにした進み
- */
-function easeOutBack(k: number): number { // audit-ignore: fnlog-missing 毎フレーム描画で呼ぶ純粋な算術ヘルパー
-  const c = Math.min(1, Math.max(0, k));
-  const s = 1.9;
-  return 1 + (s + 1) * (c - 1) ** 3 + s * (c - 1) ** 2;
 }
 
 /**
@@ -214,8 +199,8 @@ function drawStarBurst(ctx: CanvasRenderingContext2D, c: Point2D, k: number, see
   ctx.globalAlpha = 0.6 * (1 - k);
   const ring = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, 30 + e * 80);
   ring.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
-  ring.addColorStop(0.5, 'rgba(94, 224, 255, 0.35)');
-  ring.addColorStop(1, 'rgba(94, 224, 255, 0)');
+  ring.addColorStop(0.5, 'rgba(255, 207, 138, 0.35)');
+  ring.addColorStop(1, 'rgba(255, 207, 138, 0)');
   ctx.fillStyle = ring;
   ctx.beginPath();
   ctx.arc(c.x, c.y, 30 + e * 80, 0, Math.PI * 2);
@@ -257,7 +242,7 @@ function star(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, co
 }
 
 /**
- * ごほうびの帯（上から降りてきて、EXP・領地のマス・連続を数え上げ、少し置いて上へ戻る）。
+ * ごほうびの帯（上から降りてきて、EXP・チケット・連続を数え上げ、少し置いて上へ戻る）。
  * @param ctx 2D コンテキスト
  * @param vp 描画領域
  * @param content 内容
@@ -267,9 +252,9 @@ function star(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, co
  */
 function drawBanner(ctx: CanvasRenderingContext2D, vp: Viewport, content: BannerContent, age: number, textScale: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
   if (age < 0 || age > BANNER_MS) return;
-  const inK = easeOutBack(age / BANNER_SLIDE_MS);
+  const inK = easeOutBack(age / BANNER_SLIDE_MS, POP_OVERSHOOT);
   const outK = age > BANNER_MS - BANNER_SLIDE_MS ? easeOutCubic((age - (BANNER_MS - BANNER_SLIDE_MS)) / BANNER_SLIDE_MS) : 0;
-  const lines = 1 + (content.gained > 0 ? 1 : 0) + (content.levelUp !== undefined ? 1 : 0);
+  const lines = 1 + (content.ticket !== undefined ? 1 : 0) + (content.levelUp !== undefined ? 1 : 0);
   const w = Math.min(vp.width - 32, 290);
   const h = (58 + lines * 22) * textScale;
   const x = (vp.width - w) / 2;
@@ -304,7 +289,7 @@ function drawBanner(ctx: CanvasRenderingContext2D, vp: Viewport, content: Banner
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff';
-  ctx.font = canvasFont(21, 900, textScale);
+  ctx.font = canvasFont(21, 800, textScale);
   ctx.fillText(content.title ?? 'クエスト達成！', vp.width / 2, y + 24 * textScale);
   star(ctx, x + 22, y + 24 * textScale, 7, PALETTE.gold, age / 300);
   star(ctx, x + w - 22, y + 24 * textScale, 7, PALETTE.gold, -age / 300);
@@ -333,7 +318,7 @@ function drawBannerLines(ctx: CanvasRenderingContext2D, vp: Viewport, content: B
   const count = (value: number, from: number, ms: number): number => Math.round(value * easeOutCubic((age - from) / ms)); // audit-ignore: fnlog-missing 数え上げの小さな計算
   const cx = vp.width / 2;
   let y = top;
-  ctx.font = canvasFont(17, 900, textScale);
+  ctx.font = canvasFont(17, 800, textScale);
   ctx.fillStyle = PALETTE.gold;
   const exp = count(content.exp, 160, 520);
   const expText = content.exp <= 0 && content.note !== undefined ? content.note : `+${exp} EXP`;
@@ -344,11 +329,11 @@ function drawBannerLines(ctx: CanvasRenderingContext2D, vp: Viewport, content: B
   ctx.fillText(expText, content.combo >= 2 ? -34 : 0, 0);
   ctx.restore();
   if (content.combo >= 2 && age > 380) {
-    const pop = easeOutBack((age - 380) / 260);
+    const pop = easeOutBack((age - 380) / 260, POP_OVERSHOOT);
     ctx.save();
     ctx.translate(cx + 64, y);
     ctx.scale(pop, pop);
-    ctx.font = canvasFont(11, 900, textScale);
+    ctx.font = canvasFont(11, 800, textScale);
     const label = `今日${content.combo}軒目！`;
     const lw = ctx.measureText(label).width + 14;
     ctx.fillStyle = PALETTE.gold;
@@ -360,11 +345,28 @@ function drawBannerLines(ctx: CanvasRenderingContext2D, vp: Viewport, content: B
     ctx.restore();
   }
   ctx.font = canvasFont(13, 800, textScale);
-  ctx.fillStyle = '#ffffff';
-  if (content.gained > 0) {
+  drawBannerExtras(ctx, content, cx, y, age, textScale);
+}
+
+/**
+ * 帯の下の段の残り（チケット獲得・地区の成長）を、少しずつ遅れて出す。
+ * @param ctx 2D コンテキスト
+ * @param content 帯の内容
+ * @param cx 中心の x
+ * @param top EXP の行の y
+ * @param age 帯が出てからの時間（ミリ秒）
+ * @param textScale 文字の拡大率
+ * @sideEffect canvas に描く
+ */
+function drawBannerExtras(ctx: CanvasRenderingContext2D, content: BannerContent, cx: number, top: number, age: number, textScale: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  let y = top;
+  ctx.fillStyle = PALETTE.white;
+  if (content.ticket !== undefined) {
     y += 22 * textScale;
     ctx.globalAlpha = Math.min(1, Math.max(0, (age - 450) / 200));
-    ctx.fillText(`領地 +${count(content.gained, 450, 800).toLocaleString('ja-JP')}マス`, cx, y);
+    ctx.fillStyle = PALETTE.glow;
+    ctx.fillText(content.ticket, cx, y);
+    ctx.fillStyle = PALETTE.white;
   }
   if (content.levelUp !== undefined) {
     y += 22 * textScale;

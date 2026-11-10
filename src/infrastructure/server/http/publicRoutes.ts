@@ -38,7 +38,9 @@ async function serveHealth(deps: PublicRouteDeps, ctx: RouteContext): Promise<vo
   const log = logger.fn('serveHealth');
   const marker = deps.currentMarker();
   if (!marker.ok) return log.exit(sendResult(ctx.res, marker), marker.error.code);
-  sendResult(ctx.res, ok({ status: 'ok', mode: deps.mode, dbId: marker.value.dbId, snapshotVersion: marker.value.version, streams: deps.stream.size }));
+  // 本番の版では、誰でも読める応答にモードとつながりの本数（同時に開いている人数の目安）を出さない（偵察の材料を減らす）
+  const base = { status: 'ok', dbId: marker.value.dbId, snapshotVersion: marker.value.version };
+  sendResult(ctx.res, ok(deps.mode === 'demo' ? { ...base, mode: deps.mode, streams: deps.stream.size } : base));
   return log.exit(undefined);
 }
 

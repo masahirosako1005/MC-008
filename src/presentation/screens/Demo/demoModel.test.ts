@@ -61,6 +61,12 @@ describe('resetMapUi', () => {
   it('旅人切替のあと地図を広域・足あと無し・つまみに戻す', () => {
     const ui: MapUiState = { zoom: 'near', districtId: 'd_joka', footprints: [{ lat: 1, lng: 2 }], pulseDistrictId: 'd_joka', sheetState: 'full' };
     resetMapUi(ui);
-    expect(ui).toEqual({ zoom: 'wide', districtId: undefined, footprints: [], pulseDistrictId: undefined, sheetState: 'peek' });
+    expect(ui).toEqual({ zoom: 'wide', districtId: undefined, footprints: [], pulseDistrictId: undefined, sheetState: 'peek', travelerEpoch: 1 });
+  });
+  it('切り替えるたびに回数が進む（地図が前の旅人の街の活気と比べないための目印）', () => {
+    const ui: MapUiState = { zoom: 'wide', footprints: [], sheetState: 'peek' };
+    resetMapUi(ui);
+    resetMapUi(ui);
+    expect(ui.travelerEpoch).toBe(2);
   });
 });

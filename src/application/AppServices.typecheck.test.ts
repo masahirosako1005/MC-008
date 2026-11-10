@@ -27,6 +27,7 @@ import { GetNearbySpotsUseCase } from '@/application/usecases/exploration/GetNea
 import { GetRevisitReasonsUseCase } from '@/application/usecases/exploration/GetRevisitReasonsUseCase';
 import { VisitSpotUseCase } from '@/application/usecases/exploration/VisitSpotUseCase';
 import { AwardVisitRewardsUseCase } from '@/application/usecases/reward/AwardVisitRewardsUseCase';
+import { RecordPurchaseUseCase } from '@/application/usecases/reward/RecordPurchaseUseCase';
 import { EnsureTravelerUseCase } from '@/application/usecases/session/EnsureTravelerUseCase';
 import { GetAppStatusUseCase } from '@/application/usecases/session/GetAppStatusUseCase';
 import { GetSpotDetailUseCase } from '@/application/usecases/spot/GetSpotDetailUseCase';
@@ -43,8 +44,12 @@ import { GetRankStatusUseCase } from '@/application/usecases/reward/GetRankStatu
 import { GetSettingsUseCase } from '@/application/usecases/settings/GetSettingsUseCase';
 import { UpdateTextScaleUseCase } from '@/application/usecases/settings/UpdateTextScaleUseCase';
 import { ExportDataUseCase } from '@/application/usecases/settings/ExportDataUseCase';
+import { ImportDataUseCase } from '@/application/usecases/settings/ImportDataUseCase';
 import { DeleteAllDataUseCase } from '@/application/usecases/settings/DeleteAllDataUseCase';
 import { InMemoryDataPort } from '@/application/testing/InMemoryDataPort';
+import { InMemoryVisitMemoryRepository } from '@/application/testing/InMemoryVisitMemoryRepository';
+import { GetVisitLogUseCase } from '@/application/usecases/spot/GetVisitLogUseCase';
+import { SaveVisitMemoryUseCase } from '@/application/usecases/spot/SaveVisitMemoryUseCase';
 import type { AvatarRepository } from '@/application/ports/AvatarRepository';
 import type { DataPort } from '@/application/ports/DataPort';
 import type { SettingsRepository } from '@/application/ports/SettingsRepository';
@@ -96,6 +101,7 @@ describe('AppServices の型（ユースケースの代入可能性）', () => {
     expectTypeOf<GetCurrentPositionUseCase>().toExtend<AppServices['position']>();
     expectTypeOf<DiscoverNearbySpotsUseCase>().toExtend<AppServices['discover']>();
     expectTypeOf<VisitSpotUseCase>().toExtend<AppServices['visit']>();
+    expectTypeOf<RecordPurchaseUseCase>().toExtend<NonNullable<AppServices['purchase']>>();
     expectTypeOf<GetNearbySpotsUseCase>().toExtend<AppServices['nearby']>();
     expectTypeOf<GetRevisitReasonsUseCase>().toExtend<AppServices['reasons']>();
     expectTypeOf<GetSpotDetailUseCase>().toExtend<AppServices['spotDetail']>();
@@ -107,6 +113,7 @@ describe('AppServices の型（ユースケースの代入可能性）', () => {
     expectTypeOf<GetSettingsUseCase>().toExtend<AppServices['settings']>();
     expectTypeOf<UpdateTextScaleUseCase>().toExtend<AppServices['updateTextScale']>();
     expectTypeOf<ExportDataUseCase>().toExtend<AppServices['exportData']>();
+    expectTypeOf<ImportDataUseCase>().toExtend<AppServices['importData']>();
     expectTypeOf<DeleteAllDataUseCase>().toExtend<AppServices['deleteAllData']>();
   });
 
@@ -142,6 +149,7 @@ describe('AppServices の型（ユースケースの代入可能性）', () => {
     expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof GetCurrentPositionUseCase>>();
     expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof DiscoverNearbySpotsUseCase>>();
     expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof VisitSpotUseCase>>();
+    expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof RecordPurchaseUseCase>>();
     expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof GetNearbySpotsUseCase>>();
     expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof GetRevisitReasonsUseCase>>();
     expectTypeOf<ContainerBag>().toExtend<DepsOf<typeof GetSpotDetailUseCase>>();
@@ -175,6 +183,7 @@ function buildServices(tw: TestWorld, demo: boolean): AppServices {
   const updateLords = new UpdateDistrictLordUseCase(tw);
   const withAvatars = { ...tw, avatars: new InMemoryAvatarRepository() };
   const withSettings = { settings: new InMemorySettingsRepository() };
+  const withMemories = { ...tw, memories: new InMemoryVisitMemoryRepository() };
   const withUserData = { userData: new InMemoryDataPort({ settings: { textScale: 'large' } }), clock: tw.clock, demo };
   const bag = { ...tw, demoControl: tw.demo, updateLords, enabled: demo };
   const handlers = [new EvaluateDistrictChangeUseCase(tw), new AwardVisitRewardsUseCase(tw), updateLords];
@@ -198,10 +207,13 @@ function buildServices(tw: TestWorld, demo: boolean): AppServices {
     position: new GetCurrentPositionUseCase(tw),
     discover: new DiscoverNearbySpotsUseCase(tw),
     visit: new VisitSpotUseCase(tw),
+    purchase: new RecordPurchaseUseCase(tw),
     nearby: new GetNearbySpotsUseCase(tw),
     reasons: new GetRevisitReasonsUseCase(tw),
     spotDetail: new GetSpotDetailUseCase(tw),
     zukan: new GetZukanUseCase(tw),
+    visitLog: new GetVisitLogUseCase(withMemories),
+    saveVisitMemory: new SaveVisitMemoryUseCase(withMemories),
     ranking: new GetRankingUseCase(tw),
     town: new GetTownStateUseCase(tw),
     myTown: new GetMyTownUseCase(withAvatars),
@@ -211,6 +223,7 @@ function buildServices(tw: TestWorld, demo: boolean): AppServices {
     settings: new GetSettingsUseCase(withSettings),
     updateTextScale: new UpdateTextScaleUseCase(withSettings),
     exportData: new ExportDataUseCase(withUserData),
+    importData: new ImportDataUseCase({ ...withUserData, parseJson: (text) => ({ ok: true, value: JSON.parse(text) as unknown }) }),
     deleteAllData: new DeleteAllDataUseCase(withUserData),
     ...(demo ? { demo: demoServices } : {}),
   };

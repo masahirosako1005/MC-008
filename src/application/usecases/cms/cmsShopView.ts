@@ -16,6 +16,7 @@ import type { LocalDate } from '@/Common/utils/date';
 import type { CmsShopEventDto, CmsShopEventStatus, CmsShopInfoDto } from '@/application/dto/CmsDto';
 import { CMS_PROCESSED_OPERATION_LIMIT } from '@/application/ports/CmsOverlayRepository';
 import type { CmsOverlay, CmsOverlayData, CmsOverlayRepository, CmsShopEventRecord, CmsSpotEdit } from '@/application/ports/CmsOverlayRepository';
+import type { SurveyResponseRepository } from '@/application/ports/SurveyResponseRepository';
 import type { Clock } from '@/domain/ports/Clock';
 import type { IdGenerator } from '@/domain/ports/IdGenerator';
 import { SHOP_EVENT_MAX_OPEN_PER_SPOT } from '@/domain/revisit/constants';
@@ -36,6 +37,8 @@ export interface CmsDeps {
   readonly cmsOverlay: CmsOverlayRepository;
   readonly clock: Clock;
   readonly ids: IdGenerator;
+  /** お店のアンケートの回答（無ければサンプルだけで集計する。連携サーバーにはまだ届かない＝docs/09 CMS-V07） */
+  readonly surveys?: SurveyResponseRepository;
 }
 
 /** 状態ごとの並び順（掲載中 → 掲載予定 → 終了・取り下げ） */

@@ -26,10 +26,10 @@ export type RarityFields = Pick<ZukanTileDto, 'rarity' | 'rarityName' | 'acquisi
  */
 function acquisitionStepsOf(rarity: Rarity): readonly string[] {
   const log = logger.fn('acquisitionStepsOf', { rarity });
-  const steps = [`${DISCOVERY_RADIUS_M}m以内に近づいて「発見」（シルエットが図鑑に載る）`, `${VISIT_RADIUS_M}m以内で「訪問」するとカード入手`];
-  if (rarity === 2) steps.push('協力店なので店頭のQRでも訪問を確定できます（クーポンあり）');
+  const steps = [`${DISCOVERY_RADIUS_M}m以内に近づいて「発見」`, `${VISIT_RADIUS_M}m以内で「達成」するとカード入手`];
+  if (rarity === 2) steps.push('協力店なので店頭のQRでも達成できます');
   if (rarity === 3) steps.push('名所カード。通うほど★が増え、なじみ→常連へ育ちます');
-  if (rarity === 4) steps.push('地区の象徴。春・夏・秋・冬それぞれで訪れると「極」に覚醒します');
+  if (rarity === 4) steps.push('地区の象徴。春・夏・秋・冬それぞれで達成すると「極」に覚醒します');
   return log.exit(Object.freeze(steps));
 }
 
@@ -40,9 +40,9 @@ function acquisitionStepsOf(rarity: Rarity): readonly string[] {
  */
 function acquisitionShortOf(rarity: Rarity): string {
   const log = logger.fn('acquisitionShortOf', { rarity });
-  if (rarity === 4) return log.exit('訪問で入手・四季で覚醒');
-  if (rarity === 2) return log.exit('訪問 or 店頭QR');
-  return log.exit('訪問で入手');
+  if (rarity === 4) return log.exit('達成で入手・四季で覚醒');
+  if (rarity === 2) return log.exit('達成 or 店頭QR');
+  return log.exit('達成で入手');
 }
 
 /**

@@ -125,4 +125,31 @@ describe('店舗CMS（デモ）', () => {
     expect(stats.byTimeBand.map((c) => c.label)).toEqual(['昼（11〜14時）', '午後（14〜17時）']);
     expect(stats.effects.find((c) => c.label === 'クーポンを使った人')?.note).toBe('まだ出していません');
   });
+
+  it('アプリで答えたアンケートが CMS の集計に加わり、デモのやり直しでサンプルだけに戻る（CMS-V01・V02）', async () => {
+    const { app, cms } = await boot(new InMemoryKeyValueStore());
+    if (app.submitSurvey === undefined) throw new Error('デモではアンケートを出す');
+    const shops = must(await cms.shops.execute());
+    const details = await Promise.all(shops.map((s) => app.spotDetail.execute({ spotId: s.id })));
+    const visited = details.find((d) => d.ok && d.value.status === 'visited');
+    const unvisited = details.find((d) => d.ok && d.value.status !== 'visited');
+    if (visited?.ok !== true || unvisited?.ok !== true) throw new Error('訪問済みのお店と、まだのお店が要る');
+    const spotId = visited.value.id;
+    const answers = { satisfaction: 1, trigger: 'app', goods: [], concerns: ['hours'], revisit: 'unsure', comment: '夜も開けてほしい' };
+    const before = must(await cms.survey.execute({ spotId }));
+    expect(before.sampleCount).toBe(before.total);
+    expect(before.total).toBeGreaterThan(0);
+    must(await app.submitSurvey.execute({ ...answers, operationId: uuid(), spotId }));
+    const after = must(await cms.survey.execute({ spotId }));
+    expect(after.total - after.sampleCount).toBe(1);
+    expect(after.comments[0]).toMatchObject({ satisfaction: 1, text: '夜も開けてほしい' });
+    // 訪問していないお店には答えられず、ほかのお店の集計にも混ざらない
+    const refused = await app.submitSurvey.execute({ ...answers, operationId: uuid(), spotId: unvisited.value.id });
+    expect(!refused.ok && refused.error.code).toBe('SURVEY_VISIT_REQUIRED');
+    const other = must(await cms.survey.execute({ spotId: unvisited.value.id }));
+    expect(other.sampleCount).toBe(other.total);
+    expect((await cms.survey.execute({ spotId: 'l_mm01' })).ok).toBe(false);
+    must(await cms.resetDemo.execute());
+    expect(must(await cms.survey.execute({ spotId }))).toEqual(before);
+  });
 });

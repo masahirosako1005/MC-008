@@ -30,7 +30,7 @@ export const DISTRICT_CODES = Object.freeze({
  */
 export const DISTRICT_SOURCES = Object.freeze([
   {
-    id: 'd_minamimori', name: '南森町・天満宮地区', shortName: '南森町', theme: '門前町', order: 1, color: '#6366f1',
+    id: 'd_minamimori', name: '南森町・天満宮地区', shortName: '南森町', theme: '門前町', order: 1, color: '#8577b8',
     center: [34.6952, 135.5119],
     entrance: [34.69775, 135.5112],
     polygon: [
@@ -38,7 +38,7 @@ export const DISTRICT_SOURCES = Object.freeze([
     ],
   },
   {
-    id: 'd_tenma', name: '天満地区', shortName: '天満', theme: '市場と食', order: 2, color: '#f59e0b',
+    id: 'd_tenma', name: '天満地区', shortName: '天満', theme: '市場と食', order: 2, color: '#d6a23c',
     center: [34.7049, 135.5134],
     entrance: [34.702, 135.514],
     polygon: [
@@ -46,7 +46,7 @@ export const DISTRICT_SOURCES = Object.freeze([
     ],
   },
   {
-    id: 'd_tenroku', name: '天六地区', shortName: '天六', theme: '暮らし', order: 3, color: '#10b981',
+    id: 'd_tenroku', name: '天六地区', shortName: '天六', theme: '暮らし', order: 3, color: '#6f9e6a',
     center: [34.711, 135.5122],
     entrance: [34.709, 135.513],
     polygon: [
@@ -54,7 +54,7 @@ export const DISTRICT_SOURCES = Object.freeze([
     ],
   },
   {
-    id: 'd_ogimachi', name: '扇町・中崎町地区', shortName: '扇町', theme: '公園と路地', order: 4, color: '#ec4899',
+    id: 'd_ogimachi', name: '扇町・中崎町地区', shortName: '扇町', theme: '公園と路地', order: 4, color: '#cf7186',
     center: [34.705, 135.506],
     entrance: [34.705, 135.5065],
     polygon: [
@@ -62,7 +62,7 @@ export const DISTRICT_SOURCES = Object.freeze([
     ],
   },
   {
-    id: 'd_okawa', name: '大川沿い地区', shortName: '大川', theme: '川辺と桜', order: 5, color: '#0ea5e9',
+    id: 'd_okawa', name: '大川沿い地区', shortName: '大川', theme: '川辺と桜', order: 5, color: '#4f93a8',
     center: [34.6965, 135.5195],
     entrance: [34.6924, 135.5176],
     polygon: [

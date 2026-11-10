@@ -19,6 +19,7 @@ import type { FetchText } from '@/infrastructure/master/MasterDataLoader';
 import { CryptoIdGenerator } from '@/infrastructure/random/CryptoIdGenerator';
 import type { KeyValueStore } from '@/infrastructure/storage/KeyValueStore';
 import { LocalStorageCmsOverlayRepository } from '@/infrastructure/storage/LocalStorageCmsOverlayRepository';
+import { LocalStorageSurveyResponseRepository } from '@/infrastructure/storage/LocalStorageSurveyResponseRepository';
 import { LocalStorageKeyValueStore } from '@/infrastructure/storage/LocalStorageKeyValueStore';
 import { DemoClock } from '@/infrastructure/time/DemoClock';
 
@@ -65,5 +66,5 @@ export async function createCmsContainer(opts: CmsContainerOptions): Promise<Res
   const master = await MasterDataLoader.load(opts.fetchText ?? browserFetchText);
   if (!master.ok) return log.fail(master);
   const cmsOverlay = new LocalStorageCmsOverlayRepository({ store, prefix: DEMO_PREFIX });
-  return log.exit(ok(buildCmsUseCases({ spots: master.value.spots, cmsOverlay, clock, ids: new CryptoIdGenerator() })));
+  return log.exit(ok(buildCmsUseCases({ spots: master.value.spots, cmsOverlay, clock, ids: new CryptoIdGenerator(), surveys: new LocalStorageSurveyResponseRepository({ store, prefix: DEMO_PREFIX }) })));
 }

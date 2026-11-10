@@ -85,6 +85,31 @@ export const CMS_VISIT_STATS_SHAPE: Shape = object({
   effects: array(CMS_COUNT_SHAPE),
 });
 
+/** CmsSurveyChoiceDto */
+const CMS_SURVEY_CHOICE_SHAPE: Shape = object({ key: 'string', label: 'string', count: 'integer', pct: 'integer' });
+
+/** CmsSurveySlotDto */
+const CMS_SURVEY_SLOT_SHAPE: Shape = object({ label: 'string', count: 'integer', avg: optional('number'), topConcern: optional('string'), note: optional('string') });
+
+/** CmsSurveyDto */
+export const CMS_SURVEY_SHAPE: Shape = object({
+  today: 'string',
+  windowDays: 'integer',
+  total: 'integer',
+  sampleCount: 'integer',
+  satisfactionAvg: optional('number'),
+  satisfaction: array(CMS_SURVEY_CHOICE_SHAPE),
+  revisitPct: optional('integer'),
+  triggers: array(CMS_SURVEY_CHOICE_SHAPE),
+  goods: array(CMS_SURVEY_CHOICE_SHAPE),
+  concerns: array(CMS_SURVEY_CHOICE_SHAPE),
+  byWeekday: array(CMS_SURVEY_SLOT_SHAPE),
+  byTimeBand: array(CMS_SURVEY_SLOT_SHAPE),
+  recentAvg: optional('number'),
+  previousAvg: optional('number'),
+  comments: array(object({ date: 'string', satisfaction: 'integer', text: 'string' })),
+});
+
 /** 本文：営業時間・便利情報の保存（spotId は道筋から取る） */
 export const SAVE_SHOP_INFO_BODY_SHAPE: Shape = object({
   hours: CMS_BUSINESS_HOURS_SHAPE,

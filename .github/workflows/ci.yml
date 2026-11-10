@@ -1,0 +1,29 @@
+# 品質ゲート（docs/05 SEC-10、docs/13 I-5）。手元の `npm run check` と同じものを、push と PR のたびに走らせる。
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: 型検査
+        run: npx tsc --noEmit
+      - name: 静的監査（error があれば失敗）
+        run: node scripts/audit/static-audit.mjs
+      - name: 単体テスト
+        run: npx vitest run
+      - name: マスタの検査
+        run: npm run master:check
+      - name: 依存の脆弱性（high 以上で失敗）
+        run: npm audit --audit-level=high

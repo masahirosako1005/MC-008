@@ -201,6 +201,7 @@ describe('連携サーバー（店舗CMS ⇄ 利用者アプリ）', () => {
     for (const spotId of ['s_mm01', 's_mm04']) {
       expect(must(await http.shopInfo.execute({ spotId }))).toEqual(must(await local.shopInfo.execute({ spotId })));
       expect(must(await http.visitStats.execute({ spotId }))).toEqual(must(await local.visitStats.execute({ spotId })));
+      expect(must(await http.survey.execute({ spotId }))).toEqual(must(await local.survey.execute({ spotId })));
     }
   });
 
@@ -364,21 +365,58 @@ describe('連携サーバー（店舗CMS ⇄ 利用者アプリ）', () => {
     const after = await authOf(cms).me.execute();
     expect(!after.ok && after.error.code).toBe('UNAUTHENTICATED');
     for (let i = 0; i < 5; i += 1) expect((await authOf(cms).login.execute({ loginId: 'owner.one', password: WRONG_PASSWORD })).ok).toBe(false);
+    // ロック中は正しいパスワードでも入れない。応答はまちがいと同じ（ID の有無・ロックの有無を漏らさない）
     const locked = await authOf(cms).login.execute({ loginId: 'owner.one', password: PASSWORD });
-    expect(!locked.ok && [locked.error.code, locked.error.details?.['status']]).toEqual(['ACCOUNT_LOCKED', 423]);
+    expect(!locked.ok && [locked.error.code, locked.error.details?.['status'], locked.error.message]).toEqual(['AUTH_FAILED', 401, !wrong.ok && wrong.error.message]);
     expect(must(app.auth.listAccounts()).find((a) => a.id === created.id)?.locked).toBe(true);
-  });
+  }, 30_000);
 
-  it('TLS を終端する中継の後ろでは Cookie に Secure が付く（SEC-05）。ログインの試みにも回数制限がある（SEC-18）', async () => {
+  it('並行して届いた失敗も数え漏れずにロックする。ロックは ID＋相手ごとで、ほかの相手（本人）は入れる（CMS-A06）', async () => {
+    const { baseUrl, app } = await startServer({ trust: { trustProxy: true, tls: false }, loginLimit: { limit: 50, windowMs: 60_000 } });
+    must(await app.auth.createAccount('cli', { loginId: 'owner.two', displayName: '店主2', role: 'shopOwner', shopIds: ['s_mm04'], password: PASSWORD }));
+    const attacker = { 'x-forwarded-for': '198.51.100.7' };
+    const results = await Promise.all(Array.from({ length: 6 }, () => raw(baseUrl, AUTH_PATHS.login, json('POST', { loginId: 'owner.two', password: WRONG_PASSWORD }, attacker))));
+    expect(results.map((r) => r.status)).toEqual([401, 401, 401, 401, 401, 401]);
+    expect((await raw(baseUrl, AUTH_PATHS.login, json('POST', { loginId: 'owner.two', password: PASSWORD }, attacker))).status).toBe(401);
+    expect((await raw(baseUrl, AUTH_PATHS.login, json('POST', { loginId: 'owner.two', password: PASSWORD }, { 'x-forwarded-for': '198.51.100.8' }))).status).toBe(200);
+    // 知らない ID も同じように数えて、同じ応答を返す
+    const unknown = await Promise.all(Array.from({ length: 6 }, () => raw(baseUrl, AUTH_PATHS.login, json('POST', { loginId: 'nobody.here', password: WRONG_PASSWORD }, attacker))));
+    expect(new Set(unknown.map((r) => r.status))).toEqual(new Set([401]));
+  }, 30_000);
+
+  it('TLS を終端する中継の後ろでは Cookie に Secure が付く（SEC-05）。ログインの試みにも回数制限があり、X-Forwarded-For の左端を書いても逃げられない（SEC-18）', async () => {
     const { baseUrl, app } = await startServer({ trust: { trustProxy: true, tls: false }, loginLimit: { limit: 2, windowMs: 60_000 } });
     must(await app.auth.createAccount('cli', { loginId: 'op1', displayName: '運営', role: 'operator', shopIds: [], password: PASSWORD }));
     const credentials = { loginId: 'op1', password: PASSWORD };
     const login = await raw(baseUrl, AUTH_PATHS.login, json('POST', credentials, { 'x-forwarded-proto': 'https', 'x-forwarded-for': '203.0.113.9' }));
     expect(login.status).toBe(200);
     expect(login.headers.getSetCookie()[0]).toContain('; Secure');
-    expect((await raw(baseUrl, AUTH_PATHS.login, json('POST', credentials, { 'x-forwarded-for': '203.0.113.9' }))).status).toBe(200);
-    expect((await raw(baseUrl, AUTH_PATHS.login, json('POST', credentials, { 'x-forwarded-for': '203.0.113.9' }))).status).toBe(429);
+    // 左端は相手が書けるので無視し、右端（中継が足した値）で数える
+    expect((await raw(baseUrl, AUTH_PATHS.login, json('POST', credentials, { 'x-forwarded-for': '1.1.1.1, 203.0.113.9' }))).status).toBe(200);
+    expect((await raw(baseUrl, AUTH_PATHS.login, json('POST', credentials, { 'x-forwarded-for': '2.2.2.2, 203.0.113.9' }))).status).toBe(429);
     expect((await raw(baseUrl, AUTH_PATHS.login, json('POST', credentials, { 'x-forwarded-for': '203.0.113.10' }))).status).toBe(200);
+    // 中継の後ろでは X-Forwarded-Proto が無くても Secure（付け忘れで落とさない）。http と明示されたときだけ付けない
+    const noProto = await raw(baseUrl, AUTH_PATHS.login, json('POST', credentials, { 'x-forwarded-for': '203.0.113.11' }));
+    expect(noProto.headers.getSetCookie()[0]).toContain('; Secure');
+    const plain = await raw(baseUrl, AUTH_PATHS.login, json('POST', credentials, { 'x-forwarded-for': '203.0.113.12', 'x-forwarded-proto': 'http' }));
+    expect(plain.headers.getSetCookie()[0]).not.toContain('; Secure');
+    // 中継の後ろでは、デモのログインは自分の PC からでも断る（中継を通ると全員がループバックに見えるため）
+    expect((await raw(baseUrl, AUTH_PATHS.demoLogin, json('POST', { role: 'operator' }, { 'x-forwarded-for': '203.0.113.5' }))).status).toBe(403);
+  }, 30_000);
+
+  it('デモのログインは、中継を示すヘッダーや自分の PC 以外を指す Host があると断る', async () => {
+    const { baseUrl } = await startServer();
+    expect((await raw(baseUrl, AUTH_PATHS.demoLogin, json('POST', { role: 'operator' }, { 'x-forwarded-for': '203.0.113.5' }))).status).toBe(403);
+    expect((await raw(baseUrl, AUTH_PATHS.demoLogin, json('POST', { role: 'operator' }, { via: '1.1 proxy' }))).status).toBe(403);
+    const status = await new Promise<number>((done) => {
+      const req = request(`${baseUrl}${AUTH_PATHS.demoLogin}`, { method: 'POST', headers: { 'content-type': 'application/json', host: '192.168.0.10:8787' } }, (res) => {
+        res.resume();
+        done(res.statusCode ?? 0);
+      });
+      req.end(JSON.stringify({ role: 'operator' }));
+    });
+    expect(status).toBe(403);
+    expect((await raw(baseUrl, AUTH_PATHS.demoLogin, json('POST', { role: 'operator' }))).status).toBe(200);
   });
 
   it('パスワードを変えるとほかの端末のセッションは切れる。運営者はアカウントを作り・担当店舗を変え・停止できる（CMS-A04, CMS-A07）', async () => {
@@ -415,8 +453,11 @@ describe('連携サーバー（店舗CMS ⇄ 利用者アプリ）', () => {
     const me = must(await authOf(operator).me.execute());
     const self = await authOf(operator).accounts.setStatus.execute({ accountId: me.accountId, status: 'suspended' });
     expect(!self.ok && self.error.code).toBe('FORBIDDEN');
+    // 自分のパスワードは、今のパスワードなしに作り直せない（席を離れた画面からの乗っ取りを防ぐ）
+    const selfReset = await authOf(operator).accounts.resetPassword.execute({ accountId: me.accountId, newPassword: NEW_PASSWORD });
+    expect(!selfReset.ok && selfReset.error.code).toBe('FORBIDDEN');
     expect(app.db.recentAudit(5).every((e) => e.actor.startsWith('u_'))).toBe(true);
-  });
+  }, 30_000);
 
   it('CMS を別のオリジンに分けると、公開の面には店舗CMS・ログインの API が無い（docs/09 §7.1）', async () => {
     const { baseUrl, app } = await startServer({ separateCms: true });

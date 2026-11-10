@@ -1,8 +1,9 @@
 /**
  * @file 保存形式のマイグレーションと、読めないデータの退避（infrastructure/storage 層）
  * 読込時に封筒の schemaVersion を現在の版（STORAGE_SCHEMA_VERSION）へ移行する。v0.1 は版 1 のみで、移行関数はまだ無い。
- * 未知の版（新しいアプリが書いた・壊れた）は読み込まず、P+'backup.'+キー へ退避してから STORAGE_FAILED を返す（DI-15）。
- * 退避は「複製してから元を消す」。複製に失敗したら元は消さない（データを失わない）。
+ * 読めないデータ（壊れた・移行できない古い版）は読み込まず、P+'backup.'+キー へ退避してから STORAGE_FAILED を返す（DI-15）。
+ * 退避は「複製してから元を消す」。複製に失敗したら元は消さない。先に退避したものは上書きしない（データを失わない）。
+ * 今より新しい版（新しいアプリが書いたデータを古いアプリが読んだ）は、退避もせず元のまま残す（EnvelopeStore.readRaw。新しいアプリで開けばそのまま読める）。
  */
 import { createLogger } from '@/Common/logging/logger';
 import { AppError, fail, ok, okVoid } from '@/Common/result/Result';
@@ -75,8 +76,29 @@ export function backupKeyOf(prefix: string, suffix: string): string {
   return `${prefix}${BACKUP_KEY_SEGMENT}${suffix}`;
 }
 
+/** 同じキーの退避を残す数（仮）。先に退避したもの（本物の記録である見込みが高い）を上書きしない */
+export const BACKUP_SLOTS = 3;
+
 /**
- * 読めない保存データを退避先へ複製し、元のキーを消す。退避先に既にあれば上書きする（最新の読めないデータを残す）。
+ * 退避の書き先を決める。空いている枠（または同じ中身が入っている枠）を先頭から探し、すべて埋まっていれば最後の枠を使う。
+ * 枠は P+'backup.'+キー、P+'backup.'+キー+'.2'、…（BACKUP_SLOTS 個）。
+ * @param input ストア・接頭辞・キー・元の文字列
+ * @returns 成功: 書き先のキー。失敗: STORAGE_FAILED（読めない）
+ */
+function backupSlotFor(input: QuarantineInput): Result<string, StorageError> {
+  const log = logger.fn('backupSlotFor', { suffix: input.suffix });
+  const base = backupKeyOf(input.prefix, input.suffix);
+  const slots = Array.from({ length: BACKUP_SLOTS }, (_, index) => (index === 0 ? base : `${base}.${index + 1}`));
+  for (const slot of slots) {
+    const held = input.store.get(slot);
+    if (!held.ok) return log.fail(held);
+    if (held.value === undefined || held.value === input.raw) return log.exit(ok(slot));
+  }
+  return log.exit(ok(slots[slots.length - 1] ?? base), '枠が埋まっているので最後の枠を使う');
+}
+
+/**
+ * 読めない保存データを退避先へ複製し、元のキーを消す。先に退避したデータは上書きしない（空いている枠へ書く。backupSlotFor）。
  * @param input ストア・接頭辞・キー・元の文字列・理由
  * @returns 成功: void。失敗: STORAGE_FAILED（複製できなければ元は消さない）
  * @sideEffect ストアに退避データを書き、元のキーを消す
@@ -84,7 +106,9 @@ export function backupKeyOf(prefix: string, suffix: string): string {
  */
 export function quarantineRecord(input: QuarantineInput): Result<void, StorageError> {
   const log = logger.fn('quarantineRecord', { suffix: input.suffix, reason: input.reason, length: input.raw.length });
-  const copied = input.store.set(backupKeyOf(input.prefix, input.suffix), input.raw);
+  const slot = backupSlotFor(input);
+  if (!slot.ok) return log.fail(slot);
+  const copied = input.store.set(slot.value, input.raw);
   if (!copied.ok) return log.fail(copied);
   const removed = input.store.remove(`${input.prefix}${input.suffix}`);
   if (!removed.ok) return log.fail(removed);

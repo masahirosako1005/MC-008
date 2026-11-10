@@ -126,13 +126,32 @@ describe('AwardVisitRewardsUseCase.handle（冪等・失敗）', () => {
     expect((await ledgerOf(tw)).balance).toBe(15);
   });
 
-  it('台帳の保存が競合したら CONFLICT（DI-10）', async () => {
+  it('台帳の保存が1回競合しても、読み直してやり直し、加点は1回だけ付く（DI-10・DI-11）', async () => {
     const tw = createTestWorld();
     await seedTraveler(tw);
     const event = await saveVisit(tw, 's_jo01', testOperationId(1));
     tw.ledgers.failures.failNext('save', 'CONFLICT');
-    const result = await new AwardVisitRewardsUseCase(tw).handle(event);
+    must(await new AwardVisitRewardsUseCase(tw).handle(event));
+    expect(await ledgerOf(tw)).toEqual({ balance: 15, entryIds: [`${testOperationId(1)}:visit`] });
+  });
+
+  it('やり直しても競合したら CONFLICT を返し、加点しない（DI-10）', async () => {
+    const tw = createTestWorld();
+    await seedTraveler(tw);
+    const event = await saveVisit(tw, 's_jo01', testOperationId(1));
+    tw.ledgers.failures.failNext('save', 'CONFLICT');
+    const handler = new AwardVisitRewardsUseCase(tw);
+    const find = tw.ledgers.find.bind(tw.ledgers);
+    let finds = 0;
+    // 2回目の読込の直後にもう一度競合させる
+    tw.ledgers.find = async (id) => {
+      finds += 1;
+      if (finds === 2) tw.ledgers.failures.failNext('save', 'CONFLICT');
+      return find(id);
+    };
+    const result = await handler.handle(event);
     expect(result.ok ? undefined : result.error.code).toBe('CONFLICT');
+    expect((await ledgerOf(tw)).balance).toBe(0);
   });
 
   it('台帳の読込に失敗したら STORAGE_FAILED', async () => {

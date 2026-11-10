@@ -7,14 +7,13 @@
 import type { NearbySpotDto, RevisitReasonDto, TownStateDto } from '@/application/dto/Dto';
 import { createLogger } from '@/Common/logging/logger';
 import { h } from '@/Common/ui/dom';
-import { createIcon } from '@/Common/ui/icons';
+import { createIcon, createLineIcon } from '@/Common/ui/icons';
 import { userAction } from '@/Common/ui/userAction';
 import type { AppContext } from '@/presentation/App/AppContext';
 import { createDistrictCardList } from '@/presentation/screens/Map/Sheet/DistrictCardList';
 import { createNearbySpotList } from '@/presentation/screens/Map/Sheet/NearbySpotList';
 import { createRevisitReasonList } from '@/presentation/screens/Map/Sheet/RevisitReasonList';
 import { UNKNOWN_SPOT_MESSAGE } from '@/presentation/screens/Map/Sheet/sheetModel';
-import { createMapUiIcon } from '@/presentation/screens/Map/town/mapUiIcons';
 import '@/presentation/screens/Map/Sheet/MapSheet.css';
 import '@/presentation/screens/Map/town/mapTownUi.css';
 
@@ -22,6 +21,9 @@ const logger = createLogger('presentation/screens/Map/town/NearbyPanel');
 
 /** 近くのスポットを何件まで出すか */
 export const NEARBY_PANEL_LIMIT = 12;
+
+/** 一覧を開く丸いボタンのアイコン（線の絵。点＋線が3行の「一覧」） */
+const LIST_ICON_PATHS: readonly string[] = ['M9 6.5h11', 'M9 12h11', 'M9 17.5h11', 'M4.5 6.5h.5', 'M4.5 12h.5', 'M4.5 17.5h.5'];
 
 /** タブの種類 */
 export type NearbyTab = 'nearby' | 'quest' | 'district';
@@ -49,6 +51,8 @@ export interface NearbyPanelHandle {
 export interface NearbyPanelHandlers {
   onSpot(spotId: string): void;
   onDistrict(districtId: string): void;
+  /** スポットのカテゴリを引く（一覧のサムネに図鑑と同じ写真を出すため。地図のデータから引く） */
+  categoryOf?(spotId: string): string | undefined;
 }
 
 /** 一覧に出すデータ */
@@ -98,14 +102,14 @@ class NearbyPanel implements NearbyPanelHandle {
         attrs: { type: 'button', 'aria-expanded': 'false', 'aria-label': '近くのリスト', 'data-testid': 'map-nearby-open' },
         on: { click: userAction('map-nearby-open', () => this.toggle()) },
       },
-      [createMapUiIcon('pin', 16, 'map-filter-bar__icon'), h('span', { class: 'map-filter-bar__label', text: '近く' }), this.count],
+      [createLineIcon(LIST_ICON_PATHS, ['icon', 'map-filter-bar__line-icon']), this.count],
     );
     const tabs = h(
       'div',
-      { class: 'map-nearby__tabs', attrs: { role: 'tablist' } },
+      { class: ['seg', 'map-nearby__tabs'], attrs: { role: 'tablist' } },
       TABS.map((t) => {
         const b = h('button', {
-          class: 'map-nearby__tab',
+          class: ['seg__item', 'map-nearby__tab'],
           attrs: { type: 'button', role: 'tab', 'aria-selected': String(t.id === this.tab), 'data-tab': t.id },
           text: t.label,
           on: { click: userAction('map-nearby-tab', () => this.selectTab(t.id)) },
@@ -150,7 +154,7 @@ class NearbyPanel implements NearbyPanelHandle {
     this.element.dataset.open = '1';
     this.button.setAttribute('aria-expanded', 'true');
     this.button.dataset.active = '1';
-    if (this.data === undefined) this.body.replaceChildren(h('p', { class: ['hint', 'map-sheet__empty'], text: '読み込み中…' }));
+    if (this.data === undefined) this.body.replaceChildren(h('div', { class: 'map-sheet__empty' }, [createIcon('clock'), h('span', { text: '読み込み中' })]));
     else this.render();
     void this.load();
     log.exit(undefined);
@@ -204,7 +208,7 @@ class NearbyPanel implements NearbyPanelHandle {
     const [nearby, reasons, town] = await Promise.all([s.nearby.execute({ limit: NEARBY_PANEL_LIMIT }), s.reasons.execute(), s.town.execute()]);
     if (seq !== this.seq) return log.exit(undefined, '古い読み込み');
     if (!nearby.ok || !reasons.ok || !town.ok) {
-      if (this.open && this.data === undefined) this.body.replaceChildren(h('p', { class: ['hint', 'map-sheet__empty'], text: '読み込めませんでした' }));
+      if (this.open && this.data === undefined) this.body.replaceChildren(h('div', { class: 'map-sheet__empty' }, [createIcon('info'), h('span', { text: '読み込み失敗' })]));
       return log.fail(undefined, '読み込み失敗');
     }
     this.data = { nearby: nearby.value, reasons: reasons.value, town: town.value };
@@ -234,7 +238,7 @@ class NearbyPanel implements NearbyPanelHandle {
     };
     let content: HTMLElement;
     if (this.tab === 'nearby') {
-      content = createNearbySpotList(data.nearby, { onSpot: pick((id) => this.handlers.onSpot(id)), onUnknown: (): void => this.ctx.toast.show(UNKNOWN_SPOT_MESSAGE, { kind: 'info' }) });
+      content = createNearbySpotList(data.nearby, { onSpot: pick((id) => this.handlers.onSpot(id)), onUnknown: (): void => this.ctx.toast.show(UNKNOWN_SPOT_MESSAGE, { kind: 'info' }), categoryOf: (id) => this.handlers.categoryOf?.(id) });
     } else if (this.tab === 'quest') {
       content = createRevisitReasonList(data.reasons, (target): void => {
         this.close();

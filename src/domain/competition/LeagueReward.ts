@@ -1,8 +1,9 @@
 /**
  * @file 月間リーグの報酬の決まり（domain/competition 層）
- * - 順位報酬: 月末（締め）の順位で決まる。表彰台の3名にメダル、4位以下は今月1回以上の参加で参加スタンプ
+ * - 順位報酬: 月末（締め）の順位で決まる。1〜3位にメダル、4〜5位は入賞、6位以下は今月1回以上の参加で参加賞
  * - キープ報酬: ある順位以内を決まった時間続けて保つと、その場でもらえる（例: 表彰台を24時間キープ）
- * 報酬はメダル・称号・アバターと自分の街を飾るアイテムだけ（ポイントは順位に関係しない＝D10。店舗協力の優待は含めない＝CLAUDE.md 4.6）。
+ * 報酬はすべてアバターの部品（メダル・称号・月桂冠・旗・トロフィーなど。domain/avatar/AvatarCatalog で手に入れ方が league の部品）。
+ * 段・キープ条件ごとの「報酬ID」で部品と結びつける（ポイントは順位に関係しない＝D10。店舗協力の優待は含めない＝CLAUDE.md 4.6）。
  * 段・時間はすべて（仮）。
  */
 import { createLogger } from '@/Common/logging/logger';
@@ -17,8 +18,12 @@ const MS_PER_HOUR = 3_600_000;
 /** メダルの種類 */
 export type Medal = 'gold' | 'silver' | 'bronze';
 
+/** 順位報酬の段の ID（報酬ID の元。1位だけはリーグごとの報酬 'rank1.<リーグ>' も付く） */
+export type RankTierId = 'rank1' | 'rank2' | 'rank3' | 'prize' | 'entry';
+
 /** 順位報酬の段 */
 export interface RankRewardTier {
+  readonly id: RankTierId;
   /** この段の最上位 */
   readonly fromRank: number;
   /** この段の最下位（undefined なら下限なし） */
@@ -31,11 +36,31 @@ export interface RankRewardTier {
 
 /** 順位報酬の段（上から順）（仮） */
 export const RANK_REWARD_TIERS: readonly RankRewardTier[] = Object.freeze([
-  { fromRank: 1, toRank: 1, medal: 'gold', needsEntry: false },
-  { fromRank: 2, toRank: 2, medal: 'silver', needsEntry: false },
-  { fromRank: 3, toRank: 3, medal: 'bronze', needsEntry: false },
-  { fromRank: 4, needsEntry: true },
+  { id: 'rank1', fromRank: 1, toRank: 1, medal: 'gold', needsEntry: false },
+  { id: 'rank2', fromRank: 2, toRank: 2, medal: 'silver', needsEntry: false },
+  { id: 'rank3', fromRank: 3, toRank: 3, medal: 'bronze', needsEntry: false },
+  { id: 'prize', fromRank: 4, toRank: 5, needsEntry: true },
+  { id: 'entry', fromRank: 6, needsEntry: true },
 ]);
+
+/**
+ * 順位報酬の段でもらえる報酬ID を返す（1位はリーグ共通の 'rank1' とリーグごとの 'rank1.<リーグ>'）。
+ * @param tier 段
+ * @param leagueId リーグ
+ * @returns 報酬ID
+ */
+export function rankRewardIdsOf(tier: RankRewardTier, leagueId: string): readonly string[] { // audit-ignore: fnlog-missing 段ごとに呼ぶ純粋な対応
+  return tier.id === 'rank1' ? [tier.id, `${tier.id}.${leagueId}`] : [tier.id];
+}
+
+/**
+ * キープ報酬の報酬ID を返す。
+ * @param goalId キープ報酬の種類
+ * @returns 報酬ID（'keep.podium' / 'keep.top'）
+ */
+export function keepRewardIdOf(goalId: KeepGoalId): string { // audit-ignore: fnlog-missing 純粋な文字列の組立て
+  return `keep.${goalId}`;
+}
 
 /** キープ報酬の種類 */
 export type KeepGoalId = 'podium' | 'top';

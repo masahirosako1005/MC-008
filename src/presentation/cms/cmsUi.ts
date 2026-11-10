@@ -9,6 +9,7 @@
  */
 import type { CmsShopEventDto, CmsShopInfoDto } from '@/application/dto/CmsDto';
 import type { CmsServices } from '@/application/CmsServices';
+import { APP_ORIGIN } from '@/Common/constants/env';
 import { createLogger } from '@/Common/logging/logger';
 import { dayOfWeekOf, parseLocalDate } from '@/Common/utils/date';
 import { h } from '@/Common/ui/dom';
@@ -336,6 +337,15 @@ export function twoColumn(preview: HTMLElement, form: HTMLElement): HTMLElement 
 }
 
 /**
+ * 利用者アプリの URL を作る（同じオリジンなら相対、CMS を別オリジンに置くときは APP_ORIGIN＝docs/09 §7.1）。
+ * @param hash アプリのハッシュ（例 '#/spot/s_mm04'。無ければ先頭）
+ * @returns URL
+ */
+export function appUrl(hash = ''): string {
+  return APP_ORIGIN === '' ? `./${hash}` : `${APP_ORIGIN}/${hash}`;
+}
+
+/**
  * 利用者アプリを開くリンク（同じタブを使い回す）。
  * @param label 文字
  * @param hash アプリのハッシュ（例 '#/spot/s_mm04'）
@@ -344,6 +354,6 @@ export function twoColumn(preview: HTMLElement, form: HTMLElement): HTMLElement 
  */
 export function appLink(label: string, hash: string, testId?: string): HTMLAnchorElement {
   const log = logger.fn('appLink', { hash });
-  // 同じオリジンのアプリなので opener の心配はない。rel=noopener を付けると同じ名前のタブを使い回せなくなるため付けない
-  return log.exit(h('a', { class: 'cms-link', attrs: { href: `./${hash}`, target: APP_WINDOW_NAME, 'data-testid': testId } }, [label, icon('arrowRight', 'cms-icon-external')]));
+  // 自社のアプリなので opener の心配はない。rel=noopener を付けると同じ名前のタブを使い回せなくなるため付けない
+  return log.exit(h('a', { class: 'cms-link', attrs: { href: appUrl(hash), target: APP_WINDOW_NAME, 'data-testid': testId } }, [label, icon('arrowRight', 'cms-icon-external')]));
 }

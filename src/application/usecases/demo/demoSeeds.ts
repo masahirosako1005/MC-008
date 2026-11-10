@@ -29,9 +29,6 @@ const logger = createLogger('application/usecases/demo/demoSeeds');
 /** デモの旅人のプロフィール（初回の人／通い慣れた人） */
 export type DemoProfile = 'first' | 'regular';
 
-/** デモの旅人のプロフィール一覧 */
-export const DEMO_PROFILES: readonly DemoProfile[] = ['first', 'regular'];
-
 /**
  * 「通い慣れた人」の訪問（docs/08 §9.3。役割・日付・回数は §4.5 と同じで ID だけ新しい）。[スポットID, 今日からの日数]。
  * 南森町・天満宮 6回（T−20〜T−5。旧 城下）／天満 7スポット計9回（T−28〜T−2。旧 本町）／大川 15回（T−70〜T−25。旧 みなと）／

@@ -11,6 +11,16 @@
 .cms-login__error:empty { display: none; }
 .cms-login .btn--primary { width: 100%; }
 
+/* 上部バー：店名だけ（担当が1店）とアカウントのメニュー */
+.cms-topbar__shopname { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.cms-account-wrap { margin-left: 0; }
+.cms-account-btn__name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cms-account-btn .icon { width: 14px; height: 14px; }
+@media (max-width: 959px) {
+  .cms-account-btn__name { display: none; }
+  .cms-topbar__shopname { max-width: none; flex: 1; }
+}
+
 .cms-account__rows { display: flex; flex-direction: column; }
 .cms-account__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
 .cms-account__key { font-size: 13px; color: var(--g4); }

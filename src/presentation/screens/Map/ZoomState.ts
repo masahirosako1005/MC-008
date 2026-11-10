@@ -10,9 +10,6 @@ const logger = createLogger('presentation/screens/Map/ZoomState');
 /** ズーム段階（広域・地区・近接） */
 export type MapZoom = 'wide' | 'district' | 'near';
 
-/** ズーム段階の並び（広い順） */
-export const MAP_ZOOMS: readonly MapZoom[] = ['wide', 'district', 'near'];
-
 /** ズーム状態。district / near のときは注目している地区ID を持つ（near は現在地の地区。地区外なら無し） */
 export interface ZoomState {
   readonly zoom: MapZoom;

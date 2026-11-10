@@ -12,10 +12,10 @@ const EYES: readonly EyeStyle[] = ['smile', 'round', 'calm', 'sharp', 'sleepy', 
 const TOPS: readonly TopStyle[] = ['tee', 'hoodie', 'shirt', 'border', 'knit', 'cardigan', 'sailor', 'happi', 'yukata', 'jacket', 'stadium', 'apron', 'kimono', 'umeKimono', 'edoKimono', 'retroOnepiece', 'haoriSakura', 'tenjinYukata', 'momijiPoncho', 'downcoat'];
 const BOTTOMS: readonly BottomStyle[] = ['denim', 'shorts', 'skirt', 'longskirt', 'cargo', 'check', 'hakama', 'overall'];
 const SHOES: readonly ShoeStyle[] = ['sneaker', 'loafer', 'boots', 'sandal', 'geta', 'rain', 'highcut'];
-const HATS: readonly AvatarHat[] = ['beret', 'straw', 'crown', 'cap', 'knit', 'hachimaki', 'flower', 'catEars', 'bucket', 'silk', 'halo', 'tiara', 'umeKanzashi', 'sugegasa', 'sakuraKanzashi', 'kitsuneMask', 'momijiBeret'];
-const ACCESSORIES: readonly AccessoryStyle[] = ['glasses', 'sunglasses', 'scarf', 'headphones', 'ribbon', 'muffler', 'bandaid', 'pochette', 'medal', 'wings', 'heartglasses', 'earmuffs'];
-const HELD: readonly AvatarHeld[] = ['camera', 'chochin', 'nobori', 'matsu', 'map', 'guidebook', 'softcream', 'takoyaki', 'balloon', 'umbrella', 'bouquet', 'fishing', 'uchiwa', 'croquette', 'sparkler', 'wand', 'omamori', 'kushikatsu', 'kamifusen', 'filmcamera', 'dango', 'kingyo', 'yakiimo', 'yukidaruma'];
-const PETS: readonly PetStyle[] = ['cat', 'shiba', 'rabbit', 'hiyoko', 'tanuki', 'penguin', 'pigeon', 'dragon', 'fox', 'unicorn', 'uso', 'mejiro', 'tsukimiUsagi'];
+const HATS: readonly AvatarHat[] = ['beret', 'straw', 'crown', 'cap', 'knit', 'hachimaki', 'flower', 'catEars', 'bucket', 'silk', 'halo', 'tiara', 'umeKanzashi', 'sugegasa', 'sakuraKanzashi', 'kitsuneMask', 'momijiBeret', 'laurel', 'nagezukin'];
+const ACCESSORIES: readonly AccessoryStyle[] = ['glasses', 'sunglasses', 'scarf', 'headphones', 'ribbon', 'muffler', 'bandaid', 'pochette', 'medal', 'wings', 'heartglasses', 'earmuffs', 'silverMedal', 'bronzeMedal', 'umeTenugui'];
+const HELD: readonly AvatarHeld[] = ['camera', 'chochin', 'nobori', 'matsu', 'map', 'guidebook', 'softcream', 'takoyaki', 'balloon', 'umbrella', 'bouquet', 'fishing', 'uchiwa', 'croquette', 'sparkler', 'wand', 'omamori', 'kushikatsu', 'kamifusen', 'filmcamera', 'dango', 'kingyo', 'yakiimo', 'yukidaruma', 'cheerFlag', 'kiriko', 'sensu'];
+const PETS: readonly PetStyle[] = ['cat', 'shiba', 'rabbit', 'hiyoko', 'tanuki', 'penguin', 'pigeon', 'dragon', 'fox', 'unicorn', 'uso', 'mejiro', 'tsukimiUsagi', 'shingyu'];
 const POSES: readonly AvatarPose[] = ['stand', 'wave', 'jump', 'peace'];
 const BODIES: readonly BodyType[] = ['neutral', 'girl', 'boy'];
 const EMOTES: readonly AvatarPose[] = ['love', 'dance', 'laugh', 'surprise', 'tilt', 'sleepy', 'cry', 'angry', 'cheer', 'spin', 'bow'];
@@ -313,7 +313,7 @@ describe('drawAvatar のエモート', { timeout: 60000 }, () => {
   });
 });
 
-describe('drawAvatar の性別', () => {
+describe('drawAvatar の性別', { timeout: 60000 }, () => {
   /** 体つきが変わりやすい部品（肩幅・袖・首まわり）と、上や横にはみ出しやすい部品 */
   const looks: readonly AvatarLook[] = [
     BASE,

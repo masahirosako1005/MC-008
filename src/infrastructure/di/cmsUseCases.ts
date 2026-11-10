@@ -7,6 +7,7 @@ import { createLogger } from '@/Common/logging/logger';
 import type { CmsServices } from '@/application/CmsServices';
 import type { CmsDeps } from '@/application/usecases/cms/cmsShopView';
 import { GetCmsShopInfoUseCase } from '@/application/usecases/cms/GetCmsShopInfoUseCase';
+import { GetCmsSurveyUseCase } from '@/application/usecases/cms/GetCmsSurveyUseCase';
 import { GetCmsShopsUseCase } from '@/application/usecases/cms/GetCmsShopsUseCase';
 import { GetCmsVisitStatsUseCase } from '@/application/usecases/cms/GetCmsVisitStatsUseCase';
 import { RegisterShopEventUseCase } from '@/application/usecases/cms/RegisterShopEventUseCase';
@@ -30,6 +31,7 @@ export function buildCmsUseCases(deps: CmsDeps): CmsServices {
     registerShopEvent: new RegisterShopEventUseCase(deps),
     withdrawShopEvent: new WithdrawShopEventUseCase(deps),
     visitStats: new GetCmsVisitStatsUseCase(deps),
+    survey: new GetCmsSurveyUseCase(deps),
     resetDemo: new ResetCmsDemoUseCase(deps),
   });
 }

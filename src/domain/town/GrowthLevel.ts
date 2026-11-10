@@ -9,12 +9,3 @@ export type GrowthLevel = 0 | 1 | 2 | 3;
 
 /** 成長段階の一覧（低い順） */
 export const GROWTH_LEVELS: readonly GrowthLevel[] = [0, 1, 2, 3];
-
-/**
- * 未検証の値が成長段階か判定する型ガード。
- * @param value 判定する値
- * @returns 0〜3 の整数なら true
- */
-export function isGrowthLevel(value: unknown): value is GrowthLevel {
-  return value === 0 || value === 1 || value === 2 || value === 3;
-}

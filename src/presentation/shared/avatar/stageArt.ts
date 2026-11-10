@@ -3431,6 +3431,94 @@ function objDresser(ctx: CanvasRenderingContext2D, t: number): void { // audit-i
   paintPerfumes(ctx, -37);
 }
 
+/**
+ * 表彰台の旗（月間リーグのキープ報酬）を描く。小さな台・銀のポール・はためく赤い旗に金の星。
+ * @param ctx 描画先（足元の中心が原点）
+ * @param t 経過秒（旗のはためき）
+ */
+function objWinnerFlag(ctx: CanvasRenderingContext2D, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const wave = Math.sin(t * 2.4) * 2;
+  fillBox(ctx, [-14, -9, 28, 9], '#7c4a2d', 2);
+  fillBox(ctx, [-14, -9, 28, 3], '#93603d', 2);
+  fillBox(ctx, [-9, -15, 18, 6], '#f5b700', 1.5);
+  fillBox(ctx, [-1.3, -66, 2.6, 52], '#c9ccd4', 1.2);
+  fillPoly(ctx, [[1.3, -65], [17, -62 + wave], [32, -56 - wave], [17, -50 + wave], [1.3, -45]], '#e0453a');
+  fillPoly(ctx, [[1.3, -49], [17, -50 + wave], [32, -56 - wave], [17, -47 + wave], [1.3, -45]], '#b8322a');
+  paintStar5(ctx, 11, -56 + wave * 0.5, 4.6, '#ffd95a');
+  fillOval(ctx, [0, -67, 2.8, 2.8], '#f5b700');
+}
+
+/**
+ * 梅鉢紋（まんなかの丸のまわりに5つの丸）を描く。大阪天満宮の神紋。
+ * @param ctx 描画先
+ * @param x 中心 X
+ * @param y 中心 Y
+ * @param r 全体の半径
+ * @param color 色
+ */
+function paintUmebachi(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  fillOval(ctx, [x, y, r * 0.3, r * 0.3], color);
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI * 2) / 5;
+    fillOval(ctx, [x + Math.cos(a) * r * 0.66, y + Math.sin(a) * r * 0.66, r * 0.34, r * 0.34], color);
+  }
+}
+
+/**
+ * 梅鉢もんの大ちょうちん（月間リーグのキープ報酬）を描く。木のやぐらに、灯りのともった白い大提灯と朱の梅鉢紋。
+ * @param ctx 描画先（足元の中心が原点）
+ * @param t 経過秒（灯りのゆらぎ）
+ */
+function objGojinto(ctx: CanvasRenderingContext2D, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const wood = '#7c4a2d';
+  const glow = 0.5 + Math.sin(t * 3.1) * 0.12;
+  fillBox(ctx, [-19, -66, 3, 66], wood, 1);
+  fillBox(ctx, [16, -66, 3, 66], wood, 1);
+  fillBox(ctx, [-23, -69, 46, 4.5], '#93603d', 1.5);
+  fillBox(ctx, [-22, -4, 9, 4], '#5f3822', 1);
+  fillBox(ctx, [13, -4, 9, 4], '#5f3822', 1);
+  fillOval(ctx, [0, -36, 21, 26], `rgba(255, 214, 120, ${glow * 0.5})`);
+  fillBox(ctx, [-1, -64.5, 2, 7], '#3f3f46');
+  fillOval(ctx, [0, -36, 13.5, 21], '#fff6e0');
+  for (const dy of [-12, -6, 0, 6, 12]) fillBox(ctx, [-13 + Math.abs(dy) * 0.22, -36 + dy - 0.3, 26 - Math.abs(dy) * 0.44, 0.6], 'rgba(120, 80, 40, 0.22)');
+  fillBox(ctx, [-8, -59, 16, 4], '#2b2b33', 1.5);
+  fillBox(ctx, [-8, -17, 16, 4], '#2b2b33', 1.5);
+  paintUmebachi(ctx, 0, -36, 8, '#d7352b');
+  fillBox(ctx, [-0.8, -13, 1.6, 6], '#d7352b');
+  fillOval(ctx, [0, -6, 2, 2.6], '#f5b700');
+}
+
+/**
+ * 天神祭の催太鼓（月間リーグのキープ報酬）を描く。台にのった大太鼓（金の鋲・三つ巴）と紅白の幕、朱のばち。
+ * @param ctx 描画先（足元の中心が原点）
+ * @param t 経過秒（ばちの動き）
+ */
+function objMoyooshiDaiko(ctx: CanvasRenderingContext2D, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const beat = Math.max(0, Math.sin(t * 5)) * 3;
+  fillBox(ctx, [-27, -13, 54, 13], '#7c4a2d', 2);
+  for (let i = 0; i < 6; i++) fillBox(ctx, [-27 + i * 9, -13, 9, 9], i % 2 === 0 ? '#d7352b' : '#fff6e0');
+  fillBox(ctx, [-27, -15.5, 54, 3], '#f5b700', 1);
+  fillPoly(ctx, [[-20, -13], [-13, -13], [-8, -30], [-14, -30]], '#93603d');
+  fillPoly(ctx, [[20, -13], [13, -13], [8, -30], [14, -30]], '#93603d');
+  fillOval(ctx, [0, -43, 27, 27], '#5f3822');
+  fillOval(ctx, [0, -43, 24.5, 24.5], '#c8322a');
+  for (let i = 0; i < 14; i++) {
+    const a = (i * Math.PI * 2) / 14;
+    fillOval(ctx, [Math.cos(a) * 22.4, -43 + Math.sin(a) * 22.4, 1.5, 1.5], '#ffd95a');
+  }
+  fillOval(ctx, [0, -43, 19.5, 19.5], '#fff3d6');
+  for (let i = 0; i < 3; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI * 2) / 3;
+    fillOval(ctx, [Math.cos(a) * 8, -43 + Math.sin(a) * 8, 5.4, 5.4], '#2b2b33');
+    fillOval(ctx, [Math.cos(a + 0.9) * 11, -43 + Math.sin(a + 0.9) * 11, 2.6, 2.6], '#2b2b33');
+  }
+  fillOval(ctx, [-7, -52, 5, 2.4], 'rgba(255, 255, 255, 0.55)', -0.6);
+  strokeLine(ctx, [[30, -62 + beat], [17, -50 + beat]], '#d7352b', 2.4);
+  strokeLine(ctx, [[-30, -60 - beat * 0.6], [-17, -49 - beat * 0.6]], '#d7352b', 2.4);
+  fillOval(ctx, [17, -50 + beat, 2.2, 2.2], '#fff6e0');
+  fillOval(ctx, [-17, -49 - beat * 0.6, 2.2, 2.2], '#fff6e0');
+}
+
 /** 置くものの種類 → 描く関数 */
 const OBJECT_PAINTERS: Readonly<Record<ObjectStyle, ObjectPainter>> = {
   bench: objBench,
@@ -3450,6 +3538,9 @@ const OBJECT_PAINTERS: Readonly<Record<ObjectStyle, ObjectPainter>> = {
   gacha: objGacha,
   fireworks: objFireworks,
   trophy: objTrophy,
+  winnerFlag: objWinnerFlag,
+  gojinto: objGojinto,
+  moyooshiDaiko: objMoyooshiDaiko,
   heartballoon: objHeartBalloon,
   dresser: objDresser,
 };
@@ -3458,7 +3549,7 @@ const OBJECT_PAINTERS: Readonly<Record<ObjectStyle, ObjectPainter>> = {
 const OBJECT_SHADOW_RX: Readonly<Record<ObjectStyle, number>> = {
   bench: 34, plant: 13, bicycle: 30, vending: 19, lamp: 9, signboard: 17, stall: 36, torii: 30, sakura: 24,
   lantern: 10, postbox: 14, maneki: 18, tanuki: 17, fountain: 34, gacha: 16, fireworks: 10, trophy: 16,
-  heartballoon: 11, dresser: 30,
+  heartballoon: 11, dresser: 30, winnerFlag: 15, gojinto: 20, moyooshiDaiko: 28,
 };
 
 /** 描ける置くものの種類（表の順） */

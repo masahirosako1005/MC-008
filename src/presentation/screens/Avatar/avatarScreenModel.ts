@@ -1,6 +1,6 @@
 /**
  * @file アバター画面の表示モデル（presentation/screens/Avatar 層。純粋関数）
- * カテゴリ（タブ）の定義、装いの付け外し（1枠1つ・置くものは最大3つ）、試着、ピックアップ（NEW・もうすぐ手に入る）、おまかせを扱う。
+ * カテゴリ（タブ）の定義、装いの付け外し（1枠1つ・置くものは最大3つ）、試着、おまかせを扱う。
  * 状態・DOM は持たない（docs/03 §7）。持っているかの最終判定は application（SaveAvatarUseCase）が行う。
  */
 import type { AvatarPartDto } from '@/application/dto/Dto';
@@ -18,7 +18,7 @@ export const REMOVABLE_SLOTS: ReadonlySet<string> = new Set(['hat', 'accessory',
 export type ThumbFocus = 'head' | 'body' | 'legs' | 'full';
 
 /** カテゴリ（タブ）のキー */
-export type CategoryKey = 'pickup' | 'collection' | 'hair' | 'face' | 'top' | 'bottom' | 'shoes' | 'hat' | 'accessory' | 'held' | 'pet' | 'aura' | 'emote' | 'background' | 'object' | 'title' | 'coord';
+export type CategoryKey = 'hair' | 'face' | 'top' | 'bottom' | 'shoes' | 'hat' | 'accessory' | 'held' | 'pet' | 'aura' | 'emote' | 'background' | 'object' | 'title' | 'coord';
 
 /** カテゴリの定義 */
 export interface CategoryDef {
@@ -37,10 +37,8 @@ export interface CategoryDef {
   readonly focus: ThumbFocus;
 }
 
-/** カテゴリ（タブの並び） */
+/** カテゴリ（タブの並び）。コレクション（ご当地・季節のセット）とピックアップは 2026-11-10 ユーザー指示で削除（未入手の部品は各カテゴリの格子に白黒で並べる） */
 export const CATEGORIES: readonly CategoryDef[] = Object.freeze([
-  { key: 'pickup', label: 'ピックアップ', focus: 'full' },
-  { key: 'collection', label: 'コレクション', focus: 'full' },
   { key: 'hair', label: '髪型', gridSlot: 'hair', chipSlot: 'hairColor', chipLabel: '髪の色', focus: 'head' },
   { key: 'face', label: '顔', gridSlot: 'eyes', chipSlot: 'skin', chipLabel: 'はだの色', topSlot: 'body', topLabel: '性別', focus: 'head' },
   { key: 'top', label: 'トップス', gridSlot: 'top', chipSlot: 'topColor', chipLabel: '服の色', focus: 'body' },
@@ -65,16 +63,6 @@ export const CATEGORIES: readonly CategoryDef[] = Object.freeze([
  */
 export function slotOfPartId(partId: string): string {
   return partId.split('.')[0] ?? '';
-}
-
-/**
- * 枠の部品を表示順に返す。
- * @param parts すべての部品
- * @param slot 枠
- * @returns その枠の部品
- */
-export function partsOfSlot(parts: readonly AvatarPartDto[], slot: string): AvatarPartDto[] {
-  return parts.filter((p) => p.slot === slot);
 }
 
 /** 付け外しの結果 */
@@ -137,17 +125,6 @@ export function withTryOn(outfit: readonly string[], tryOnId: string | undefined
 }
 
 /**
- * セットの部品をまとめて重ねた装い（試着・着る）。
- * @param outfit もとの装い
- * @param partIds セットの部品
- * @returns 新しい装い
- */
-export function withSet(outfit: readonly string[], partIds: readonly string[]): readonly string[] {
-  const log = logger.fn('withSet', { count: partIds.length });
-  return log.exit(partIds.reduce<readonly string[]>((acc, id) => equipPart(acc, id).outfit, outfit));
-}
-
-/**
  * 2つの装いが同じか（並びは問わない）。
  * @param a 装い
  * @param b 装い
@@ -156,19 +133,6 @@ export function withSet(outfit: readonly string[], partIds: readonly string[]): 
 export function sameOutfit(a: readonly string[], b: readonly string[]): boolean {
   const log = logger.fn('sameOutfit', { a: a.length, b: b.length });
   return log.exit(a.length === b.length && a.every((id) => b.includes(id)));
-}
-
-/**
- * まだ手に入れていない部品を、手に入るのが近い順に返す（残りが少ない順 → 進み具合の大きい順）。
- * @param parts すべての部品
- * @param limit 最大数
- * @returns もうすぐ手に入る部品
- */
-export function nearlyUnlockedOf(parts: readonly AvatarPartDto[], limit: number): AvatarPartDto[] {
-  const log = logger.fn('nearlyUnlockedOf', { limit });
-  const locked = parts.filter((p) => !p.owned && p.target > 0);
-  const sorted = [...locked].sort((a, b) => (a.target - a.current) - (b.target - b.current) || b.current / b.target - a.current / a.target);
-  return log.exit(sorted.slice(0, limit));
 }
 
 /**
@@ -185,7 +149,7 @@ export function newCountOf(parts: readonly AvatarPartDto[], slots: readonly (str
 /**
  * カテゴリに含まれる枠。
  * @param category カテゴリ
- * @returns 枠（ピックアップ・マイコーデは空）
+ * @returns 枠（マイコーデは空）
  */
 export function slotsOfCategory(category: CategoryDef): string[] {
   return [category.topSlot, category.gridSlot, category.chipSlot].filter((s): s is string => s !== undefined);

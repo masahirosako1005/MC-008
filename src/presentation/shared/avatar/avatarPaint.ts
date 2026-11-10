@@ -2033,6 +2033,14 @@ const HELD: Readonly<Record<AvatarHeld, HeldPainter>> = {
     oval(ctx, [15.4, -22.4, 1.5, 0.9], WHITE);
     dot(ctx, 1.6, -3.4, 1.6, '#6b6380');
   },
+  kiriko: (ctx, f) => paintKiriko(ctx, f),
+  sensu: (ctx, f) => paintSensu(ctx, f),
+  cheerFlag: (ctx, f) => {
+    lineO(ctx, [0, 3, 3.4, -15], '#8a5a3c', 1.4, f);
+    polyO(ctx, [3.6, -15.4, 16, -12, 4.8, -7.2], '#FF9B4A', f);
+    star(ctx, 8, -11.6, 2, WHITE);
+    dot(ctx, 3.4, -15.6, 1.1, GOLD);
+  },
   uchiwa: (ctx, f) => {
     lineO(ctx, [0, 2, 4.4, -5.6], '#8a5a3c', 1.4, f);
     dotO(ctx, [7.4, -11.6, 6.4], '#f6f1e4', f);
@@ -2198,8 +2206,117 @@ function beretDome(ctx: Ctx): void { // audit-ignore: fnlog-missing 毎フレー
   ctx.closePath();
 }
 
+/** 銀メダル・銅メダルの色（月間リーグの報酬） */
+const MEDAL_SILVER = '#C9D2DC';
+const MEDAL_BRONZE = '#D9935A';
+/** 月桂冠の葉の色 */
+const LAUREL = '#7BC96F';
+
+/**
+ * 首から下げるメダルを描く（リボン2本＋丸いメダル＋星）。
+ * @param ctx 描画先
+ * @param f フレーム
+ * @param metal メダルの色
+ */
+function paintMedal(ctx: Ctx, f: Frame, metal: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  poly(ctx, [-5, -33.4, -2.6, -33.4, 0.6, -24.4, -1, -24.4], PINK);
+  poly(ctx, [5, -33.4, 2.6, -33.4, -0.6, -24.4, 1, -24.4], '#5CC8FF');
+  dotO(ctx, [0, -21.6, 3.6], metal, f);
+  star(ctx, 0, -21.6, 2.2, tint(metal, 0.5));
+}
+
+/**
+ * 月桂冠を描く（頭の左右から前へ、葉を弧にそって並べる。正面に金の実）。
+ * @param ctx 描画先
+ * @param f フレーム
+ */
+function paintLaurel(ctx: Ctx, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 5; i++) {
+      const a = Math.PI * (0.08 + i * 0.085);
+      const x = side * Math.cos(a) * 17;
+      const y = -52 - Math.sin(a) * 13;
+      ovalO(ctx, [x, y, 3.4, 1.7], i % 2 === 0 ? LAUREL : tint(LAUREL, 0.25), f, side * (a - Math.PI * 0.62));
+    }
+  }
+  dot(ctx, 0, -65.2, 1.5, GOLD);
+  dot(ctx, -2.6, -64.6, 1, GOLD_DEEP);
+  dot(ctx, 2.6, -64.6, 1, GOLD_DEEP);
+}
+
+/**
+ * 梅鉢紋（まんなかの丸のまわりに5つの丸）を描く。大阪天満宮の神紋。
+ * @param ctx 描画先
+ * @param x 中心 X
+ * @param y 中心 Y
+ * @param r 全体の半径
+ * @param fill 色
+ */
+function umebachi(ctx: Ctx, x: number, y: number, r: number, fill: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  dot(ctx, x, y, r * 0.3, fill);
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI * 2) / 5;
+    dot(ctx, x + Math.cos(a) * r * 0.66, y + Math.sin(a) * r * 0.66, r * 0.34, fill);
+  }
+}
+
+/**
+ * 催太鼓の投げ頭巾を描く（天神祭の願人がかぶる、うしろへ長くたれる赤い頭巾。正面に梅鉢紋）。
+ * @param ctx 描画先
+ * @param f フレーム
+ */
+function paintNagezukin(ctx: Ctx, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const sway = f.animated ? Math.sin(f.t * 2.2) * 1 : 0;
+  polyO(ctx, [-12, -65, -20, -71.6, -26.4 + sway, -65, -28.6 + sway, -52, -24.8 + sway, -44, -21.4 + sway, -52, -19.6, -60, -14, -60], shade(RED, 0.12), f);
+  polyO(ctx, [-16.4, -57.4, 16.4, -57.4, 14.6, -65.4, 8, -71.6, -2, -74.6, -13, -73, -20, -66.6], RED, f);
+  line(ctx, [-9, -71.6, 3, -73.2], tint(RED, 0.35), 0.9);
+  boxO(ctx, [-16.8, -60.2, 33.6, 4.2, 1.6], GOLD, f);
+  umebachi(ctx, 0, -66.4, 3.2, WHITE);
+  dot(ctx, -24.8 + sway, -44.6, 1.5, GOLD);
+}
+
+/** 扇子の骨のひらき（ラジアン。左 → 右） */
+const SENSU_RIBS = [-2.62, -2.27, -1.92, -1.57, -1.22, -0.87, -0.52];
+
+/**
+ * 寄席の扇子を描く（ひらいた白い扇面に朱の日の丸と金のふち）。
+ * @param ctx 描画先
+ * @param f フレーム
+ */
+function paintSensu(ctx: Ctx, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const [px, py, r] = [3, 2, 15];
+  const rim = SENSU_RIBS.flatMap((a) => [px + Math.cos(a) * r, py + Math.sin(a) * r]);
+  polyO(ctx, [px, py, ...rim], '#fff6e0', f);
+  for (const a of SENSU_RIBS) line(ctx, [px, py, px + Math.cos(a) * r, py + Math.sin(a) * r], '#c9a26a', 0.5);
+  for (let i = 0; i + 1 < SENSU_RIBS.length; i++) line(ctx, [rim[i * 2] ?? 0, rim[i * 2 + 1] ?? 0, rim[i * 2 + 2] ?? 0, rim[i * 2 + 3] ?? 0], GOLD_DEEP, 1.2);
+  dot(ctx, px + Math.cos(-1.57) * r * 0.62, py + Math.sin(-1.57) * r * 0.62, 3, RED);
+  dot(ctx, px, py, 1.2, '#5b3a29');
+}
+
+/**
+ * 天満切子のグラスを描く（藍色のガラスに、白い切り子の模様ときらめき）。
+ * @param ctx 描画先
+ * @param f フレーム
+ */
+function paintKiriko(ctx: Ctx, f: Frame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const glass = '#3f7fe0';
+  polyO(ctx, [0, -12, 10.4, -12, 9, 1, 1.4, 1], glass, f);
+  poly(ctx, [0.8, -6.6, 9.6, -6.6, 9, 1, 1.4, 1], shade(glass, 0.14));
+  for (const x of [1.6, 4.4, 7.2]) {
+    line(ctx, [x, -6, x + 2.2, -0.2], 'rgba(255, 255, 255, 0.9)', 0.6);
+    line(ctx, [x + 2.2, -6, x, -0.2], 'rgba(255, 255, 255, 0.9)', 0.6);
+  }
+  line(ctx, [1, -6.6, 9.4, -6.6], 'rgba(255, 255, 255, 0.9)', 0.6);
+  oval(ctx, [5.2, -12, 5.2, 1.4], tint(glass, 0.6));
+  line(ctx, [1.6, -10.6, 2.2, -7.6], 'rgba(255, 255, 255, 0.8)', 0.8);
+  sparkle4(ctx, 11.6, -13.6, 2.2 * twinkle(f, 1), WHITE);
+  sparkle4(ctx, -1, -3.4, 1.4 * twinkle(f, 2), LEMON);
+}
+
 /** 帽子の種類ごとの描き方（頭頂 -63.5 にかぶせる） */
 const HATS: Readonly<Record<AvatarHat, HatPainter>> = {
+  laurel: (ctx, w, f) => paintLaurel(ctx, f),
+  nagezukin: (ctx, w, f) => paintNagezukin(ctx, f),
   beret: (ctx, w, f) => paintBeret(ctx, BERET, f),
   straw: (ctx, w, f) => {
     ovalO(ctx, [0, -57.6, 21, 4.4], STRAW, f);
@@ -2354,7 +2471,7 @@ function paintDangles(ctx: Ctx, f: Frame, top: P, bead: string): void { // audit
 /** 帽子のいちばん上の高さ（頭のまとまりの中＝拡大前・持ち上げ無し） */
 const HAT_TOP: Readonly<Record<AvatarHat, number>> = {
   beret: -69.3, straw: -67, crown: -73.2, cap: -66, knit: -71.4, hachimaki: -61, flower: -66, catEars: -71, bucket: -67, silk: -76, halo: -75.9, tiara: -70.6,
-  umeKanzashi: -63.6, sugegasa: -73.6, sakuraKanzashi: -63.6, kitsuneMask: -68.8, momijiBeret: -69.8,
+  umeKanzashi: -63.6, sugegasa: -73.6, sakuraKanzashi: -63.6, kitsuneMask: -68.8, momijiBeret: -69.8, laurel: -66.8, nagezukin: -75.2,
 };
 
 /** 髪型ごとの帽子の持ち上げ（盛った髪の上にかぶせる） */
@@ -2432,6 +2549,13 @@ const ACCESSORIES: Readonly<Record<AccessoryStyle, AccessoryDef>> = {
     line(ctx, [-8.8, EYE_Y - 1.4, -6.2, EYE_Y - 2], 'rgba(255, 255, 255, 0.45)', 0.7);
     line(ctx, [3.8, EYE_Y - 1.4, 6.4, EYE_Y - 2], 'rgba(255, 255, 255, 0.45)', 0.7);
   } },
+  umeTenugui: { layer: 'neck', paint: (ctx, w, f) => {
+    boxO(ctx, [-9.4, -34.6, 18.8, 4.8, 2.2], '#fbf6ea', f);
+    polyO(ctx, [-7.4, -31, -3.2, -31, -2.4, -19.6, -6.6, -20.8], '#fbf6ea', f);
+    for (const x of [-5.4, 0, 5.4]) umebachi(ctx, x, -32.2, 1.5, RED);
+    umebachi(ctx, -4.8, -25, 1.6, RED);
+    line(ctx, [-6.4, -21.4, -2.6, -20.4], '#2f4f9e', 0.8);
+  } },
   scarf: { layer: 'neck', paint: (ctx, w, f) => {
     boxO(ctx, [-9.2, -34.4, 18.4, 4.6, 2.2], '#ff7a8a', f);
     polyO(ctx, [3, -31, 7, -31, 7.6, -20.6, 4.2, -21.6], shade('#ff7a8a', 0.08), f);
@@ -2468,12 +2592,9 @@ const ACCESSORIES: Readonly<Record<AccessoryStyle, AccessoryDef>> = {
     box(ctx, [2.2, -19.8, 8, 2.8, 1.2], shade('#ff9bc2', 0.12));
     sparkle4(ctx, 6.2, -16.6, 1.1, GOLD);
   } },
-  medal: { layer: 'neck', paint: (ctx, w, f) => {
-    poly(ctx, [-5, -33.4, -2.6, -33.4, 0.6, -24.4, -1, -24.4], PINK);
-    poly(ctx, [5, -33.4, 2.6, -33.4, -0.6, -24.4, 1, -24.4], '#5CC8FF');
-    dotO(ctx, [0, -21.6, 3.6], GOLD, f);
-    star(ctx, 0, -21.6, 2.2, tint(GOLD, 0.5));
-  } },
+  medal: { layer: 'neck', paint: (ctx, w, f) => paintMedal(ctx, f, GOLD) },
+  silverMedal: { layer: 'neck', paint: (ctx, w, f) => paintMedal(ctx, f, MEDAL_SILVER) },
+  bronzeMedal: { layer: 'neck', paint: (ctx, w, f) => paintMedal(ctx, f, MEDAL_BRONZE) },
   wings: { layer: 'back', paint: (ctx, w, f) => paintWings(ctx, f) },
   heartglasses: { layer: 'face', paint: (ctx, w, f) => {
     for (const x of [-EYE_X, EYE_X]) {
@@ -2679,6 +2800,22 @@ const PETS: Readonly<Record<PetStyle, PetPainter>> = {
     oval(ctx, [1, -0.8, 1.8, 1], LAVENDER);
     oval(ctx, [4.6, -0.8, 1.8, 1], LAVENDER);
     sparkle4(ctx, 8.6, -22, 1.2 * twinkle(f, 3), LEMON);
+  },
+  shingyu: (ctx, wag, f) => {
+    const hide = '#4b4450';
+    curveO(ctx, (c) => { c.beginPath(); c.moveTo(-5, -4); c.quadraticCurveTo(-10.4, -5, -9.2 + wag * 3, -11.4); }, hide, 1.6, f);
+    dot(ctx, -9.2 + wag * 3, -12, 1.4, shade(hide, 0.3));
+    poly(ctx, [0.2, -18.6, -1.4, -23.4, 2.4, -19.8], '#f3ead2');
+    poly(ctx, [5.6, -19.2, 8, -23.2, 4.2, -20], '#f3ead2');
+    sittingBody(ctx, hide, [[-3.4, -15.2, -1.4, -18.4, 0.8, -16.2], [5.8, -16.8, 9.2, -18, 7.8, -14.4]], f);
+    oval(ctx, [4.4, -12, 3.6, 2.4], '#f4cfc6');
+    dot(ctx, 3.2, -12, 0.5, '#b98479'); dot(ctx, 5.6, -12, 0.5, '#b98479');
+    petEye(ctx, 1.8, -15.4, 0.9); petEye(ctx, 5.6, -15.4, 0.9);
+    dot(ctx, 3.8, -17.8, 0.9, tint(hide, 0.5));
+    poly(ctx, [-1.2, -9.6, 7.2, -9.6, 5.8, -2.8, 0.2, -2.8], RED);
+    line(ctx, [-1.2, -9.6, 7.2, -9.6], GOLD, 1);
+    umebachi(ctx, 3, -6.2, 2.2, WHITE);
+    dot(ctx, 3, -10, 1.1, GOLD);
   },
   uso: (ctx, wag, f) => {
     const wood = '#E9C9A0';
@@ -3006,4 +3143,47 @@ export function drawAvatar(ctx: Ctx, look: AvatarLook, at: AvatarPlacement, moti
   paintBody(ctx, w, f);
   paintHead(ctx, w, f);
   ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// 部品だけの絵（ランキングの報酬など。アバターの体は描かない）
+// ---------------------------------------------------------------------------
+
+/** 部品だけで形が分かる枠（帽子・アクセサリー・持ち物・相棒） */
+export type AvatarItemSlot = 'hat' | 'accessory' | 'held' | 'pet';
+
+/**
+ * 部品だけで描ける枠か。
+ * @param slot 枠
+ * @returns 帽子・アクセサリー・持ち物・相棒なら true
+ */
+export function isAvatarItemSlot(slot: string): slot is AvatarItemSlot { // audit-ignore: fnlog-missing 報酬の絵ごとに呼ぶ純粋な判定
+  return slot === 'hat' || slot === 'accessory' || slot === 'held' || slot === 'pet';
+}
+
+/**
+ * 部品だけ（帽子・アクセサリー・持ち物・相棒）を、アバターに着けたときと同じ絵で描く。体・顔・髪は描かない（2026-11-10 ユーザー指示
+ * 「ランキングの報酬がアバター着用時のスクショになっているのでアイテムのみの画像に」）。
+ * 座標はアバターの座標のまま（帽子・アクセサリーは足元の中心、持ち物は手、相棒は相棒の足元が原点）。置き場所は呼び出し側が変換で決める。
+ * @param ctx 描画先（変換済み）
+ * @param slot 枠
+ * @param style 種類
+ * @param scale 画面上の拡大率（0.6 未満は細かい飾りを省く）
+ * @returns 描いたか（知らない種類なら false で何も描かない）
+ * @sideEffect ctx に描画する（状態は save/restore で戻す）
+ */
+export function drawAvatarItem(ctx: Ctx, slot: AvatarItemSlot, style: string, scale: number): boolean { // audit-ignore: fnlog-missing 報酬の絵ごとに数回呼ぶ描画（呼び出し側 itemArt でログ）
+  const base = frameOf(undefined, scale);
+  const w = wearOf({ outfitColor: '', held: 'camera', hasCat: false });
+  const f: Frame = { ...base, body: w.body, rig: restRig(base) };
+  ctx.save();
+  ctx.setLineDash([]);
+  let drawn = true;
+  if (slot === 'hat' && Object.hasOwn(HATS, style)) HATS[style as AvatarHat](ctx, { ...w, hat: style as AvatarHat }, f);
+  else if (slot === 'accessory' && Object.hasOwn(ACCESSORIES, style)) ACCESSORIES[style as AccessoryStyle].paint(ctx, { ...w, accessory: style as AccessoryStyle }, f);
+  else if (slot === 'held' && Object.hasOwn(HELD, style)) HELD[style as AvatarHeld](ctx, f);
+  else if (slot === 'pet' && Object.hasOwn(PETS, style)) PETS[style as PetStyle](ctx, 0, f);
+  else drawn = false;
+  ctx.restore();
+  return drawn;
 }

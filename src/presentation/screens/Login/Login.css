@@ -1,0 +1,51 @@
+/* ログインの画面（商用版だけ。docs/12 §5）。色は tokens.css の名前だけで書く（docs/10） */
+.login {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  padding: 2rem 1.5rem;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+.login__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  color: var(--brand-ink);
+}
+
+.login__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(100%, 20rem);
+}
+
+.login__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem; /* タップ領域 44px 以上 */
+  padding: 0 1.25rem;
+  border-radius: var(--radius-pill);
+  background: var(--brand-600);
+  color: var(--surface);
+  font-weight: 700;
+  font-size: 1rem;
+  text-decoration: none;
+  box-shadow: var(--shadow-2);
+}
+
+.login__button:focus-visible {
+  outline: 3px solid var(--brand-300);
+  outline-offset: 2px;
+}
+
+.login__empty {
+  margin: 0;
+}

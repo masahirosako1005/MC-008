@@ -2,7 +2,7 @@
  * @file townArtSimple のテスト（本物の街で、チャンクと全体図が例外なく描け、建物は1枚の四角で描くことを確かめる）
  */
 import { describe, expect, it } from 'vitest';
-import { SIMPLE_BUILDING_COLORS, paintChunk, paintOverview } from '@/presentation/screens/Map/town/townArtSimple';
+import { CALM_BUILDING_COLORS, DECAY_BUILDING, SIMPLE_BUILDING_COLORS, paintChunk, paintOverview } from '@/presentation/screens/Map/town/townArtSimple';
 import { generateTown } from '@/presentation/screens/Map/town/townGenerator';
 import { realTownInput } from '@/presentation/screens/Map/town/townGenerator.test';
 import { OVERVIEW_PX_PER_CELL } from '@/presentation/screens/Map/town/townTypes';
@@ -28,11 +28,20 @@ describe('townArtSimple', () => {
   const grid = generateTown(realTownInput());
   const state: TownPaintState = { levels: grid.districtIds.map(() => 1).concat(0), fades: [0, 0, 0.5, 0, 0, 0], territory: new Uint8Array(grid.cols * grid.rows) };
 
-  it('領地の外の建物は灰色（まだ育っていない街）で描き、色づいた建物は描かない', () => {
+  it('領地の外の建物は淡い色（まだ育っていない街。灰色にしない）で描き、色づいた建物は描かない', () => {
     const rec = recordingContext();
     expect(() => paintChunk(rec.ctx, grid, 10, 12, state)).not.toThrow();
     expect(rec.rects).toBeGreaterThan(100);
-    expect(rec.styles.has('#e5e5e8')).toBe(true);
+    expect(CALM_BUILDING_COLORS.some((c) => rec.styles.has(c))).toBe(true);
+    expect(rec.styles.has('#e6e1d8')).toBe(false);
+    expect(SIMPLE_BUILDING_COLORS.some((c) => rec.styles.has(c))).toBe(false);
+  });
+
+  it('ライバルの手に渡った所は廃れた建物（くすんだ茶色）で描く', () => {
+    const rival: TownPaintState = { ...state, territory: new Uint8Array(grid.cols * grid.rows).fill(2) };
+    const rec = recordingContext();
+    paintChunk(rec.ctx, grid, 10, 12, rival);
+    expect(rec.styles.has(DECAY_BUILDING)).toBe(true);
     expect(SIMPLE_BUILDING_COLORS.some((c) => rec.styles.has(c))).toBe(false);
   });
 

@@ -1,0 +1,241 @@
+/*
+ * @file チケットのボタン・一覧・QR の見た目（presentation/screens/Map/town）
+ * 紙のチケット（ベージュの地・切り取り線・落ち着いたオレンジ）。色は tokens.css の名前だけ（docs/10）。
+ * ボタンの置き場所（地図の左下）は MapScreen 側の CSS で決める。
+ */
+
+/* 地図の左下に浮かぶボタン */
+.ticket-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  padding: 0;
+  border: 2px solid var(--brand-200);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--brand-ink);
+  box-shadow: var(--shadow-2);
+  cursor: pointer;
+  transition: transform 0.08s ease-out;
+}
+.ticket-button svg { width: 1.6rem; height: 1.6rem; }
+.ticket-button:active { transform: scale(0.93); }
+.ticket-button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.ticket-button__badge {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3rem;
+  border: 2px solid #ffffff;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: var(--on-accent);
+  font-size: 0.6875rem;
+  font-weight: var(--fw-heavy);
+  line-height: 1rem;
+  text-align: center;
+}
+.ticket-button__badge[hidden] { display: none; }
+.ticket-button[data-pulse="1"] { animation: ticket-pulse 0.7s cubic-bezier(0.2, 1.4, 0.4, 1); }
+.ticket-button[data-pulse="1"]::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 3px solid var(--glow);
+  animation: ticket-ring 0.8s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes ticket-pulse { 0% { transform: scale(1); } 35% { transform: scale(1.28) rotate(-8deg); } 70% { transform: scale(0.94) rotate(3deg); } 100% { transform: none; } }
+@keyframes ticket-ring { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.9); } }
+
+/* 重ねる面 */
+.ticket-wallet { position: absolute; inset: 0; z-index: 22; }
+.ticket-wallet__scrim { position: absolute; inset: 0; background: var(--scrim); animation: ticket-fade 0.2s ease-out; }
+.ticket-wallet__sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 88%;
+  border-radius: var(--radius-l) var(--radius-l) 0 0;
+  background: var(--paper);
+  box-shadow: var(--shadow-sheet);
+  animation: ticket-up 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes ticket-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ticket-up { from { transform: translateY(40%); opacity: 0.4; } to { transform: none; opacity: 1; } }
+.ticket-wallet__head { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 0.5rem 0.25rem 1rem; }
+.ticket-wallet__title { margin: 0; font-size: var(--fs-l); font-weight: var(--fw-heavy); color: var(--ink); }
+.ticket-wallet__count { padding: 0.1rem 0.55rem; border-radius: var(--radius-pill); background: var(--brand-100); color: var(--brand-ink); font-size: var(--fs-xs); font-weight: var(--fw-heavy); }
+.ticket-wallet__count:empty { display: none; }
+.ticket-wallet__close {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  margin-left: auto;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--g5);
+  cursor: pointer;
+}
+.ticket-wallet__close svg { width: 1.4rem; height: 1.4rem; }
+.ticket-wallet__body { overflow-y: auto; padding: 0.5rem 1rem 1.25rem; }
+.ticket-wallet__list { display: grid; gap: 0.75rem; }
+.ticket-wallet__empty { display: grid; justify-items: center; gap: 0.5rem; margin: 1.5rem 0 2rem; color: var(--g4); font-size: var(--fs-s); font-weight: var(--fw-bold); }
+.ticket-wallet__empty svg { width: 2.75rem; height: 2.75rem; color: var(--brand-200); }
+
+/* 一覧のチケット（紙の半券） */
+.ticket-item {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 5.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.08s ease-out;
+}
+.ticket-item:active { transform: scale(0.98); }
+.ticket-item:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+/* 切り取り線の上下の欠け */
+.ticket-item::before,
+.ticket-item::after {
+  content: "";
+  position: absolute;
+  left: calc(4.75rem - 0.5rem);
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: var(--paper);
+}
+.ticket-item::before { top: -0.5rem; }
+.ticket-item::after { bottom: -0.5rem; }
+.ticket-item__stub {
+  display: grid;
+  place-items: center;
+  flex: 0 0 4.75rem;
+  border-right: 2px dashed var(--brand-200);
+  border-radius: var(--radius-m) 0 0 var(--radius-m);
+  background: var(--brand-soft);
+}
+.ticket-item__photo { display: block; border-radius: var(--radius-m); }
+.ticket-item__main { display: flex; flex-direction: column; gap: 0.1rem; flex: 1; min-width: 0; padding: 0.625rem 0.875rem; }
+.ticket-item__shop { overflow: hidden; color: var(--g4); font-size: var(--fs-xs); font-weight: var(--fw-bold); white-space: nowrap; text-overflow: ellipsis; }
+.ticket-item__title { display: -webkit-box; overflow: hidden; color: var(--ink); font-size: var(--fs-m); font-weight: var(--fw-heavy); line-height: 1.35; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ticket-item__due { align-self: flex-start; margin-top: 0.3rem; padding: 0.1rem 0.5rem; border-radius: var(--radius-pill); background: var(--brand-50); color: var(--brand-ink); font-size: var(--fs-xs); font-weight: var(--fw-heavy); }
+.ticket-item__due--soon { background: var(--deadline); color: var(--on-accent); }
+.ticket-item[data-status="used"] .ticket-item__stub,
+.ticket-item[data-status="used"] .ticket-item__main { filter: grayscale(1); opacity: 0.6; }
+.ticket-item[data-status="used"] .ticket-item__due { background: var(--g2); color: var(--g5); }
+.ticket-item__stamp {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  padding: 0.15rem 0.5rem;
+  border: 2px solid var(--danger);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--danger);
+  font-size: 0.8125rem;
+  font-weight: var(--fw-heavy);
+  transform: translateY(-50%) rotate(-12deg);
+}
+
+/* QR の表示 */
+.ticket-qr { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+.ticket-qr [hidden] { display: none !important; }
+.ticket-qr__bar { display: flex; align-items: center; gap: 0.25rem; align-self: stretch; margin-left: -0.5rem; }
+.ticket-qr__back {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--g5);
+  cursor: pointer;
+}
+.ticket-qr__back svg { width: 1.4rem; height: 1.4rem; }
+.ticket-qr__shop { overflow: hidden; color: var(--g5); font-size: var(--fs-s); font-weight: var(--fw-heavy); white-space: nowrap; text-overflow: ellipsis; }
+.ticket-qr__title { margin: 0; color: var(--ink); font-size: var(--fs-l); font-weight: var(--fw-heavy); text-align: center; }
+/* 縁に光が回る枠（生きている表示） */
+.ticket-qr__frame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 15rem;
+  height: 15rem;
+  margin: 0.5rem auto 0.25rem;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: var(--brand-100);
+  box-shadow: var(--shadow-2);
+}
+.ticket-qr__frame::before {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(from 0deg, transparent 0 58%, var(--glow) 70%, var(--brand) 80%, transparent 92%);
+  animation: ticket-spin 2.4s linear infinite;
+}
+.ticket-qr__frame::after {
+  content: "";
+  position: absolute;
+  inset: 0.3125rem;
+  border-radius: 1rem;
+  background: #ffffff;
+}
+@keyframes ticket-spin { to { transform: rotate(1turn); } }
+.ticket-qr__code { position: relative; z-index: 1; display: block; }
+.ticket-qr[data-status="used"] .ticket-qr__frame::before { animation: none; opacity: 0; }
+.ticket-qr[data-status="used"] .ticket-qr__code { filter: grayscale(1); opacity: 0.3; }
+.ticket-qr__stamp {
+  position: absolute;
+  z-index: 2;
+  padding: 0.25rem 0.875rem;
+  border: 4px double var(--danger);
+  border-radius: var(--radius-m);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--danger);
+  font-size: 1.75rem;
+  font-weight: var(--fw-heavy);
+  letter-spacing: 0.08em;
+  transform: rotate(-14deg);
+}
+.ticket-qr__frame[data-stamped="1"] .ticket-qr__stamp { animation: ticket-stamp 0.45s cubic-bezier(0.2, 1.3, 0.4, 1); }
+@keyframes ticket-stamp {
+  0% { opacity: 0; transform: rotate(-14deg) scale(2.4); }
+  60% { opacity: 1; transform: rotate(-14deg) scale(0.92); }
+  100% { opacity: 1; transform: rotate(-14deg) scale(1); }
+}
+.ticket-qr__code-text { margin: 0.25rem 0 0; color: var(--ink); font-size: 1.125rem; font-weight: var(--fw-heavy); letter-spacing: 0.12em; font-variant-numeric: tabular-nums; }
+.ticket-qr__meta { display: flex; align-items: center; gap: 0.75rem; margin: 0; color: var(--g4); font-size: var(--fs-s); font-weight: var(--fw-bold); }
+.ticket-qr__clock { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--brand-ink); font-weight: var(--fw-heavy); font-variant-numeric: tabular-nums; }
+.ticket-qr__clock::before { content: ""; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--success); animation: ticket-blink 1s steps(2, start) infinite; }
+@keyframes ticket-blink { to { opacity: 0.2; } }
+.ticket-qr__actions { align-self: stretch; margin-top: 0.75rem; }
+.ticket-qr__use { width: 100%; min-height: 3rem; font-size: var(--fs-m); }
+.ticket-qr__confirm { display: grid; grid-template-columns: 1fr 1.5fr; gap: 0.5rem; }
+.ticket-qr__confirm .btn { min-height: 3rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ticket-wallet__scrim, .ticket-wallet__sheet, .ticket-button[data-pulse="1"], .ticket-button[data-pulse="1"]::after { animation: none; }
+  .ticket-qr__frame::before, .ticket-qr__clock::before, .ticket-qr__frame[data-stamped="1"] .ticket-qr__stamp { animation: none; }
+}

@@ -3,18 +3,21 @@
  * お店・名所・公衆トイレのドット絵、看板商品の吹き出し、今日だけ・クーポンの印、行きたい・好みのハート、
  * 便利情報フィルタの強調（合うものを光らせ、合わないものを薄く）、陣地の境界と陣取りの演出、チェックインできる円、歩く道筋、地区の札。
  * 「地図だけ見ても行きたくなる」ように、看板商品をアイコンで見せる（未発見の店はシルエット＝B）。座標はログに出さない。
+ * 2026-11-10 ユーザー指示「中間は、アイコン消して、吹き出しだけに」: 中間（district）は写真ピン・ドット絵を描かず、town/middleBubbles の吹き出しだけにする。
+ * お店の声（town/shopVoices）の吹き出しは registerOverlayHits で当たり判定を足し、タップでそのお店を選べる。
  */
 import { canvasFont } from '@/Common/ui/canvas/drawUtils';
 import type { Point2D } from '@/Common/ui/canvas/geometry';
+import { PALETTE } from '@/Common/ui/theme/palette';
 import { project } from '@/presentation/screens/Map/MapViewModel';
-import type { Camera, LatLng, MapDistrictVm, Viewport } from '@/presentation/screens/Map/MapViewModel';
+import type { Camera, LatLng, Viewport } from '@/presentation/screens/Map/MapViewModel';
 import type { GoodsInfo } from '@/presentation/screens/Map/town/goods';
+import { drawMiddleBubbles, layoutMiddleBubbles } from '@/presentation/screens/Map/town/middleBubbles';
+import type { MiddleCallout } from '@/presentation/screens/Map/town/middleBubbles';
 import { drawGoodsPhoto } from '@/presentation/screens/Map/town/goodsPhoto';
 import { badgeSpriteSize, drawBadge, drawGoods, drawLandmark, drawToilet, goodsSpriteSize, landmarkSpriteSize, shopSpriteSize } from '@/presentation/screens/Map/town/pixelSprites';
 import type { BadgeSprite, LandmarkSprite } from '@/presentation/screens/Map/town/pixelSprites';
-import type { TerritoryModel } from '@/presentation/screens/Map/town/territory';
-import type { GridTransform } from '@/presentation/screens/Map/town/townRenderer';
-import { TERRITORY_MINE_COLOR, TERRITORY_RIVAL_COLOR } from '@/presentation/screens/Map/town/townTypes';
+import { TERRITORY_MINE_COLOR } from '@/presentation/screens/Map/town/townTypes';
 
 /** 地図の寄り具合（広域・中間・詳細） */
 export type SceneTier = 'wide' | 'district' | 'near';
@@ -55,6 +58,8 @@ export interface SceneSpot {
   readonly nursing?: boolean;
   /** 見た目のばらつき */
   readonly seed: number;
+  /** 地区の色（中間の名所の札に使う。便利施設は無し） */
+  readonly districtColor?: string;
 }
 
 /** 毎フレームの描画の入力 */
@@ -73,6 +78,10 @@ export interface SceneInput {
   readonly inRange: ReadonlySet<string>;
   /** お店の写真ピンの伸び縮み（チェックインの演出中だけ。横・縦の倍率） */
   readonly pinScale?: (spotId: string) => readonly [number, number];
+  /** 中間の吹き出しを置かない場所（地区の布の旗など。画面座標の矩形） */
+  readonly reserved?: readonly { readonly x: number; readonly y: number; readonly w: number; readonly h: number }[];
+  /** 浮いている部品（上の絞り込みの列・下の左右の部品・お店カード）の下になるので描かないスポット（詳細の表示。地図を動かせばまた出る） */
+  readonly hidden?: ReadonlySet<string>;
 }
 
 /** 画面に置いたスポット */
@@ -93,19 +102,32 @@ export interface PlacedSpot {
   readonly label: boolean;
   /** お店の写真ピンの一辺（CSS px。お店以外・点で描くときは 0） */
   readonly pin: number;
+  /** 中間の吹き出し（中間で吹き出しを置けたときだけ。置けなければ点だけ） */
+  readonly callout?: MiddleCallout;
 }
 
-/** 陣取りの演出 */
-export interface ClaimAnimation {
-  readonly cells: readonly number[];
-  readonly maxDist: number;
-  readonly center: { readonly col: number; readonly row: number };
-  readonly startedAt: number;
-  readonly gained: number;
+/** 画面に重ねた当たり判定（お店の声の吹き出しなど。置いたスポットの配列ごとに覚える） */
+export interface OverlayHit {
+  readonly spotId: string;
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
 }
 
-/** 陣取りの演出の時間（ミリ秒） */
-export const CLAIM_ANIMATION_MS = 1900;
+/** 置いたスポットの配列 → その上に重ねた当たり判定（フレームごとに配列が変わるので WeakMap で持つ） */
+const overlayHits = new WeakMap<readonly PlacedSpot[], readonly OverlayHit[]>();
+
+/**
+ * 置いたスポットの上に重ねて描いたもの（お店の声の吹き出し）の当たり判定を覚える。hitTestScene がスポットより先に調べる。
+ * @param placed 置いたスポット（placeSpots の戻り値そのもの）
+ * @param hits 当たり判定（後のものほど手前）
+ * @sideEffect 当たり判定を覚える（前の分は置き換える）
+ */
+export function registerOverlayHits(placed: readonly PlacedSpot[], hits: readonly OverlayHit[]): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  overlayHits.set(placed, hits);
+}
+
 /** インクの色（輪郭・文字） */
 const INK = '#2b2a3a';
 
@@ -139,6 +161,8 @@ function spriteBox(spot: SceneSpot): { w: number; h: number } { // audit-ignore:
  * @returns 置いたスポット
  */
 export function placeSpots(spots: readonly SceneSpot[], input: SceneInput): PlacedSpot[] { // audit-ignore: fnlog-missing 毎フレーム描画
+  // 中間はアイコンを描かず吹き出しだけ（2026-11-10 ユーザー指示）
+  if (input.tier === 'district') return layoutMiddleBubbles(spots, input);
   const out: PlacedSpot[] = [];
   const pad = 80;
   for (const spot of spots) {
@@ -151,8 +175,8 @@ export function placeSpots(spots: readonly SceneSpot[], input: SceneInput): Plac
     const scale = input.tier === 'wide' && emphasized && spot.kind !== 'landmark' ? 1 : match === true && input.tier !== 'near' ? base + 0.5 : base;
     const box = spriteBox(spot);
     const bubble = spot.kind === 'shop' && spot.goods !== undefined && (input.tier !== 'wide' || emphasized) && match !== false;
-    // 広域は地区の札を主役にし、スポットの名前は出さない（寄ると出る）
-    const label = spot.name !== undefined && match !== false && (input.tier === 'near' || (input.tier === 'district' && (emphasized || spot.kind === 'landmark')));
+    // 広域は地区の札を主役にし、スポットの名前は出さない（詳細で出る。中間は middleBubbles）
+    const label = spot.name !== undefined && match !== false && input.tier === 'near';
     const pin = spot.kind === 'shop' && (input.tier !== 'wide' || emphasized) ? pinSize(input.tier, match === true || spot.id === input.selectedId) : 0;
     if (pin > 0) {
       out.push({ spot, x: p.x, y: p.y, scale, match, bubble: false, label, pin, hit: { x: p.x - pin / 2 - 6, y: p.y - pin - PIN_TAIL_PX - 8, w: pin + 12, h: pin + PIN_TAIL_PX + 14 } });
@@ -173,6 +197,13 @@ export function placeSpots(spots: readonly SceneSpot[], input: SceneInput): Plac
  * @returns スポット（無ければ undefined）
  */
 export function hitTestScene(placed: readonly PlacedSpot[], tap: Point2D): SceneSpot | undefined { // audit-ignore: fnlog-missing タップごとに呼ぶ純粋な判定ヘルパー
+  const extra = overlayHits.get(placed) ?? [];
+  for (let k = extra.length - 1; k >= 0; k--) {
+    const r = extra[k];
+    if (r === undefined || tap.x < r.x || tap.x > r.x + r.w || tap.y < r.y || tap.y > r.y + r.h) continue;
+    const hit = placed.find((p) => p.spot.id === r.spotId && p.match !== false);
+    if (hit !== undefined) return hit.spot;
+  }
   for (let k = placed.length - 1; k >= 0; k--) {
     const p = placed[k];
     if (p === undefined || p.match === false) continue;
@@ -200,11 +231,83 @@ export function hitTestScene(placed: readonly PlacedSpot[], tap: Point2D): Scene
  * @sideEffect canvas に描く
  */
 export function drawSpots(ctx: CanvasRenderingContext2D, placed: readonly PlacedSpot[], input: SceneInput): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  if (input.tier === 'district') {
+    drawMiddleBubbles(ctx, placed, input);
+    return;
+  }
   const labels: { x: number; y: number; w: number; h: number }[] = [];
-  for (const p of placed) drawOneSpot(ctx, p, input);
+  const shown = input.hidden === undefined ? placed : placed.filter((p) => input.hidden?.has(p.spot.id) !== true);
+  for (const p of shown) drawOneSpot(ctx, p, input);
   // 名前は大事なもの（選択中・行きたい・今日だけ）から、重ならない分だけ
-  const order = [...placed].filter((p) => p.label).sort((a, b) => labelPriority(b, input) - labelPriority(a, input));
+  const order = shown.filter((p) => p.label).sort((a, b) => labelPriority(b, input) - labelPriority(a, input));
   for (const p of order) drawLabel(ctx, p, input, labels);
+}
+
+/**
+ * スポットの絵（写真ピン・今日の札・名前の札）が占める矩形を返す（浮いている部品と重なるかの判定用。詳細の表示）。
+ * @param p 置いたスポット
+ * @param textScale 文字の拡大率
+ * @returns 矩形（画面座標）
+ */
+function spotFootprint(p: PlacedSpot, textScale: number): { x: number; y: number; w: number; h: number } { // audit-ignore: fnlog-missing 毎フレーム描画
+  const labelW = p.label ? (p.spot.name?.length ?? 0) * 11 * textScale + 8 : 0;
+  const half = Math.max(p.hit.w / 2, labelW / 2);
+  const top = p.hit.y - (p.spot.today === undefined ? 0 : 20);
+  const bottom = Math.max(p.hit.y + p.hit.h, p.label ? p.y + 3 + 15 * textScale : 0);
+  return { x: p.x - half, y: top, w: half * 2, h: bottom - top };
+}
+
+/**
+ * 詳細の表示で出ているお店の写真ピンと、お店・名所の名前の札の矩形を返す（「あなた」の札と重ねないための判定用。札の幅は文字数からの見積もり）。
+ * @param placed 置いたスポット
+ * @param input 描画の入力
+ * @returns 矩形（画面座標。詳細の表示でなければ空）
+ */
+export function spotLabelBoxes(placed: readonly PlacedSpot[], input: SceneInput): { x: number; y: number; w: number; h: number }[] { // audit-ignore: fnlog-missing 毎フレーム描画
+  if (input.tier !== 'near') return [];
+  const boxes: { x: number; y: number; w: number; h: number }[] = [];
+  for (const p of placed) {
+    if (input.hidden?.has(p.spot.id) === true) continue;
+    if (p.pin > 0) boxes.push({ ...p.hit });
+    if (!p.label) continue;
+    const w = (p.spot.name?.length ?? 0) * 11 * input.textScale + 8;
+    boxes.push({ x: p.x - w / 2, y: p.y + 3, w, h: 15 * input.textScale });
+  }
+  return boxes;
+}
+
+/**
+ * 浮いている部品の下になるスポットを選ぶ（詳細の表示で、部品がピン・名前の札を隠さないよう、重なるものは描かない）。
+ * @param placed 置いたスポット
+ * @param boxes 浮いている部品の矩形（画面座標。空なら何も隠さない）
+ * @param textScale 文字の拡大率
+ * @param keepId 隠さないスポット（カードを開いているスポット）
+ * @returns 描かないスポットの ID
+ */
+export function hiddenUnder(placed: readonly PlacedSpot[], boxes: readonly { readonly x: number; readonly y: number; readonly w: number; readonly h: number }[], textScale: number, keepId: string | undefined): ReadonlySet<string> { // audit-ignore: fnlog-missing 毎フレーム描画
+  const hidden = new Set<string>();
+  if (boxes.length === 0) return hidden;
+  for (const p of placed) {
+    if (p.spot.id === keepId) continue;
+    const f = spotFootprint(p, textScale);
+    if (boxes.some((r) => f.x < r.x + r.w && f.x + f.w > r.x && f.y < r.y + r.h && f.y + f.h > r.y)) hidden.add(p.spot.id);
+  }
+  return hidden;
+}
+
+/**
+ * 詳細の表示で、人のアバターに隠れた名前の札だけを人より手前に描き直す（drawSpots と同じ順・同じ置き方で、重なるものだけ描く）。
+ * @param ctx 2D コンテキスト
+ * @param placed 置いたスポット
+ * @param input 描画の入力
+ * @param boxes 人が占める矩形（画面座標）
+ * @sideEffect canvas に描く
+ */
+export function drawLabelsOver(ctx: CanvasRenderingContext2D, placed: readonly PlacedSpot[], input: SceneInput, boxes: readonly { x: number; y: number; w: number; h: number }[]): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  if (input.tier !== 'near' || boxes.length === 0) return;
+  const labels: { x: number; y: number; w: number; h: number }[] = [];
+  const order = placed.filter((p) => p.label && input.hidden?.has(p.spot.id) !== true).sort((a, b) => labelPriority(b, input) - labelPriority(a, input));
+  for (const p of order) drawLabel(ctx, p, input, labels, boxes);
 }
 
 /**
@@ -246,7 +349,7 @@ function drawOneSpot(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneI
     return;
   }
   drawShadow(ctx, p.x, p.y, box.w * p.scale * 0.42);
-  if (s.id === input.selectedId) drawGlow(ctx, p.x, p.y - h * 0.45, Math.max(box.w, box.h) * p.scale * 0.62, '#1e6bff', input.t);
+  if (s.id === input.selectedId) drawGlow(ctx, p.x, p.y - h * 0.45, Math.max(box.w, box.h) * p.scale * 0.62, '#bc5b1b', input.t);
   if (s.kind === 'landmark' && s.landmark !== undefined) drawLandmark(ctx, s.landmark, p.x, p.y, p.scale, { faded });
   else drawToilet(ctx, p.x, p.y, p.scale, { nursing: s.nursing === true });
   drawMarks(ctx, p, input, p.x + (box.w * p.scale) / 2 - 2, p.y - h + 4);
@@ -271,6 +374,47 @@ function pinSize(tier: SceneTier, emphasized: boolean): number { // audit-ignore
   return emphasized ? base + 8 : base;
 }
 
+/** 写真ピンの枠の形（左上・一辺・角の丸み・縁の色・しっぽの先） */
+interface PinFrame {
+  readonly x: number;
+  readonly tipY: number;
+  readonly left: number;
+  readonly top: number;
+  readonly size: number;
+  readonly radius: number;
+  readonly ring: string;
+}
+
+/**
+ * 写真ピンの枠を描く（柔らかい影・地面を指すしっぽ・色の縁。縁に色があるときは内側に白い細い縁）。
+ * @param ctx 2D コンテキスト
+ * @param frame 枠の形
+ * @sideEffect canvas に描く
+ */
+function drawPinFrame(ctx: CanvasRenderingContext2D, frame: PinFrame): void { // audit-ignore: fnlog-missing 毎フレーム描画
+  const { x, tipY, left, top, size, radius, ring } = frame;
+  const f = PIN_FRAME_PX;
+  ctx.fillStyle = 'rgba(30, 30, 50, 0.22)';
+  ctx.beginPath();
+  ctx.roundRect(left - f + 1, top - f + 3, size + f * 2, size + f * 2, radius + f);
+  ctx.fill();
+  ctx.fillStyle = ring;
+  ctx.beginPath();
+  ctx.moveTo(x - 6, top + size);
+  ctx.lineTo(x + 6, top + size);
+  ctx.lineTo(x, tipY - 1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(left - f, top - f, size + f * 2, size + f * 2, radius + f);
+  ctx.fill();
+  if (ring === '#ffffff') return;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.roundRect(left - 1, top - 1, size + 2, size + 2, radius + 1);
+  ctx.fill();
+}
+
 /**
  * お店を「写真ピン」で描く（白い縁の角丸の写真＋地面を指すしっぽ。訪問済みは朱・行きたいはピンク・今日だけは黄の縁）。
  * 未発見の店は写真をぼかしたシルエットにして「？」を重ねる（何のお店かは近づくと分かる＝B）。
@@ -291,35 +435,14 @@ function drawShopPin(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneI
   const ring = s.today?.hot === true ? '#ffc83d' : s.want ? '#ff8fab' : s.status === 'visited' ? TERRITORY_MINE_COLOR : '#ffffff';
   drawShadow(ctx, p.x, p.y, Math.max(4, size * 0.22));
   // 2026-11-09 ユーザー指示「フィルターするときにお店のサークル（外枠）いらない」: 輪は選択中のお店だけ
-  if (s.id === input.selectedId) drawGlow(ctx, p.x, top + size / 2, size * 0.7, '#1e6bff', input.t);
+  if (s.id === input.selectedId) drawGlow(ctx, p.x, top + size / 2, size * 0.7, '#bc5b1b', input.t);
   const squash = input.pinScale?.(s.id);
   if (squash !== undefined && (squash[0] !== 1 || squash[1] !== 1)) {
     ctx.translate(p.x, p.y);
     ctx.scale(squash[0], squash[1]);
     ctx.translate(-p.x, -p.y);
   }
-  // 柔らかい影
-  ctx.fillStyle = 'rgba(30, 30, 50, 0.22)';
-  ctx.beginPath();
-  ctx.roundRect(left - f + 1, top - f + 3, size + f * 2, size + f * 2, radius + f);
-  ctx.fill();
-  // しっぽと縁
-  ctx.fillStyle = ring;
-  ctx.beginPath();
-  ctx.moveTo(p.x - 6, top + size);
-  ctx.lineTo(p.x + 6, top + size);
-  ctx.lineTo(p.x, p.y - 1);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.roundRect(left - f, top - f, size + f * 2, size + f * 2, radius + f);
-  ctx.fill();
-  if (ring !== '#ffffff') {
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.roundRect(left - 1, top - 1, size + 2, size + 2, radius + 1);
-    ctx.fill();
-  }
+  drawPinFrame(ctx, { x: p.x, tipY: p.y, left, top, size, radius, ring });
   drawGoodsPhoto(ctx, s.goods?.icon ?? 'gift', left, top, size, { silhouette, radius });
   if (s.status === 'visited' && s.fade > 0.05) {
     ctx.fillStyle = `rgba(238, 238, 238, ${Math.min(0.6, s.fade * 0.6)})`;
@@ -328,7 +451,7 @@ function drawShopPin(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneI
     ctx.fill();
   }
   if (silhouette) drawQuestion(ctx, p.x, top + size / 2, size, input.textScale);
-  if (s.today !== undefined && input.tier !== 'wide') drawTodayTag(ctx, p.x, top - f - 2, s.today.hot ? s.today.tag : s.today.tag, s.today.hot, input.textScale);
+  if (s.today !== undefined && input.tier !== 'wide') drawTodayTag(ctx, p.x, top - f - 2, s.today.tag, s.today.hot, input.textScale);
   drawMarks(ctx, p, input, left + size + f, top + 2);
   if (s.id === input.selectedId) drawSelectArrow(ctx, p.x, top - f - (s.today !== undefined ? 16 : 3), input.t);
 }
@@ -344,7 +467,7 @@ function drawShopPin(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneI
  */
 function drawQuestion(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, textScale: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
   ctx.save();
-  ctx.font = canvasFont(Math.max(11, size * 0.42), 900, Math.min(textScale, 1.15));
+  ctx.font = canvasFont(Math.max(11, size * 0.42), 800, Math.min(textScale, 1.15));
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineWidth = 3;
@@ -367,17 +490,17 @@ function drawQuestion(ctx: CanvasRenderingContext2D, x: number, y: number, size:
  */
 function drawTodayTag(ctx: CanvasRenderingContext2D, x: number, bottom: number, text: string, hot: boolean, textScale: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
   ctx.save();
-  ctx.font = canvasFont(9, 900, Math.min(textScale, 1.15));
+  ctx.font = canvasFont(11, 800, Math.min(textScale, 1.15));
   const w = ctx.measureText(text).width + 10;
-  const h = 14;
+  const h = 16;
   ctx.fillStyle = hot ? '#ffc83d' : '#ffffff';
-  ctx.strokeStyle = hot ? '#e0a100' : 'rgba(30, 107, 255, 0.6)';
+  ctx.strokeStyle = hot ? '#e0a100' : 'rgba(188, 91, 27, 0.6)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.roundRect(x - w / 2, bottom - h, w, h, 7);
+  ctx.roundRect(x - w / 2, bottom - h, w, h, 8);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = hot ? INK : '#1556d6';
+  ctx.fillStyle = hot ? INK : '#a54c14';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, x, bottom - h / 2 + 0.5);
@@ -538,7 +661,7 @@ function drawSelectArrow(ctx: CanvasRenderingContext2D, x: number, y: number, t:
   ctx.fillRect(Math.round(x - 7), top - 1, 14, 6);
   ctx.fillRect(Math.round(x - 5), top + 5, 10, 3);
   ctx.fillRect(Math.round(x - 3), top + 8, 6, 3);
-  ctx.fillStyle = '#1e6bff';
+  ctx.fillStyle = '#bc5b1b';
   ctx.fillRect(Math.round(x - 6), top, 12, 4);
   ctx.fillRect(Math.round(x - 4), top + 4, 8, 3);
   ctx.fillRect(Math.round(x - 2), top + 7, 4, 3);
@@ -550,9 +673,10 @@ function drawSelectArrow(ctx: CanvasRenderingContext2D, x: number, y: number, t:
  * @param p 置いたスポット
  * @param input 描画の入力
  * @param taken 描いた札の矩形
+ * @param onlyOver 渡したときは、この矩形のどれかに重なる札だけを描く（人の手前に描き直すとき）
  * @sideEffect canvas に描く。taken に追加する
  */
-function drawLabel(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneInput, taken: { x: number; y: number; w: number; h: number }[]): void { // audit-ignore: fnlog-missing 毎フレーム描画
+function drawLabel(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneInput, taken: { x: number; y: number; w: number; h: number }[], onlyOver?: readonly { x: number; y: number; w: number; h: number }[]): void { // audit-ignore: fnlog-missing 毎フレーム描画
   const s = p.spot;
   const text = s.today?.hot === true && input.tier === 'near' ? `${s.name ?? ''}` : (s.name ?? '');
   if (text === '') return;
@@ -562,6 +686,7 @@ function drawLabel(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneInp
   const rect = { x: p.x - w / 2, y: p.y + 3, w, h };
   if (taken.some((r) => rect.x < r.x + r.w && rect.x + rect.w > r.x && rect.y < r.y + r.h && rect.y + rect.h > r.y)) return;
   taken.push(rect);
+  if (onlyOver !== undefined && !onlyOver.some((r) => rect.x < r.x + r.w && rect.x + rect.w > r.x && rect.y < r.y + r.h && rect.y + rect.h > r.y)) return;
   ctx.save();
   ctx.globalAlpha = p.match === false ? 0.3 : 1;
   ctx.fillStyle = s.want ? '#ffe3ea' : s.status === 'visited' ? '#fff1ea' : 'rgba(255,255,255,0.92)';
@@ -579,112 +704,6 @@ function drawLabel(ctx: CanvasRenderingContext2D, p: PlacedSpot, input: SceneInp
 }
 
 /**
- * 陣地の境界線を描く（自分は朱の実線、ライバルは紫の破線。白い縁で地図から浮かせる）。
- * @param ctx 2D コンテキスト
- * @param territory 陣地
- * @param tr セル → 画面の変換
- * @param vp 描画領域
- * @param t 現在時刻
- * @sideEffect canvas に描く
- */
-export function drawTerritoryEdges(ctx: CanvasRenderingContext2D, territory: TerritoryModel, tr: GridTransform, vp: Viewport, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  const width = tr.cellW < 2 ? 1.5 : 2.5;
-  strokeEdges(ctx, territory.rivalEdges, tr, vp, { color: TERRITORY_RIVAL_COLOR, width, dash: [5, 4], offset: t / 80 });
-  strokeEdges(ctx, territory.mineEdges, tr, vp, { color: TERRITORY_MINE_COLOR, width, dash: [], offset: 0 });
-}
-
-/**
- * 線分の集まりを、白い縁つきで描く（画面外の線分は飛ばす）。
- * @param ctx 2D コンテキスト
- * @param edges [c0, r0, c1, r1, ...]
- * @param tr 変換
- * @param vp 描画領域
- * @param style 色・太さ・破線
- * @sideEffect canvas に描く
- */
-function strokeEdges(ctx: CanvasRenderingContext2D, edges: Float32Array, tr: GridTransform, vp: Viewport, style: { color: string; width: number; dash: number[]; offset: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  if (edges.length === 0) return;
-  const path = new Path2D();
-  for (let k = 0; k < edges.length; k += 4) {
-    const x0 = tr.ox + (edges[k] ?? 0) * tr.cellW;
-    const y0 = tr.oy + (edges[k + 1] ?? 0) * tr.cellH;
-    const x1 = tr.ox + (edges[k + 2] ?? 0) * tr.cellW;
-    const y1 = tr.oy + (edges[k + 3] ?? 0) * tr.cellH;
-    if (Math.max(x0, x1) < -4 || Math.min(x0, x1) > vp.width + 4 || Math.max(y0, y1) < -4 || Math.min(y0, y1) > vp.height + 4) continue;
-    path.moveTo(x0, y0);
-    path.lineTo(x1, y1);
-  }
-  ctx.save();
-  ctx.lineCap = 'square';
-  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-  ctx.lineWidth = style.width + 2.5;
-  ctx.stroke(path);
-  ctx.strokeStyle = style.color;
-  ctx.lineWidth = style.width;
-  ctx.setLineDash(style.dash);
-  ctx.lineDashOffset = -style.offset;
-  ctx.stroke(path);
-  ctx.restore();
-}
-
-/**
- * 陣取りの演出（新しく取ったマスが中心から波のように色づき、「+n マス」が浮かぶ）。
- * @param ctx 2D コンテキスト
- * @param anim 演出
- * @param cols 街の列数
- * @param tr 変換
- * @param t 現在時刻
- * @param textScale 文字の拡大率
- * @returns まだ続くなら true
- * @sideEffect canvas に描く
- */
-export function drawClaimAnimation(ctx: CanvasRenderingContext2D, anim: ClaimAnimation, cols: number, tr: GridTransform, t: number, textScale: number): boolean { // audit-ignore: fnlog-missing 毎フレーム描画
-  const elapsed = t - anim.startedAt;
-  if (elapsed > CLAIM_ANIMATION_MS) return false;
-  const spread = CLAIM_ANIMATION_MS * 0.55;
-  ctx.save();
-  for (const i of anim.cells) {
-    const c = i % cols;
-    const r = (i - c) / cols;
-    const d = Math.hypot(c - anim.center.col, r - anim.center.row);
-    const local = elapsed - (anim.maxDist > 0 ? (d / anim.maxDist) * spread : 0);
-    if (local < 0) continue;
-    const k = Math.min(1, local / 380);
-    const pop = 1 + (1 - k) * 0.6;
-    const w = tr.cellW * pop;
-    const h = tr.cellH * pop;
-    ctx.globalAlpha = (1 - k) * 0.85 + 0.15 * (1 - elapsed / CLAIM_ANIMATION_MS);
-    ctx.fillStyle = k < 0.5 ? '#fff3a8' : TERRITORY_MINE_COLOR;
-    ctx.fillRect(tr.ox + (c + 0.5) * tr.cellW - w / 2, tr.oy + (r + 0.5) * tr.cellH - h / 2, w, h);
-  }
-  const cx = tr.ox + (anim.center.col + 0.5) * tr.cellW;
-  const cy = tr.oy + (anim.center.row + 0.5) * tr.cellH;
-  const ring = (elapsed / CLAIM_ANIMATION_MS) * (anim.maxDist + 4) * tr.cellW;
-  ctx.globalAlpha = Math.max(0, 1 - elapsed / CLAIM_ANIMATION_MS);
-  ctx.strokeStyle = TERRITORY_MINE_COLOR;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(cx, cy, ring, 0, Math.PI * 2);
-  ctx.stroke();
-  const rise = Math.min(1, elapsed / 500);
-  ctx.globalAlpha = elapsed < CLAIM_ANIMATION_MS * 0.75 ? 1 : Math.max(0, (CLAIM_ANIMATION_MS - elapsed) / (CLAIM_ANIMATION_MS * 0.25));
-  ctx.font = canvasFont(18, 900, textScale);
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.lineWidth = 5;
-  ctx.strokeStyle = '#ffffff';
-  // gained が 0 のときは文字を出さない（チェックインでは、ごほうびの帯が「領地 +n マス」を数え上げる）
-  if (anim.gained > 0) {
-    const label = `領地 +${anim.gained}マス！`;
-    ctx.strokeText(label, cx, cy - 46 - rise * 18);
-    ctx.fillStyle = TERRITORY_MINE_COLOR;
-    ctx.fillText(label, cx, cy - 46 - rise * 18);
-  }
-  ctx.restore();
-  return true;
-}
-
-/**
  * チェックインできる範囲の円（自分の位置が中心。中に入ったスポットはチェックインできる）。
  * @param ctx 2D コンテキスト
  * @param center 自分の画面座標
@@ -692,30 +711,32 @@ export function drawClaimAnimation(ctx: CanvasRenderingContext2D, anim: ClaimAni
  * @param label 円に添える文字（無ければ添えない）
  * @param textScale 文字の拡大率
  * @param t 現在時刻
+ * @param band 文字を置いてよい上下の範囲（浮いている部品の下に入れない。円の上の位置がこの外なら添えない）
  * @sideEffect canvas に描く
  */
-export function drawCheckInCircle(ctx: CanvasRenderingContext2D, center: Point2D, radiusPx: number, label: string | undefined, textScale: number, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+export function drawCheckInCircle(ctx: CanvasRenderingContext2D, center: Point2D, radiusPx: number, label: string | undefined, textScale: number, t: number, band?: { readonly top: number; readonly bottom: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
   if (radiusPx < 6) return;
   ctx.save();
-  ctx.fillStyle = 'rgba(30, 107, 255, 0.09)';
+  ctx.fillStyle = 'rgba(188, 91, 27, 0.09)';
   ctx.beginPath();
   ctx.arc(center.x, center.y, radiusPx, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.9)';
   ctx.lineWidth = 4;
   ctx.stroke();
-  ctx.strokeStyle = '#1e6bff';
+  ctx.strokeStyle = '#bc5b1b';
   ctx.lineWidth = 2;
   ctx.setLineDash([7, 5]);
   ctx.lineDashOffset = -t / 70;
   ctx.stroke();
-  if (label !== undefined) {
+  const y = center.y - radiusPx - 9;
+  const fits = band === undefined || (y - 8 >= band.top && y + 8 <= band.bottom);
+  if (label !== undefined && fits) {
     ctx.setLineDash([]);
-    ctx.font = canvasFont(10, 800, textScale);
+    ctx.font = canvasFont(11, 800, textScale);
     const w = ctx.measureText(label).width + 10;
     const x = center.x - w / 2;
-    const y = center.y - radiusPx - 9;
-    ctx.fillStyle = '#1e6bff';
+    ctx.fillStyle = '#bc5b1b';
     ctx.beginPath();
     ctx.roundRect(x, y - 8, w, 16, 8);
     ctx.fill();
@@ -744,82 +765,11 @@ export function drawRoute(ctx: CanvasRenderingContext2D, points: readonly Point2
   ctx.strokeStyle = 'rgba(255,255,255,0.95)';
   ctx.lineWidth = 7;
   ctx.stroke();
-  ctx.strokeStyle = '#1e6bff';
+  ctx.strokeStyle = '#bc5b1b';
   ctx.lineWidth = 3.5;
   ctx.setLineDash([2, 7]);
   ctx.lineDashOffset = -t / 40;
   ctx.stroke();
-  ctx.restore();
-}
-
-/**
- * 地区の札（広域・中間。地区名と Lv、自分が主なら王冠、ライバルが主なら紫の旗、色あせの札）。
- * @param ctx 2D コンテキスト
- * @param districts 地区
- * @param camera カメラ
- * @param vp 描画領域
- * @param tier 寄り具合
- * @param mineByDistrict 地区ごとの自分の陣地（マス）
- * @param textScale 文字の拡大率
- * @sideEffect canvas に描く
- */
-export function drawDistrictLabels(ctx: CanvasRenderingContext2D, districts: readonly MapDistrictVm[], camera: Camera, vp: Viewport, tier: SceneTier, mineByDistrict: ReadonlyMap<string, number>, textScale: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  if (tier === 'near') return;
-  for (const d of districts) {
-    const p = project(camera, vp, d.center);
-    if (p.x < -60 || p.y < -30 || p.x > vp.width + 60 || p.y > vp.height + 30) continue;
-    const mine = mineByDistrict.get(d.id) ?? 0;
-    const sub = mine > 0 ? `領地 ${mine}マス` : undefined;
-    drawDistrictPill(ctx, { x: p.x, y: tier === 'wide' ? p.y : p.y - 40 }, d, sub, textScale, tier === 'wide' ? 13 : 11);
-  }
-}
-
-/**
- * 地区の札を1つ描く。
- * @param ctx 2D コンテキスト
- * @param at 中心
- * @param d 地区
- * @param sub 下の小さな文字
- * @param textScale 文字の拡大率
- * @param size 文字の大きさ（px）
- * @sideEffect canvas に描く
- */
-function drawDistrictPill(ctx: CanvasRenderingContext2D, at: Point2D, d: MapDistrictVm, sub: string | undefined, textScale: number, size: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  ctx.save();
-  ctx.font = canvasFont(size, 900, textScale);
-  const title = d.label;
-  const w = ctx.measureText(title).width + 22 + (d.isLordMe ? 14 : 0);
-  const h = (size + 10) * textScale;
-  const x = at.x - w / 2;
-  const y = at.y - h / 2;
-  ctx.globalAlpha = 0.95 * Math.max(0.55, d.fade.alpha);
-  ctx.fillStyle = INK;
-  ctx.beginPath();
-  ctx.roundRect(x - 1.5, y - 1.5, w + 3, h + 3, 7);
-  ctx.fill();
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, 6);
-  ctx.fill();
-  ctx.fillStyle = d.color;
-  ctx.fillRect(x + 6, y + 4, 4, h - 8);
-  ctx.fillStyle = INK;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(title, x + 14, at.y + 0.5);
-  if (d.isLordMe) drawBadge(ctx, 'crown', x + w - 10, at.y, 1);
-  if (sub !== undefined || d.fadeTag !== undefined) {
-    const text = [sub, d.fadeTag].filter((v) => v !== undefined).join('・');
-    ctx.font = canvasFont(9, 800, textScale);
-    const sw = ctx.measureText(text).width + 10;
-    ctx.fillStyle = d.fadeTag !== undefined ? '#8a8fa3' : TERRITORY_MINE_COLOR;
-    ctx.beginPath();
-    ctx.roundRect(at.x - sw / 2, y + h + 2, sw, 14 * textScale, 7);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.fillText(text, at.x, y + h + 2 + 7 * textScale);
-  }
   ctx.restore();
 }
 
@@ -842,22 +792,31 @@ export function drawDiscoveryRing(ctx: CanvasRenderingContext2D, at: Point2D, k:
 }
 
 /**
- * 出典の小さな文字（右上・フィルタの列の下）。公衆トイレの位置は OpenStreetMap のデータを使っているため表示する（ODbL）。
+ * 出典の小さな文字（右下のすみ。淡い地の細い帯に 10px）。公衆トイレの位置は OpenStreetMap のデータを使っているため表示する（ODbL）。
+ * 上の絞り込みの列・右のお店の列・下の左右の部品のどれにも重ならない位置に固定する（2026-11-10 UI/UX 改善）。
  * @param ctx 2D コンテキスト
  * @param text 出典
  * @param vp 描画領域
  * @param textScale 文字の拡大率
+ * @param lift 下端から持ち上げる高さ（CSS px。お店カードを開いている間はカードのすぐ上へ逃がす。0 なら右下のすみ）
  * @sideEffect canvas に描く
  */
-export function drawAttribution(ctx: CanvasRenderingContext2D, text: string, vp: Viewport, textScale: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
+export function drawAttribution(ctx: CanvasRenderingContext2D, text: string, vp: Viewport, textScale: number, lift = 0): void { // audit-ignore: fnlog-missing 毎フレーム描画
   ctx.save();
-  ctx.font = canvasFont(8, 600, textScale);
+  ctx.font = canvasFont(10, 400, textScale);
   ctx.textAlign = 'right';
-  ctx.textBaseline = 'top';
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-  ctx.strokeText(text, vp.width - 6, 58);
-  ctx.fillStyle = 'rgba(43,42,58,0.75)';
-  ctx.fillText(text, vp.width - 6, 58);
+  ctx.textBaseline = 'middle';
+  const bandH = Math.round(14 * textScale);
+  const bandW = Math.ceil(ctx.measureText(text).width) + 12;
+  const bottom = vp.height - lift;
+  ctx.globalAlpha = 0.88;
+  ctx.fillStyle = PALETTE.paper;
+  ctx.beginPath();
+  if (lift > 0) ctx.roundRect(vp.width - bandW - 10, bottom - bandH, bandW, bandH, bandH / 2);
+  else ctx.roundRect(vp.width - bandW, bottom - bandH, bandW + 8, bandH + 8, 6);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = PALETTE.subInk;
+  ctx.fillText(text, vp.width - (lift > 0 ? 16 : 6), bottom - bandH / 2);
   ctx.restore();
 }

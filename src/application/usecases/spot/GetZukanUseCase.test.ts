@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type { Result } from '@/Common/result/Result';
 import { createTestWorld, must, seedTraveler } from '@/application/testing/fakes';
 import { familiarityOf, GetZukanUseCase, nextFamiliarityText } from '@/application/usecases/spot/GetZukanUseCase';
-import { GetTownStateUseCase } from '@/application/usecases/town/GetTownStateUseCase';
 
 /** 失敗コードを取り出す（成功なら undefined） */
 function codeOf(result: Result<unknown>): string | undefined {

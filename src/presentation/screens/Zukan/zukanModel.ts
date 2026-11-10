@@ -31,7 +31,7 @@ export const STATUS_FILTERS: readonly { readonly value: ZukanStatusFilter; reado
 ];
 
 /** 絞り込みで1枚も残らなかったときの文言 */
-export const EMPTY_FILTER_TEXT = 'この条件のカードはまだありません';
+export const EMPTY_FILTER_TEXT = 'なし';
 
 /** なじみ度の最高段階（星の数） */
 export const MAX_FAMILIARITY = 3;
@@ -67,15 +67,15 @@ export function tileName(tile: ZukanTileDto): string {
 }
 
 /**
- * タイルの補足。訪問済みは次のなじみ度まで（最高段階なら呼び名）、発見済みは「まだ行っていない」、未発見は「未発見」。
- * 未発見の見つけ方はカードには出さず、拡大プレビューの「取得方法」と読み上げ名で伝える。
+ * タイルの補足。訪問済みは次のなじみ度まで（最高段階は回数の横の札で分かるので空）、発見済みは「未達成」、未発見は「未発見」。
+ * 未発見の見つけ方はカードには出さず、拡大プレビューの手順の印と読み上げ名で伝える。
  * @param tile タイル
- * @returns 補足の文言
+ * @returns 補足の文言（名詞で止める。CLAUDE.md §11.1 の呼び方）
  */
 export function tileCaption(tile: ZukanTileDto): string {
   const log = logger.fn('tileCaption', { status: tile.status, visitCount: tile.visitCount });
-  if (tile.status === 'visited') return log.exit(tile.nextFamiliarityText ?? `${tile.familiarityLabel ?? '常連'}になりました`);
-  if (tile.status === 'discovered') return log.exit('まだ行っていない');
+  if (tile.status === 'visited') return log.exit(tile.nextFamiliarityText ?? '');
+  if (tile.status === 'discovered') return log.exit('未達成');
   return log.exit('未発見');
 }
 
@@ -110,7 +110,7 @@ export function tileAriaLabel(tile: ZukanTileDto): string {
   const log = logger.fn('tileAriaLabel', { status: tile.status });
   const head = `${tileName(tile)}（${KIND_LABELS[tile.kind]}）`;
   if (tile.status === 'unknown') return log.exit(`${head}未発見。${UNKNOWN_TILE_HINT}`);
-  if (tile.status === 'discovered') return log.exit(`${head}発見済み、まだ行っていない`);
+  if (tile.status === 'discovered') return log.exit(`${head}発見済み、未達成`);
   const seasons = seasonMarks(tile).filter((m) => m.visited).map((m) => m.label).join('・');
   const next = tile.nextFamiliarityText === undefined ? '' : `、${tile.nextFamiliarityText}`;
   return log.exit(`${head}${tile.familiarityLabel ?? '訪問'}、通った ${tile.visitCount}回、訪れた季節 ${seasons}${next}`);

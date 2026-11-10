@@ -7,7 +7,8 @@ import type { RevisitReasonDto } from '@/application/dto/Dto';
 import { createLogger } from '@/Common/logging/logger';
 import { createRevisitReasonCard } from '@/Common/ui/cards/RevisitReasonCard';
 import { h } from '@/Common/ui/dom';
-import { reasonTarget, sortReasons } from '@/presentation/screens/Map/Sheet/sheetModel';
+import { createEmptyState } from '@/presentation/screens/Map/Sheet/NearbySpotList';
+import { reasonCardText, reasonTarget, sortReasons } from '@/presentation/screens/Map/Sheet/sheetModel';
 import type { SheetTarget } from '@/presentation/screens/Map/Sheet/sheetModel';
 
 const logger = createLogger('presentation/screens/Map/Sheet/RevisitReasonList');
@@ -28,10 +29,11 @@ export interface ReasonCardOptions {
  */
 export function createReasonCardFor(reason: RevisitReasonDto, opts: ReasonCardOptions): HTMLElement {
   const log = logger.fn('createReasonCardFor', { kind: reason.kind, districtId: reason.districtId, compact: opts.compact === true });
+  const text = reasonCardText(reason);
   const card = createRevisitReasonCard({
     kind: reason.kind,
-    title: reason.title,
-    subtitle: reason.subtitle,
+    title: text.title,
+    subtitle: text.subtitle,
     compact: opts.compact,
     onClick: (): void => opts.onTarget(reasonTarget(reason)),
     dataset: { districtId: reason.districtId, spotId: reason.spotId },
@@ -47,9 +49,7 @@ export function createReasonCardFor(reason: RevisitReasonDto, opts: ReasonCardOp
  */
 export function createRevisitReasonList(reasons: readonly RevisitReasonDto[], onTarget: (target: SheetTarget) => void): HTMLElement {
   const log = logger.fn('createRevisitReasonList', { count: reasons.length });
-  if (reasons.length === 0) {
-    return log.exit(h('p', { class: ['hint', 'map-sheet__empty'], attrs: { 'data-testid': 'reason-list' }, text: 'いまは急ぎの理由はありません。気の向くまま歩いてみましょう' }));
-  }
+  if (reasons.length === 0) return log.exit(createEmptyState('reason-list', 'flag'));
   const cards = sortReasons(reasons).map((reason) => createReasonCardFor(reason, { onTarget }));
   return log.exit(h('div', { class: 'map-sheet__list', attrs: { 'data-testid': 'reason-list' } }, cards));
 }

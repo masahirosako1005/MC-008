@@ -12,7 +12,7 @@
       "shortName": "南森町",
       "theme": "門前町",
       "order": 1,
-      "color": "#6366f1",
+      "color": "#8577b8",
       "center": { "lat": 34.6952, "lng": 135.5119 },
       "entrance": { "lat": 34.69775, "lng": 135.5112 },
       "polygon": [
@@ -29,7 +29,7 @@
       "shortName": "天満",
       "theme": "市場と食",
       "order": 2,
-      "color": "#f59e0b",
+      "color": "#d6a23c",
       "center": { "lat": 34.7049, "lng": 135.5134 },
       "entrance": { "lat": 34.702, "lng": 135.514 },
       "polygon": [
@@ -46,7 +46,7 @@
       "shortName": "天六",
       "theme": "暮らし",
       "order": 3,
-      "color": "#10b981",
+      "color": "#6f9e6a",
       "center": { "lat": 34.711, "lng": 135.5122 },
       "entrance": { "lat": 34.709, "lng": 135.513 },
       "polygon": [
@@ -63,7 +63,7 @@
       "shortName": "扇町",
       "theme": "公園と路地",
       "order": 4,
-      "color": "#ec4899",
+      "color": "#cf7186",
       "center": { "lat": 34.705, "lng": 135.506 },
       "entrance": { "lat": 34.705, "lng": 135.5065 },
       "polygon": [
@@ -80,7 +80,7 @@
       "shortName": "大川",
       "theme": "川辺と桜",
       "order": 5,
-      "color": "#0ea5e9",
+      "color": "#4f93a8",
       "center": { "lat": 34.6965, "lng": 135.5195 },
       "entrance": { "lat": 34.6924, "lng": 135.5176 },
       "polygon": [

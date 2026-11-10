@@ -14,6 +14,8 @@ import { epochMsOf, instantFromEpochMs } from '@/Common/utils/date';
 import type { CmsServices } from '@/application/CmsServices';
 import type { SpotRepository } from '@/domain/spot/SpotRepository';
 import type { PublicCmsSnapshot } from '@/infrastructure/api/schema/publicCmsSnapshot';
+import { createAppBackend } from '@/infrastructure/di/appBackend';
+import type { AppBackend, AppBackendOptions } from '@/infrastructure/di/appBackend';
 import { buildCmsUseCases } from '@/infrastructure/di/cmsUseCases';
 import { MasterDataLoader } from '@/infrastructure/master/MasterDataLoader';
 import type { FetchText } from '@/infrastructure/master/MasterDataLoader';
@@ -77,6 +79,8 @@ export interface ServerAppOptions {
   readonly readLimit?: RateLimitOptions;
   /** ログインの試みの回数制限（テストで変える） */
   readonly loginLimit?: RateLimitOptions;
+  /** 利用者データのサーバー（PostgreSQL・外部ログイン。docs/12）。省略時は店舗CMS の連携だけ */
+  readonly appBackend?: AppBackendOptions;
 }
 
 /** 組み立てた連携サーバー */
@@ -103,6 +107,8 @@ interface ServerParts {
   readonly stream: SnapshotStream;
   readonly auth: AuthService;
   readonly trust: RequestTrust;
+  /** 利用者データのサーバー（指定されたときだけ） */
+  readonly appBackend?: AppBackend;
 }
 
 /**
@@ -178,6 +184,7 @@ function buildHandler(parts: ServerParts, surface: Surface): RequestListener {
     ...publicRoutes({ mode: opts.mode, snapshot: () => currentSnapshot(parts), currentMarker: () => parts.db.tryReadState(), stream: parts.stream }),
     ...(surface === 'public' ? [] : cmsRoutes({ mode: opts.mode, servicesFor: (days, actor) => cmsServicesFor(parts, days, actor) })),
     ...(surface === 'public' ? [] : authRoutes({ auth: parts.auth, mode: opts.mode, trust })),
+    ...(surface === 'cms' ? [] : parts.appBackend?.routes ?? []),
   ];
   return log.exit(createApiHandler({
     routes,
@@ -199,6 +206,7 @@ function buildHandler(parts: ServerParts, surface: Surface): RequestListener {
 function maintain(parts: ServerParts): void {
   const log = logger.fn('maintain');
   const removed = parts.auth.maintain();
+  void parts.appBackend?.maintain();
   try {
     const before = instantFromEpochMs(epochMsOf(new SystemClock(parts.opts.nowMs).now()) - AUTH_LOG_RETENTION_MS);
     const audits = parts.db.deleteAuditBefore(before);
@@ -225,7 +233,16 @@ export async function createServerApp(opts: ServerAppOptions): Promise<Result<Se
     store: new SqliteAuthStore(db.value), clock: new SystemClock(opts.nowMs), ids: new CryptoIdGenerator(), spots: master.value.spots, mode: opts.mode,
     loginLimiter: new FixedWindowRateLimiter({ ...(opts.loginLimit ?? LOGIN_RATE_LIMIT), ...nowMsOf(opts) }),
   });
-  const parts: ServerParts = { opts, spots: master.value.spots, db: db.value, stream: new SnapshotStream(STREAM_OPTIONS), auth, trust: opts.trust ?? NO_TRUST };
+  const trust = opts.trust ?? NO_TRUST;
+  const appBackend = opts.appBackend === undefined ? undefined : await createAppBackend(opts.appBackend, { mode: opts.mode, clock: new SystemClock(opts.nowMs), spots: master.value.spots, trust, ...nowMsOf(opts) });
+  if (appBackend !== undefined && !appBackend.ok) {
+    db.value.close();
+    return log.fail(appBackend);
+  }
+  const parts: ServerParts = {
+    opts, spots: master.value.spots, db: db.value, stream: new SnapshotStream(STREAM_OPTIONS), auth, trust,
+    ...(appBackend === undefined ? {} : { appBackend: appBackend.value }),
+  };
   const stopBroadcast = parts.db.onChange((state) => parts.stream.broadcast(state));
   const timer = setInterval(() => maintain(parts), MAINTENANCE_INTERVAL_MS);
   timer.unref();

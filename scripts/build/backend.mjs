@@ -3,7 +3,7 @@
  * @file 本番向けのビルド一式（依存ライブラリなし / Node 24。docs/10）
  * 連携サーバー・利用者アプリ・店舗CMS を本番の版で作る。
  *
- *   node scripts/build/backend.mjs [--app-origin https://app.example.jp] [--skip-typecheck]
+ *   node scripts/build/backend.mjs [--app-origin https://app.example.jp] [--app-backend server] [--skip-typecheck]
  *
  * 出力：
  *   dist-server/serverMain.mjs … 連携サーバー（本番の版。デモの API は入らない）
@@ -27,11 +27,12 @@ const TSC = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
  * @returns オプション
  */
 function parseArgs(argv) {
-  const opts = { appOrigin: '', typecheck: true };
+  const opts = { appOrigin: '', appBackend: 'local', typecheck: true };
   for (let i = 0; i < argv.length; i += 1) {
     const name = argv[i];
     if (name === '--skip-typecheck') opts.typecheck = false;
     else if (name === '--app-origin' && argv[i + 1] !== undefined) opts.appOrigin = argv[++i];
+    else if (name === '--app-backend' && (argv[i + 1] === 'server' || argv[i + 1] === 'local')) opts.appBackend = argv[++i];
     else throw new Error(`知らないオプションか値がありません: ${name}`);
   }
   return opts;
@@ -57,7 +58,9 @@ if (opts.appOrigin !== '' && !/^https?:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?$/.test(op
 const appOrigin = opts.appOrigin === '' ? {} : { VITE_APP_ORIGIN: opts.appOrigin };
 if (opts.typecheck) run('型の確認（tsc）', TSC, ['--noEmit']);
 run('連携サーバー（本番の版）→ dist-server', VITE, ['build', '-c', 'vite.server.config.ts', '--logLevel', 'warn']);
-run('利用者アプリ（本番・連携つき）→ dist', VITE, ['build', '--logLevel', 'warn'], { VITE_CMS_BACKEND: 'server' });
+// 利用者データのサーバー（DATABASE_URL）を使う本番では --app-backend server を付ける。付けないと、記録は端末の localStorage が正のまま（改ざんを防げない＝SEC-21）
+if (opts.appBackend !== 'server') console.warn('[build] 注意: 利用者アプリは端末の localStorage が正の版です。利用者データのサーバーを使う本番は --app-backend server を付けてください');
+run('利用者アプリ（本番・連携つき）→ dist', VITE, ['build', '--logLevel', 'warn'], { VITE_CMS_BACKEND: 'server', VITE_APP_BACKEND: opts.appBackend });
 run('店舗CMS（本番・連携つき）→ dist-cms', VITE, ['build', '--mode', 'cms', '--outDir', 'dist-cms', '--emptyOutDir', '--logLevel', 'warn'], { VITE_CMS_BACKEND: 'server', ...appOrigin });
 const cmsHtml = join(ROOT, 'dist-cms', 'cms.html');
 if (existsSync(cmsHtml)) renameSync(cmsHtml, join(ROOT, 'dist-cms', 'index.html'));

@@ -9,6 +9,7 @@ import type {
   CmsShopInfoDto,
   CmsShopInput,
   CmsShopSummaryDto,
+  CmsSurveyDto,
   CmsVisitStatsDto,
   RegisterShopEventInput,
   SaveShopInfoInput,
@@ -29,6 +30,8 @@ export interface CmsServices {
   readonly withdrawShopEvent: UseCase<WithdrawShopEventInput, CmsShopInfoDto>;
   /** 来訪データ（フェーズ1はダミー） */
   readonly visitStats: UseCase<CmsShopInput, CmsVisitStatsDto>;
+  /** アンケートの集計（回答が集まるまではサンプルを足す＝docs/09 CMS-V02） */
+  readonly survey: UseCase<CmsShopInput, CmsSurveyDto>;
   /** CMS の登録内容をすべて消す（デモのやり直し） */
   readonly resetDemo: UseCase<void, void>;
   /** ログインとアカウント（連携サーバーにつなぐときだけ。ブラウザだけの CMS には無い） */

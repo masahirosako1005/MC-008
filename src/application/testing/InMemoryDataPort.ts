@@ -14,6 +14,8 @@ export class InMemoryDataPort implements DataPort {
   private readonly entries: Map<string, unknown>;
   /** true なら次の deleteAll を STORAGE_FAILED にする（テスト用） */
   failNextDelete = false;
+  /** true なら次の replaceAll を STORAGE_FAILED にする（テスト用） */
+  failNextReplace = false;
 
   /**
    * 初期データを受け取る。
@@ -47,6 +49,23 @@ export class InMemoryDataPort implements DataPort {
     const removed = this.entries.size;
     this.entries.clear();
     return log.exit(ok({ removed }));
+  }
+
+  /**
+   * まるごと置き換える。
+   * @param next キー（接頭辞なし）と値
+   * @returns 成功: 書いた件数。failNextReplace のときは STORAGE_FAILED（何も変えない）
+   * @sideEffect Map を入れ替える
+   */
+  async replaceAll(next: readonly UserDataEntry[]): Promise<Result<{ readonly written: number }>> {
+    const log = logger.fn('replaceAll', { count: next.length });
+    if (this.failNextReplace) {
+      this.failNextReplace = false;
+      return log.fail(fail(AppError.of('STORAGE_FAILED', 'データを読み込めませんでした', { restored: true })));
+    }
+    this.entries.clear();
+    for (const entry of next) this.entries.set(entry.key, entry.value);
+    return log.exit(ok({ written: next.length }));
   }
 
   /**

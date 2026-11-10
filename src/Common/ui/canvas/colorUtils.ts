@@ -3,6 +3,7 @@
  * '#rrggbb' ⇔ RGB ⇔ HSL の変換、彩度の変更、透明度の付与。色あせ（彩度・透明度）と成長段階の色づけに使う。
  * 地図の描画ループから毎フレーム呼ばれるので関数ログは出さない（呼び出し側でまとめてログ）。
  */
+import { clamp01 } from '@/Common/ui/canvas/easing';
 
 /** RGB（各 0〜255 の整数） */
 export interface Rgb {
@@ -23,16 +24,6 @@ export const FALLBACK_COLOR = '#8a8a8a';
 
 /** '#rgb' / '#rrggbb' の形式 */
 const HEX_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
-
-/**
- * 0〜1 に丸める。
- * @param value 値
- * @returns 0〜1 の値（NaN は 0）
- */
-function clamp01(value: number): number { // audit-ignore: fnlog-missing 毎フレーム描画で呼ぶ純粋な算術ヘルパー
-  if (!Number.isFinite(value)) return 0;
-  return Math.min(1, Math.max(0, value));
-}
 
 /**
  * '#rgb' または '#rrggbb' を RGB にする。

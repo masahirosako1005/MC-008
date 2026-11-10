@@ -7,10 +7,14 @@
 import { defineConfig } from 'vitest/config';
 import { fileURLToPath, URL } from 'node:url';
 
-/** プレビュー（本番相当）で付けるセキュリティヘッダ（SEC-04, SEC-29）。dev は HMR のため CSP を外す */
+/**
+ * プレビュー（本番相当）で付けるセキュリティヘッダ（SEC-04, SEC-29）。dev は HMR のため CSP を外す。
+ * font-src の data: は連携サーバー（infrastructure/server/http/staticFiles.ts）と同じ：ビルドが小さなフォントを data: URI で CSS に埋め込むため
+ * （無いとプレビューでだけ一部の文字が代わりの書体になり、コンソールに CSP 違反が大量に出る）。
+ */
 const SECURITY_HEADERS: Record<string, string> = {
   'Content-Security-Policy':
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -56,6 +60,8 @@ export default defineConfig(({ mode }) => {
     port: 5173,
     strictPort: true,
     headers: { 'X-Content-Type-Options': 'nosniff' },
+    // 開発サーバーはプロジェクトの直下を配るので、秘密・DB・鍵は読ませない（SEC-11。既定の .env・証明書・.git に足す）
+    fs: { deny: ['.env', '.env.*', '*.{crt,pem,key}', '**/.git/**', 'Password*', 'password*', '.data/**', '**/*.sqlite*', 'secrets/**'] },
     ...(LIVE_RELOAD ? {} : { hmr: false, ws: false as const }),
     ...(CMS_API_PROXY ? { proxy: { '/api': { target: CMS_API_PROXY, changeOrigin: false } } } : {}),
   },

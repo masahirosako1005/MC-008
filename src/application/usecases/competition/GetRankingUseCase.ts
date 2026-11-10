@@ -4,16 +4,18 @@
  * 初めての人でも活躍できるよう、あなたが一番上位のリーグを最初に開くタブとして返し、「あと何回で何位」を添える。基準 C。
  * 下段に地区の主の状況（直近30日・取り返しまでの回数）を返す（CLAUDE.md 6.7、wireframes/07_ranking）。書込みはしない。
  * リーグの違いが分かるよう「競うもの」「参加できる人」を返し、期間と報酬（順位報酬・○時間キープでもらえるキープ報酬）を添える。
+ * 報酬はアバターの部品。段ごとの順位の範囲・手に入れたか・次の報酬までの数を返し、画面が順位表の上に「ここまでこの報酬」を出せるようにする。
  */
 import { createLogger } from '@/Common/logging/logger';
 import { ok } from '@/Common/result/Result';
 import type { Result } from '@/Common/result/Result';
-import { addDays, compareInstant, daysBetween, endOfMonth, formatJpDate, jstInstantOf, monthKeyOf, startOfMonth } from '@/Common/utils/date';
+import { addDays, daysBetween, endOfMonth, formatJpDate, monthKeyOf, startOfMonth } from '@/Common/utils/date';
 import type { Instant, LocalDate } from '@/Common/utils/date';
 import type { UseCase } from '@/application/AppServices';
 import type { LeagueDto, LeagueIdDto, RankingDto, RankingEntryDto, RankingLordDto, RankingRivalDto } from '@/application/dto/Dto';
-import { LEAGUE_DUMMIES } from '@/application/usecases/competition/leagueDummies';
-import { leagueRewardsOf } from '@/application/usecases/competition/leagueRewards';
+import { earnedLeagueRewardIdsOf } from '@/application/usecases/competition/leagueAwards';
+import { leagueRewardsOf, nextPrizeOf } from '@/application/usecases/competition/leagueRewards';
+import { heldSinceOf, ME_KEY, myRankWith, participantsOf } from '@/application/usecases/competition/leagueStanding';
 import { standingsOf, TRAVELER_LORD_NAME } from '@/application/usecases/shared/LordStandings';
 import type { LordStanding } from '@/application/usecases/shared/LordStandings';
 import { loadWorld } from '@/application/usecases/shared/World';
@@ -21,15 +23,11 @@ import type { World, WorldDeps } from '@/application/usecases/shared/World';
 import { ROOKIE_PERIOD_DAYS } from '@/domain/competition/constants';
 import { daysLeftInMonth, isRookie, LEAGUE_IDS, leagueScoreOf, rookieGraduationDateOf } from '@/domain/competition/League';
 import type { LeagueId, LeagueRecords } from '@/domain/competition/League';
-import type { KeepGoal } from '@/domain/competition/LeagueReward';
 import { Ranking } from '@/domain/competition/Ranking';
-import type { RankingParticipant } from '@/domain/competition/Ranking';
-import type { VisitRecord } from '@/domain/exploration/VisitRecord';
+
+export { heldSinceOf } from '@/application/usecases/competition/leagueStanding';
 
 const logger = createLogger('application/usecases/competition/GetRankingUseCase');
-
-/** 「あなた」の参加者キー */
-const ME_KEY = 'traveler';
 
 /** 「あと何回で」を探す上限（これ以上離れていたら一般的な励ましにする） */
 const NEXT_STEP_SEARCH_LIMIT = 30;
@@ -68,8 +66,8 @@ const LEAGUE_COPY: Readonly<Record<LeagueId, LeagueCopy>> = Object.freeze({
     shortName: 'はじめまして',
     icon: '✦',
     tagline: '行ったことのない場所へ足をのばす人が有利。初めての人ほど上位に届きます',
-    rule: '今月はじめて訪れたスポットの数で順位を決めます',
-    metric: '今月 はじめて訪れたスポットの数（2回目からは数えない）',
+    rule: '今月の新しい場所の数で順位を決めます',
+    metric: '今月 新しい場所の数（2回目からは数えない）',
     eligibility: 'だれでも',
     tabHint: '新しい場所の数',
     unit: 'か所',
@@ -81,7 +79,7 @@ const LEAGUE_COPY: Readonly<Record<LeagueId, LeagueCopy>> = Object.freeze({
     tagline: '始めたばかりの人だけで、同じスタートラインから競えます',
     rule: '今月通った回数で順位を決めます',
     metric: '今月 通った回数（かよいリーグと同じ数え方）',
-    eligibility: `使いはじめて${ROOKIE_PERIOD_DAYS}日以内の人だけ`,
+    eligibility: `はじめて${ROOKIE_PERIOD_DAYS}日以内`,
     tabHint: `${ROOKIE_PERIOD_DAYS}日以内の人`,
     unit: '回',
   },
@@ -92,32 +90,6 @@ const RECOMMEND_PRIORITY: readonly LeagueId[] = ['rookie', 'hajimete', 'kayoi'];
 
 /** GetRankingUseCase の依存 */
 export type GetRankingDeps = WorldDeps;
-
-/**
- * ダミーと「あなた」を参加者の配列にする。
- * @param leagueId リーグ
- * @param myCount あなたの数値（undefined なら不参加）
- * @returns 参加者
- */
-function participantsOf(leagueId: LeagueId, myCount: number | undefined): RankingParticipant[] {
-  const log = logger.fn('participantsOf', { leagueId, joined: myCount !== undefined });
-  const others: RankingParticipant[] = LEAGUE_DUMMIES[leagueId].map((d) => ({ key: d.key, name: d.name, isMe: false, count: d.count }));
-  if (myCount === undefined) return log.exit(others);
-  return log.exit([...others, { key: ME_KEY, name: TRAVELER_LORD_NAME, isMe: true, count: myCount }]);
-}
-
-/**
- * あなたの順位を返す。
- * @param leagueId リーグ
- * @param myCount あなたの数値
- * @param today 今日
- * @returns 順位
- */
-function myRankWith(leagueId: LeagueId, myCount: number, today: LocalDate): number {
-  const log = logger.fn('myRankWith', { leagueId, myCount });
-  const ranking = Ranking.from({ participants: participantsOf(leagueId, myCount), asOf: today });
-  return log.exit(ranking.entries.find((e) => e.isMe)?.rank ?? ranking.entries.length);
-}
 
 /**
  * 次の一歩の文言（「あと1回で4位」など）を作る。
@@ -198,43 +170,6 @@ function competitionOf(leagueId: LeagueId, records: LeagueRecords, today: LocalD
   });
 }
 
-/**
- * 訪問記録の一部（ある時点までの訪問）だけで数えたときの、あなたの順位を返す。
- * @param leagueId リーグ
- * @param records あなたの記録（発見記録はそのまま使う）
- * @param visits 数に入れる訪問
- * @param today 今日
- * @returns 順位
- */
-function rankWithVisits(leagueId: LeagueId, records: LeagueRecords, visits: readonly VisitRecord[], today: LocalDate): number {
-  const log = logger.fn('rankWithVisits', { leagueId, visits: visits.length });
-  return log.exit(myRankWith(leagueId, leagueScoreOf(leagueId, { visits, discoveries: records.discoveries }, today), today));
-}
-
-/**
- * あなたがいま goal.maxRank 位以内にいるなら、その順位に入った瞬間を返す（キープ報酬の起点）。
- * ダミーの数値は固定なので、順位はあなたの記録が増えたときだけ上がる。訪問を古い順に1件ずつ足し、初めて条件の順位に入った訪問の時刻を起点にする。
- * 月の初めからすでに条件の順位にいたなら、月初め 0:00 を起点にする。
- * @param leagueId リーグ
- * @param records あなたの記録
- * @param today 今日
- * @param goal キープの条件
- * @returns 起点の瞬間（いま条件の順位にいなければ undefined）
- */
-export function heldSinceOf(leagueId: LeagueId, records: LeagueRecords, today: LocalDate, goal: KeepGoal): Instant | undefined {
-  const log = logger.fn('heldSinceOf', { leagueId, goal: goal.id, today });
-  if (rankWithVisits(leagueId, records, records.visits, today) > goal.maxRank) return log.exit(undefined, '条件の順位の外');
-  const monthStart = jstInstantOf(startOfMonth(today), 0, 0);
-  const sorted = [...records.visits].sort((a, b) => compareInstant(a.visitedAt, b.visitedAt));
-  const beforeMonth = sorted.filter((v) => compareInstant(v.visitedAt, monthStart) < 0).length;
-  if (rankWithVisits(leagueId, records, sorted.slice(0, beforeMonth), today) <= goal.maxRank) return log.exit(monthStart, '月初めから');
-  for (let i = beforeMonth; i < sorted.length; i++) {
-    const visit = sorted[i];
-    if (visit !== undefined && rankWithVisits(leagueId, records, sorted.slice(0, i + 1), today) <= goal.maxRank) return log.exit(visit.visitedAt);
-  }
-  return log.exit(undefined, '起点なし');
-}
-
 /** 1リーグ分の DTO を作るのに使う、リーグ共通の材料 */
 interface LeagueContext {
   /** あなたの記録 */
@@ -242,8 +177,8 @@ interface LeagueContext {
   readonly today: LocalDate;
   /** いま（キープ報酬の経過時間に使う） */
   readonly now: Instant;
-  /** '11月' */
-  readonly monthLabel: string;
+  /** これまでに手に入れた月間リーグの報酬ID */
+  readonly earned: ReadonlySet<string>;
   /** 主の名前 → 地区の短い名前の一覧 */
   readonly lordTags: ReadonlyMap<string, readonly string[]>;
   /** 模擬ライバルの名前 → ライバルID（アバターの見た目を地図とそろえる） */
@@ -277,17 +212,19 @@ function leagueDtoOf(leagueId: LeagueId, c: LeagueContext): LeagueDto {
   const membershipNote = membershipNoteOf(leagueId, records, today, joined);
   const rewards = leagueRewardsOf({
     leagueId,
-    monthLabel: c.monthLabel,
     unit: copy.unit,
     myRank,
     myCount,
     now: c.now,
     heldSinceOf: (goal) => heldSinceOf(leagueId, records, today, goal),
+    earned: c.earned,
   });
+  const nextPrize = joined ? nextPrizeOf(rewards, entries, myCount) : undefined;
   const dto: LeagueDto = Object.freeze({
     id: leagueId,
     ...copy,
     rewards,
+    ...(nextPrize === undefined ? {} : { nextPrize }),
     joined,
     ...(membershipNote === undefined ? {} : { membershipNote }),
     entries: Object.freeze(entries),
@@ -403,11 +340,12 @@ export class GetRankingUseCase implements UseCase<void, RankingDto> {
     const records: LeagueRecords = { visits: traveler.visits, discoveries: traveler.discoveries };
     const standings = standingsOf(world.value);
     const monthLabel = `${Number(today.slice(5, 7))}月`;
+    const now = this.deps.clock.now();
     const context: LeagueContext = {
       records,
       today,
-      now: this.deps.clock.now(),
-      monthLabel,
+      now,
+      earned: earnedLeagueRewardIdsOf(records, today, now),
       lordTags: lordTagsOf(world.value, standings),
       rivalIds: new Map(world.value.rivals.map((r) => [r.name, String(r.id)])),
     };

@@ -1,8 +1,8 @@
 /**
  * @file アバターのステージ（presentation/screens/Avatar 層。Canvas 部品）
  * 背景・光の粒・置くもの・台座・オーラ（奥）・アバター・オーラ（手前）・エモート・キラッを1枚の canvas に描き、呼吸・まばたき・ポーズで動かす。
- * 開いたときは幕が左右に開く。撮影のときは白く光る。
- * requestAnimationFrame は destroy で必ず止める。動きを減らす設定（prefers-reduced-motion）なら、変わったときに1回だけ描く（幕・光・粒の動きは出さない）。
+ * 撮影のときは白く光る。
+ * requestAnimationFrame は destroy で必ず止める。動きを減らす設定（prefers-reduced-motion）なら、変わったときに1回だけ描く（光・粒の動きは出さない）。
  */
 import { createLogger } from '@/Common/logging/logger';
 import { beginFrame, createCanvasSurface } from '@/Common/ui/canvas/CanvasBase';
@@ -11,7 +11,7 @@ import { h } from '@/Common/ui/dom';
 import { paintAura } from '@/presentation/screens/Avatar/stageAuras';
 import { EMOTES, paintEmoteBubble, paintEmoteParticles } from '@/presentation/screens/Avatar/stageEmotes';
 import type { EmoteDef } from '@/presentation/screens/Avatar/stageEmotes';
-import { paintBurst, paintGlitter, paintSpotlight, paintSsrTwinkles, paintTwinkle } from '@/presentation/screens/Avatar/stageSparkle';
+import { paintBurst, paintGlitter, paintSpotlight, paintSsrTwinkles } from '@/presentation/screens/Avatar/stageSparkle';
 import type { SparkleBurst, SparkleRarity } from '@/presentation/screens/Avatar/stageSparkle';
 import type { AvatarPose, EmoteStyle, ObjectStyle, StageLook } from '@/presentation/shared/avatar/avatarLook';
 import { drawAvatar } from '@/presentation/shared/avatar/avatarPaint';
@@ -29,8 +29,6 @@ const OBJECT_SLOTS: readonly { readonly x: number; readonly lift: number; readon
 ];
 /** ジャンプなど一時的なポーズを続ける秒数 */
 const TEMP_POSE_SEC = 1.6;
-/** 開いたときの幕が開ききるまでの秒数 */
-const INTRO_SEC = 0.9;
 /** 撮影の光の秒数 */
 const FLASH_SEC = 0.45;
 /** 動きを減らす設定で、エモートの吹き出しを止めて見せる瞬間（秒） */
@@ -72,8 +70,6 @@ interface FrameState {
   readonly hasSsr: boolean;
   readonly burst?: SparkleBurst;
   readonly emote?: { readonly def: EmoteDef; readonly e: number };
-  /** 幕の開き具合 0..1（開ききったら undefined） */
-  readonly intro?: number;
   /** 撮影の光の進み 0..1（無ければ undefined） */
   readonly flash?: number;
 }
@@ -114,30 +110,6 @@ function drawObjects(ctx: CanvasRenderingContext2D, objects: readonly ObjectStyl
 }
 
 /**
- * 開いたときの幕（ピンクのベルベットが左右に開く）を描く。
- * @param ctx 描画先
- * @param size 大きさ
- * @param p 開き具合 0..1
- */
-function drawCurtain(ctx: CanvasRenderingContext2D, size: CanvasSize, p: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  const ease = 1 - (1 - p) ** 3;
-  const half = (size.width / 2) * (1 - ease);
-  ctx.save();
-  for (const side of [-1, 1]) {
-    const x0 = side < 0 ? 0 : size.width - half;
-    const g = ctx.createLinearGradient(x0, 0, x0 + half, 0);
-    for (let k = 0; k <= 6; k += 1) g.addColorStop(k / 6, k % 2 === 0 ? '#e24a8d' : '#ff86b8');
-    ctx.fillStyle = g;
-    ctx.fillRect(x0, 0, half, size.height);
-    ctx.fillStyle = '#ffd75e';
-    ctx.fillRect(x0, size.height - 8, half, 8);
-  }
-  ctx.globalAlpha = 1 - ease;
-  for (let i = 0; i < 6; i += 1) paintTwinkle(ctx, size.width / 2, (size.height * (i + 0.5)) / 6, 6 + (i % 2) * 4, '#ffffff');
-  ctx.restore();
-}
-
-/**
  * アバターとオーラ・エモートを描く。
  * @param ctx 描画先
  * @param size 大きさ
@@ -174,7 +146,6 @@ function drawStage(ctx: CanvasRenderingContext2D, size: CanvasSize, s: FrameStat
   paintSpotlight(ctx, feet.x, feet.y, unitOf(size), s.t);
   drawAvatarLayer(ctx, size, s);
   if (s.burst !== undefined) paintBurst(ctx, s.burst, s.t);
-  if (s.intro !== undefined) drawCurtain(ctx, size, s.intro);
   if (s.flash !== undefined) {
     ctx.save();
     ctx.globalAlpha = 1 - s.flash;
@@ -235,7 +206,6 @@ class StageRunner {
     return {
       stage: this.stage, pose: this.pose, t, hasSsr: this.hasSsr, burst: this.burst,
       emote: this.emote === undefined || emoteE === undefined ? undefined : { def: this.emote.def, e: emoteE },
-      intro: still || t >= INTRO_SEC ? undefined : t / INTRO_SEC,
       flash: flash !== undefined && flash < 1 ? flash : undefined,
     };
   }

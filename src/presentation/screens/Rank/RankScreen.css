@@ -1,33 +1,30 @@
 /*
  * @file ランク画面のスタイル（presentation/screens/Rank）
- * 画面全体を暗いゲームの UI にする（上部バーも暗く）。上は画面幅いっぱいのステータスパネル、下は半透明のガラスのカード。
+ * ほかの画面と同じ明るい地（ベージュの地・白いカード・上下のバーも共通の色。2026-11-10 ユーザー指示「ランク画面だけ印象が違うので合わせて」で暗い盤をやめた）。
+ * 上は画面幅いっぱいのステータスパネル、下は白いカード。明るい地の上の文字は --ink／段の濃い色（--t-edge）で書く。
  * 段の色（銅→銀→金→白金→伝説）で紋章・光・粒を染める。登場の演出：光が集まる→紋章が落ちる→衝撃波・横一文字の光・閃光・揺れ・火花
  * →名前の押印→★→数え上げ→歩き（約1.8秒。盤のタップで .is-skip）。その後もゆらゆら3D・つや・ホログラム・きらめき・道を流れる光。
  * 言葉は短いラベルだけ（2026-11-09 ユーザー指示）。段の状態は色に加えて ✓／鍵／大きさでも示す。
  * 動きは prefers-reduced-motion: no-preference のときだけ。基本の姿＝演出の最後の姿なので、動きが無くても全部見える。
  */
 
-/* ---- 画面（暗いゲームの UI。上部バーも暗くする） ---- */
-.screen[data-route="rank"] { background: var(--night-950); }
-.screen[data-route="rank"] .top-bar { background: var(--night-950); box-shadow: none; color: #ffffff; }
-.screen[data-route="rank"] .top-bar__title { color: #ffffff; letter-spacing: 0.06em; }
+/* ---- 画面（ほかの画面と同じベージュの地。上部バーは共通のまま） ---- */
 .rank {
-  --rk-text: var(--on-night);
-  --rk-sub: var(--on-night-3);
-  --rk-line: rgba(255, 255, 255, 0.09);
-  --rk-hot: var(--brand-300);
-  background: var(--night-950);
+  --rk-text: var(--ink);
+  --rk-sub: var(--g4);
+  --rk-line: var(--hairline);
+  --rk-hot: var(--brand-ink);
   color: var(--rk-text);
 }
 
 /* ---- 段の色（紋章とステータスパネルの光） ---- */
-/* 金属の段（tokens.css の --metal-*。docs/10）: 0 銅 → 1 銀 → 2 金 → 3 白金 → 4 伝説。まだの段は夜の盤の色 */
+/* 金属の段（tokens.css の --metal-*。docs/10）: 0 銅 → 1 銀 → 2 金 → 3 白金 → 4 伝説。まだの段は温かいグレー */
 .rank [data-tier="0"] { --t: var(--metal-bronze); --t-edge: var(--metal-bronze-edge); --t-light: var(--metal-bronze-light); --t-ink: var(--metal-bronze-ink); }
 .rank [data-tier="1"] { --t: var(--metal-silver); --t-edge: var(--metal-silver-edge); --t-light: var(--metal-silver-light); --t-ink: var(--metal-silver-ink); }
 .rank [data-tier="2"] { --t: var(--metal-gold); --t-edge: var(--metal-gold-edge); --t-light: var(--metal-gold-light); --t-ink: var(--metal-gold-ink); }
 .rank [data-tier="3"] { --t: var(--metal-platinum); --t-edge: var(--metal-platinum-edge); --t-light: var(--metal-platinum-light); --t-ink: var(--metal-platinum-ink); }
 .rank [data-tier="4"] { --t: var(--metal-legend); --t-edge: var(--metal-legend-edge); --t-light: var(--metal-legend-light); --t-ink: var(--metal-legend-ink); }
-.rank [data-tier="locked"] { --t: var(--night-700); --t-edge: var(--night-600); --t-light: var(--night-600); --t-ink: var(--on-night-3); }
+.rank [data-tier="locked"] { --t: var(--g3); --t-edge: var(--g4); --t-light: var(--g2); --t-ink: var(--g5); }
 
 /* ---- 紋章（SVG。内側は金属のグラデーション、縁は面取り） ---- */
 .rank-emblem { display: block; overflow: visible; }
@@ -56,7 +53,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  color: #ffffff;
+  color: var(--ink);
 }
 .rank-hero::after {
   content: "";
@@ -65,21 +62,20 @@
   right: 8%;
   bottom: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--t) 80%, transparent), transparent);
-  box-shadow: 0 0 12px var(--t);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--t-edge) 45%, transparent), transparent);
 }
 .rank-hero__bg {
   position: absolute;
   inset: 0;
   z-index: -2;
   background:
-    radial-gradient(circle at 50% 24%, color-mix(in srgb, var(--t) 58%, transparent) 0, transparent 44%),
-    radial-gradient(ellipse at 50% 112%, color-mix(in srgb, var(--brand) 34%, transparent) 0, transparent 56%),
-    radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.5px) 0 0 / 14px 14px,
-    linear-gradient(180deg, var(--night-900) 0%, var(--night-950) 100%);
+    radial-gradient(circle at 50% 24%, color-mix(in srgb, var(--t) 42%, transparent) 0, transparent 46%),
+    radial-gradient(ellipse at 50% 112%, color-mix(in srgb, var(--brand) 12%, transparent) 0, transparent 56%),
+    radial-gradient(rgba(42, 33, 27, 0.05) 1px, transparent 1.5px) 0 0 / 14px 14px,
+    linear-gradient(180deg, var(--brand-50) 0%, var(--paper) 100%);
 }
 .rank-motes { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-.rank-mote { position: absolute; bottom: -0.5rem; left: var(--x); width: var(--s); height: var(--s); border-radius: 50%; background: var(--t-light); box-shadow: 0 0 8px var(--t); opacity: 0; }
+.rank-mote { position: absolute; bottom: -0.5rem; left: var(--x); width: var(--s); height: var(--s); border-radius: 50%; background: var(--t); box-shadow: 0 0 6px var(--t); opacity: 0; }
 .rank-hero__keep {
   position: absolute;
   top: 0.75rem;
@@ -91,7 +87,7 @@
   border-radius: 50%;
   background: color-mix(in srgb, var(--success) 10%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 35%, transparent), 0 0 14px color-mix(in srgb, var(--success) 25%, transparent);
-  color: color-mix(in srgb, var(--success) 60%, #ffffff);
+  color: var(--success-ink);
 }
 .rank-hero__keep .icon { width: 1.25rem; height: 1.25rem; stroke-width: 2; }
 .rank-hero__kicker {
@@ -103,11 +99,10 @@
   font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: 0.45em;
-  color: var(--t);
-  text-shadow: 0 0 12px color-mix(in srgb, var(--t) 70%, transparent);
+  color: var(--t-edge);
 }
 .rank-hero__kicker::before,
-.rank-hero__kicker::after { content: ""; width: 2rem; height: 1px; background: linear-gradient(90deg, transparent, var(--t)); }
+.rank-hero__kicker::after { content: ""; width: 2rem; height: 1px; background: linear-gradient(90deg, transparent, var(--t-edge)); }
 .rank-hero__kicker::after { transform: scaleX(-1); margin-left: -0.45em; }
 
 /* ---- 紋章の舞台（飾りは中心に left/top で置く。回転のアニメーションと transform がぶつからないように） ---- */
@@ -126,7 +121,7 @@
 .rank-stage__aura { position: absolute; left: calc(50% - 6rem); top: calc(50% - 6rem); width: 12rem; height: 12rem; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--t) 70%, transparent) 0, transparent 66%); }
 .rank-stage__orbit { position: absolute; left: calc(50% - 5rem); top: calc(50% - 5rem); width: 10rem; height: 10rem; border-radius: 50%; border: 2px dashed color-mix(in srgb, var(--t) 55%, transparent); }
 .rank-charges, .rank-sparks { position: absolute; z-index: 2; left: 50%; top: 50%; width: 0; height: 0; }
-.rank-charge { position: absolute; left: -0.15rem; top: -0.15rem; width: 0.3rem; height: 0.3rem; border-radius: 50%; background: var(--t-light); box-shadow: 0 0 8px var(--t-light), 0 0 14px var(--t); opacity: 0; }
+.rank-charge { position: absolute; left: -0.15rem; top: -0.15rem; width: 0.3rem; height: 0.3rem; border-radius: 50%; background: var(--t); box-shadow: 0 0 8px var(--t); opacity: 0; }
 .rank-spark {
   position: absolute;
   left: -0.1875rem;
@@ -134,7 +129,7 @@
   width: 0.375rem;
   height: 1.5rem;
   border-radius: var(--radius-pill);
-  background: linear-gradient(var(--t-light), color-mix(in srgb, var(--t) 60%, transparent));
+  background: linear-gradient(var(--t), color-mix(in srgb, var(--t) 40%, transparent));
   transform: rotate(var(--a)) translateY(-6.5rem);
   opacity: 0;
 }
@@ -145,8 +140,8 @@
   width: 8rem;
   height: 8rem;
   border-radius: 50%;
-  border: 3px solid var(--t-light);
-  box-shadow: 0 0 24px var(--t), inset 0 0 18px var(--t);
+  border: 3px solid var(--t);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--t) 70%, transparent), inset 0 0 14px color-mix(in srgb, var(--t) 70%, transparent);
   opacity: 0;
 }
 .rank-stage__streak {
@@ -157,8 +152,8 @@
   width: 26rem;
   height: 4px;
   border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, transparent, var(--t-light) 30%, #ffffff 50%, var(--t-light) 70%, transparent);
-  box-shadow: 0 0 18px var(--t-light), 0 0 36px var(--t);
+  background: linear-gradient(90deg, transparent, var(--t) 30%, #ffffff 50%, var(--t) 70%, transparent);
+  box-shadow: 0 0 18px var(--t);
   opacity: 0;
 }
 .rank-stage__emblem { position: absolute; z-index: 1; left: 0; top: 0; width: 12rem; aspect-ratio: 148 / 112; }
@@ -170,7 +165,7 @@
   transform: perspective(700px) rotateX(calc(var(--tilt-y, 0) * -16deg)) rotateY(calc(var(--tilt-x, 0) * 22deg));
   transition: transform 0.25s ease-out;
 }
-.rank-stage__svg { width: 100%; height: 100%; filter: drop-shadow(0 12px 16px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 22px color-mix(in srgb, var(--t) 65%, transparent)); }
+.rank-stage__svg { width: 100%; height: 100%; filter: drop-shadow(0 10px 12px rgba(42, 33, 27, 0.28)) drop-shadow(0 0 18px color-mix(in srgb, var(--t) 55%, transparent)); }
 .rank-stage__sheen,
 .rank-stage__holo {
   position: absolute;
@@ -226,18 +221,18 @@
   letter-spacing: 0.04em;
   background:
     linear-gradient(110deg, transparent 38%, rgba(255, 255, 255, 0.95) 50%, transparent 62%) 200% 0 / 250% 100% no-repeat,
-    linear-gradient(180deg, #ffffff 0%, var(--t-light) 40%, var(--t) 100%);
+    linear-gradient(180deg, var(--t-edge) 0%, var(--t-ink) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 2px 0 var(--t-edge)) drop-shadow(0 0 16px color-mix(in srgb, var(--t) 55%, transparent));
+  filter: drop-shadow(0 2px 0 #ffffff) drop-shadow(0 0 14px color-mix(in srgb, var(--t) 45%, transparent));
 }
 .rank-hero__name--long { font-size: 1.875rem; letter-spacing: 0.02em; }
 .rank-pips { display: flex; justify-content: center; gap: 0.25rem; margin: 0.375rem 0 0.25rem; }
-.rank-pip { display: flex; color: rgba(255, 255, 255, 0.2); }
+.rank-pip { display: flex; color: rgba(42, 33, 27, 0.2); }
 .rank-pip .icon { width: 1.375rem; height: 1.375rem; stroke-width: 2; }
-.rank-pip--on { color: var(--t); filter: drop-shadow(0 0 6px var(--t)); }
-.rank-pip--on .icon path { fill: currentColor; }
+.rank-pip--on { color: var(--t-edge); }
+.rank-pip--on .icon path { fill: var(--t); }
 .rank-hero__points { margin: 0; display: flex; align-items: baseline; justify-content: center; gap: 0.375rem; }
 .rank-hero__num {
   display: inline-block;
@@ -245,11 +240,11 @@
   font-size: 3.25rem;
   font-weight: 700;
   line-height: 1;
-  color: #ffffff;
+  color: var(--ink);
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 18px color-mix(in srgb, var(--t) 80%, transparent), 0 3px 0 var(--t-edge);
+  text-shadow: 0 3px 0 color-mix(in srgb, var(--t) 55%, #ffffff);
 }
-.rank-hero__pt { font-family: var(--font-display); font-size: 1rem; font-weight: 700; letter-spacing: 0.1em; color: var(--t); }
+.rank-hero__pt { font-family: var(--font-display); font-size: 1rem; font-weight: 700; letter-spacing: 0.1em; color: var(--t-edge); }
 .rank-hero__near {
   display: inline-flex;
   align-items: center;
@@ -257,11 +252,11 @@
   margin: 0.5rem 0 0;
   padding: 0.25rem 0.875rem;
   border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, var(--brand), color-mix(in srgb, var(--brand) 50%, var(--glow)));
+  background: var(--brand-ink);
   color: #ffffff;
   font-size: 0.875rem;
   font-weight: 700;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 30%, transparent), 0 0 18px color-mix(in srgb, var(--brand) 70%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent);
 }
 .rank-hero__near .icon { width: 1rem; height: 1rem; stroke-width: 2.6; }
 .rank-hero__flash {
@@ -284,7 +279,7 @@
   height: 0.375rem;
   transform: translateY(-50%);
   border-radius: var(--radius-pill);
-  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0 6px, transparent 6px 11px);
+  background: repeating-linear-gradient(90deg, rgba(42, 33, 27, 0.18) 0 6px, transparent 6px 11px);
 }
 .rank-road__fill {
   position: relative;
@@ -294,8 +289,8 @@
   border-radius: inherit;
   background:
     repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0 5px, transparent 5px 12px) 0 0 / 34px 100%,
-    linear-gradient(90deg, var(--brand), var(--glow));
-  box-shadow: 0 0 12px color-mix(in srgb, var(--brand) 90%, transparent);
+    linear-gradient(90deg, var(--brand), var(--brand-300));
+  box-shadow: 0 0 6px color-mix(in srgb, var(--brand) 40%, transparent);
 }
 .rank-road__nodes { margin: 0; padding: 0; list-style: none; }
 .rank-road__node {
@@ -322,12 +317,12 @@
   height: 3rem;
   border-radius: 50%;
   border: 2px solid color-mix(in srgb, var(--brand) 85%, transparent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--brand) 60%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--brand) 35%, transparent);
   opacity: 0.8;
 }
-.rank-road__name { margin-top: 0.125rem; font-size: 0.625rem; line-height: 1.25; text-align: center; color: rgba(255, 255, 255, 0.45); }
-.rank-road__node[data-state="reached"] .rank-road__name { color: rgba(255, 255, 255, 0.75); }
-.rank-road__node[data-state="current"] .rank-road__name { color: #ffffff; font-weight: 700; }
+.rank-road__name { margin-top: 0.125rem; font-size: 0.625rem; line-height: 1.25; letter-spacing: -0.05em; text-align: center; color: var(--g4); }
+.rank-road__node[data-state="reached"] .rank-road__name { color: var(--g5); }
+.rank-road__node[data-state="current"] .rank-road__name { color: var(--ink); font-weight: 700; }
 .rank-road__walker {
   position: absolute;
   z-index: 2;
@@ -346,13 +341,13 @@
   margin-bottom: 0.25rem;
   padding: 0.125rem 0.5rem;
   border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, var(--brand), color-mix(in srgb, var(--brand) 50%, var(--glow)));
+  background: var(--brand-ink);
   color: #ffffff;
   font-size: 0.6875rem;
   font-weight: 700;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--brand) 60%, transparent);
+  box-shadow: 0 2px 6px rgba(42, 33, 27, 0.18);
 }
 .rank-road__bubble::after {
   content: "";
@@ -361,13 +356,13 @@
   bottom: -0.25rem;
   border: 0.25rem solid transparent;
   border-bottom: 0;
-  border-top-color: color-mix(in srgb, var(--brand) 75%, var(--glow));
+  border-top-color: var(--brand-ink);
   transform: translateX(-50%);
 }
 .rank-road__avatar { position: relative; z-index: 1; display: block; width: auto; height: 3.5rem; }
-.rank-road__avatar-fallback { position: relative; z-index: 1; width: 2.5rem; height: 2.5rem; display: grid; place-items: center; border-radius: 50%; background: #ffffff; color: var(--ink); }
+.rank-road__avatar-fallback { position: relative; z-index: 1; width: 2.5rem; height: 2.5rem; display: grid; place-items: center; border-radius: 50%; background: #ffffff; box-shadow: var(--shadow-1); color: var(--ink); }
 .rank-road__avatar-fallback .icon { width: 1.5rem; height: 1.5rem; }
-.rank-road__shadow { width: 2.25rem; height: 0.375rem; margin-top: -0.25rem; border-radius: 50%; background: radial-gradient(color-mix(in srgb, var(--brand-300) 55%, transparent), transparent 70%); }
+.rank-road__shadow { width: 2.25rem; height: 0.375rem; margin-top: -0.25rem; border-radius: 50%; background: radial-gradient(rgba(42, 33, 27, 0.28), transparent 70%); }
 .rank-road__trail {
   position: absolute;
   right: 50%;
@@ -375,8 +370,7 @@
   width: 5rem;
   height: 0.25rem;
   border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--brand-300) 90%, transparent));
-  box-shadow: 0 0 10px color-mix(in srgb, var(--brand) 80%, transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--brand-400) 90%, transparent));
   opacity: 0;
 }
 .rank-road__dot {
@@ -391,21 +385,20 @@
   transform: translate(-50%, -50%);
 }
 
-/* ---- ガラスのカード（ステータス・リーグ・ポイント・設定） ---- */
+/* ---- 白いカード（NEXT・ステータス・リーグ・ポイント。ほかの画面のカードと同じ白い面＋淡い影） ---- */
 .rank-card {
   margin-top: 0.875rem;
   padding: 0.875rem;
-  border-radius: 1.25rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025));
-  border: 1px solid var(--rk-line);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 12px 30px rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-l);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
 }
 .rank-hero + .rank-card { margin-top: 1.125rem; }
 .rank-head { display: flex; align-items: center; gap: 0.5rem; min-height: 1.75rem; margin-bottom: 0.75rem; }
-.rank-head::after { content: ""; order: 1; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent); }
-.rank-head__icon { display: flex; color: var(--brand); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand) 75%, transparent)); }
+.rank-head::after { content: ""; order: 1; flex: 1; height: 1px; background: linear-gradient(90deg, var(--hairline-strong), transparent); }
+.rank-head__icon { display: flex; color: var(--brand); }
 .rank-head__icon .icon { width: 1.125rem; height: 1.125rem; stroke-width: 2.1; }
-.rank-head__title { margin: 0; font-size: 0.875rem; font-weight: 700; letter-spacing: 0.1em; color: #ffffff; }
+.rank-head__title { margin: 0; font-size: 0.875rem; font-weight: 700; letter-spacing: 0.1em; color: var(--ink); }
 .rank-head__pill {
   order: 2;
   display: inline-flex;
@@ -413,33 +406,14 @@
   gap: 0.25rem;
   padding: 0.125rem 0.5rem;
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--brand) 14%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 45%, transparent);
-  color: var(--brand-200);
+  background: var(--brand-soft);
+  box-shadow: inset 0 0 0 1px var(--brand-200);
+  color: var(--brand-text-s);
   font-size: 0.6875rem;
   font-weight: 700;
 }
 .rank-head__pill .icon { width: 0.8125rem; height: 0.8125rem; color: var(--brand); stroke-width: 2.2; }
-.rank-head__gear {
-  order: 2;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  min-height: var(--tap);
-  margin: -0.5rem -0.25rem -0.5rem 0;
-  padding: 0 0.75rem;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-.rank-head__gear .icon { width: 1.125rem; height: 1.125rem; }
-.rank-head__gear:focus-visible, .rank-medal:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.rank-medal:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
 /* ステータスのマス */
 .rank-stats { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
@@ -450,26 +424,25 @@
   gap: 0.125rem;
   padding: 0.75rem 0.25rem 0.5rem;
   border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  background: var(--g1);
 }
-.rank-stat[data-tone="brand"] { --tone: var(--brand-400); }
-.rank-stat[data-tone="sea"] { --tone: var(--glow); }
-.rank-stat[data-tone="silver"] { --tone: var(--metal-silver); }
-.rank-stat[data-tone="gold"] { --tone: var(--metal-gold); }
-.rank-stat[data-tone="leaf"] { --tone: var(--success); }
+.rank-stat[data-tone="brand"] { --tone: var(--brand); }
+.rank-stat[data-tone="sea"] { --tone: var(--warning-mid); }
+.rank-stat[data-tone="silver"] { --tone: var(--metal-silver-edge); }
+.rank-stat[data-tone="gold"] { --tone: var(--metal-gold-edge); }
+.rank-stat[data-tone="leaf"] { --tone: var(--success-ink); }
 .rank-stat__icon {
   width: 2.375rem;
   height: 2.375rem;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--tone) 16%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 45%, transparent), 0 0 16px color-mix(in srgb, var(--tone) 35%, transparent);
+  background: color-mix(in srgb, var(--tone) 12%, #ffffff);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 30%, transparent);
   color: var(--tone);
 }
 .rank-stat__icon .icon { width: 1.25rem; height: 1.25rem; stroke-width: 2; }
-.rank-stat__value { font-family: var(--font-display); font-size: 1.625rem; font-weight: 700; line-height: 1.15; color: #ffffff; font-variant-numeric: tabular-nums; }
+.rank-stat__value { font-family: var(--font-display); font-size: 1.625rem; font-weight: 700; line-height: 1.15; color: var(--ink); font-variant-numeric: tabular-nums; }
 .rank-stat__value small { margin-left: 0.0625rem; font-size: 0.625rem; color: var(--rk-sub); }
 .rank-stat__label { font-size: 0.625rem; color: var(--rk-sub); }
 .rank-lords { display: flex; flex-wrap: wrap; gap: 0.375rem; margin: 0.625rem 0 0; }
@@ -479,9 +452,9 @@
   gap: 0.25rem;
   padding: 0.125rem 0.625rem;
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--metal-gold) 14%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--metal-gold) 45%, transparent), 0 0 12px color-mix(in srgb, var(--metal-gold) 20%, transparent);
-  color: color-mix(in srgb, var(--metal-gold) 50%, var(--metal-gold-light));
+  background: var(--metal-gold-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--metal-gold) 55%, transparent);
+  color: var(--gold-ink);
   font-size: 0.75rem;
   font-weight: 700;
 }
@@ -490,7 +463,7 @@
 /* リーグのメダル */
 .rank-medals { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
 .rank-medal {
-  --m-bg: var(--night-800); --m-edge: var(--brand); --m-ink: #ffffff; --m-r1: var(--brand); --m-r2: var(--brand-800); --m-glow: color-mix(in srgb, var(--brand) 35%, transparent);
+  --m-bg: var(--brand-soft); --m-edge: var(--brand); --m-ink: var(--brand-800); --m-r1: var(--brand); --m-r2: var(--brand-800); --m-glow: color-mix(in srgb, var(--brand) 25%, transparent);
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -499,8 +472,7 @@
   padding: 0.375rem 0.25rem 0.5rem;
   border: 0;
   border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  background: var(--g1);
   font: inherit;
   cursor: pointer;
 }
@@ -508,7 +480,7 @@
 .rank-medal[data-medal="gold"] { --m-bg: radial-gradient(circle at 35% 30%, var(--metal-gold-light), var(--metal-gold) 55%, var(--metal-gold-edge)); --m-edge: var(--metal-gold-light); --m-ink: var(--metal-gold-ink); --m-r1: var(--danger); --m-r2: var(--brand); --m-glow: color-mix(in srgb, var(--metal-gold) 60%, transparent); }
 .rank-medal[data-medal="silver"] { --m-bg: radial-gradient(circle at 35% 30%, #ffffff, var(--metal-silver) 55%, color-mix(in srgb, var(--metal-silver) 35%, var(--metal-silver-edge))); --m-edge: var(--metal-silver-light); --m-ink: var(--metal-silver-ink); --m-r1: var(--danger); --m-r2: var(--brand); --m-glow: color-mix(in srgb, var(--metal-silver) 50%, transparent); }
 .rank-medal[data-medal="bronze"] { --m-bg: radial-gradient(circle at 35% 30%, var(--metal-bronze-light), var(--metal-bronze) 55%, var(--metal-bronze-edge)); --m-edge: var(--metal-bronze-light); --m-ink: var(--metal-bronze-ink); --m-r1: var(--danger); --m-r2: var(--brand); --m-glow: color-mix(in srgb, var(--metal-bronze) 50%, transparent); }
-.rank-medal[data-medal="guest"] { --m-bg: transparent; --m-edge: rgba(255, 255, 255, 0.25); --m-ink: var(--rk-sub); --m-r1: var(--night-600); --m-r2: var(--night-700); --m-glow: transparent; }
+.rank-medal[data-medal="guest"] { --m-bg: transparent; --m-edge: var(--g3); --m-ink: var(--rk-sub); --m-r1: var(--g3); --m-r2: var(--g4); --m-glow: transparent; }
 .rank-medal__ribbon { width: 1.75rem; height: 0.875rem; margin-bottom: -0.25rem; background: linear-gradient(90deg, var(--m-r1) 0 50%, var(--m-r2) 50% 100%); clip-path: polygon(0 0, 100% 0, 72% 100%, 28% 100%); }
 .rank-medal__disk {
   position: relative;
@@ -522,7 +494,7 @@
   border-radius: 50%;
   background: var(--m-bg);
   color: var(--m-ink);
-  box-shadow: inset 0 0 0 2px var(--m-edge), 0 0 18px var(--m-glow);
+  box-shadow: inset 0 0 0 2px var(--m-edge), 0 2px 8px var(--m-glow);
 }
 .rank-medal__disk::after {
   content: "";
@@ -538,120 +510,85 @@
 .rank-medal__disk strong { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
 .rank-medal__disk small { font-size: 0.6875rem; font-weight: 700; }
 .rank-medal[data-medal="guest"] .rank-medal__disk { padding-top: 1.125rem; box-shadow: inset 0 0 0 2px var(--m-edge); border: 0; }
-.rank-medal__name { margin-top: 0.25rem; font-size: 0.6875rem; font-weight: 700; color: #ffffff; white-space: nowrap; }
+.rank-medal__name { margin-top: 0.25rem; font-size: 0.6875rem; font-weight: 700; color: var(--ink); white-space: nowrap; }
 .rank-medal__count { font-size: 0.625rem; color: var(--rk-sub); font-variant-numeric: tabular-nums; }
 
 /* ポイント：もらい方の札と獲得ログ */
-.rank-rules { margin: 0 0 0.75rem; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.rank-rules { margin: 0 0 0.75rem; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 0.5rem; }
 .rank-rule {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 0.5rem 0.25rem 0.375rem;
   border-radius: 1rem;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 16%, transparent), color-mix(in srgb, var(--brand) 4%, transparent));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 35%, transparent);
+  background: linear-gradient(180deg, var(--brand-soft), var(--brand-50));
+  box-shadow: inset 0 0 0 1px var(--brand-100);
 }
-.rank-rule__icon { display: flex; color: var(--rk-hot); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand) 70%, transparent)); }
+.rank-rule__icon { display: flex; color: var(--rk-hot); }
 .rank-rule__icon .icon { width: 1.25rem; height: 1.25rem; stroke-width: 2; }
-.rank-rule__value { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: #ffffff; font-variant-numeric: tabular-nums; text-shadow: 0 0 12px color-mix(in srgb, var(--brand) 80%, transparent); }
+.rank-rule__value { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
 .rank-rule__label { font-size: 0.625rem; color: var(--rk-sub); }
 .rank-log { margin: 0; padding: 0; list-style: none; }
-.rank-log__row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4375rem 0; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.rank-log__row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4375rem 0; border-top: 1px solid var(--hairline); }
 .rank-log__row:first-child { border-top: 0; }
-.rank-log__icon { flex: none; width: 1.75rem; height: 1.75rem; display: grid; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, 0.06); color: var(--on-night-2); }
+.rank-log__icon { flex: none; width: 1.75rem; height: 1.75rem; display: grid; place-items: center; border-radius: 50%; background: var(--g1); color: var(--g5); }
 .rank-log__icon .icon { width: 1rem; height: 1rem; stroke-width: 2; }
-.rank-log__row[data-kind="welcomeBack"] .rank-log__icon { background: color-mix(in srgb, var(--brand) 18%, transparent); color: var(--rk-hot); box-shadow: 0 0 10px color-mix(in srgb, var(--brand) 35%, transparent); }
+.rank-log__row[data-kind="welcomeBack"] .rank-log__icon { background: var(--brand-soft); color: var(--rk-hot); }
 .rank-log__spot { flex: 1; min-width: 0; font-size: var(--fs-s); color: var(--rk-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rank-log__date { flex: none; font-size: 0.625rem; color: var(--rk-sub); font-variant-numeric: tabular-nums; }
-.rank-log__points { flex: none; min-width: 2.25rem; text-align: right; font-family: var(--font-display); font-size: var(--fs-m); color: var(--rk-hot); font-variant-numeric: tabular-nums; text-shadow: 0 0 10px color-mix(in srgb, var(--brand) 60%, transparent); }
+.rank-log__points { flex: none; min-width: 2.25rem; text-align: right; font-family: var(--font-display); font-size: var(--fs-m); color: var(--rk-hot); font-variant-numeric: tabular-nums; }
 .rank-log__empty { display: flex; align-items: center; gap: 0.375rem; margin: 0; font-size: var(--fs-s); color: var(--rk-sub); }
 .rank-log__empty .icon { width: 1.125rem; height: 1.125rem; }
-
-/* 設定のマス */
-.rank-settings { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
-.rank-setting {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3125rem;
-  padding: 0.625rem 0.25rem 0.5rem;
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-}
-.rank-setting__icon {
-  width: 2rem;
-  height: 2rem;
-  display: grid;
-  place-items: center;
-  border-radius: 0.625rem;
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-  font-family: var(--font-display);
-  font-size: 0.875rem;
-  font-weight: 700;
-}
-.rank-setting__icon .icon { width: 1.125rem; height: 1.125rem; }
-.rank-setting__value { max-width: 100%; font-size: 0.75rem; font-weight: 700; color: #ffffff; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rank-setting__badge { position: absolute; top: 0.25rem; right: 0.25rem; padding: 0 0.3125rem; border-radius: var(--radius-pill); background: var(--brand); color: #ffffff; font-size: 0.5625rem; font-weight: 700; line-height: 1.5; }
 
 /* ---- 動き（登場の演出は1回。くり返しの動きはその後も続く） ---- */
 @media (prefers-reduced-motion: no-preference) {
   /* 登場：集める → 落ちる → 衝撃 */
-  .rank-hero { animation: rank-shake 0.42s 0.46s ease-out both; }
-  .rank-hero__bg { animation: rank-ignite 0.9s 0.38s ease-out both; }
-  .rank-charge { animation: rank-charge 0.45s calc(var(--i, 0) * 0.012s) ease-in both; }
-  .rank-wave { animation: rank-wave 0.9s 0.45s ease-out both; }
-  .rank-wave.rank-wave--in { animation: rank-wave-in 0.45s ease-in both; }
-  .rank-wave.rank-wave--late { animation-delay: 0.62s; }
-  .rank-stage__streak { animation: rank-streak 0.8s 0.44s ease-out both; }
-  .rank-hero__flash { animation: rank-flash 0.7s 0.42s ease-out both; }
-  .rank-stage__emblem { animation: rank-slam 0.5s cubic-bezier(0.55, 0, 0.6, 1.5) both; }
-  .rank-spark { animation: rank-spark 0.75s 0.45s ease-out both; }
-  .rank-stage__rays { animation: rank-burst 0.7s 0.45s cubic-bezier(0.2, 1.3, 0.4, 1) both, rank-spin 30s linear infinite; }
-  .rank-stage__aura { animation: rank-appear 0.6s 0.45s ease-out both, rank-aura 2.4s 1.05s ease-in-out infinite; }
-  .rank-stage__orbit { animation: rank-appear 0.6s 0.6s ease-out both, rank-spin 14s linear infinite reverse; }
-  .rank-hero__kicker { animation: rank-drop 0.4s 0.62s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
-  .rank-hero__name { animation: rank-stamp 0.45s 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) both, rank-shimmer 4.5s 1.6s ease-in-out infinite; }
-  .rank-pip { animation: rank-pip 0.35s calc(0.95s + var(--i, 0) * 0.08s) cubic-bezier(0.3, 1.8, 0.5, 1) both; }
-  .rank-hero__points { animation: rank-appear 0.3s 0.8s ease-out both; }
-  .rank-hero__num--done { animation: rank-num-pop 0.55s ease-out; }
-  .rank-hero__near { animation: rank-pop 0.4s 1.8s cubic-bezier(0.3, 1.8, 0.5, 1) both, rank-near 1.1s 2.2s ease-in-out infinite; }
-  .rank-road__fill { animation: rank-fill 1s 1.1s ease-out both, rank-flow 0.9s linear infinite; }
-  .rank-road__walker { animation: rank-walk 1s 1.1s ease-out both; }
-  .rank-road__trail { animation: rank-trail 1.2s 1.05s ease-out both; }
-  .rank-road__dot { animation: rank-dot 1s 1.1s ease-out both, rank-pulse 1.6s 2.1s ease-out infinite; }
-  .rank-road__avatar, .rank-road__avatar-fallback { animation: rank-bob 0.45s ease-in-out infinite alternate; }
-  .rank-road__node[data-state="current"] .rank-road__emblem { animation: rank-glow 2s ease-in-out infinite; }
-  .rank-road__node[data-next="true"]::before { animation: rank-target 1.6s 2s ease-out infinite; }
+  /* 主な情報（段の名前・EXP・現在地）は 1.0 秒以内に最後の位置へ出す */
+  .rank-hero { animation: rank-shake 0.3s 0.3s ease-out both; }
+  .rank-hero__bg { animation: rank-ignite 0.5s 0.2s ease-out both; }
+  .rank-charge { animation: rank-charge 0.3s calc(var(--i, 0) * 0.008s) ease-in both; }
+  .rank-wave { animation: rank-wave 0.6s 0.3s ease-out both; }
+  .rank-wave.rank-wave--in { animation: rank-wave-in 0.3s ease-in both; }
+  .rank-wave.rank-wave--late { animation-delay: 0.4s; }
+  .rank-stage__streak { animation: rank-streak 0.5s 0.3s ease-out both; }
+  .rank-hero__flash { animation: rank-flash 0.45s 0.28s ease-out both; }
+  .rank-stage__emblem { animation: rank-slam 0.34s cubic-bezier(0.55, 0, 0.6, 1.5) both; }
+  .rank-spark { animation: rank-spark 0.5s 0.3s ease-out both; }
+  .rank-stage__rays { animation: rank-burst 0.45s 0.3s cubic-bezier(0.2, 1.3, 0.4, 1) both, rank-spin 30s linear infinite; }
+  .rank-stage__aura { animation: rank-appear 0.4s 0.3s ease-out both; }
+  .rank-stage__orbit { animation: rank-appear 0.4s 0.35s ease-out both; }
+  .rank-hero__kicker { animation: rank-drop 0.3s 0.1s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+  .rank-hero__name { animation: rank-stamp 0.32s 0.34s cubic-bezier(0.3, 1.5, 0.5, 1) both, rank-shimmer 4.5s 0.9s ease-in-out 1; }
+  .rank-pip { animation: rank-pip 0.3s calc(0.5s + var(--i, 0) * 0.04s) cubic-bezier(0.3, 1.8, 0.5, 1) both; }
+  .rank-hero__points { animation: rank-appear 0.2s 0.1s ease-out both; }
+  .rank-hero__num--done { animation: rank-num-pop 0.35s ease-out; }
+  .rank-hero__near { animation: rank-pop 0.3s 0.6s cubic-bezier(0.3, 1.8, 0.5, 1) both; }
+  .rank-road__fill { animation: rank-fill 0.5s 0.3s ease-out both; }
+  .rank-road__walker { animation: rank-walk 0.5s 0.3s ease-out both; }
+  .rank-road__trail { animation: rank-trail 0.6s 0.3s ease-out both; }
+  .rank-road__dot { animation: rank-dot 0.5s 0.3s ease-out both; }
+  .rank-road__avatar, .rank-road__avatar-fallback { animation: rank-bob 0.2s 0.3s ease-in-out 4 alternate; }
 
-  /* 登場の後も続く動き：ゆらゆら3D（ポインタで傾けている間は止める）・つや・ホログラム・きらめき・粒 */
-  .rank-stage__float { animation: rank-float 3.2s 1.4s ease-in-out infinite; }
-  .rank-stage__tilt:not(.is-tilting) { animation: rank-sway 7s 1.6s ease-in-out infinite; }
-  .rank-stage__sheen::before { animation: rank-sheen 3.6s 1.1s ease-in-out infinite; }
-  .rank-stage__holo::before { animation: rank-holo 5s ease-in-out infinite alternate; }
-  .rank-glint { animation: rank-glint 3.2s calc(1.3s + var(--i, 0) * 0.9s) ease-in-out infinite; }
+  /* 登場の後もずっと続く動きは3種類だけ：光の筋の回転・紋章の浮き・昇る光の粒。つや・きらめきは登場のあと1回だけ */
+  .rank-stage__float { animation: rank-float 3.2s 1s ease-in-out infinite; }
   .rank-mote { animation: rank-rise var(--dur, 5s) var(--d, 0s) linear infinite; }
-  .rank-medal__disk::after { animation: rank-sheen 4.2s calc(0.8s + var(--i, 0) * 0.35s) ease-in-out infinite; }
+  .rank-stage__sheen::before { animation: rank-sheen 3.6s 0.8s ease-in-out 1; }
+  .rank-glint { animation: rank-glint 3.2s calc(0.9s + var(--i, 0) * 0.5s) ease-in-out 1; }
+  .rank-medal__disk::after { animation: rank-sheen 4.2s calc(0.4s + var(--i, 0) * 0.35s) ease-in-out 1; }
 
   /* 下のまとまり：画面に入るとせり上がり、中身が順にはじける */
-  .rank-reveal { transition: opacity 0.55s ease-out, transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1); }
-  .rank-reveal:not(.is-in) { opacity: 0; transform: translateY(1.75rem); }
-  .rank-reveal.is-in :is(.rank-stat, .rank-medal, .rank-rule, .rank-setting, .rank-log__row) { animation: rank-pop 0.45s calc(0.12s + var(--i, 0) * 0.06s) cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+  .rank-reveal { transition: opacity 0.3s ease-out, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .rank-reveal:not(.is-in) { opacity: 0; transform: translateY(1rem); }
+  .rank-reveal.is-in :is(.rank-stat, .rank-medal, .rank-rule, .rank-log__row) { animation: rank-pop 0.3s calc(0.05s + var(--i, 0) * 0.04s) cubic-bezier(0.3, 1.5, 0.5, 1) both; }
 
-  /* 盤のタップで登場の演出を飛ばす（くり返しの動きだけ残す） */
+  /* 盤のタップで登場の演出を飛ばす（ずっと続く3種類の動きだけ残す） */
   .rank-hero.is-skip,
-  .rank-hero.is-skip :is(.rank-hero__bg, .rank-charge, .rank-wave, .rank-stage__streak, .rank-hero__flash, .rank-stage__emblem, .rank-spark, .rank-hero__kicker, .rank-pip, .rank-hero__points, .rank-road__walker, .rank-road__trail) { animation: none; }
+  .rank-hero.is-skip :is(.rank-hero__bg, .rank-charge, .rank-wave, .rank-stage__streak, .rank-hero__flash, .rank-stage__emblem, .rank-spark, .rank-stage__aura, .rank-stage__orbit, .rank-hero__kicker, .rank-hero__name, .rank-pip, .rank-hero__points, .rank-hero__near, .rank-road__fill, .rank-road__walker, .rank-road__trail, .rank-road__dot, .rank-road__avatar, .rank-road__avatar-fallback) { animation: none; }
   .rank-hero.is-skip .rank-stage__rays { animation: rank-spin 30s linear infinite; }
-  .rank-hero.is-skip .rank-stage__aura { animation: rank-aura 2.4s ease-in-out infinite; }
-  .rank-hero.is-skip .rank-stage__orbit { animation: rank-spin 14s linear infinite reverse; }
-  .rank-hero.is-skip .rank-hero__name { animation: rank-shimmer 4.5s ease-in-out infinite; }
-  .rank-hero.is-skip .rank-hero__near { animation: rank-near 1.1s ease-in-out infinite; }
-  .rank-hero.is-skip .rank-road__fill { animation: rank-flow 0.9s linear infinite; }
-  .rank-hero.is-skip .rank-road__dot { animation: rank-pulse 1.6s ease-out infinite; }
+  /* 同じ起動の中で2回目以降に開いたとき：落下・数え上げを省き、光だけ（0.6 秒以内） */
+  .rank-hero.is-quick .rank-hero__flash { animation: rank-flash 0.4s ease-out both; }
+  .rank-hero.is-quick .rank-hero__bg { animation: rank-ignite 0.4s ease-out both; }
+  .rank-hero.is-quick .rank-road__fill { animation: rank-fill 0.4s ease-out both; }
 }
 @keyframes rank-charge {
   0% { transform: rotate(var(--a)) translateY(-9.5rem); opacity: 0; }
@@ -713,3 +650,278 @@
 @keyframes rank-glow { 50% { filter: drop-shadow(0 0 12px var(--t)); } }
 @keyframes rank-target { 0% { transform: scale(0.75); opacity: 0.9; } 100% { transform: scale(1.35); opacity: 0; } }
 @keyframes rank-pop { from { opacity: 0; transform: scale(0.88); } }
+
+/* ---- NEXT：ランクアップと次の特典まで「あと○EXP」・特典ロード（2026-11-10 ユーザー指示「可視化」。rankNext.ts） ---- */
+.rank-goals { display: grid; gap: 0.5rem; }
+.rank-goal {
+  --g: var(--brand);
+  --g-2: var(--brand-300);
+  --g-ink: var(--brand-text-s);
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 1rem;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--g) 12%, #ffffff), var(--g1) 60%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--g) 28%, transparent);
+}
+.rank-goal[data-kind="perk"] { --g: var(--metal-gold); --g-2: var(--metal-gold-light); --g-ink: var(--gold-ink); }
+.rank-goal__icon { position: relative; display: grid; place-items: center; width: 3.25rem; height: 3.25rem; }
+.rank-goal__emblem { width: 4rem; height: auto; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--t) 60%, transparent)); }
+.rank-goal__art { position: relative; display: grid; place-items: center; }
+.rank-goal__badge { position: absolute; right: -0.625rem; bottom: -0.5rem; width: 1.75rem; height: auto; filter: drop-shadow(0 1px 2px rgba(42, 33, 27, 0.3)); }
+.rank-goal__main { display: flex; flex-direction: column; min-width: 0; }
+.rank-goal__label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.375rem; min-width: 0; }
+.rank-goal__label strong { flex: none; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; color: var(--ink); }
+.rank-goal__name { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.6875rem; color: var(--g-ink); }
+.rank-goal__bar { display: block; height: 0.625rem; margin: 0.375rem 0 0.1875rem; border-radius: var(--radius-pill); background: rgba(42, 33, 27, 0.1); box-shadow: inset 0 1px 2px rgba(42, 33, 27, 0.14); overflow: hidden; }
+.rank-goal__fill {
+  display: block;
+  width: var(--p, 0%);
+  min-width: 0.625rem;
+  height: 100%;
+  border-radius: inherit;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0 5px, transparent 5px 12px) 0 0 / 34px 100%,
+    linear-gradient(90deg, var(--g), var(--g-2));
+}
+.rank-goal__nums { font-size: 0.625rem; color: var(--rk-sub); font-variant-numeric: tabular-nums; }
+.rank-goal__left { display: flex; align-items: baseline; gap: 0.125rem; margin: 0; white-space: nowrap; }
+.rank-goal__left small { font-size: 0.625rem; font-weight: 700; color: var(--rk-sub); }
+.rank-goal__left strong {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 0 color-mix(in srgb, var(--g) 35%, #ffffff);
+}
+.rank-goal[data-max="true"] .rank-goal__left strong { font-size: 1.375rem; letter-spacing: 0.08em; }
+
+/* 特典の部品の絵（レア度の枠。N＝1・R＝2・SR＝3・SSR＝4） */
+.rank-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--art, 2.75rem);
+  height: var(--art, 2.75rem);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 30%, #ffffff, var(--g2) 70%);
+  box-shadow: 0 0 0 1.5px var(--rarity-2);
+}
+.rank-art > canvas { display: block; }
+.rank-art[data-rarity="N"] { box-shadow: 0 0 0 1.5px var(--rarity-1); }
+.rank-art[data-rarity="SR"] { background: radial-gradient(circle at 50% 30%, #ffffff, var(--metal-gold-light) 72%); box-shadow: 0 0 0 1.5px var(--rarity-3), 0 0 8px color-mix(in srgb, var(--metal-gold) 40%, transparent); }
+.rank-art[data-rarity="SSR"] { background: radial-gradient(circle at 50% 30%, #ffffff, var(--metal-legend-light) 72%); box-shadow: 0 0 0 2px var(--rarity-4), 0 0 8px color-mix(in srgb, var(--metal-legend) 50%, transparent); }
+.rank-art[data-rarity="SSR"]::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--legend-grad); opacity: 0.3; }
+.rank-art > .icon { position: relative; width: 60%; height: 60%; color: var(--metal-gold-edge); }
+
+/* 特典ロード：横に並べ、いまの EXP まで線を塗る */
+.rank-perks {
+  position: relative;
+  margin: 0.5rem -0.875rem -0.375rem;
+  padding: 0.875rem 0.875rem 0.375rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000000 0.875rem, #000000 calc(100% - 0.875rem), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000000 0.875rem, #000000 calc(100% - 0.875rem), transparent);
+}
+.rank-perks::-webkit-scrollbar { display: none; }
+.rank-perks__list { display: flex; width: max-content; margin: 0; padding: 0; list-style: none; }
+.rank-perk { position: relative; flex: none; display: flex; flex-direction: column; align-items: center; gap: 0.3125rem; width: 4.25rem; }
+.rank-perk__link {
+  position: absolute;
+  top: 1.4375rem;
+  left: 50%;
+  width: 100%;
+  height: 0.3125rem;
+  transform: translateY(-50%);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--brand), var(--brand-300)) 0 0 / var(--link, 0%) 100% no-repeat, rgba(42, 33, 27, 0.1);
+}
+.rank-perk:last-child .rank-perk__link { display: none; }
+.rank-perk__frame { position: relative; z-index: 1; display: grid; place-items: center; width: 2.875rem; height: 2.875rem; }
+.rank-perk__mark {
+  position: absolute;
+  right: -0.3125rem;
+  bottom: -0.3125rem;
+  display: grid;
+  place-items: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 2px var(--surface);
+  color: #ffffff;
+}
+.rank-perk__mark .icon { width: 0.75rem; height: 0.75rem; stroke-width: 3; }
+.rank-perk[data-state="earned"] .rank-perk__mark { background: var(--success-ink); }
+.rank-perk[data-state="locked"] .rank-perk__mark { background: var(--g2); color: var(--g5); }
+.rank-perk[data-state="locked"] .rank-perk__mark .icon { stroke-width: 2.4; }
+.rank-perk__rank { position: absolute; left: -0.75rem; top: -0.5rem; width: 1.625rem; height: auto; filter: drop-shadow(0 1px 2px rgba(42, 33, 27, 0.3)); }
+.rank-perk__at { font-family: var(--font-display); font-size: 0.75rem; font-weight: 700; color: var(--rk-sub); font-variant-numeric: tabular-nums; }
+.rank-perk[data-state="earned"] .rank-perk__at { color: var(--ink); }
+.rank-perk[data-state="locked"] .rank-art { filter: grayscale(0.9) opacity(0.6); }
+.rank-perk[data-state="next"] .rank-perk__frame { transform: scale(1.12); }
+.rank-perk[data-state="next"] .rank-perk__frame::after {
+  content: "";
+  position: absolute;
+  inset: -0.25rem;
+  border-radius: 1rem;
+  box-shadow: 0 0 0 2px var(--brand), 0 0 8px color-mix(in srgb, var(--brand) 40%, transparent);
+  pointer-events: none;
+}
+.rank-perk[data-state="next"] .rank-perk__at { color: var(--rk-hot); }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* NEXT のゲージは最初の画面に入っているので、出現の見張りを待たずに開いた時から伸ばす（1.0 秒以内に最後の長さ） */
+  .rank-next .rank-goal__fill { animation: rank-fill 0.4s 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .rank-next.is-in :is(.rank-goal, .rank-perk) { animation: rank-pop 0.3s calc(0.05s + var(--i, 0) * 0.03s) cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+  .rank-next.is-in .rank-goal[data-kind="perk"] { --i: 1; }
+  .rank-perk[data-state="next"] .rank-perk__frame::after { animation: rank-next-ring 1.4s ease-in-out 2; }
+}
+@keyframes rank-next-ring { 50% { box-shadow: 0 0 0 3px var(--brand), 0 0 14px color-mix(in srgb, var(--brand) 60%, transparent); } }
+
+/* ---- クーポン：持っているチケット（紙）と、もうすぐもらえるクーポン（点線）（2026-11-10 ユーザー指示。rankCoupons.ts） ---- */
+.rank-coupons__sub { display: flex; align-items: baseline; gap: 0.375rem; margin: 0 0 0.375rem; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; color: var(--rk-sub); }
+.rank-coupons__sub strong { font-family: var(--font-display); font-size: 1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.rank-coupons__row + .rank-coupons__sub { margin-top: 0.625rem; }
+.rank-coupons__row {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 -0.875rem;
+  padding: 0.125rem 0.875rem 0.375rem;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000000 0.875rem, #000000 calc(100% - 0.875rem), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000000 0.875rem, #000000 calc(100% - 0.875rem), transparent);
+}
+.rank-coupons__row::-webkit-scrollbar { display: none; }
+.rank-coupons__row > li { flex: none; }
+
+/* チケット1枚（上＝写真、切り取り線、下＝お店・中身・札）。左右の切り欠きは mask でくり抜く */
+.rank-coupon {
+  --notch-y: 4.25rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 7.5rem;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0.875rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-mask: radial-gradient(circle at 0 var(--notch-y), transparent 0.375rem, #000000 0.4rem) left / 51% 100% no-repeat, radial-gradient(circle at 100% var(--notch-y), transparent 0.375rem, #000000 0.4rem) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle at 0 var(--notch-y), transparent 0.375rem, #000000 0.4rem) left / 51% 100% no-repeat, radial-gradient(circle at 100% var(--notch-y), transparent 0.375rem, #000000 0.4rem) right / 51% 100% no-repeat;
+}
+.rank-coupon:focus-visible { outline: 2px solid var(--brand-300); outline-offset: 2px; }
+.rank-coupon__top { position: relative; display: grid; place-items: center; height: var(--notch-y); background: var(--brand-soft); border-bottom: 2px dashed var(--brand-200); }
+.rank-coupon__photo { display: block; border-radius: 0.625rem; box-shadow: 0 2px 6px rgba(42, 33, 27, 0.25); }
+.rank-coupon__qr {
+  position: absolute;
+  top: 0.375rem;
+  right: 0.375rem;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 0.3125rem;
+  background: var(--ink);
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.rank-coupon__lock { position: absolute; top: 0.375rem; right: 0.375rem; display: grid; place-items: center; width: 1.25rem; height: 1.25rem; border-radius: 50%; background: rgba(0, 0, 0, 0.45); color: #ffffff; }
+.rank-coupon__lock .icon { width: 0.75rem; height: 0.75rem; stroke-width: 2.4; }
+.rank-coupon__body { display: flex; flex: 1; flex-direction: column; gap: 0.125rem; padding: 0.4375rem 0.625rem 0.5625rem; }
+.rank-coupon__shop { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.625rem; color: color-mix(in srgb, currentColor 65%, transparent); }
+.rank-coupon__title {
+  display: -webkit-box;
+  min-height: 2.4em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.rank-coupon__pill {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 0.1875rem;
+  margin-top: 0.25rem;
+  padding: 0.0625rem 0.4375rem;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: #ffffff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.rank-coupon__pill .icon { width: 0.75rem; height: 0.75rem; stroke-width: 2.4; }
+.rank-coupon__pill--hot { background: var(--danger); }
+
+/* もうすぐ：まだ持っていないので、金のふちの淡いチケット */
+.rank-coupon[data-kind="upcoming"] {
+  background: var(--g1);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--metal-gold) 70%, transparent);
+  color: var(--ink);
+}
+.rank-coupon[data-kind="upcoming"] .rank-coupon__top { background: var(--g2); border-bottom-color: color-mix(in srgb, var(--metal-gold) 60%, transparent); }
+.rank-coupon[data-kind="upcoming"] .rank-coupon__pill { background: var(--metal-gold-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--metal-gold) 80%, transparent); color: var(--gold-ink); }
+.rank-coupon[data-kind="upcoming"] .rank-coupon__pill--hot { box-shadow: inset 0 0 0 1px var(--danger); color: var(--danger-ink); background: var(--danger-soft); }
+.rank-coupon[data-state="soon"] .rank-coupon__photo { filter: grayscale(0.7) opacity(0.75); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .rank-coupons.is-in .rank-coupons__row > li { animation: rank-pop 0.3s calc(0.05s + var(--i, 0) * 0.04s) cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+  .rank-coupon { transition: transform 0.15s ease-out; }
+  .rank-coupon:active { transform: scale(0.96); }
+}
+
+/*
+ * ---- UI/UX 改善 1周目（2026-11-10）：文字の大きさ・読みやすさ・押せない物の見た目 ----
+ * 文字は 11／12／13／14／22／28px と、見せる数字・題字（42・52px、紋章の数字）の9種類に集める。最小 11px。
+ * 補足の文字は --g4（白・ベージュの地で 4.5:1 以上）。
+ */
+/* 「ランクは下がらない」の印：押せないので輪を外し、線の盾だけにする */
+.rank-hero__keep { top: 1rem; right: 1rem; width: 1.25rem; height: 1.25rem; background: none; box-shadow: none; }
+.rank-hero__name--long { font-size: var(--fs-2xl); }
+/* カード同士の間隔は 12px */
+.rank-card { margin-top: 0.75rem; }
+.rank-hero__pt { font-size: var(--fs-m); }
+/* ランクロード：名前はいまの段と次の段だけ。ほかは数字の紋だけ */
+.rank-road__name { font-size: var(--fs-xs); letter-spacing: 0; white-space: nowrap; }
+.rank-road__node:not([data-state="current"]):not([data-next="true"]) .rank-road__name { display: none; }
+.rank-road__node[data-next="true"] .rank-road__name { margin-top: 0.5rem; }
+.rank-stat__value, .rank-medal__disk strong, .rank-rule__value { font-size: var(--fs-xl); }
+.rank-stat__value small, .rank-stat__label, .rank-medal__count, .rank-rule__label, .rank-log__date, .rank-goal__left small, .rank-coupon__shop, .rank-coupon__pill, .rank-coupon__qr { font-size: var(--fs-xs); }
+.rank-goal__nums { font-size: var(--fs-xs); }
+.rank-goal__left strong { font-size: var(--fs-2xl); }
+.rank-goal[data-max="true"] .rank-goal__left strong { font-size: var(--fs-xl); }
+.rank-coupons__sub strong { font-size: var(--fs-m); font-weight: var(--fw-heavy); }
+.rank-art { border-radius: var(--radius-m); }
+/* クーポン名は語の区切りで折る（1〜3文字だけ次の行に落とさない） */
+.rank-coupon { width: 8.5rem; border-radius: var(--radius-m); }
+.rank-coupon__title { word-break: auto-phrase; line-break: strict; }
+.rank-coupon__qr { border-radius: var(--radius-pill); line-height: 1.5; }
+.rank-coupon__photo { border-radius: var(--radius-m); }
+
+/*
+ * ---- UI/UX 改善 2周目（2026-11-10）：文字の大きさ「大・特大」でも崩れない ----
+ * EXP のルールの数字（「×1.5」）は折らない。4つ並ぶので大きさは 22px まで。
+ * ランクロードの紋は道の幅（画面の幅）で決まるので、文字と一緒に大きくしない（紋どうしが重ならない）。
+ */
+.rank-rule__value { font-size: min(var(--fs-xl), 22px); white-space: nowrap; }
+html:is([data-text-scale="large"], [data-text-scale="xlarge"]) .rank-road__node { --eh: 36px; width: 68px; }
+html:is([data-text-scale="large"], [data-text-scale="xlarge"]) .rank-road__node[data-state="current"] { --eh: 46px; }
+html:is([data-text-scale="large"], [data-text-scale="xlarge"]) .rank-road__node[data-next="true"]::before { top: calc(var(--eh) / 2 - 24px); left: calc(50% - 24px); width: 48px; height: 48px; }

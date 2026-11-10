@@ -21,6 +21,23 @@ function setup(): { tw: ReturnType<typeof createTestWorld>; avatars: InMemoryAva
 }
 
 describe('GetAvatarClosetUseCase', () => {
+  it('月間リーグの報酬は、締めた月の順位・キープの達成で手に入り、手に入れ方に条件が出る', async () => {
+    const { tw, get } = setup();
+    await seedTraveler(tw, { visits: [['l_jo01', -20], ['l_jo01', -2], ['s_jo01', -2], ['s_jo03', -2]] });
+    const closet = must(await get.execute());
+    const part = (id: string): (typeof closet.parts)[number] | undefined => closet.parts.find((p) => p.id === id);
+    expect(part('held.cheerFlag')).toMatchObject({ owned: true, current: 1, target: 1, unit: '' });
+    expect(part('held.cheerFlag')?.hint).toBe('月間ランキングに参加して月末をむかえる');
+    expect(part('object.winnerFlag')).toMatchObject({ owned: true, hint: 'ランキングで表彰台を24時間キープ' });
+    expect(part('accessory.medal')).toMatchObject({ owned: false, hint: '月間ランキングで月末に1位' });
+    expect(part('title.kayoiKing')).toMatchObject({ name: '天神さんの常連王', owned: false, hint: 'かよいリーグで月末に1位' });
+    expect(part('accessory.umeTenugui')).toMatchObject({ owned: true, hint: '月間ランキングに参加して月末をむかえる' });
+    expect(part('object.gojinto')).toMatchObject({ owned: true });
+    expect(part('pet.shingyu')).toMatchObject({ owned: false, hint: '月間ランキングで月末に2位' });
+    expect(part('hat.laurel')?.hint).toBe('月間ランキングで月末に4〜5位');
+    expect(part('object.trophy')).toMatchObject({ owned: false, hint: 'ランキングで1位を72時間キープ' });
+  });
+
   it('すべての部品を、持っているか・手に入れ方・進み具合つきで返す', async () => {
     const { tw, get } = setup();
     await seedTraveler(tw, { visits: VISITS });

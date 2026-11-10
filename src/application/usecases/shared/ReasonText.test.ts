@@ -44,7 +44,7 @@ describe('reasonDtoOf（再訪理由の日本語化）', () => {
     expect(reasonDtoOf(reason, spots)).toEqual({
       kind: 'fade',
       title: 'そろそろ色あせ：みなと地区 あと5日',
-      subtitle: '最終訪問 25日前',
+      subtitle: '25日前',
       districtId: 'd_minato',
       calendar: { districtName: 'みなと地区', fadeStartDate: '2026-11-14' },
     });
@@ -53,7 +53,7 @@ describe('reasonDtoOf（再訪理由の日本語化）', () => {
   it('色あせ中（fading）:「色あせ中：{地区名}」と復活の案内（カレンダー追加なし）', () => {
     const reason: RevisitReason = { kind: 'fade', districtId: testDistrictId('d_yunosato'), state: 'fading', daysSinceVisit: 45, fadeStartDate: START };
     const dto = reasonDtoOf(reason, spots);
-    expect(dto).toEqual({ kind: 'fade', title: '色あせ中：湯の里地区', subtitle: '最終訪問 45日前・再訪で復活＋おかえりボーナス', districtId: 'd_yunosato' });
+    expect(dto).toEqual({ kind: 'fade', title: '色あせ中：湯の里地区', subtitle: '45日前・再訪で復活＋おかえりボーナス', districtId: 'd_yunosato' });
     expect(dto.calendar).toBeUndefined();
   });
 

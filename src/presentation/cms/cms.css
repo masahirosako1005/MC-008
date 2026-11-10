@@ -7,14 +7,21 @@
  * - 文字を入れる欄（入力欄・select）の枠は白地と 3:1 以上（--cms-control-line）。チップ・定休日・切り替えの枠は --g3 のまま
  * - 959px 以下はスマホの配置（見え方は全画面のシートで開く。上の段は画面の外へ逃がし、タブは上に残す。押せる所は高さ 44px 以上、入力欄の文字は 16px）
  * - 色は tokens.css の名前を使う（tokens.css に無い2色だけは、理由を書いて .cms-app の変数に置く）
+ * - 書体はアプリと同じ LINE Seed JP（tokens.css の --font-seed。ここでは読み込みも上書きもしない）
  */
-.cms-app {
+
+/* CMS の変数。ログイン画面（.cms-login）は .cms-app の外に描くので、同じ変数をそちらにも置く（無いと入力欄の枠と角丸が消え、欄が見えなくなる） */
+.cms-app,
+.cms-login {
   --cms-line: var(--line);
   --cms-radius: 8px;
   --cms-ok-ink: var(--success-ink);
   --cms-ok-soft: var(--success-soft);
-  --cms-dot: #d97706; /* audit-ignore: color-literal 未保存の点（白地と 3.2:1）。tokens.css は別担当のため、名前を足すまで CMS の中だけで持つ */
-  --cms-control-line: #8b919c; /* audit-ignore: color-literal 文字を入れる欄の枠（白地と約 3.2:1）。tokens.css は別担当のため、名前を足すまで CMS の中だけで持つ */
+  --cms-dot: #b57a10; /* audit-ignore: color-literal 未保存の点（白地と 3.2:1）。tokens.css は別担当のため、名前を足すまで CMS の中だけで持つ */
+  --cms-control-line: #928a80; /* audit-ignore: color-literal 文字を入れる欄の枠（白地と約 3.2:1）。tokens.css は別担当のため、名前を足すまで CMS の中だけで持つ */
+}
+
+.cms-app {
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--paper);
@@ -128,7 +135,10 @@
 .cms-preview-col__label { margin: 0; font-size: 12px; color: var(--g4); }
 .cms-preview-col__caption { min-height: 18px; margin: 0; font-size: 12px; color: var(--g4); }
 .cms-preview-col__sheethead { display: none; }
-.cms-phone { width: 100%; margin: 0; }
+.cms-phone {
+  width: 100%;
+  margin: 0;
+}
 /* 端末の枠は影ではなく線で描く（影はモーダル・トースト・シート・メニューだけ） */
 .cms-phone__screen {
   position: relative;
@@ -191,7 +201,7 @@
   font-size: 15px;
 }
 textarea.cms-input { height: auto; min-height: 88px; padding: 8px 12px; line-height: 1.6; resize: vertical; }
-.cms-input:focus, .cms-select:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08); }
+.cms-input:focus, .cms-select:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px rgba(42, 33, 27, 0.08); }
 .cms-input[aria-invalid="true"], .cms-select[aria-invalid="true"] { border-color: var(--deadline); }
 /* 営業時間は OS の矢印を消し、お店の切り替えと同じ包み（.cms-selectwrap）の印にする */
 .cms-select--time { -webkit-appearance: none; appearance: none; width: 112px; padding: 0 32px 0 12px; cursor: pointer; }
@@ -381,6 +391,32 @@ div.cms-row { cursor: default; }
   .cms-keypoint .cms-btn { width: auto; }
   .cms-charts { grid-template-columns: minmax(0, 1fr); }
   .cms-kpis--inline .cms-kpi { padding: 0 8px; }
+}
+/* ---- アンケート（まとめの行・横棒・ひとこと。docs/09 C09） ---- */
+.cms-charts--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cms-chart--points { padding-bottom: 8px; }
+.cms-points, .cms-hbars, .cms-voices { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.cms-point { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 0; }
+.cms-point + .cms-point, .cms-voice + .cms-voice { border-top: 1px solid var(--cms-line); }
+.cms-point .cms-badge { min-width: 64px; justify-content: center; }
+.cms-point__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cms-point__text { font-weight: 500; }
+.cms-point__sub { font-size: 13px; color: var(--g4); }
+.cms-hbars { gap: 10px; padding-bottom: 8px; }
+.cms-hbar { display: grid; grid-template-columns: 10.5em minmax(0, 1fr) 3em; align-items: center; gap: 8px; font-size: 13px; }
+.cms-hbar__label { color: var(--g5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cms-hbar__track { height: 10px; border-radius: 3px; background: var(--g1); }
+.cms-hbar__bar { display: block; height: 100%; min-width: 2px; border-radius: 3px; background: var(--g3); }
+.cms-hbar__bar--top { background: var(--ink); }
+.cms-hbar__value { text-align: right; color: var(--g5); font-variant-numeric: tabular-nums; }
+.cms-voice { display: flex; align-items: baseline; gap: 16px; padding: 10px 0; }
+.cms-voice__meta { flex: none; display: inline-flex; align-items: center; gap: 8px; min-width: 168px; }
+.cms-voice__text { flex: 1; min-width: 0; }
+@media (max-width: 959px) {
+  .cms-charts--three { grid-template-columns: minmax(0, 1fr); }
+  .cms-point { display: grid; grid-template-columns: 64px minmax(0, 1fr); column-gap: 12px; row-gap: 8px; }
+  .cms-point .cms-btn { grid-column: 2; justify-self: start; width: auto; }
+  .cms-voice { flex-direction: column; gap: 4px; }
 }
 @media (max-width: 959px) {
   /* シートを開いている間は後ろのページを動かさない */

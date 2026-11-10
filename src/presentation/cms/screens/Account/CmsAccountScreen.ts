@@ -96,7 +96,7 @@ function logoutSection(ctx: CmsContext, auth: CmsAuthServices, root: HTMLElement
       root.dispatchEvent(new CustomEvent(CMS_LOGGED_OUT_EVENT, { bubbles: true }));
     },
   });
-  return log.exit(formSection(undefined, [h('div', { class: 'cms-inline' }, [button])], { testId: 'cms-account-logout' }));
+  return log.exit(formSection(undefined, [h('div', { class: 'cms-inline' }, [button])], { testId: 'cms-account-logout-section' }));
 }
 
 /**

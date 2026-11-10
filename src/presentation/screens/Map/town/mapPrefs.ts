@@ -25,18 +25,18 @@ export const MAP_FILTERS: readonly { readonly id: MapFilterId; readonly label: s
 /** 好みの種類 */
 export type InterestId = 'cafe' | 'sweets' | 'bread' | 'meal' | 'drink' | 'shopping' | 'culture' | 'toilet' | 'stroller' | 'kids';
 
-/** 好みの表示名と絵文字（好みパネルのチップに使う） */
-export const INTERESTS: readonly { readonly id: InterestId; readonly label: string; readonly emoji: string }[] = [
-  { id: 'cafe', label: 'カフェ・喫茶', emoji: '☕' },
-  { id: 'sweets', label: '甘いもの', emoji: '🍡' },
-  { id: 'bread', label: 'パン', emoji: '🥐' },
-  { id: 'meal', label: 'ごはん・食べ歩き', emoji: '🍜' },
-  { id: 'drink', label: 'お酒', emoji: '🍶' },
-  { id: 'shopping', label: '買い物・雑貨', emoji: '🛍' },
-  { id: 'culture', label: '名所・文化', emoji: '⛩' },
-  { id: 'toilet', label: 'トイレ', emoji: '🚻' },
-  { id: 'stroller', label: 'ベビーカーOK', emoji: '🚼' },
-  { id: 'kids', label: '子連れ歓迎', emoji: '🧒' },
+/** 好みの表示名（好みパネルのチップに使う。アイコンは mapLineIcons の同じ名前の線の絵） */
+export const INTERESTS: readonly { readonly id: InterestId; readonly label: string }[] = [
+  { id: 'cafe', label: 'カフェ・喫茶' },
+  { id: 'sweets', label: '甘いもの' },
+  { id: 'bread', label: 'パン' },
+  { id: 'meal', label: 'ごはん・食べ歩き' },
+  { id: 'drink', label: 'お酒' },
+  { id: 'shopping', label: '買い物・雑貨' },
+  { id: 'culture', label: '名所・文化' },
+  { id: 'toilet', label: 'トイレ' },
+  { id: 'stroller', label: 'ベビーカーOK' },
+  { id: 'kids', label: '子連れ歓迎' },
 ];
 
 /** 好みと「行きたい」 */
@@ -118,15 +118,6 @@ export interface PrefsSpot {
 export interface FilterSpot extends PrefsSpot {
   readonly id: string;
   readonly today: boolean;
-}
-
-/**
- * 値が好みの種類か判定する。
- * @param value 判定する値
- * @returns InterestId なら true
- */
-export function isInterestId(value: unknown): value is InterestId {
-  return typeof value === 'string' && INTERESTS.some((item) => item.id === value);
 }
 
 /**

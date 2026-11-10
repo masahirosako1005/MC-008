@@ -5,16 +5,16 @@
  * - まだ持っていない部品は試着だけでき、手に入れ方・進み具合・「地図で向かう」を見せる（B 未開拓への興味・C 再訪動機）
  * - 部品は通った実績で手に入る。ここで手に入れることはできない（歩かずに稼げる仕組みは作らない＝CLAUDE.md 5 章）
  */
+import { prefersReducedMotion } from '@/Common/ui/a11y/reducedMotion';
 import '@/presentation/screens/Avatar/AvatarScreen.css';
-import type { AvatarClosetDto, AvatarCoordDto, AvatarPartDto, AvatarSetDto } from '@/application/dto/Dto';
+import type { AvatarClosetDto, AvatarCoordDto, AvatarPartDto } from '@/application/dto/Dto';
 import { createLogger, setCorrelationId } from '@/Common/logging/logger';
 import { h } from '@/Common/ui/dom';
 import type { AppContext } from '@/presentation/App/AppContext';
 import type { Screen } from '@/presentation/App/Screen';
-import { createCollectionPanel } from '@/presentation/screens/Avatar/AvatarCollection';
-import { createCoordPanel, createColorChips, createPartDetail, createPartGrid, createPickup, createTitleList } from '@/presentation/screens/Avatar/AvatarPanels';
+import { createCoordPanel, createColorChips, createPartDetail, createPartGrid, createTitleList } from '@/presentation/screens/Avatar/AvatarPanels';
 import type { PartListInput } from '@/presentation/screens/Avatar/AvatarPanels';
-import { CATEGORIES, clearSlot, equipPart, nearlyUnlockedOf, newCountOf, randomOutfitOf, sameOutfit, slotOfPartId, slotsOfCategory, unequipPart, withTryOn, withSet } from '@/presentation/screens/Avatar/avatarScreenModel';
+import { CATEGORIES, clearSlot, equipPart, newCountOf, randomOutfitOf, sameOutfit, slotOfPartId, slotsOfCategory, unequipPart, withTryOn } from '@/presentation/screens/Avatar/avatarScreenModel';
 import type { CategoryDef, CategoryKey } from '@/presentation/screens/Avatar/avatarScreenModel';
 import { createAvatarIcon } from '@/presentation/screens/Avatar/avatarIcons';
 import { createAvatarStage } from '@/presentation/screens/Avatar/AvatarStage';
@@ -30,8 +30,6 @@ const logger = createLogger('presentation/screens/Avatar/AvatarScreen');
 
 /** 自動保存までの待ち時間（ms。続けて選んだときは最後の1回だけ保存する） */
 const SAVE_DELAY_MS = 450;
-/** ピックアップに出す「もうすぐ手に入る」の数 */
-const NEARLY_COUNT = 6;
 
 /**
  * アバター画面を作る。
@@ -45,15 +43,6 @@ export function createAvatarScreen(ctx: AppContext): Screen {
     mount: (root: HTMLElement): Promise<void> => controller.mount(root),
     unmount: (): void => controller.unmount(),
   });
-}
-
-/**
- * 動きを減らす設定か。
- * @returns prefers-reduced-motion: reduce なら true
- */
-function prefersReducedMotion(): boolean {
-  const log = logger.fn('prefersReducedMotion');
-  return log.exit(typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 }
 
 /**
@@ -77,8 +66,6 @@ class AvatarController {
   /** 画面を開いたときの装い（元に戻す） */
   private initialOutfit: readonly string[] = [];
   private tryOnId: string | undefined;
-  /** 試着中のセット（コレクション） */
-  private tryOnSet: AvatarSetDto | undefined;
   private selectedId: string | undefined;
   private category: CategoryKey = 'hair';
   /** いまのカテゴリで見た NEW（カテゴリを離れるときに保存する） */
@@ -122,7 +109,6 @@ class AvatarController {
     this.parts = loaded.value.parts;
     this.outfit = loaded.value.outfit;
     this.initialOutfit = loaded.value.outfit;
-    this.category = this.parts.some((p) => p.isNew) ? 'pickup' : 'hair';
     if (loaded.value.needsSeenBaseline) void this.ctx.services.saveAvatar.execute({ outfit: this.outfit, seenPartIds: this.parts.filter((p) => p.owned).map((p) => p.id) });
     this.render();
     this.scheduleIntroEmote();
@@ -130,14 +116,14 @@ class AvatarController {
   }
 
   /**
-   * 幕が開いたあとに、決めポーズのエモートを1回出す。
+   * 開いてすぐ、決めポーズのエモートを1回出す。
    * @sideEffect タイマーを1つ予約する（unmount で取り消す）
    */
   private scheduleIntroEmote(): void {
     const log = logger.fn('scheduleIntroEmote');
     const emote = stageLookOf(this.outfit).emote;
     if (emote === undefined) return log.exit(undefined, '決めポーズなし');
-    this.introTimer = setTimeout(() => this.stage?.playEmote(emote), 950);
+    this.introTimer = setTimeout(() => this.stage?.playEmote(emote), 300);
     log.exit(undefined);
   }
 
@@ -157,7 +143,7 @@ class AvatarController {
 
   /** 表示用の装い（試着を重ねたもの） */
   private preview(): readonly string[] {
-    return withTryOn(this.tryOnSet === undefined ? this.outfit : withSet(this.outfit, this.tryOnSet.partIds), this.tryOnId);
+    return withTryOn(this.outfit, this.tryOnId);
   }
 
   /** 表示している装いに SSR の部品があるか */
@@ -208,7 +194,7 @@ class AvatarController {
     const log = logger.fn('renderTabs', { category: this.category });
     if (this.tabs === undefined) return log.exit(undefined);
     const buttons = CATEGORIES.map((c) => {
-      const count = c.key === 'pickup' ? this.parts.filter((p) => p.isNew).length : newCountOf(this.parts, slotsOfCategory(c));
+      const count = newCountOf(this.parts, slotsOfCategory(c));
       const button = h('button', {
         class: 'avatar-tab',
         attrs: { type: 'button', role: 'tab', 'aria-selected': c.key === this.category ? 'true' : 'false', 'data-testid': `avatar-tab-${c.key}` },
@@ -234,7 +220,6 @@ class AvatarController {
     this.flushSeen();
     this.category = key;
     this.tryOnId = undefined;
-    this.tryOnSet = undefined;
     this.selectedId = undefined;
     this.refreshStage();
     this.renderTabs();
@@ -245,7 +230,7 @@ class AvatarController {
 
   /** いまのカテゴリの定義 */
   private categoryDef(): CategoryDef {
-    return CATEGORIES.find((c) => c.key === this.category) ?? CATEGORIES[1] ?? CATEGORIES[0] as CategoryDef;
+    return CATEGORIES.find((c) => c.key === this.category) ?? CATEGORIES[0] as CategoryDef;
   }
 
   /**
@@ -264,15 +249,7 @@ class AvatarController {
      */
     const goMap = (districtId?: string): void => this.ctx.router.navigate(districtId === undefined ? '#/map' : `#/map/${districtId}`);
     const children: (HTMLElement | undefined)[] = [];
-    if (def.key === 'pickup') {
-      children.push(createPickup({ ...input, season: closet.season, nearly: nearlyUnlockedOf(this.parts, NEARLY_COUNT), onGoMap: goMap }));
-      this.parts.filter((p) => p.isNew).forEach((p) => this.pendingSeen.add(p.id));
-    } else if (def.key === 'collection') {
-      children.push(createCollectionPanel({
-        sets: closet.sets, parts: this.parts, outfit: this.outfit, season: closet.season, tryingSetId: this.tryOnSet?.id,
-        onTry: (s: AvatarSetDto): void => this.trySet(s), onWear: (s: AvatarSetDto): void => this.wearSet(s), onGoMap: goMap,
-      }));
-    } else if (def.key === 'coord') children.push(createCoordPanel(closet.coords, { onWear: (c: AvatarCoordDto): void => this.wearCoord(c), onSave: (i: number): void => void this.saveCoord(i, this.outfit), onDelete: (i: number): void => void this.saveCoord(i, null) }));
+    if (def.key === 'coord') children.push(createCoordPanel(closet.coords, { onWear: (c: AvatarCoordDto): void => this.wearCoord(c), onSave: (i: number): void => void this.saveCoord(i, this.outfit), onDelete: (i: number): void => void this.saveCoord(i, null) }));
     else {
       const selected = this.parts.find((p) => p.id === this.selectedId);
       if (selected !== undefined) children.push(createPartDetail(selected, input, { onStopTryOn: (): void => this.stopTryOn(), onUnequip: (p: AvatarPartDto): void => this.applyOutfit(unequipPart(this.outfit, p.id)), onGoMap: goMap }));
@@ -303,6 +280,8 @@ class AvatarController {
     const emote = part.slot === 'emote' ? (splitPartId(part.id)?.style as EmoteStyle | undefined) : undefined;
     if (!part.owned) {
       this.tryOnId = this.tryOnId === part.id && emote === undefined ? undefined : part.id;
+      // 試着中の部品をもう一度押したら、試着をやめて詳しい情報も閉じる（「試着をやめる」と同じ）
+      if (this.tryOnId === undefined) this.selectedId = undefined;
       this.refreshAll();
       if (emote !== undefined) this.stage?.playEmote(emote);
       else if (this.tryOnId !== undefined) this.stage?.sparkle(part.rarity);
@@ -384,7 +363,6 @@ class AvatarController {
     setCorrelationId();
     const log = logger.fn('replaceOutfit', { count: outfit.length });
     this.tryOnId = undefined;
-    this.tryOnSet = undefined;
     this.selectedId = undefined;
     this.applyOutfit(outfit);
     this.stage?.setPose('jump', true);
@@ -394,39 +372,13 @@ class AvatarController {
   }
 
   /**
-   * セットを試着する（もう一度押すとやめる）。
-   * @param set セット
-   * @sideEffect ステージ・中身を描き直す
-   */
-  private trySet(set: AvatarSetDto): void {
-    const log = logger.fn('trySet', { id: set.id });
-    this.tryOnId = undefined;
-    this.tryOnSet = this.tryOnSet?.id === set.id ? undefined : set;
-    this.refreshAll();
-    if (this.tryOnSet !== undefined) this.stage?.sparkle(set.owned >= set.partIds.length ? 'SSR' : 'SR');
-    log.exit(undefined);
-  }
-
-  /**
-   * セットのうち持っている部品を着る。
-   * @param set セット
-   * @sideEffect 装いを変え、自動保存を予約する
-   */
-  private wearSet(set: AvatarSetDto): void {
-    const log = logger.fn('wearSet', { id: set.id, owned: set.owned });
-    const owned = set.partIds.filter((id) => this.parts.some((p) => p.id === id && p.owned));
-    if (owned.length === 0) return log.exit(undefined, '持っていない');
-    this.replaceOutfit(withSet(this.outfit, owned), set.name + 'を着ました');
-    log.exit(undefined);
-  }
-
-  /**
-   * 試着をやめる。
+   * 試着をやめる（詳しい情報も閉じて、部品の一覧に戻る）。
    * @sideEffect ステージと中身を描き直す
    */
   private stopTryOn(): void {
     const log = logger.fn('stopTryOn', { tryOnId: this.tryOnId });
     this.tryOnId = undefined;
+    this.selectedId = undefined;
     this.refreshAll();
     log.exit(undefined);
   }
@@ -453,7 +405,7 @@ class AvatarController {
     const log = logger.fn('refreshStage', { tryOnId: this.tryOnId });
     const preview = this.preview();
     this.stage?.update(stageLookOf(preview), this.hasSsr());
-    this.overlay?.update(preview, this.tryOnId, this.parts, this.tryOnSet?.name);
+    this.overlay?.update(preview, this.tryOnId, this.parts);
     log.exit(undefined);
   }
 

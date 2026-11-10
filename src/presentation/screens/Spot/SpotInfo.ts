@@ -6,8 +6,9 @@
 import type { SpotDetailDto } from '@/application/dto/Dto';
 import { createLogger } from '@/Common/logging/logger';
 import { h } from '@/Common/ui/dom';
-import { distanceText } from '@/presentation/screens/Spot/spotDetailModel';
-import { AMENITY_LABELS, AMENITY_ORDER, KIND_LABELS, STATUS_LABELS } from '@/presentation/shared/labels';
+import { createIcon } from '@/Common/ui/icons';
+import { distanceText, SPOT_STATUS_BADGE_LABELS } from '@/presentation/screens/Spot/spotDetailModel';
+import { AMENITY_LABELS, AMENITY_ORDER, KIND_LABELS } from '@/presentation/shared/labels';
 
 const logger = createLogger('presentation/screens/Spot/SpotInfo');
 
@@ -37,6 +38,21 @@ export function createKeyValueRow(label: string, value: string | HTMLElement): H
 }
 
 /**
+ * 達成の状態のバッジを作る（店名の横。達成済みはチェックつき＝色だけに頼らない）。
+ * @param status スポットの状態
+ * @returns span 要素（data-testid="spot-status"）
+ */
+function createStatusBadge(status: SpotDetailDto['status']): HTMLElement {
+  const log = logger.fn('createStatusBadge', { status });
+  return log.exit(
+    h('span', { class: 'spot-status', attrs: { 'data-testid': 'spot-status', 'data-status': status } }, [
+      status === 'visited' ? createIcon('check') : undefined,
+      SPOT_STATUS_BADGE_LABELS[status],
+    ]),
+  );
+}
+
+/**
  * スポット情報の塊を作る（data-testid="spot-info"）。
  * @param dto スポット詳細
  * @returns section 要素
@@ -45,6 +61,7 @@ export function createSpotInfo(dto: SpotDetailDto): HTMLElement {
   const log = logger.fn('createSpotInfo', { spotId: dto.id, status: dto.status, meters: dto.meters });
   const title = h('h2', { class: 'spot-info__name' }, [
     h('span', { attrs: { 'data-testid': 'spot-name' }, text: dto.name }),
+    createStatusBadge(dto.status),
     h('span', { class: ['tag', 'tag--district'], text: KIND_LABELS[dto.kind] }),
     dto.partner ? h('span', { class: ['tag', 'tag--accent'], text: '店舗協力' }) : undefined,
   ]);
@@ -53,7 +70,9 @@ export function createSpotInfo(dto: SpotDetailDto): HTMLElement {
     attrs: { 'data-testid': 'spot-distance', 'data-can-visit': dto.canVisit ? '1' : '0' },
     text: distanceText(dto.meters),
   });
-  const meta = h('p', { class: 'spot-info__meta' }, [`${dto.districtName} ・ 現在地から `, distance, ` ・ ${STATUS_LABELS[dto.status]}`]);
+  // 距離の数字は画面に1つだけ: 下の帯が「あと n m」を出している間は、ここには出さない
+  const approaching = !dto.canVisit && !dto.visitedToday && dto.metersToVisit !== undefined && dto.metersToVisit > 0;
+  const meta = h('p', { class: 'spot-info__meta' }, [h('span', { class: 'spot-info__district', text: dto.districtName }), ...(approaching ? [] : [' ・ ', distance])]);
   const section = h('section', { class: 'spot-info', attrs: { 'data-testid': 'spot-info', 'data-status': dto.status } }, [
     title,
     meta,

@@ -3,17 +3,17 @@
  * ゲームのステータス画面として、画面全体を暗いゲームの UI にし、言葉より絵と動きで見せる（2026-11-09 ユーザー指示
  * 「テキストが多すぎる・ゲーム感が薄い」「インパクトを強烈に」「40点→90点にかっこよく」）。基準 C。
  * 1. ステータスパネル（rankHero.ts）: 紋章の登場演出・3Dに傾く紋章・ランクロードを歩くアバター
+ * 1.5 NEXT（rankNext.ts）: ランクアップと次の特典まで「あと○EXP」のゲージ、特典ロード（2026-11-10 ユーザー指示「可視化」）
+ * 1.6 クーポン（rankCoupons.ts）: 持っているチケット（タップで QR）と、もうすぐもらえるクーポン（タップでお店へ）（2026-11-10 ユーザー指示）
  * 2. ステータス: アイコンと大きな数字のマス（画面に入ると数え上がる）
  * 3. 今月のリーグ: 3つのメダル（順位の数字・つやが走る）。タップでランキングへ
  * 4. ポイント: もらい方の3つの札と獲得ログ
- * 5. 設定: アイコンと短い値のマス。歯車で設定画面へ（変更は設定画面で行う）
  * 下のまとまりは画面に入るとせり上がって現れる。訪問はここではできない（CLAUDE.md 5 章）。ランクは下がらない（盾の印）。
  * 動きは prefers-reduced-motion: no-preference のときだけ（CSS と rankFx の両方で判定）。
  */
 import '@/presentation/screens/Rank/RankScreen.css';
-import type { AppStatusDto, MyTownDto, RankStatusDto, RankingDto } from '@/application/dto/Dto';
+import type { MyTownDto, RankStatusDto, RankingDto } from '@/application/dto/Dto';
 import { createLogger } from '@/Common/logging/logger';
-import { currentTextScale } from '@/Common/ui/a11y/textScale';
 import { h } from '@/Common/ui/dom';
 import { createIcon } from '@/Common/ui/icons';
 import type { IconName } from '@/Common/ui/icons';
@@ -21,24 +21,30 @@ import { createTopBar } from '@/Common/ui/TopBar';
 import { userAction } from '@/Common/ui/userAction';
 import type { AppContext } from '@/presentation/App/AppContext';
 import type { Screen } from '@/presentation/App/Screen';
+import { openTicketWallet } from '@/presentation/screens/Map/town/TicketWallet';
+import { createCouponBody } from '@/presentation/screens/Rank/rankCoupons';
 import { attachTilt, createCounterRunner, observeReveal } from '@/presentation/screens/Rank/rankFx';
 import type { CounterRunner } from '@/presentation/screens/Rank/rankFx';
 import { createHero } from '@/presentation/screens/Rank/rankHero';
-import { historyIconOf, leagueMedalsOf, settingTilesOf, shortDateOf } from '@/presentation/screens/Rank/rankModel';
-import type { LeagueMedal, SettingTile } from '@/presentation/screens/Rank/rankModel';
+import { centerNextPerk, createNextBody } from '@/presentation/screens/Rank/rankNext';
+import { historyIconOf, historyTextOf, leagueMedalsOf, shortDateOf } from '@/presentation/screens/Rank/rankModel';
+import type { LeagueMedal } from '@/presentation/screens/Rank/rankModel';
 import { createAvatarImage } from '@/presentation/shared/avatarImage';
 import { avatarLookOfTown } from '@/presentation/shared/avatarSprite';
 
 const logger = createLogger('presentation/screens/Rank/RankScreen');
 
 /** 累計ポイントを数え上げる時間（ms） */
-const COUNT_UP_MS = 900;
+const COUNT_UP_MS = 400;
 
-/** 累計ポイントの数え上げを始めるまでの待ち（ms。紋章が落ちて名前が押されたあと＝CSS の演出の時間とそろえる） */
-const COUNT_UP_DELAY_MS = 850;
+/** 累計ポイントの数え上げを始めるまでの待ち（ms。CSS の登場の演出とそろえ、表示から 1.0 秒以内に最後の数にする） */
+const COUNT_UP_DELAY_MS = 150;
 
 /** 下のまとまりの数字を数え上げる時間（ms） */
-const STAT_COUNT_MS = 700;
+const STAT_COUNT_MS = 400;
+
+/** この起動の中で登場の演出を見せたか（2回目以降に開いたときは落下・数え上げを省き、光だけにする） */
+let introSeen = false;
 
 /** アバターの拡大率（1 で高さ約 70px） */
 const AVATAR_SCALE = 0.8;
@@ -57,7 +63,6 @@ interface StatTile {
 interface RankData {
   readonly rank: RankStatusDto;
   readonly ranking: RankingDto | undefined;
-  readonly status: AppStatusDto | undefined;
   readonly town: MyTownDto | undefined;
 }
 
@@ -164,7 +169,7 @@ function leagueSection(head: HTMLElement, body: HTMLElement): HTMLElement { // a
 }
 
 /**
- * ポイントのもらい方の札3つを作る。
+ * ポイントのもらい方の札（名所・お店・おかえり・お買い物）を作る。
  * @param dto ランク
  * @returns 要素
  */
@@ -175,11 +180,13 @@ function createRuleTokens(dto: RankStatusDto): HTMLElement {
     ['star', `+${rules.landmarkPoints}`, '名所'],
     ['shop', `+${rules.shopPoints}`, 'お店'],
     ['sparkle', `×${rules.welcomeBackMultiplier}`, 'おかえり'],
+    ...(rules.purchasePoints === undefined ? [] : [['coin', `+${rules.purchasePoints}`, 'お買い物'] as const]),
   ];
+  const purchaseText = rules.purchasePoints === undefined ? '' : `、お店でお買い物すると${rules.purchasePoints}EXP`;
   return log.exit(
     h(
       'ul',
-      { class: 'rank-rules', attrs: { 'aria-label': `名所${rules.landmarkPoints}EXP、お店${rules.shopPoints}EXP、色あせた地区に戻るとその日${rules.welcomeBackMultiplier}倍` } },
+      { class: 'rank-rules', style: { '--n': String(tokens.length) }, attrs: { 'aria-label': `名所${rules.landmarkPoints}EXP、お店${rules.shopPoints}EXP、色あせた地区に戻るとその日${rules.welcomeBackMultiplier}倍${purchaseText}` } },
       tokens.map(([icon, value, label], i) =>
         h('li', { class: 'rank-rule', style: { '--i': String(i) }, attrs: { 'aria-hidden': 'true' } }, [h('span', { class: 'rank-rule__icon' }, [createIcon(icon)]), h('strong', { class: 'rank-rule__value', text: value }), h('span', { class: 'rank-rule__label', text: label })]),
       ),
@@ -197,27 +204,24 @@ function createPoints(dto: RankStatusDto): HTMLElement {
   const rows = dto.recent.map((entry, i) =>
     h('li', { class: 'rank-log__row', dataset: { kind: entry.kind }, style: { '--i': String(i) } }, [
       h('span', { class: 'rank-log__icon', attrs: { 'aria-hidden': 'true' } }, [createIcon(historyIconOf(entry))]),
-      h('span', { class: 'rank-log__spot', text: entry.spotName }),
+      h('span', { class: 'rank-log__spot', text: historyTextOf(entry) }),
       h('span', { class: 'rank-log__date', text: shortDateOf(entry.date) }),
       h('strong', { class: 'rank-log__points', text: `+${entry.points}` }),
     ]),
   );
-  const list = rows.length === 0 ? h('p', { class: 'rank-log__empty' }, [createIcon('footprints'), 'まだ0EXP。街へ出よう']) : h('ol', { class: 'rank-log', attrs: { 'aria-label': '最近のEXP' } }, rows);
+  const list = rows.length === 0 ? h('p', { class: 'rank-log__empty' }, [createIcon('footprints'), '0 EXP']) : h('ol', { class: 'rank-log', attrs: { 'aria-label': '最近のEXP' } }, rows);
   return log.exit(h('section', { class: ['rank-card', 'rank-reveal'], attrs: { 'data-testid': 'rank-points-log' } }, [sectionHead('coin', 'EXP'), createRuleTokens(dto), list]));
 }
 
 /**
- * 設定状況のマス1つを作る。
- * @param tile マス
- * @param index 並びの番号（現れる順）
+ * NEXT（ランクアップと次の特典までのゲージ・特典ロード）を作る。
+ * @param dto ランク
+ * @param base いまの装い（特典の絵に使う）
  * @returns 要素
  */
-function settingTile(tile: SettingTile, index: number): HTMLElement { // audit-ignore: fnlog-missing 設定のマスごとに呼ぶ DOM 組立て（呼び出し側 createSettings でログ）
-  return h('li', { class: 'rank-setting', dataset: { key: tile.key }, style: { '--i': String(index) }, attrs: { 'aria-label': `${tile.label}：${tile.value}${tile.badge === undefined ? '' : `（${tile.badge}）`}` } }, [
-    h('span', { class: 'rank-setting__icon', attrs: { 'aria-hidden': 'true' } }, [tile.glyph ?? (tile.icon === undefined ? '' : createIcon(tile.icon))]),
-    h('span', { class: 'rank-setting__value', attrs: { 'aria-hidden': 'true', 'data-testid': `rank-setting-${tile.key}` }, text: tile.value }),
-    tile.badge === undefined ? undefined : h('span', { class: 'rank-setting__badge', attrs: { 'aria-hidden': 'true' }, text: tile.badge }),
-  ]);
+function createNext(dto: RankStatusDto, base: readonly string[]): HTMLElement {
+  const log = logger.fn('createNext', { points: dto.points });
+  return log.exit(h('section', { class: ['rank-card', 'rank-reveal', 'rank-next'], attrs: { 'data-testid': 'rank-next-goals' } }, [sectionHead('flag', 'NEXT'), ...createNextBody(dto, base)]));
 }
 
 /** ランク画面の読込・描画・動きを受け持つ */
@@ -230,6 +234,12 @@ class RankController {
   private cleanups: (() => void)[] = [];
   /** 画面を離れた（以降の非同期結果は捨てる） */
   private disposed = false;
+  /** 画面のルート（チケットの入れ物を重ねる先） */
+  private root: HTMLElement | undefined;
+  /** クーポンのカード（チケットを使ったら中身を差し替える） */
+  private couponCard: HTMLElement | undefined;
+  /** 開いているチケットの入れ物を閉じる関数 */
+  private walletClose: (() => void) | undefined;
 
   /**
    * 骨組みを作る。
@@ -243,24 +253,25 @@ class RankController {
   }
 
   /**
-   * 上部バーと本文を置き、ランク・ランキング・アプリ状態・マイ街（アバターの装い）を読み込んで描く。
+   * 上部バーと本文を置き、ランク・ランキング・マイ街（アバターの装い）を読み込んで描く。
    * ランクが読めなければ案内だけを出す。ほかが読めなくてもランクは出す（アバターは人のアイコンに）。
    * @param root 画面のルート要素
-   * @sideEffect root に DOM を追加し、services.rankStatus・ranking・status・myTown を呼ぶ
+   * @sideEffect root に DOM を追加し、services.rankStatus・ranking・myTown を呼ぶ
    */
   async mount(root: HTMLElement): Promise<void> {
     const log = logger.fn('mount');
+    this.root = root;
     root.append(createTopBar({ title: 'ランク' }), this.body);
     const s = this.ctx.services;
-    const [rank, ranking, status, town] = await Promise.all([s.rankStatus.execute(), s.ranking.execute(), s.status.execute(), s.myTown.execute()]);
+    const [rank, ranking, town] = await Promise.all([s.rankStatus.execute(), s.ranking.execute(), s.myTown.execute()]);
     if (this.disposed) return log.exit(undefined, '画面を離れたため捨てる');
     if (!rank.ok) {
       this.body.dataset.load = 'error';
       this.body.replaceChildren(h('p', { class: 'screen-message', text: rank.error.message }));
       return log.fail(undefined, rank.error.code);
     }
-    for (const [name, r] of [['ranking', ranking], ['status', status], ['myTown', town]] as const) if (!r.ok) log.warn('読めませんでした', { name, code: r.error.code });
-    this.render({ rank: rank.value, ranking: ranking.ok ? ranking.value : undefined, status: status.ok ? status.value : undefined, town: town.ok ? town.value : undefined });
+    for (const [name, r] of [['ranking', ranking], ['myTown', town]] as const) if (!r.ok) log.warn('読めませんでした', { name, code: r.error.code });
+    this.render({ rank: rank.value, ranking: ranking.ok ? ranking.value : undefined, town: town.ok ? town.value : undefined });
     log.exit(undefined);
   }
 
@@ -273,6 +284,8 @@ class RankController {
     this.disposed = true;
     this.counters.stop();
     this.statCounters.stop();
+    this.walletClose?.();
+    this.walletClose = undefined;
     for (const cleanup of this.cleanups) cleanup();
     this.cleanups = [];
     log.exit(undefined);
@@ -284,18 +297,83 @@ class RankController {
    * @sideEffect 本文の中身を差し替える
    */
   private render(data: RankData): void {
-    const log = logger.fn('render', { hasRanking: data.ranking !== undefined, hasStatus: data.status !== undefined, hasTown: data.town !== undefined });
+    const log = logger.fn('render', { hasRanking: data.ranking !== undefined, hasTown: data.town !== undefined });
     const avatar = data.town === undefined ? undefined : createAvatarImage(avatarLookOfTown(data.town), AVATAR_SCALE);
     avatar?.classList.add('rank-road__avatar');
     const hero = createHero(data.rank, avatar, userAction('rank-skip-intro', (): void => this.skipIntro(hero.element)));
-    const cards = [createStats(data.rank), this.createLeagues(data.ranking), createPoints(data.rank), this.createSettings(data)];
+    const next = createNext(data.rank, data.town?.avatarPartIds ?? []);
+    const coupons = this.createCoupons(data.rank);
+    const cards = [next, ...(coupons === undefined ? [] : [coupons]), createStats(data.rank), this.createLeagues(data.ranking), createPoints(data.rank)];
     this.body.replaceChildren(hero.element, ...cards);
+    centerNextPerk(next);
     this.body.dataset.load = 'ready';
-    this.counters.count(hero.points, data.rank.points, COUNT_UP_DELAY_MS, () => hero.points.classList.add('rank-hero__num--done'));
+    const quick = introSeen;
+    introSeen = true;
+    if (quick) hero.element.classList.add('is-skip', 'is-quick');
+    else this.counters.count(hero.points, data.rank.points, COUNT_UP_DELAY_MS, () => hero.points.classList.add('rank-hero__num--done'));
     this.cleanups.push(
       attachTilt(hero.element, hero.tilt),
-      observeReveal(cards, (card) => card.querySelectorAll<HTMLElement>('[data-count]').forEach((el) => this.statCounters.count(el, Number(el.dataset.count ?? '0')))),
+      observeReveal(cards, (card) => {
+        if (quick) return;
+        card.querySelectorAll<HTMLElement>('[data-count]').forEach((el) => this.statCounters.count(el, Number(el.dataset.count ?? '0')));
+      }),
     );
+    log.exit(undefined);
+  }
+
+  /**
+   * クーポン（持っている・もうすぐ）のカードを作る。持っているチケットはタップで QR、もうすぐのクーポンはタップでお店の詳細へ。
+   * @param dto ランク
+   * @returns 要素（クーポンの情報が無ければ undefined）
+   */
+  private createCoupons(dto: RankStatusDto): HTMLElement | undefined {
+    const log = logger.fn('createCoupons', { held: dto.coupons?.held.length, upcoming: dto.coupons?.upcoming.length });
+    if (dto.coupons === undefined) return log.exit(undefined, 'クーポンの情報なし');
+    const card = h('section', { class: ['rank-card', 'rank-reveal', 'rank-coupons'], attrs: { 'data-testid': 'rank-coupons' } }, this.couponChildren(dto));
+    this.couponCard = card;
+    return log.exit(card);
+  }
+
+  /**
+   * クーポンのカードの中身（見出し＋持っている＋もうすぐ）を作る。
+   * @param dto ランク（coupons があること）
+   * @returns 子要素
+   */
+  private couponChildren(dto: RankStatusDto): HTMLElement[] {
+    const log = logger.fn('couponChildren');
+    if (dto.coupons === undefined) return log.exit([]);
+    return log.exit([
+      sectionHead('ticket', 'クーポン'),
+      ...createCouponBody(dto.coupons, {
+        onOpenTicket: (ticketId): void => this.openTicket(ticketId),
+        onOpenSpot: (spotId): void => this.ctx.router.navigate(`#/spot/${spotId}`),
+      }),
+    ]);
+  }
+
+  /**
+   * チケットの入れ物（地図と同じ）を画面の上に開き、すぐそのチケットの QR を見せる。
+   * @param ticketId チケット
+   * @sideEffect 画面に入れ物を重ねる
+   */
+  private openTicket(ticketId: string): void {
+    const log = logger.fn('openTicket', { ticketId });
+    if (this.root === undefined) return log.exit(undefined, '準備中');
+    this.walletClose?.();
+    this.walletClose = openTicketWallet(this.root, this.ctx, { focusTicketId: ticketId, onChanged: (): void => void this.refreshCoupons() });
+    log.exit(undefined);
+  }
+
+  /**
+   * チケットを使ったあと、クーポンのカードを読み直して差し替える。
+   * @sideEffect services.rankStatus を呼び、クーポンのカードの中身を差し替える
+   */
+  private async refreshCoupons(): Promise<void> {
+    const log = logger.fn('refreshCoupons');
+    const rank = await this.ctx.services.rankStatus.execute();
+    if (this.disposed || this.couponCard === undefined) return log.exit(undefined, '画面を離れた');
+    if (!rank.ok) return log.fail(undefined, rank.error.code);
+    this.couponCard.replaceChildren(...this.couponChildren(rank.value));
     log.exit(undefined);
   }
 
@@ -324,21 +402,5 @@ class RankController {
     if (ranking === undefined) return log.exit(leagueSection(head, h('p', { class: 'rank-log__empty', text: '読み込めませんでした' })));
     const open = userAction('rank-open-ranking', (): void => this.ctx.router.navigate('#/ranking'));
     return log.exit(leagueSection(head, h('ul', { class: 'rank-medals' }, leagueMedalsOf(ranking).map((m, i) => medalButton(m, i, open)))));
-  }
-
-  /**
-   * 設定状況（アイコンと短い値のマス）と、設定画面へ行く歯車を作る。
-   * 文字の大きさは、いま画面に適用されている値を読む（設定画面で変えるとここにも反映される）。
-   * @param data 画面のデータ
-   * @returns 要素
-   */
-  private createSettings(data: RankData): HTMLElement {
-    const log = logger.fn('createSettings');
-    const tiles = settingTilesOf({ status: data.status, textScale: currentTextScale(), isDemo: this.ctx.services.isDemo, nickname: data.rank.nickname });
-    const gear = h('button', { class: 'rank-head__gear', attrs: { type: 'button', 'aria-label': '設定を変える', 'data-testid': 'rank-open-settings' }, on: { click: userAction('rank-open-settings', (): void => this.ctx.router.navigate('#/settings')) } }, [
-      createIcon('gear'),
-      h('span', { text: '変更' }),
-    ]);
-    return log.exit(h('section', { class: ['rank-card', 'rank-reveal'], attrs: { 'data-testid': 'rank-settings' } }, [sectionHead('gear', '設定', gear), h('ul', { class: 'rank-settings' }, tiles.map(settingTile))]));
   }
 }

@@ -1,6 +1,6 @@
 /**
  * @file 地図の「広域／中間／詳細」切替ボタン（presentation/screens/Map 層）
- * 地図の右上に重ねる3択のボタン。3段階ズーム（CLAUDE.md 6.2）にそのまま対応する。
+ * 地図の右下に重ねる3択のボタン（見た目は全画面共通の切替 .seg）。3段階ズーム（CLAUDE.md 6.2）にそのまま対応する。
  * - 広域＝市全体（wide）
  * - 中間＝地区全体（district。地区タップで拡大したときと同じ）
  * - 詳細＝現在地のまわり（near）
@@ -87,13 +87,13 @@ export function createZoomToggle(handlers: ZoomToggleHandlers): ZoomToggleHandle
   const handlerOf: Readonly<Record<ZoomToggleValue, () => void>> = { wide: handlers.onWide, middle: handlers.onMiddle, detail: handlers.onDetail };
   const buttons = BUTTONS.map(({ value, label }) =>
     h('button', {
-      class: 'map-zoom-toggle__btn',
+      class: ['seg__item', 'map-zoom-toggle__btn'],
       attrs: { type: 'button', 'aria-pressed': 'false', 'data-testid': `map-zoom-${value}`, 'data-value': value },
       text: label,
       on: { click: userAction(`map-zoom-${value}`, handlerOf[value]) },
     }),
   );
-  const element = h('div', { class: 'map-zoom-toggle', attrs: { role: 'group', 'aria-label': '地図の表示範囲', 'data-testid': 'map-zoom-toggle' } }, buttons);
+  const element = h('div', { class: ['seg', 'map-zoom-toggle'], attrs: { role: 'group', 'aria-label': '地図の表示範囲', 'data-testid': 'map-zoom-toggle' } }, buttons);
   /**
    * 押下状態を今のズームに合わせる。
    * @param zoom 今のズーム段階

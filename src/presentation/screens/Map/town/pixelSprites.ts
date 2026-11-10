@@ -130,10 +130,10 @@ const PALETTE: Readonly<Record<string, string>> = {
   m: '#f59a76',
   z: '#4aa8e0',
   x: '#fff3c4',
-  f: '#1e6bff',
-  F: '#1250c4',
-  q: '#ff5a3d',
-  Q: '#d63a22',
+  f: '#bc5b1b',
+  F: '#8f4311',
+  q: '#7a5ea8',
+  Q: '#5b4488',
   v: '#3f9a86',
   V: '#6cc2a8',
   d: '#4b5670',
@@ -1875,30 +1875,6 @@ export function drawLandmark(ctx: CanvasRenderingContext2D, sprite: LandmarkSpri
  */
 export function shopSpriteSize(): { w: number; h: number } { // audit-ignore: fnlog-missing 毎フレーム描画から呼ぶ定数の読み取り
   return { w: SHOP_W, h: SHOP_H };
-}
-
-/**
- * 小さな店を下端中央基準で描く（ひさしの色で塗り分け、seed で屋根の形を3通りに変える）。
- * @param ctx 2D コンテキスト
- * @param cx 下端中央の x（CSS px）
- * @param bottomY 下端の y（CSS px）
- * @param scale 1ドットの大きさ（CSS px）
- * @param opts awning=ひさしの色、silhouette・alpha・faded・seed
- * @sideEffect canvas に描画する
- */
-export function drawShop(ctx: CanvasRenderingContext2D, cx: number, bottomY: number, scale: number, opts: { awning: string; silhouette?: boolean; alpha?: number; faded?: number; seed?: number }): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  const awning = /^#[0-9a-fA-F]{6}$/.test(opts.awning) ? opts.awning.toLowerCase() : '#f08c3a';
-  const variant = Math.abs(Math.trunc(opts.seed ?? 0)) % 3;
-  const key = `s:${awning}:${variant}`;
-  let src = shopSources.get(key);
-  if (src === undefined) {
-    src = shopSource(awning, variant);
-    shopSources.set(key, src);
-  }
-  const image = bake(key, src, { silhouette: opts.silhouette, faded: opts.faded });
-  const w = SHOP_W * scale;
-  const h = SHOP_H * scale;
-  blit(ctx, image, { x: cx - w / 2, y: bottomY - h, w, h }, opts.alpha);
 }
 
 /**

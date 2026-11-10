@@ -2,17 +2,25 @@
  * @file 店舗CMS のルート（presentation/cms 層）
  * ハッシュは '#/<スポットID>/<ページ>'（例: '#/s_mm04/events'）。店の選択を URL に持たせ、再読み込みしても同じ店・同じページを開く。
  * スポットID は書式だけを検証する（存在は GetCmsShopInfoUseCase が確かめる＝SEC-16）。不正なら店なし・ホーム。
+ * ページは、タブに出すもの（ホーム・お店の情報・クーポン・イベント・来店データ・アンケート）、運営者だけのタブ（アカウント管理）、
+ * 上部バーのメニューから開くもの（自分のアカウント）の3種類（docs/09 §7.4）。
  */
 import { createLogger } from '@/Common/logging/logger';
 import { parseSpotId } from '@/Common/types/Id';
 
 const logger = createLogger('presentation/cms/cmsRoute');
 
-/** CMS のページ（docs/09 §5 の C02・C03・C04/C05・C07） */
-export const CMS_PAGES = ['home', 'info', 'events', 'data'] as const;
+/** CMS のページ（docs/09 §5 の C02・C03・C04/C05・C07・C08・O07） */
+export const CMS_PAGES = ['home', 'info', 'events', 'data', 'survey', 'accounts', 'account'] as const;
 
 /** CMS のページ */
 export type CmsPage = (typeof CMS_PAGES)[number];
+
+/** 誰にも出すタブ（左から順） */
+export const CMS_TAB_PAGES: readonly CmsPage[] = ['home', 'info', 'events', 'data', 'survey'];
+
+/** 運営者だけに出すタブ（ログインがあるときだけ） */
+export const CMS_OPERATOR_TAB_PAGES: readonly CmsPage[] = ['accounts'];
 
 /** ページの表示名（ページ切り替えの順） */
 export const CMS_PAGE_LABELS: Readonly<Record<CmsPage, string>> = {
@@ -20,6 +28,9 @@ export const CMS_PAGE_LABELS: Readonly<Record<CmsPage, string>> = {
   info: 'お店の情報',
   events: 'クーポン・イベント',
   data: '来店データ',
+  survey: 'アンケート',
+  accounts: 'アカウント管理',
+  account: 'アカウント',
 };
 
 /** スマホ幅で使う短い表示名 */
@@ -28,6 +39,9 @@ export const CMS_PAGE_SHORT_LABELS: Readonly<Record<CmsPage, string>> = {
   info: 'お店',
   events: 'クーポン',
   data: 'データ',
+  survey: 'アンケート',
+  accounts: '管理',
+  account: 'アカウント',
 };
 
 /** CMS のルート */

@@ -44,12 +44,39 @@ export function mountCardArt(host: HTMLElement, model: ZukanArtModel): () => voi
         destroyFallback = mountIllustration(host, model);
       },
     });
+    preloadPhoto(host);
     return log.exit((): void => {
       stop();
       destroyFallback?.();
     }, '写真');
   }
   return log.exit(mountIllustration(host, model));
+}
+
+/**
+ * カードの写真を先に読み込ませ、読み終えたら host に data-loaded を付ける。
+ * 図鑑は速く動かすと写真が後から出て枠だけが見えるので、画面の外のカードも先に読む（写真は小さく圧縮済み・店舗はカテゴリで共用）。
+ * 読み終えるまで「イメージ」の札は出さない（CSS。空の枠に札だけが出ないように）。
+ * @param host 絵を入れた要素（mountPhotoImage で img を追加済み）
+ * @sideEffect img の loading を eager・decoding を sync に変え、読み込み完了で host.dataset.loaded を付ける
+ */
+function preloadPhoto(host: HTMLElement): void {
+  const log = logger.fn('preloadPhoto');
+  const img = host.querySelector<HTMLImageElement>('img.spot-photo__img');
+  if (img === null) return log.exit(undefined, '写真なし');
+  /**
+   * 読み込みを終えた印を付ける。
+   */
+  const markLoaded = (): void => {
+    const markLog = logger.fn('markLoaded');
+    host.dataset.loaded = '1';
+    markLog.exit(undefined);
+  };
+  img.loading = 'eager';
+  img.decoding = 'sync'; // 読み込み済みの写真は、画面に入った最初の描画で出す（後から遅れて出さない）
+  if (img.complete && img.naturalWidth > 0) markLoaded();
+  else img.addEventListener('load', markLoaded, { once: true });
+  return log.exit(undefined);
 }
 
 /**

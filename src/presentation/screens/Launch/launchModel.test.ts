@@ -40,7 +40,7 @@ function districtOf(over: Partial<DistrictCardDto> = {}): DistrictCardDto {
     id: 'd_tenma',
     name: '天満',
     shortName: '天満',
-    color: '#f59e0b',
+    color: '#d6a23c',
     level: 2,
     score: 9,
     buildings: 4,

@@ -104,14 +104,16 @@ export function clampCamera(camera: Camera, vp: Viewport, limits: GeoBounds): Ca
  * @param camera カメラ
  * @param vp 描画領域
  * @param point 保ちたい点の画面座標（CSS px）
+ * @param topInset 上端で隠れる高さ（上に浮いている部品と、点の上に立つ絵の高さ。CSS px。既定 0）
  * @returns ずらしたカメラ（入っていればそのまま）
  */
-export function keepInside(camera: Camera, vp: Viewport, point: Point2D): Camera { // audit-ignore: fnlog-missing 歩行の毎フレームで呼ぶ純粋な算術ヘルパー
+export function keepInside(camera: Camera, vp: Viewport, point: Point2D, topInset = 0): Camera { // audit-ignore: fnlog-missing 歩行の毎フレームで呼ぶ純粋な算術ヘルパー
   const usableH = Math.max(1, viewAnchor(vp).y * 2);
   const mx = vp.width * FOLLOW_MARGIN_RATIO;
   const my = usableH * FOLLOW_MARGIN_RATIO;
+  const top = Math.min(Math.max(my, topInset), usableH / 2);
   const dx = point.x < mx ? point.x - mx : point.x > vp.width - mx ? point.x - (vp.width - mx) : 0;
-  const dy = point.y < my ? point.y - my : point.y > usableH - my ? point.y - (usableH - my) : 0;
+  const dy = point.y < top ? point.y - top : point.y > usableH - my ? point.y - (usableH - my) : 0;
   if (dx === 0 && dy === 0) return camera;
   return {
     centerLat: camera.centerLat - (dy * camera.metersPerPx) / METERS_PER_DEG_LAT,
@@ -241,11 +243,12 @@ export class MapCameraController {
    * @param position 自分の位置
    * @param project 緯度経度 → 画面座標
    * @param focus 自分を保つ範囲（カードで隠れる下側を除いた描画領域。省略時は描画領域全体）
+   * @param topInset 上端で隠れる高さ（上に浮いている部品＋自分のアバターの背丈。CSS px）
    * @sideEffect カメラを少しずらす
    */
-  follow(position: LatLng, project: (camera: Camera, ll: LatLng) => Point2D, focus?: Viewport): void { // audit-ignore: fnlog-missing 歩行の毎フレームで呼ぶ
+  follow(position: LatLng, project: (camera: Camera, ll: LatLng) => Point2D, focus?: Viewport, topInset = 0): void { // audit-ignore: fnlog-missing 歩行の毎フレームで呼ぶ
     if (this.dragging || this.flight !== undefined || this.pointers.size > 0) return;
-    const next = keepInside(this.camera, focus ?? this.vp, project(this.camera, position));
+    const next = keepInside(this.camera, focus ?? this.vp, project(this.camera, position), topInset);
     if (next === this.camera) return;
     // いきなり跳ばないよう、ずれの3割ずつ寄せる
     this.camera = clampCamera(interpolateCamera(this.camera, next, 0.3), this.vp, this.limits);

@@ -18,10 +18,10 @@ const logger = createLogger('presentation/screens/Spot/MyVisitHistory');
 function createHistoryDates(history: readonly string[]): HTMLElement {
   const log = logger.fn('createHistoryDates', { count: history.length });
   if (history.length === 0) {
-    return log.exit(h('p', { class: 'hint', attrs: { 'data-testid': 'visit-dates' }, text: 'まだ訪れていません。最初の1回で地区が育ちはじめます' }));
+    return log.exit(h('p', { class: 'spot-history__none', attrs: { 'data-testid': 'visit-dates' }, text: 'なし' }));
   }
   const items = history.map((label) => h('li', { text: label }));
-  return log.exit(h('ul', { class: 'spot-history__dates', attrs: { 'data-testid': 'visit-dates', 'aria-label': '訪問日' } }, items));
+  return log.exit(h('ul', { class: 'spot-history__dates', attrs: { 'data-testid': 'visit-dates', 'aria-label': '達成日' } }, items));
 }
 
 /**
@@ -33,21 +33,31 @@ export function createMyVisitHistory(dto: SpotDetailDto): HTMLElement {
   const log = logger.fn('createMyVisitHistory', { spotId: dto.id, visitCount: dto.visitCount, districtVisitCount: dto.districtVisitCount });
   const nextCard = nextCardLabel(dto.nextCard);
   const districtValue = h('span', { attrs: { 'data-testid': 'district-visit-count' } }, [
-    `${dto.districtVisitCount}回`,
+    ...countParts(dto.districtVisitCount),
     nextCard === undefined ? undefined : h('span', { class: ['tag', 'tag--accent', 'spot-history__next'], attrs: { 'data-testid': 'next-card' }, text: nextCard }),
   ]);
-  const spotValue = h('span', { attrs: { 'data-testid': 'spot-visit-count' }, text: `${dto.visitCount}回` });
+  const spotValue = h('span', { attrs: { 'data-testid': 'spot-visit-count' } }, countParts(dto.visitCount));
   return log.exit(
     h('section', { class: ['spot-section', 'spot-history'], attrs: { 'data-testid': 'visit-history' } }, [
-      h('h2', { class: 'sheet-section-title', text: 'あなたの訪問履歴' }),
+      h('h2', { class: 'sheet-section-title', text: '達成の記録' }),
       h('div', { class: 'spot-history__stats' }, [
-        createStatTile('このスポットに通った回数', spotValue),
-        createStatTile(`${dto.districtName}に通った回数`, districtValue, createCardGauge(dto)),
+        createStatTile('このスポット', spotValue),
+        createStatTile(dto.districtName, districtValue, createCardGauge(dto)),
       ]),
-      h('h3', { class: 'spot-history__label', text: '訪問日' }),
+      h('h3', { class: 'spot-history__label', text: '達成日' }),
       createHistoryDates(dto.history),
     ]),
   );
+}
+
+/**
+ * 回数を「大きい数字＋小さい単位」に分ける（ランク・ランキングと同じ見せ方。文字としては「3回」のまま）。
+ * @param count 回数
+ * @returns 数字と単位の要素
+ */
+function countParts(count: number): HTMLElement[] {
+  const log = logger.fn('countParts', { count });
+  return log.exit([h('span', { class: 'spot-stat__num', text: String(count) }), h('span', { class: 'spot-stat__unit', text: '回' })]);
 }
 
 /**

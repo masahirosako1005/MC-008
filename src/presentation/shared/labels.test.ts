@@ -33,18 +33,18 @@ describe('色あせのラベル', () => {
     expect(fadeLabel({ kind: 'fresh', daysSinceVisit: 3 })).toBeUndefined();
     expect(fadeLabel({ kind: 'never' })).toBeUndefined();
   });
-  it('最終訪問の表示', () => {
-    expect(lastVisitLabel({ kind: 'soon', daysSinceVisit: 25 })).toBe('最終訪問 25日前');
-    expect(lastVisitLabel({ kind: 'fresh', daysSinceVisit: 0 })).toBe('今日訪問');
-    expect(lastVisitLabel({ kind: 'never' })).toBe('まだ訪れていない');
+  it('最後の達成からの日数（画面では「訪問」と言わない＝CLAUDE.md 11.1）', () => {
+    expect(lastVisitLabel({ kind: 'soon', daysSinceVisit: 25 })).toBe('25日前');
+    expect(lastVisitLabel({ kind: 'fresh', daysSinceVisit: 0 })).toBe('今日');
+    expect(lastVisitLabel({ kind: 'never' })).toBe('未達成');
   });
 });
 
 describe('回数と距離', () => {
-  it('通った回数（網羅率ではなく回数を出す）', () => {
-    expect(visitCountLabel(3)).toBe('通った回数 3回');
-    expect(visitCountLabel(0)).toBe('まだ訪れていない');
-    expect(visitCountLabel(3)).not.toMatch(/%|件中/);
+  it('達成した回数（網羅率ではなく回数を出す。「n回達成」）', () => {
+    expect(visitCountLabel(3)).toBe('3回達成');
+    expect(visitCountLabel(0)).toBe('未達成');
+    expect(visitCountLabel(3)).not.toMatch(/%|件中|訪問/);
   });
   it('距離は m／km 表記', () => {
     expect(distanceLabel(62)).toBe('62m');

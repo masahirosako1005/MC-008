@@ -1,13 +1,13 @@
 /**
  * @file 街の地面を描く（presentation/screens/Map/town 層）
- * 街を 160m 四方のチャンクに分けて townArt でドット絵を焼き、キャッシュして drawImage で並べる（拡大してもドットがにじまない）。
+ * 街を 160m 四方のチャンクに分けて townArtSimple で絵を焼き、キャッシュして drawImage で並べる（拡大してもドットがにじまない）。
  * 引いて見るとき（1セルが小さいとき）は、街全体を1枚にした全体図を使う。まだ焼けていないチャンクは全体図で埋めるので、地図に空白はできない。
  * 成長・色あせ・陣地が変わったら、古い絵を表示したまま少しずつ焼き直す（ちらつかない）。座標はログに出さない。
  */
 import { createLogger } from '@/Common/logging/logger';
 import { METERS_PER_DEG_LAT, metersPerDegLng, project } from '@/presentation/screens/Map/MapViewModel';
 import type { Camera, Viewport } from '@/presentation/screens/Map/MapViewModel';
-// 2026-11-09 ユーザー指示「お店以外は簡易オブジェクトに」で簡易表示に切り替え（細かいドット絵は townArt に残してある）
+// 2026-11-09 ユーザー指示「お店以外は簡易オブジェクトに」で簡易表示（細かいドット絵版の townArt は 2026-11-10 に削除。Git の履歴にある）
 import { paintChunk, paintOverview } from '@/presentation/screens/Map/town/townArtSimple';
 import { CELL_M, CHUNK_CELLS, CHUNK_PX, OVERVIEW_PX_PER_CELL, TERRITORY_MINE, TERRITORY_RIVAL } from '@/presentation/screens/Map/town/townTypes';
 import type { TownGrid, TownPaintState } from '@/presentation/screens/Map/town/townTypes';
@@ -26,6 +26,8 @@ export const REFINE_BUDGET_MS = 9;
 export const REFINE_IDLE_BUDGET_MS = 3;
 /** チャンクのキャッシュの上限（枚） */
 export const MAX_CACHED_CHUNKS = 140;
+/** 1セルがこの CSS px より小さいとき（中間・広域）は、木を点ではなく緑の帯にまとめた絵を使う。詳細（約4.3px）は1本ずつのまま（仮） */
+export const FAR_ART_BELOW_CELL_PX = 3.6;
 
 /** グリッドを画面に置く変換（セル → CSS px） */
 export interface GridTransform {
@@ -78,7 +80,6 @@ export class TownRenderer {
   private version = 0;
   private readonly chunks = new Map<string, ChunkEntry>();
   private overview: HTMLCanvasElement | undefined;
-  private overviewVersion = -1;
   /** 全体図のうち、本物のチャンクの絵を縮めて描き込んだチャンク（キー → 版） */
   private readonly refined = new Map<string, number>();
   private scratch: HTMLCanvasElement | undefined;
@@ -188,7 +189,6 @@ export class TownRenderer {
     image.data.set(pixels.subarray(0, image.data.length));
     ctx.putImageData(image, 0, 0);
     this.overview = canvas;
-    this.overviewVersion = this.version;
     log.exit(undefined);
   }
 
@@ -238,7 +238,7 @@ export class TownRenderer {
    */
   private refineChunk(octx: CanvasRenderingContext2D, cx: number, cy: number): void { // audit-ignore: fnlog-missing 全体図の描き直しで何百回も呼ぶ（座標を扱わない内部処理）
     const key = `${cx},${cy}`;
-    const entry = this.chunks.get(key);
+    const entry = this.chunks.get(`f${key}`);
     let source = entry !== undefined && entry.version === this.version ? entry.canvas : undefined;
     if (source === undefined) {
       this.scratch ??= makeCanvas(CHUNK_PX, CHUNK_PX);
@@ -246,7 +246,7 @@ export class TownRenderer {
       if (this.scratch === undefined || sctx === null || sctx === undefined) return;
       sctx.setTransform(1, 0, 0, 1, 0, 0);
       try {
-        paintChunk(sctx, this.grid, cx, cy, this.state);
+        paintChunk(sctx, this.grid, cx, cy, this.state, true);
       } catch {
         this.refined.set(key, this.version);
         return;
@@ -280,9 +280,11 @@ export class TownRenderer {
     const cy1 = Math.min(maxCy, Math.floor((vp.height - t.oy) / chunkH));
     const pending: { cx: number; cy: number; d: number }[] = [];
     ctx.imageSmoothingEnabled = (t.cellW / 8) * dpr < 0.75;
+    const far = t.cellW < FAR_ART_BELOW_CELL_PX;
+    const prefix = far ? 'f' : '';
     for (let cy = cy0; cy <= cy1; cy++) {
       for (let cx = cx0; cx <= cx1; cx++) {
-        const entry = this.chunks.get(`${cx},${cy}`);
+        const entry = this.chunks.get(`${prefix}${cx},${cy}`);
         // 隣のチャンクとの間に隙間ができないよう、端をデバイスピクセルに合わせる
         const x0 = Math.round((t.ox + cx * chunkW) * dpr) / dpr;
         const y0 = Math.round((t.oy + cy * chunkH) * dpr) / dpr;
@@ -303,7 +305,7 @@ export class TownRenderer {
     let baked = 0;
     for (const p of pending) {
       if (baked >= CHUNKS_PER_FRAME || performance.now() - started > CHUNK_BUDGET_MS) break;
-      this.bakeChunk(p.cx, p.cy);
+      this.bakeChunk(p.cx, p.cy, far);
       baked++;
     }
     if (baked > 0) this.evict();
@@ -335,11 +337,12 @@ export class TownRenderer {
    * チャンクを1枚焼く（既にあれば同じ canvas に描き直す）。
    * @param cx チャンクの列
    * @param cy チャンクの行
+   * @param far 引いて見る用の絵（木を帯にまとめる）なら true
    * @sideEffect キャッシュを書き換える
    */
-  private bakeChunk(cx: number, cy: number): void {
-    const log = logger.fn('bakeChunk', { cx, cy, version: this.version });
-    const key = `${cx},${cy}`;
+  private bakeChunk(cx: number, cy: number, far: boolean): void {
+    const log = logger.fn('bakeChunk', { cx, cy, far, version: this.version });
+    const key = `${far ? 'f' : ''}${cx},${cy}`;
     const existing = this.chunks.get(key);
     const canvas = existing?.canvas ?? makeCanvas(CHUNK_PX, CHUNK_PX);
     const ctx = canvas?.getContext('2d');
@@ -347,7 +350,7 @@ export class TownRenderer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
     try {
-      paintChunk(ctx, this.grid, cx, cy, this.state);
+      paintChunk(ctx, this.grid, cx, cy, this.state, far);
     } catch (error) {
       log.error('チャンクを描けませんでした', { error });
     }

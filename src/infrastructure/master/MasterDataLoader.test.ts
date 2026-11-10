@@ -68,7 +68,7 @@ describe('MasterDataLoader（実ファイル）', () => {
     expect(spots.filter((s) => s.kind === 'shop')).toHaveLength(66);
     expect(loaded.spots.allDistricts().map((d) => d.id)).toEqual(['d_minamimori', 'd_tenma', 'd_tenroku', 'd_ogimachi', 'd_okawa']);
     expect(loaded.spots.findSpot(must(parseSpotId('l_mm01')))?.name).toBe('大阪天満宮');
-    expect(loaded.spots.findDistrict(must(parseDistrictId('d_minamimori')))?.color).toBe('#6366f1');
+    expect(loaded.spots.findDistrict(must(parseDistrictId('d_minamimori')))?.color).toBe('#8577b8');
     const inOgimachi = [...itemsOf(realJson('landmarks.json'), 'landmarks'), ...itemsOf(realJson('shops.json'), 'shops')].filter((s) => s['districtId'] === 'd_ogimachi');
     expect(loaded.spots.spotsInDistrict(must(parseDistrictId('d_ogimachi')))).toHaveLength(inOgimachi.length);
     expect(loaded.spots.allShopEvents()).toHaveLength(itemsOf(realJson('shopEvents.json'), 'shopEvents').length);

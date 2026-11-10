@@ -51,7 +51,7 @@ export function openQrScan(host: HTMLElement, opts: QrScanOptions): () => void {
   const log = logger.fn('openQrScan', { kind: opts.kind, spotId: opts.spotId, demo: opts.demo });
   unlockSound();
   const canvas = h('canvas', { class: 'map-qr__view', attrs: { 'aria-hidden': 'true' } });
-  const status = h('p', { class: 'map-qr__status', attrs: { role: 'status', 'aria-live': 'polite' }, text: opts.kind === 'checkin' ? 'お店のQRコードを枠に合わせてください' : 'レジのQRコードを枠に合わせてください' });
+  const status = h('p', { class: 'map-qr__status', attrs: { role: 'status', 'aria-live': 'polite' }, text: opts.kind === 'checkin' ? 'お店のQRを枠に' : 'レジのQRを枠に' });
   let closed = false;
   let raf: number | undefined;
   /**
@@ -67,7 +67,7 @@ export function openQrScan(host: HTMLElement, opts: QrScanOptions): () => void {
     closeLog.exit(undefined);
   };
   const cancel = h('button', { class: 'map-qr__close', attrs: { type: 'button', 'aria-label': 'やめる', 'data-testid': 'qr-cancel' }, on: { click: userAction('qr-cancel', () => { close(); opts.onCancel(); }) } }, [createIcon('close')]);
-  const title = h('p', { class: 'map-qr__title', text: opts.kind === 'checkin' ? 'QRでチェックイン' : '購入QRを読み取る' });
+  const title = h('p', { class: 'map-qr__title', text: opts.kind === 'checkin' ? 'クエスト達成' : '購入QR' });
   const root = h('section', { class: ['map-qr', `map-qr--${opts.kind}`], attrs: { 'data-testid': 'qr-scan', 'data-kind': opts.kind, 'aria-label': title.textContent ?? '' } }, [canvas, h('div', { class: 'map-qr__top' }, [title, cancel]), status]);
   host.append(root);
   const started = performance.now();
@@ -83,7 +83,7 @@ export function openQrScan(host: HTMLElement, opts: QrScanOptions): () => void {
     if (t > AIM_MS + LOCK_MS && !beeped) {
       beeped = true;
       playScanBeep();
-      status.textContent = '読み取りました';
+      status.textContent = '読み取り完了';
       root.dataset.done = '1';
     }
     if (t > AIM_MS + LOCK_MS + DONE_MS) {
@@ -205,7 +205,7 @@ function paintStand(ctx: CanvasRenderingContext2D, cx: number, cy: number, size:
   ctx.roundRect(-cardW / 2, cardH / 2 - size * 0.26, cardW, size * 0.26, [0, 0, 12, 12]);
   ctx.fill();
   ctx.fillStyle = opts.kind === 'checkin' ? '#ffffff' : PALETTE.brandNight;
-  ctx.font = canvasFont(Math.max(9, size * 0.075), 900, 1);
+  ctx.font = canvasFont(Math.max(11, size * 0.075), 800, 1);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(opts.kind === 'checkin' ? `まちクエ ${opts.spotName}` : `お会計 ${opts.spotName}`, 0, cardH / 2 - size * 0.13, cardW - 12);
@@ -280,8 +280,8 @@ function paintFrame(ctx: CanvasRenderingContext2D, cx: number, cy: number, size:
   if (!locked) {
     const y = cy - half + ((t / 900) % 1) * s;
     const g = ctx.createLinearGradient(0, y - 18, 0, y + 2);
-    g.addColorStop(0, 'rgba(94, 224, 255, 0)');
-    g.addColorStop(1, 'rgba(94, 224, 255, 0.85)');
+    g.addColorStop(0, 'rgba(255, 207, 138, 0)');
+    g.addColorStop(1, 'rgba(255, 207, 138, 0.85)');
     ctx.fillStyle = g;
     ctx.fillRect(cx - half + 8, y - 18, s - 16, 20);
   } else {

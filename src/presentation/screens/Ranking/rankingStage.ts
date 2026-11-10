@@ -5,6 +5,7 @@
  * - 金・銀・銅の台がせり上がり、大きなアバターが上から着地（1位は最後に「どーん」と着地してステージが揺れ、衝撃の輪が広がる）
  * - 頭の上のエモート（♪・！・炎・汗・キラキラ・ハート）が順番にポンと出る
  * - 下段の「あなた」帯: アバター＋大きな順位＋すぐ上のライバルまでのレース
+ * - 台の正面に、その順位でもらえる報酬の絵（アバターの部品）。奥に花火。段が上がった日は「報酬アップ」が叩きつけられる
  * 文字は「あと○日」「報酬」「リーグ名と何で競うか」「名前・数」だけにする。動きは CSS（prefers-reduced-motion: no-preference のときだけ）。
  */
 import type { LeagueDto, RankingDto, RankingEntryDto } from '@/application/dto/Dto';
@@ -45,6 +46,9 @@ const PODIUM_SCALE: Readonly<Record<PodiumSlot['place'], number>> = { first: 1.1
 
 /** 紙吹雪の粒の数 */
 const CONFETTI_COUNT = 18;
+
+/** 花火の位置（ステージに対する %） */
+const BURSTS: readonly (readonly [number, number])[] = [[14, 24], [86, 20], [50, 10]];
 
 /** アバターを作る関数（参加者・拡大率・画像が作れないときの代わりの class） */
 export type AvatarMaker = (entry: RankingEntryDto, scale: number, fallbackClass?: string) => HTMLElement;
@@ -91,9 +95,10 @@ export function createConfetti(): HTMLElement {
  * @param slot 枠
  * @param league リーグ
  * @param avatar アバターを作る関数
+ * @param prizeOf 順位 → その順位でもらえる報酬の絵
  * @returns 要素
  */
-function stageSlot(slot: PodiumSlot, league: LeagueDto, avatar: AvatarMaker): HTMLElement { // audit-ignore: fnlog-missing 表彰台の3枠ぶん呼ぶ DOM 組立て（呼び出し側 createStage でログ）
+function stageSlot(slot: PodiumSlot, league: LeagueDto, avatar: AvatarMaker, prizeOf: StageInput['prizeOf']): HTMLElement { // audit-ignore: fnlog-missing 表彰台の3枠ぶん呼ぶ DOM 組立て（呼び出し側 createStage でログ）
   const { entry, place } = slot;
   const order = LANDING_ORDER[place];
   return h(
@@ -115,6 +120,7 @@ function stageSlot(slot: PodiumSlot, league: LeagueDto, avatar: AvatarMaker): HT
         h('span', { class: 'stage-block__rank', text: String(entry.rank) }),
         h('span', { class: 'stage-block__name', text: entry.name }),
         h('span', { class: 'stage-block__count', text: countLabel(entry.count, league.unit) }),
+        prizeOf === undefined ? undefined : h('span', { class: 'stage-block__prize' }, [prizeOf(entry.rank)]),
       ]),
     ],
   );
@@ -131,6 +137,10 @@ export interface StageInput {
   readonly onRewards: () => void;
   /** リーグのアイコン */
   readonly leagueIcon: IconName;
+  /** 順位 → その順位でもらえる報酬の絵（台の正面に出す。無ければ出さない） */
+  readonly prizeOf?: (rank: number) => HTMLElement | undefined;
+  /** 昨日より上の段に上がったときの「報酬アップ」に添える報酬の絵（上がっていなければ undefined） */
+  readonly tierUp?: HTMLElement;
 }
 
 /**
@@ -149,6 +159,7 @@ export function createStage(input: StageInput): HTMLElement {
     h('section', { class: 'stage', dataset: { league: league.id }, attrs: { 'data-testid': 'ranking-stage', 'aria-label': `${league.name}の表彰台` } }, [
       h('span', { class: 'stage__rays', attrs: { 'aria-hidden': 'true' } }),
       h('span', { class: 'stage__sparks', attrs: { 'aria-hidden': 'true' } }, SPARKS.map(([x, y], i) => h('span', { class: 'stage__spark', style: { left: `${x}%`, top: `${y}%`, '--spark-i': String(i) } }))),
+      h('span', { class: 'stage__bursts', attrs: { 'aria-hidden': 'true' } }, BURSTS.map(([x, y], i) => h('span', { class: 'stage__burst', style: { left: `${x}%`, top: `${y}%`, '--burst-i': String(i) } }))),
       party ? createConfetti() : undefined,
       h('div', { class: 'stage__head' }, [
         h('span', { class: 'stage__chip', attrs: { 'data-testid': 'ranking-finale', 'aria-label': `${dto.monthLabel}の決着まであと${dto.daysLeft}日` } }, [
@@ -162,7 +173,8 @@ export function createStage(input: StageInput): HTMLElement {
       ]),
       h('h2', { class: 'stage__title' }, [h('span', { class: 'stage__title-icon', attrs: { 'aria-hidden': 'true' } }, [createIcon(input.leagueIcon)]), league.name]),
       hint === undefined ? undefined : h('p', { class: 'stage__hint', text: hint }),
-      h('ol', { class: 'stage-podium', attrs: { 'aria-label': '表彰台（上位3名）', 'data-testid': 'podium' } }, slots.map((slot) => stageSlot(slot, league, input.avatar))),
+      h('ol', { class: 'stage-podium', attrs: { 'aria-label': '表彰台（上位3名）', 'data-testid': 'podium' } }, slots.map((slot) => stageSlot(slot, league, input.avatar, input.prizeOf))),
+      input.tierUp === undefined ? undefined : h('p', { class: 'stage__tierup', attrs: { 'data-testid': 'ranking-tier-up', 'aria-label': '報酬アップ' } }, [h('span', { attrs: { 'aria-hidden': 'true' }, text: '報酬アップ' }), input.tierUp]),
       input.meStrip,
     ]),
   );

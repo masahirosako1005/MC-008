@@ -16,17 +16,20 @@ export class ResetCmsDemoUseCase implements UseCase<void, void> {
    * 依存を受け取る。
    * @param deps 登録内容の保存先
    */
-  constructor(private readonly deps: Pick<CmsDeps, 'cmsOverlay'>) {}
+  constructor(private readonly deps: Pick<CmsDeps, 'cmsOverlay' | 'surveys'>) {}
 
   /**
    * 登録内容を消す。
    * @returns 成功: void。失敗: STORAGE_FAILED
-   * @sideEffect 登録内容の保存データを消す（利用者アプリはマスタだけの状態に戻る）
+   * @sideEffect 登録内容とアンケートの回答の保存データを消す（利用者アプリはマスタだけの状態に戻る）
    */
   async execute(): Promise<Result<void>> {
     const log = logger.fn('execute');
     const cleared = await this.deps.cmsOverlay.clear();
     if (!cleared.ok) return log.fail(cleared);
+    // アプリから届いたアンケートの回答も消す（サンプルだけの状態に戻す）
+    const surveys = await this.deps.surveys?.clear();
+    if (surveys !== undefined && !surveys.ok) return log.fail(surveys);
     log.warn('CMS の登録内容をすべて消しました（デモ操作）');
     return log.exit(cleared);
   }

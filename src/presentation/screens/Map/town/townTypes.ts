@@ -1,7 +1,7 @@
 /**
  * @file オリジナル地図「ドット絵の街」の共通の型と定数（presentation/screens/Map/town 層）
  * 実在の地理（OSM）は使わず、スポットの位置と地区の形だけを手がかりに、5m 四方のセルを並べた架空の街を作る。
- * 生成（townGenerator）・経路（townPath）・タイル描画（townArt）・合成（townRenderer）がこの型を共有する。
+ * 生成（townGenerator）・経路（townPath）・タイル描画（townArtSimple）・合成（townRenderer）がこの型を共有する。
  * セル (col, row) は北西の角を原点に、col は東へ、row は南へ増える。位置座標はログに出さない。
  */
 
@@ -60,9 +60,6 @@ export const Cell = {
   PLAYGROUND: 18,
 } as const;
 
-/** セルの種類の値 */
-export type CellKind = (typeof Cell)[keyof typeof Cell];
-
 /** overlay のビット: 高架の線路が上を通る（下は歩ける） */
 export const OVERLAY_VIADUCT = 1;
 /** overlay のビット: 駅のホーム（高架の上） */
@@ -92,7 +89,7 @@ export interface TownBuilding {
   readonly w: number;
   readonly h: number;
   readonly style: BuildingStyle;
-  /** 屋根・ひさしの色の番号（0..7。townArt の色表で引く） */
+  /** 屋根・ひさしの色の番号（0..7） */
   readonly roof: number;
   /** 窓・飾りのばらつき用の種 */
   readonly seed: number;
@@ -156,9 +153,9 @@ export const TERRITORY_MINE = 1;
 export const TERRITORY_RIVAL = 2;
 
 /** 自分の陣地の色 */
-export const TERRITORY_MINE_COLOR = '#1e6bff';
+export const TERRITORY_MINE_COLOR = '#bc5b1b';
 /** ライバルの陣地の色 */
-export const TERRITORY_RIVAL_COLOR = '#ff5a3d';
+export const TERRITORY_RIVAL_COLOR = '#7a5ea8';
 
 /**
  * セルの添字を返す（範囲外は -1）。

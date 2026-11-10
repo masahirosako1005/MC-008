@@ -42,6 +42,8 @@ export interface RevisitReasonCardOptions {
   readonly subtitle: string;
   /** つまみ用の1行表示（補足は省略表示） */
   readonly compact?: boolean;
+  /** 右に置く残り日数などの短い札（「あと2日」。枠なしの淡い面で、押せるものには見せない） */
+  readonly pill?: string;
   /** カード本体のタップ（該当地区・スポットへ） */
   readonly onClick?: () => void;
   /** 右端に置く追加の操作（「カレンダーに追加」ボタンなど） */
@@ -93,6 +95,7 @@ export function createRevisitReasonCard(opts: RevisitReasonCardOptions): HTMLEle
       h('span', { class: 'reason-card__title', text: opts.title }),
       h('span', { class: 'reason-card__subtitle', text: opts.subtitle }),
     ]),
+    opts.pill === undefined || opts.pill.length === 0 ? undefined : h('span', { class: 'reason-card__pill', text: opts.pill }),
     opts.onClick === undefined ? undefined : h('span', { class: 'card-chevron', attrs: { 'aria-hidden': 'true' } }, [createIcon('chevronRight')]),
   ];
   const onClick = opts.onClick;

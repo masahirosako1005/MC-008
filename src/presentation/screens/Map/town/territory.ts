@@ -79,14 +79,19 @@ export function territoryRadiusM(visitCount: number, level: number): number {
 }
 
 /**
- * 陣地を計算する（自分 → ライバルの順。ライバルは自分の陣地を上書きしない）。
+ * 陣地を計算する（自分 → ライバルの順）。
+ * owners を渡したとき（2026-11-10〜。陣取りはお店単位＝town/vitality）は、自分のお店のまわりをにぎわいの面、ライバルの手に渡ったお店のまわりを廃れた面にする（奪われたお店は自分の面にしない）。
+ * owners が無ければ従来どおり（訪問したスポット＝自分、ライバルが主の地区のいくつか＝ライバル。ライバルは自分の陣地を上書きしない）。
+ * マスの数は画面に出さない（ユーザー指示「領地のマスの概念はいらない」）。セルは街の見た目（建物の色づき・廃れ）にだけ使う。
  * @param grid 街
  * @param spots スポット（訪問回数つき）
  * @param districts 地区（成長段階・地区の主）
+ * @param owners スポットID → 持ち主（town/vitality の ownerOf）
  * @returns 陣地
  */
-export function computeTerritory(grid: TownGrid, spots: readonly TerritorySpot[], districts: readonly TerritoryDistrict[]): TerritoryModel {
-  const log = logger.fn('computeTerritory', { spots: spots.length, districts: districts.length });
+export function computeTerritory(grid: TownGrid, spots: readonly TerritorySpot[], districts: readonly TerritoryDistrict[], owners?: ReadonlyMap<string, 'mine' | 'rival'>): TerritoryModel {
+  const log = logger.fn('computeTerritory', { spots: spots.length, districts: districts.length, owners: owners?.size });
+  if (owners !== undefined) return log.exit(territoryByOwners(grid, spots, districts, owners));
   const cells = new Uint8Array(grid.cols * grid.rows);
   const levelOf = new Map(districts.map((d) => [d.id, d.level]));
   const claims: TerritoryClaim[] = [];
@@ -122,6 +127,48 @@ export function computeTerritory(grid: TownGrid, spots: readonly TerritorySpot[]
 }
 
 /**
+ * お店単位の持ち主から陣地を作る（ライバルの面を先に塗り、自分の面はその上に塗る。ただし奪われたお店は自分の面にしない）。
+ * @param grid 街
+ * @param spots スポット（訪問回数つき）
+ * @param districts 地区（成長段階）
+ * @param owners スポットID → 持ち主
+ * @returns 陣地
+ */
+function territoryByOwners(grid: TownGrid, spots: readonly TerritorySpot[], districts: readonly TerritoryDistrict[], owners: ReadonlyMap<string, 'mine' | 'rival'>): TerritoryModel {
+  const log = logger.fn('territoryByOwners', { owners: owners.size });
+  const cells = new Uint8Array(grid.cols * grid.rows);
+  const levelOf = new Map(districts.map((d) => [d.id, d.level]));
+  const claims: TerritoryClaim[] = [];
+  const byId = new Map(spots.map((s) => [s.id, s]));
+  for (const [id, owner] of owners) {
+    if (owner !== 'rival') continue;
+    const anchor = grid.anchors.get(id);
+    if (anchor === undefined) continue;
+    paintDisc(grid, cells, anchor.col, anchor.row, RIVAL_TERRITORY_M, TERRITORY_RIVAL);
+    claims.push({ spotId: id, col: anchor.col, row: anchor.row, radiusM: RIVAL_TERRITORY_M, owner: TERRITORY_RIVAL });
+  }
+  for (const [id, owner] of owners) {
+    const spot = byId.get(id);
+    const anchor = grid.anchors.get(id);
+    if (owner !== 'mine' || spot === undefined || anchor === undefined) continue;
+    const radiusM = territoryRadiusM(Math.max(1, spot.visitCount), levelOf.get(spot.districtId) ?? 0);
+    paintDisc(grid, cells, anchor.col, anchor.row, radiusM, TERRITORY_MINE);
+    claims.push({ spotId: id, col: anchor.col, row: anchor.row, radiusM, owner: TERRITORY_MINE });
+  }
+  const counts = countCells(grid, cells);
+  return log.exit({
+    cells,
+    mineCount: counts.mine,
+    rivalCount: counts.rival,
+    mineByDistrict: counts.mineByDistrict,
+    landByDistrict: counts.landByDistrict,
+    claims,
+    mineEdges: edgesOf(grid, cells, TERRITORY_MINE),
+    rivalEdges: edgesOf(grid, cells, TERRITORY_RIVAL),
+  });
+}
+
+/**
  * ライバルが陣取るスポットを地区から選ぶ（自分が訪問していないスポットから、ID のハッシュ順に決定論的に）。
  * @param spots スポット
  * @param districtId 地区ID
@@ -143,7 +190,7 @@ export function rivalSpotsOf(spots: readonly TerritorySpot[], districtId: string
  * @param col 中心の列
  * @param row 中心の行
  * @param radiusM 半径（メートル）
- * @param owner 陣地の持ち主
+ * @param owner 陣地の持ち主（自分の面はライバルの面を上書きする＝近くの自分のお店のにぎわいが勝つ）
  * @sideEffect cells を書き換える
  */
 function paintDisc(grid: TownGrid, cells: Uint8Array, col: number, row: number, radiusM: number, owner: number): void { // audit-ignore: fnlog-missing 内部ヘルパー（computeTerritory でまとめてログ）

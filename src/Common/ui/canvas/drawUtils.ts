@@ -6,8 +6,8 @@
  */
 import type { Point2D, Rect } from '@/Common/ui/canvas/geometry';
 
-/** Canvas の文字に使うフォント（CSS の --font-display と同じ並び。丸ゴシックで地図の絵と調和させる） */
-export const CANVAS_FONT_FAMILY = '"Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif';
+/** Canvas の文字に使うフォント（tokens.css の --font-seed と同じ並び。太さは 400／700／800） */
+export const CANVAS_FONT_FAMILY = '"LINE Seed JP", "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif';
 
 /** 塗り・線のスタイル */
 export interface ShapeStyle {
@@ -149,18 +149,6 @@ export function drawCircle(ctx: CanvasRenderingContext2D, center: Point2D, radiu
 }
 
 /**
- * 破線の円を描く（発見範囲の円など）。
- * @param ctx 2D コンテキスト
- * @param center 中心（CSS px）
- * @param radius 半径（CSS px）
- * @param style 線の色・幅・破線パターン（dash 省略時は [6, 4]）
- * @sideEffect ctx に描画する
- */
-export function drawDashedCircle(ctx: CanvasRenderingContext2D, center: Point2D, radius: number, style: ShapeStyle): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  drawCircle(ctx, center, radius, { ...style, dash: style.dash ?? [6, 4] });
-}
-
-/**
  * 縁取り付きの文字を描く（地図の上でも読めるよう白などで縁取る）。
  * @param ctx 2D コンテキスト
  * @param text 文字列
@@ -181,41 +169,5 @@ export function drawTextWithOutline(ctx: CanvasRenderingContext2D, text: string,
   }
   ctx.fillStyle = style.color;
   ctx.fillText(text, at.x, at.y, style.maxWidth);
-  ctx.restore();
-}
-
-/** 折れ線のスタイル */
-export interface LineStyle {
-  /** 線の色 */
-  readonly color: string;
-  /** 線幅（CSS px） */
-  readonly width: number;
-  /** 破線パターン（CSS px。省略時は実線） */
-  readonly dash?: readonly number[];
-  /** 線端（省略時 round） */
-  readonly cap?: CanvasLineCap;
-  /** 全体の不透明度（0〜1。省略時 1） */
-  readonly alpha?: number;
-}
-
-/**
- * 折れ線を描く（川・道路・線路・商店街など。角は丸める）。
- * @param ctx 2D コンテキスト
- * @param points 頂点（CSS px。2点未満なら何もしない）
- * @param style 線のスタイル
- * @sideEffect ctx に描画する
- */
-export function drawPolyline(ctx: CanvasRenderingContext2D, points: readonly Point2D[], style: LineStyle): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  if (points.length < 2 || !(style.width > 0)) return;
-  ctx.save();
-  if (style.alpha !== undefined) ctx.globalAlpha *= Math.min(1, Math.max(0, style.alpha));
-  ctx.beginPath();
-  points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-  ctx.strokeStyle = style.color;
-  ctx.lineWidth = style.width;
-  ctx.lineCap = style.cap ?? 'round';
-  ctx.lineJoin = 'round';
-  ctx.setLineDash(style.dash === undefined ? [] : [...style.dash]);
-  ctx.stroke();
   ctx.restore();
 }

@@ -2,8 +2,8 @@
  * @file ログイン・アカウントの API（infrastructure/server/http 層。docs/09 CMS-A04〜A07、§1.2、SEC-19）
  * - ログイン：本文の形を確かめ、AuthService に渡す。成功したら HttpOnly の Cookie にセッションのトークンを入れる
  * - ログアウト・自分のパスワード変更：セッションが要る（createApiHandler が確かめる）
- * - デモのログイン：デモの版だけ。しかも、つないできた相手が自分の PC（ループバック）のときだけ受け付ける。
- *   LAN に出したとき、同じネットワークの人が運営者になれないようにするため（X-Forwarded-For ではなくソケットの相手で判断する）
+ * - デモのログイン：デモの版だけ。しかも、中継を通らず自分の PC から直接つないできたときだけ受け付ける（requestOrigin.isDirectLoopback）。
+ *   LAN に出したとき、同じネットワークの人が運営者になれないようにするため。同じ PC の中継（nginx・ngrok・ポート転送）を通ったものも断る
  * - アカウント管理：運営者だけ（Route.auth='operator'）。操作者はログイン中のアカウントID
  */
 import type { IncomingMessage } from 'node:http';
@@ -33,7 +33,7 @@ import type { Shape } from '@/infrastructure/api/schema/shape';
 import type { AuthService, LoginOutcome } from '@/infrastructure/server/auth/AuthService';
 import { principalDtoOf } from '@/infrastructure/server/auth/principal';
 import type { Principal } from '@/infrastructure/server/auth/principal';
-import { isSecureRequest } from '@/infrastructure/server/auth/requestOrigin';
+import { isDirectLoopback, isSecureRequest } from '@/infrastructure/server/auth/requestOrigin';
 import type { RequestTrust } from '@/infrastructure/server/auth/requestOrigin';
 import { expiredSessionCookieOf, SESSION_TTL_MS, sessionCookieOf } from '@/infrastructure/server/auth/sessionCookie';
 import type { Route, RouteContext } from '@/infrastructure/server/http/createApiHandler';
@@ -49,8 +49,6 @@ export interface AuthRouteDeps {
   readonly trust: RequestTrust;
 }
 
-/** 自分の PC からのつながり（デモのログインを許す相手） */
-const LOOPBACK_ADDRESSES: ReadonlySet<string> = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 /** アカウントの道筋 */
 const ACCOUNT = '^/api/cms/accounts/([A-Za-z0-9_-]{1,80})';
 
@@ -159,8 +157,8 @@ async function changePassword(deps: AuthRouteDeps, ctx: RouteContext): Promise<v
  */
 async function demoLogin(deps: AuthRouteDeps, ctx: RouteContext): Promise<void> {
   const log = logger.fn('demoLogin');
-  if (!LOOPBACK_ADDRESSES.has(ctx.req.socket.remoteAddress ?? '')) {
-    log.warn('自分の PC 以外からのデモのログインを断りました');
+  if (!isDirectLoopback(ctx.req, deps.trust)) {
+    log.warn('自分の PC から直接ではないデモのログインを断りました');
     return log.exit(sendResult(ctx.res, fail(AppError.of('FORBIDDEN', 'デモのログインはこの PC からだけ使えます'))), 'remote');
   }
   const body = await bodyOf<CmsDemoLoginInput>(ctx.req, DEMO_LOGIN_BODY_SHAPE, 'DemoLoginBody');

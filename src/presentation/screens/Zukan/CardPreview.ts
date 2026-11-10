@@ -13,6 +13,7 @@ import { createIcon } from '@/Common/ui/icons';
 import type { IconName } from '@/Common/ui/icons';
 import { openModal } from '@/Common/ui/Modal';
 import type { ModalHandle } from '@/Common/ui/Modal';
+import { phraseNodes } from '@/presentation/screens/Avatar/phraseBreak';
 import { categoryIconOf, isShinyCard, rarityViewOf } from '@/presentation/screens/Zukan/cardFace';
 import { createShinyLayer } from '@/presentation/screens/Zukan/ShinyLayer';
 import { createImageBadge, createPhotoCredit, mountPhotoImage } from '@/presentation/screens/Spot/SpotPhotoView';
@@ -77,9 +78,8 @@ function createBigCard(tile: ZukanTileDto): HTMLElement {
         h('span', { class: 'rarity-card__icon', attrs: { 'aria-hidden': 'true' }, text: categoryIconOf(tile) }),
         h('span', { class: 'rarity-card__stars', attrs: { 'aria-label': `レア度 ${view.rarity}` }, text: view.stars }),
         h('span', { class: 'rarity-card__rname', text: view.name }),
-        h('strong', { class: 'card-preview__name', text: tileName(tile) }),
+        h('strong', { class: 'card-preview__name' }, phraseNodes(tileName(tile))),
         h('span', { class: 'card-preview__category', text: tile.category ?? '' }),
-        shiny ? h('span', { class: 'card-preview__shiny-label', text: '✦ 獲得済みレジェンド ✦' }) : undefined,
       ],
     ),
   );
@@ -94,25 +94,40 @@ function createSteps(tile: ZukanTileDto): HTMLElement {
   const log = logger.fn('createSteps', { status: tile.status });
   const steps = tile.acquisitionSteps ?? [];
   const states = stepStatesOf(tile, steps.length);
-  const mark: Readonly<Record<StepState, IconName | undefined>> = { done: 'check', next: 'arrowRight', todo: undefined };
-  const label: Readonly<Record<StepState, string>> = { done: '済み', next: '次はこれ', todo: 'これから' };
+  const spoken: Readonly<Record<StepState, string>> = { done: '済み', next: '次はこれ', todo: 'これから' };
   return log.exit(
-    h('div', { class: 'card-preview__how' }, [
-      h('p', { class: 'card-preview__how-title', text: '取得方法' }),
-      h(
-        'ol',
-        { class: 'card-preview__steps' },
-        steps.map((text, i) => {
-          const state = states[i] ?? 'todo';
-          const icon = mark[state];
-          return h('li', { class: 'card-preview__step', dataset: { state } }, [
-            h('span', { class: 'card-preview__step-mark', attrs: { role: 'img', 'aria-label': label[state] } }, [icon === undefined ? undefined : createIcon(icon)]),
-            h('span', { text }),
-          ]);
-        }),
-      ),
-    ]),
+    h(
+      'ol',
+      { class: 'card-preview__steps' },
+      steps.map((text, i) => {
+        const state = states[i] ?? 'todo';
+        const face = stepFaceOf(tile, i);
+        // 文は画面に出さず読み上げだけに残す（画面は線の絵＋名詞。済んだ手順にはチェックを重ねる）
+        return h('li', { class: 'card-preview__step', dataset: { state }, attrs: { 'aria-label': `${text}。${spoken[state]}` } }, [
+          h('span', { class: 'card-preview__step-mark', attrs: { 'aria-hidden': 'true' } }, [
+            createIcon(face.icon),
+            state === 'done' ? h('span', { class: 'card-preview__step-check' }, [createIcon('check')]) : undefined,
+          ]),
+          h('span', { class: 'card-preview__step-label', attrs: { 'aria-hidden': 'true' }, text: face.label }),
+        ]);
+      }),
+    ),
   );
+}
+
+/**
+ * 手順の見せ方（線の絵と名詞）。1つ目＝発見、2つ目＝達成、3つ目はレア度ごと（★2 店頭QR／★3 常連／★4 四季 n/4）。
+ * @param tile タイル
+ * @param index 手順の番号（0 から）
+ * @returns 線の絵と名詞
+ */
+function stepFaceOf(tile: ZukanTileDto, index: number): { readonly icon: IconName; readonly label: string } {
+  const log = logger.fn('stepFaceOf', { rarity: tile.rarity, index });
+  if (index === 0) return log.exit({ icon: 'compass', label: '発見' });
+  if (index === 1) return log.exit({ icon: 'flag', label: '達成' });
+  if (tile.rarity === 4) return log.exit({ icon: 'sparkle', label: `四季 ${tile.seasons?.length ?? 0}/4` });
+  if (tile.rarity === 3) return log.exit({ icon: 'star', label: '常連' });
+  return log.exit({ icon: 'ticket', label: '店頭QR' });
 }
 
 /**
@@ -133,10 +148,14 @@ export function openCardPreview(tile: ZukanTileDto, onOpenSpot: (spotId: string)
   ]);
   const actions =
     spotId === undefined || tile.status === 'unknown'
-      ? [{ label: '閉じる', variant: 'primary' as const, testId: 'zukan-preview-close', onClick: (): void => undefined }]
+      ? [{ label: 'とじる', variant: 'secondary' as const, testId: 'zukan-preview-close', onClick: (): void => undefined }]
       : [
-          { label: '閉じる', variant: 'ghost' as const, testId: 'zukan-preview-close', onClick: (): void => undefined },
-          { label: 'スポット詳細へ', variant: 'primary' as const, testId: 'zukan-preview-open', onClick: (): void => onOpenSpot(spotId) },
+          { label: 'とじる', variant: 'secondary' as const, testId: 'zukan-preview-close', onClick: (): void => undefined },
+          { label: '詳細へ', variant: 'primary' as const, testId: 'zukan-preview-open', onClick: (): void => onOpenSpot(spotId) },
         ];
-  return log.exit(openModal({ title: tile.status === 'unknown' ? '未発見のカード' : 'カード', body, actions, testId: 'zukan-preview' }));
+  // 見出しの文字は画面に出さない（CSS で隠す。読み上げ名としては残る）
+  const modal = openModal({ title: tile.status === 'unknown' ? '未発見のカード' : 'カード', body, actions, testId: 'zukan-preview' });
+  // ボタンの文字は短く「詳細へ」、読み上げ名は行き先が分かる「スポット詳細へ」のままにする
+  modal.element.querySelector('[data-testid="zukan-preview-open"]')?.setAttribute('aria-label', 'スポット詳細へ');
+  return log.exit(modal);
 }

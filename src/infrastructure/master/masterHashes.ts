@@ -6,7 +6,7 @@
 
 /** マスタファイル名 → 本文の SHA-256（16進・小文字） */
 export const MASTER_HASHES: Readonly<Record<string, string>> = Object.freeze({
-  'districts.json': '10e9b88b6df6615c0c097f8e167e9e07fbfd1b9dfa7a5ffbb6d2d746ae2a5c26',
+  'districts.json': '22d0066f7c85318b55c016b6a7610d0508b9ad9f4a7ccd8f9e9d1040accb6eee',
   'landmarks.json': 'ad118508d5edc0e51c4fccda33f2c2665f91914a4e28114def6c1c3574eacfce',
   'shops.json': '24df93ca48f9203a2bb31b24125075ef2a26cafb7b93862fbab457653278687f',
   'shopEvents.json': '38fb5aeeb4beb6b19184aac645572dc74063fe94524a0cda2d7186d24665888e',

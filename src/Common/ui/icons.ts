@@ -36,6 +36,7 @@ export type IconName =
   | 'check'
   | 'calendar'
   | 'ticket'
+  | 'qr'
   | 'navigate'
   | 'info'
   | 'question'
@@ -105,6 +106,8 @@ const ICON_PATHS: Readonly<Record<IconName, readonly string[]>> = {
   calendar: ['M6 5.5h12a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7.5a2 2 0 0 1 2-2z', 'M4 10h16', 'M8.5 3.5v4', 'M15.5 3.5v4'],
   // クーポン: 切り取り線のある券
   ticket: ['M4 6.5h16v3.25a2.25 2.25 0 0 0 0 4.5v3.25H4v-3.25a2.25 2.25 0 0 0 0-4.5z', '~M14.5 7v10'],
+  /** QR（店頭QR。3つの角の四角と右下の点） */
+  qr: ['M4 4h6v6H4z', 'M14 4h6v6h-6z', 'M4 14h6v6H4z', 'M14 14h2.5v2.5H14z', 'M20 14v.01', 'M17.5 20H20v-2.5', 'M14 20v.01'],
   // 進む方向（ナビ）
   navigate: ['M12 3.5l7 17-7-4-7 4z'],
   info: [circle(12, 12, 8.5), 'M12 11v5.5', '*' + circle(12, 7.75, 1.1)],
@@ -157,24 +160,46 @@ function createPath(spec: string): SVGPathElement {
 }
 
 /**
+ * 図形の列から線のアイコンの svg 要素を作る（24×24 の viewBox、線は currentColor、角は丸い）。画面ごとのアイコン（アバター画面など）もこれで作る。
+ * @param specs d 属性の列（'*' 始まりは塗り、'~' 始まりは点線）
+ * @param classNames 付けるクラス名
+ * @param strokeWidth 線幅（viewBox の単位。既定 1.8）
+ * @returns svg 要素（aria-hidden="true"）
+ */
+export function createLineIcon(specs: readonly string[], classNames: readonly string[], strokeWidth = 1.8): SVGSVGElement {
+  const log = logger.fn('createLineIcon', { count: specs.length, classNames });
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', String(strokeWidth));
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  svg.classList.add(...classNames);
+  for (const spec of specs) svg.append(createPath(spec));
+  return log.exit(svg);
+}
+
+/**
  * 線のアイコンの svg 要素を作る（24×24 の viewBox、線は currentColor）。大きさは CSS（.icon）で決める。
  * @param name アイコンの名前
  * @returns svg 要素（aria-hidden="true"）
  */
 export function createIcon(name: IconName): SVGSVGElement {
   const log = logger.fn('createIcon', { name });
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('fill', 'none');
-  svg.setAttribute('stroke', 'currentColor');
-  svg.setAttribute('stroke-width', '1.8');
-  svg.setAttribute('stroke-linecap', 'round');
-  svg.setAttribute('stroke-linejoin', 'round');
-  svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('focusable', 'false');
-  svg.classList.add('icon', `icon--${name}`);
-  for (const spec of ICON_PATHS[name]) svg.append(createPath(spec));
-  return log.exit(svg);
+  return log.exit(createLineIcon(ICON_PATHS[name], ['icon', `icon--${name}`]));
+}
+
+/**
+ * 共通アイコンの図形（d 属性の列）を返す（画面ごとのアイコンに組み込むとき）。
+ * @param name アイコンの名前
+ * @returns d 属性の列
+ */
+export function iconPathsOf(name: IconName): readonly string[] {
+  const log = logger.fn('iconPathsOf', { name });
+  return log.exit(ICON_PATHS[name]);
 }
 
 /**

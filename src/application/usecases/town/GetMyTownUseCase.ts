@@ -113,7 +113,7 @@ export class GetMyTownUseCase implements UseCase<void, MyTownDto> {
       items: Object.freeze(items.items),
       lockedItems: Object.freeze(items.locked),
       heldItemId: items.held,
-      avatarPartIds: outfitOfState(avatar.value, wardrobeOf(world.value.traveler.visits, this.deps.spots).owned),
+      avatarPartIds: outfitOfState(avatar.value, wardrobeOf(world.value.traveler, this.deps.spots, this.deps.clock, points).owned),
     });
     log.debug('マイ街', { points, rank: rank.name, cards: dto.cards.length, items: dto.items.length, held: dto.heldItemId });
     return log.exit(ok(dto));

@@ -4,7 +4,7 @@
  * - 「広域は町とかのレベルで大きなブロックにして、タップすると中域になるような表現」→ drawDistrictBlocks（地区を色の面と大きな札で描く）
  * - 「陣取り＋街の成長要素」→ drawRisingBuildings（領地が広がった所で、建物が下からにょきっと建ち上がる）
  * - 「自分のアイコンが街に埋もれている」→ drawSelfBeacon（足もとの光・広がる輪・白い台座）
- * 色はテーマ（青 #1e6bff、TERRITORY_MINE_COLOR）に合わせる。座標はログに出さない。
+ * 色はテーマ（ブランドのオレンジ #bc5b1b、TERRITORY_MINE_COLOR）に合わせる。座標はログに出さない。
  */
 import { canvasFont } from '@/Common/ui/canvas/drawUtils';
 import type { Point2D } from '@/Common/ui/canvas/geometry';
@@ -101,7 +101,7 @@ export function drawRisingBuildings(ctx: CanvasRenderingContext2D, anim: RiseAni
     if (x > vp.width || y > vp.height || x + w < 0 || y + h < 0) continue;
     if (local >= RISE_MS) continue;
     // まだ建っていない間は地面で隠す（下に描かれた完成済みの建物を見せない）
-    ctx.fillStyle = '#eef4ff';
+    ctx.fillStyle = '#fdf5ed';
     ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
     if (local < 0) continue;
     const k = local / RISE_MS;
@@ -137,8 +137,8 @@ export function drawSelfBeacon(ctx: CanvasRenderingContext2D, p: Point2D, now: n
   const scale = tier === 'near' ? 1 : tier === 'district' ? 1.15 : 1.3;
   ctx.save();
   const glow = ctx.createRadialGradient(p.x, p.y - 10, 2, p.x, p.y - 10, 40 * scale);
-  glow.addColorStop(0, 'rgba(30, 107, 255, 0.38)');
-  glow.addColorStop(1, 'rgba(30, 107, 255, 0)');
+  glow.addColorStop(0, 'rgba(188, 91, 27, 0.38)');
+  glow.addColorStop(1, 'rgba(188, 91, 27, 0)');
   ctx.fillStyle = glow;
   ctx.beginPath();
   ctx.arc(p.x, p.y - 10, 40 * scale, 0, Math.PI * 2);
@@ -215,16 +215,16 @@ function drawBlockLabel(ctx: CanvasRenderingContext2D, d: MapDistrictVm, at: Poi
   const ratio = land > 0 ? Math.min(1, mine / land) : 0;
   const title = d.shortName;
   const level = `Lv${d.level}`;
-  ctx.font = canvasFont(16, 900, textScale);
+  ctx.font = canvasFont(16, 800, textScale);
   const tw = ctx.measureText(title).width;
-  ctx.font = canvasFont(11, 900, textScale);
+  ctx.font = canvasFont(11, 800, textScale);
   const lw = ctx.measureText(level).width + 12;
   const w = Math.max(112, tw + lw + 30);
   const h = (!d.isLordMe && d.subtitle !== undefined ? 66 : 54) * textScale;
   const x = at.x - w / 2;
   const y = at.y - h / 2;
   ctx.globalAlpha = Math.max(0.6, d.fade.alpha);
-  ctx.fillStyle = 'rgba(17, 24, 39, 0.16)';
+  ctx.fillStyle = 'rgba(42, 33, 27, 0.16)';
   ctx.beginPath();
   ctx.roundRect(x, y + 3, w, h, 12);
   ctx.fill();
@@ -239,14 +239,14 @@ function drawBlockLabel(ctx: CanvasRenderingContext2D, d: MapDistrictVm, at: Poi
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
   ctx.fillStyle = INK;
-  ctx.font = canvasFont(16, 900, textScale);
+  ctx.font = canvasFont(16, 800, textScale);
   ctx.fillText(title, x + 14, y + 17 * textScale);
   ctx.fillStyle = TERRITORY_MINE_COLOR;
   ctx.beginPath();
   ctx.roundRect(x + 18 + tw, y + 9 * textScale, lw, 16 * textScale, 8);
   ctx.fill();
   ctx.fillStyle = '#ffffff';
-  ctx.font = canvasFont(11, 900, textScale);
+  ctx.font = canvasFont(11, 800, textScale);
   ctx.fillText(level, x + 24 + tw, y + 17 * textScale);
   if (d.isLordMe) drawCrown(ctx, x + w - 16, y + 17 * textScale);
   drawBlockBar(ctx, d, { x: x + 14, y: y + 33 * textScale, w: w - 28 }, ratio, textScale);
@@ -266,7 +266,7 @@ function drawBlockBar(ctx: CanvasRenderingContext2D, d: MapDistrictVm, bar: { x:
   const barX = bar.x;
   const barW = bar.w;
   const barY = bar.y;
-  ctx.fillStyle = '#e8ecf4';
+  ctx.fillStyle = '#ebe4d8';
   ctx.beginPath();
   ctx.roundRect(barX, barY, barW, 6, 3);
   ctx.fill();
@@ -320,6 +320,6 @@ function drawCrown(ctx: CanvasRenderingContext2D, x: number, y: number): void { 
  */
 function withAlpha(hex: string, alpha: number): string { // audit-ignore: fnlog-missing 毎フレーム描画の色変換ヘルパー
   const n = Number.parseInt(hex.slice(1), 16);
-  if (!Number.isFinite(n)) return `rgba(30, 107, 255, ${alpha})`;
+  if (!Number.isFinite(n)) return `rgba(188, 91, 27, ${alpha})`;
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 }

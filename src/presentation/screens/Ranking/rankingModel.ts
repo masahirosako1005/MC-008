@@ -2,7 +2,7 @@
  * @file ランキング画面の表示用の純粋関数（presentation/screens/Ranking 層）
  * 表彰台の並び（2位・1位・3位）、リスト部分、あなたの行の取り出し、地区の主カード・報酬（順位報酬・キープ報酬）の文言を作る。DOM に触れない（テスト対象）。
  */
-import type { KeepRewardDto, LeagueDto, RankingEntryDto, RankingLordDto, RewardPrizeDto, RewardTierDto } from '@/application/dto/Dto';
+import type { KeepRewardDto, LeagueDto, RankingDto, RankingEntryDto, RankingLordDto, RewardPrizeDto, RewardTierDto } from '@/application/dto/Dto';
 import { createLogger } from '@/Common/logging/logger';
 
 const logger = createLogger('presentation/screens/Ranking/rankingModel');
@@ -333,4 +333,85 @@ export function districtShortOf(lord: RankingLordDto): string {
   const log = logger.fn('districtShortOf', { districtId: lord.districtId });
   if (lord.districtShortName !== undefined && lord.districtShortName !== '') return log.exit(lord.districtShortName);
   return log.exit(lord.districtName.replace(/地区$/, '').split('・')[0] ?? lord.districtName);
+}
+
+/** 順位表の1項目（段の帯 または 参加者の行） */
+export type ListItem =
+  | { readonly kind: 'band'; readonly tier: RewardTierDto; readonly state: 'mine' | 'next' | undefined }
+  | { readonly kind: 'row'; readonly entry: RankingEntryDto };
+
+/**
+ * 表彰台より下のリストを、順位報酬の段の帯をはさんで並べる（「この順位まではこの報酬」を順位表の上で見せる）。
+ * 帯は、その段の最上位以下の順位の行が最初に出てくる直前に置く。表彰台の段（1〜3位）は表彰台の台に出すので、ここには置かない。
+ * @param league リーグ
+ * @returns 帯と行（段に順位の範囲が無ければ行だけ）
+ */
+export function listItemsOf(league: LeagueDto): ListItem[] {
+  const log = logger.fn('listItemsOf', { leagueId: league.id });
+  const bands = (league.rewards?.tiers ?? []).filter((t) => t.fromRank !== undefined && t.fromRank > PODIUM_SIZE);
+  const items: ListItem[] = [];
+  let placed = 0;
+  for (const entry of [...listEntriesOf(league.entries), undefined]) {
+    const rank = entry?.rank ?? Number.POSITIVE_INFINITY;
+    for (let tier = bands[placed]; tier !== undefined && (tier.fromRank ?? 0) <= rank; tier = bands[placed]) {
+      items.push({ kind: 'band', tier, state: tier.isMine ? 'mine' : league.nextPrize?.label === tier.label ? 'next' : undefined });
+      placed += 1;
+    }
+    if (entry !== undefined) items.push({ kind: 'row', entry });
+  }
+  return log.exit(items);
+}
+
+/**
+ * 次にねらえる報酬までの数の札（'あと2回'）。
+ * @param league リーグ
+ * @returns 札（次の報酬が無ければ undefined）
+ */
+export function nextGapLabelOf(league: LeagueDto): string | undefined {
+  const log = logger.fn('nextGapLabelOf', { leagueId: league.id });
+  return log.exit(league.nextPrize === undefined ? undefined : `あと${countLabel(league.nextPrize.gap, league.unit)}`);
+}
+
+/**
+ * 順位から順位報酬の段を引く。
+ * @param league リーグ
+ * @param rank 順位
+ * @returns 段（範囲に入る段が無ければ undefined）
+ */
+export function tierOfRank(league: LeagueDto, rank: number): RewardTierDto | undefined {
+  const log = logger.fn('tierOfRank', { leagueId: league.id, rank });
+  return log.exit(league.rewards?.tiers.find((t) => t.fromRank !== undefined && rank >= t.fromRank && (t.toRank === undefined || rank <= t.toRank)));
+}
+
+/**
+ * 昨日より上の段に上がったか（もらえる報酬が良くなった）。
+ * @param league リーグ
+ * @returns 上がっていれば、いまの段
+ */
+export function tierUpOf(league: LeagueDto): RewardTierDto | undefined {
+  const log = logger.fn('tierUpOf', { leagueId: league.id });
+  const tiers = league.rewards?.tiers ?? [];
+  const now = tiers.findIndex((t) => t.isMine);
+  if (now === -1 || league.myRankYesterday === undefined) return log.exit(undefined);
+  const before = tierOfRank(league, league.myRankYesterday);
+  const beforeIndex = before === undefined ? tiers.length : tiers.indexOf(before);
+  return log.exit(now < beforeIndex ? tiers[now] : undefined);
+}
+
+/**
+ * ランキングの報酬のうち、手に入れてまだ見ていないもの（獲得の演出に出す）を返す。
+ * @param dto ランキング
+ * @param newPartIds 手に入れてまだ見ていない部品ID（アバター画面の NEW）
+ * @returns 報酬（部品ごとに1つ。段の上から順）
+ */
+export function newPrizesOf(dto: RankingDto, newPartIds: ReadonlySet<string>): RewardPrizeDto[] {
+  const log = logger.fn('newPrizesOf', { newParts: newPartIds.size });
+  const found = new Map<string, RewardPrizeDto>();
+  for (const league of dto.leagues) {
+    const prizes = [...(league.rewards?.tiers.flatMap((t) => t.prizes) ?? []), ...(league.rewards?.keeps.flatMap((k) => k.prizes ?? [k.prize]) ?? [])];
+    for (const prize of prizes) {
+      if (prize.partId !== undefined && newPartIds.has(prize.partId) && !found.has(prize.partId)) found.set(prize.partId, prize);
+    }
+  }
+  return log.exit([...found.values()]);
 }

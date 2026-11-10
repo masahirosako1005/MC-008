@@ -17,7 +17,10 @@ export interface VisitButtonState {
 }
 
 /** 訪問できるときのボタン文言（80m は VISIT_RADIUS_M（仮）＝地図の円と同じ。2026-11-09 に 40m から変更。presentation は文言で持つ） */
-export const VISIT_ENABLED_LABEL = 'クエスト達成（80m以内）';
+export const VISIT_ENABLED_LABEL = 'クエスト達成';
+
+/** 店名の横に出す達成の状態（呼び方は CLAUDE.md §11.1。名詞で止める） */
+export const SPOT_STATUS_BADGE_LABELS: Readonly<Record<SpotDetailDto['status'], string>> = { unknown: '未発見', discovered: '未達成', visited: '達成済み' };
 
 /** クーポン・イベントの種類の表示名 */
 export const SHOP_EVENT_KIND_LABELS: Readonly<Record<ShopEventDto['kind'], string>> = { coupon: 'クーポン', event: 'イベント' };
@@ -34,11 +37,11 @@ export const CARD_RANK_LABELS: Readonly<Record<'silver' | 'gold', string>> = { s
 export function visitButtonState(dto: Pick<SpotDetailDto, 'canVisit' | 'visitedToday' | 'metersToVisit' | 'visitBlockedReason'>): VisitButtonState {
   const log = logger.fn('visitButtonState', { canVisit: dto.canVisit, visitedToday: dto.visitedToday, metersToVisit: dto.metersToVisit });
   if (dto.canVisit) return log.exit({ enabled: true, label: VISIT_ENABLED_LABEL });
-  if (dto.visitedToday) return log.exit({ enabled: false, label: dto.visitBlockedReason ?? '今日は訪問済みです。また別の日に' });
+  if (dto.visitedToday) return log.exit({ enabled: false, label: dto.visitBlockedReason ?? '今日は達成済み' });
   if (dto.metersToVisit !== undefined && dto.metersToVisit > 0) {
-    return log.exit({ enabled: false, label: `あと ${Math.ceil(dto.metersToVisit)}m 近づくと訪問できます` });
+    return log.exit({ enabled: false, label: `あと ${Math.ceil(dto.metersToVisit)}m` });
   }
-  return log.exit({ enabled: false, label: dto.visitBlockedReason ?? '今は訪問できません' });
+  return log.exit({ enabled: false, label: dto.visitBlockedReason ?? '今は達成できません' });
 }
 
 /**
@@ -100,11 +103,11 @@ export function nextCardLabel(nextCard: SpotDetailDto['nextCard']): string | und
 /**
  * 訪問後のトースト文言（基本ポイントとおかえりボーナス）。
  * @param summary 演出のまとめ
- * @returns 例 'クエスト達成！ +15EXP（おかえりボーナス +7）'
+ * @returns 例 'クエスト達成！ +15EXP・おかえり +7'（括弧書きにしない）
  */
 export function visitToastMessage(summary: Pick<EffectSummary, 'points' | 'bonusPoints'>): string {
   const log = logger.fn('visitToastMessage', { points: summary.points, bonusPoints: summary.bonusPoints });
-  const bonus = summary.bonusPoints > 0 ? `（おかえりボーナス +${summary.bonusPoints}）` : '';
+  const bonus = summary.bonusPoints > 0 ? `・おかえり +${summary.bonusPoints}` : '';
   return log.exit(`クエスト達成！ +${summary.points}EXP${bonus}`);
 }
 
@@ -112,10 +115,10 @@ export function visitToastMessage(summary: Pick<EffectSummary, 'points' | 'bonus
  * 地区の成長のトースト文言。
  * @param districtName 地区名（不明なら undefined）
  * @param level 新しい成長段階（不明なら undefined）
- * @returns 例 '南森町・天満宮地区が Lv3 に育ちました'
+ * @returns 例 '南森町・天満宮地区 Lv3'（文にしない）
  */
 export function growthToastMessage(districtName: string | undefined, level: number | undefined): string {
   const log = logger.fn('growthToastMessage', { level });
   const name = districtName ?? '地区';
-  return log.exit(level === undefined ? `${name}が育ちました` : `${name}が Lv${level} に育ちました`);
+  return log.exit(level === undefined ? `${name} レベルアップ` : `${name} Lv${level}`);
 }

@@ -58,6 +58,9 @@ export const DEFAULT_MASK_KEYS: readonly string[] = [
   'lat', 'lng', 'latitude', 'longitude', 'token', 'accesstoken', 'password', 'code', 'email', 'secret', 'authorization', 'apikey',
 ];
 
+/** 名前の一部に含まれていればマスクする語（clientSecret・idToken・sessionCookie・connectionString など。キーの書き忘れに備える） */
+const MASK_KEY_PATTERN = /secret|token|password|cookie|authorization|connectionstring|databaseurl/i;
+
 /** マスク後の表示 */
 const MASK = '***';
 /** 文字列1項目の既定最大長（docs/04 §2.4-5） */
@@ -314,7 +317,7 @@ function sanitizeRecord(value: object, depth: number): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [key, child] of entries) {
     const isErrorCode = key === 'code' && keepErrorCode && typeof child === 'string' && ERROR_CODE_PATTERN.test(child);
-    out[key] = !isErrorCode && maskKeySet.has(key.toLowerCase()) ? MASK : sanitizeValue(child, depth + 1);
+    out[key] = !isErrorCode && (maskKeySet.has(key.toLowerCase()) || MASK_KEY_PATTERN.test(key)) ? MASK : sanitizeValue(child, depth + 1);
   }
   return out;
 }

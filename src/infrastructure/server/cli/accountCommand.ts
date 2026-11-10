@@ -85,14 +85,20 @@ function parseArgs(argv: readonly string[]): Result<AccountArgs> {
 async function readPassword(env: Readonly<Record<string, string | undefined>>, prompt: string): Promise<string> {
   const log = logger.fn('readPassword', { fromEnv: env[PASSWORD_ENV] !== undefined });
   const fromEnv = env[PASSWORD_ENV];
-  if (fromEnv !== undefined && fromEnv.length > 0) return log.exit(fromEnv);
+  if (fromEnv !== undefined && fromEnv.length > 0) {
+    log.exit(undefined, 'env'); // パスワードはログに出さない
+    return fromEnv;
+  }
   if (!stdin.isTTY) {
     const rl = createInterface({ input: stdin, output: stdout });
     const answer = await rl.question(prompt);
     rl.close();
-    return log.exit(answer);
+    log.exit(undefined, 'stdin');
+    return answer;
   }
-  return log.exit(await readHidden(prompt));
+  const typed = await readHidden(prompt);
+  log.exit(undefined, 'tty');
+  return typed;
 }
 
 /**

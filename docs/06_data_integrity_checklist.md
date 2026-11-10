@@ -46,7 +46,7 @@
 | データ | 発生元 | 検証（DI-01） | 保存先 | 保持期間 | 削除方法 | 個人情報 |
 |---|---|---|---|---|---|---|
 | 訪問記録 | VisitSpotUseCase | スポットID存在・距離・1日1回 | TravelerRepository | 利用中 | 全削除機能 | 準（行動履歴） |
-| ポイント台帳 | 各加点ユースケース | 整数・正値・operationId 一意 | PointLedgerRepository | 利用中 | 全削除機能 | 準 |
+| ポイント台帳 | 各加点ユースケース（訪問の報酬・お店での購入＝RecordPurchaseUseCase） | 整数・正値・operationId 一意（行ID `:visit`／`:bonus`／`:purchase`） | PointLedgerRepository | 利用中 | 全削除機能 | 準 |
 | 地区状態 | RecalculateFadeUseCase | 導出値（保存しない or キャッシュ） | — | — | — | なし |
 | 投稿 | PostSpotUseCase | NFC・長さ・制御文字 | PostRepository | 削除まで | 論理削除 | あり（本文） |
 | 設定（文字拡大） | SettingsScreen | 列挙値 | localStorage | 利用中 | 初期化 | なし |

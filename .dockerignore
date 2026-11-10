@@ -13,3 +13,13 @@ coverage
 .env.*
 Password*.txt*
 password*.txt*
+
+# 秘密・DB・ほかのビルド（.gitignore とそろえる）
+*.pem
+*.key
+*.crt
+secrets/
+*.sqlite
+*.sqlite-*
+dist-app-local
+.claude

@@ -2,10 +2,11 @@
  * @file 右上の歯車（presentation/App 層）
  * 通常タップ＝設定、0.8 秒長押し＝デモメニュー（デモビルドのときだけ。CLAUDE.md 6.9）。
  * 長押し中は輪のプログレスで残り時間を示す。キーボードでは Enter＝設定、Shift+Enter＝デモメニュー。
+ * 絵は下部タブと同じ線だけのアイコン（Common/ui/icons の gear）。
  */
 import { createLogger, setCorrelationId } from '@/Common/logging/logger';
 import { h, setStyle } from '@/Common/ui/dom';
-import { createAppIcon } from '@/presentation/App/appIconArt';
+import { createIcon } from '@/Common/ui/icons';
 
 const logger = createLogger('presentation/App/GearMenu');
 
@@ -63,7 +64,7 @@ export function createGearMenu(opts: GearMenuOptions): GearMenuHandle {
   const label = opts.isDemo ? '設定（長押しでデモメニュー）' : '設定';
   const element = h('button', { class: 'gear', attrs: { type: 'button', 'data-testid': 'gear', 'aria-label': label, title: label } }, [
     h('span', { class: 'gear__ring', attrs: { 'aria-hidden': 'true' } }),
-    h('span', { class: 'gear__face', attrs: { 'aria-hidden': 'true' } }, [createAppIcon('gear', 22)]),
+    h('span', { class: 'gear__face', attrs: { 'aria-hidden': 'true' } }, [createIcon('gear')]),
   ]);
   const controller = new GearPressController(element, opts);
   return log.exit({ element, destroy: (): void => controller.destroy() });

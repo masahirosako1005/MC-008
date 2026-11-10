@@ -59,6 +59,16 @@ export interface DistrictMapDto {
   readonly fade: FadeDto;
   readonly lordName?: string;
   readonly isLordMe: boolean;
+  /** 領主の人ごとのキー（ライバルはライバルID、自分は 'me'。地図の王者の台座でアバターの装いを決める。主なしなら無し） */
+  readonly lordKey?: string;
+  /** 領主の直近30日の訪問回数（主なしなら 0） */
+  readonly lordCount?: number;
+  /** 自分の直近30日の訪問回数 */
+  readonly myCount?: number;
+  /** 領主になる（奪還する）のに必要な訪問回数（自分が領主なら 0） */
+  readonly needed?: number;
+  /** 領主の座をライバルに奪われ、まだ奪還していない */
+  readonly lordLost?: boolean;
 }
 
 /** 地図に描くスポット。未発見（unknown）の店舗は name を含めない（B: 位置だけ示す）。名所は実在の名所なので未発見でも name を返す（ワイヤーフレーム 01） */
@@ -180,6 +190,29 @@ export interface VisitOutput {
   readonly localDate: string;
   /** 同じ operationId の再実行だった（何も変わっていない） */
   readonly duplicate: boolean;
+}
+
+/** お店での購入（レジの QR を読み取った後）の入力。operationId は操作ごとの UUID（冪等の鍵＝DI-07） */
+export interface PurchaseInput {
+  readonly operationId: string;
+  readonly spotId: string;
+}
+
+/** お店での購入の出力（EXP は台帳に追記済み。イベントは出さない） */
+export interface PurchaseOutput {
+  readonly spotId: string;
+  readonly districtId: string;
+  readonly localDate: string;
+  /** 今回付いた EXP（上限に達していれば 0。duplicate なら前回付いた値） */
+  readonly points: number;
+  /** その日・そのお店の上限に達していて EXP が付かなかった（台帳には載せない） */
+  readonly limited: boolean;
+  /** 同じ operationId の再実行だった（何も変わっていない） */
+  readonly duplicate: boolean;
+  /** そのお店で EXP が付いた購入の回数（今回を含む） */
+  readonly purchasesAtSpot: number;
+  /** 累計 EXP（台帳の残高） */
+  readonly totalPoints: number;
 }
 
 /** 近隣スポットの入力 */
@@ -502,7 +535,7 @@ export interface ZukanTileDto {
   readonly rarity?: RarityDto;
   /** レア度の名前（'レジェンド' など） */
   readonly rarityName?: string;
-  /** 短い入手条件（'訪問 or 店頭QR' など） */
+  /** 短い入手条件（'達成 or 店頭QR' など） */
   readonly acquisitionShort?: string;
   /** 取得方法の手順（見つける → 訪れる → レア度ごとの条件） */
   readonly acquisitionSteps?: readonly string[];
@@ -546,14 +579,32 @@ export interface RankingEntryDto {
 /** 報酬1つ（種類はアイコンと色に使う） */
 export interface RewardPrizeDto {
   readonly kind: 'gold' | 'silver' | 'bronze' | 'title' | 'item' | 'stamp' | 'flag' | 'trophy';
-  /** '金メダル' / '称号「11月の常連王」' など */
+  /** '金メダル' / '常連王' など（アバターの部品の名前） */
   readonly name: string;
+  /** アバターの部品ID（'accessory.medal' など。報酬はアバター画面で身につけられる） */
+  readonly partId?: string;
+  /** 部品のレア度 */
+  readonly rarity?: AvatarRarityDto;
+  /** すでに手に入れているか */
+  readonly owned?: boolean;
+}
+
+/** 次にねらえる順位報酬（ひとつ上の段） */
+export interface NextPrizeDto {
+  /** 届くまでの数（回・か所。1以上） */
+  readonly gap: number;
+  /** 段の見出し（'4〜5位'） */
+  readonly label: string;
+  readonly prizes: readonly RewardPrizeDto[];
 }
 
 /** 順位報酬の1段 */
 export interface RewardTierDto {
-  /** '1位' / '4位〜' */
+  /** '1位' / '4〜5位' / '6位〜' */
   readonly label: string;
+  /** この段の最上位・最下位（最下位が無ければ下限なし）。順位表の上に段の境目を出すのに使う */
+  readonly fromRank?: number;
+  readonly toRank?: number;
   /** 条件の補足（'今月1回以上' など）。無ければ undefined */
   readonly condition?: string;
   readonly prizes: readonly RewardPrizeDto[];
@@ -568,7 +619,10 @@ export interface KeepRewardDto {
   readonly goalLabel: string;
   /** 続けて保つ時間（時間） */
   readonly hours: number;
+  /** いちばん目立たせる景品（prizes の先頭） */
   readonly prize: RewardPrizeDto;
+  /** もらえる景品すべて（ご当地の景品が先。省略時は prize だけ） */
+  readonly prizes?: readonly RewardPrizeDto[];
   /** achieved: 獲得済み／keeping: キープ中／not-yet: まだ条件の順位にいない（不参加も） */
   readonly state: 'achieved' | 'keeping' | 'not-yet';
   /** 続けて保っている時間（時間） */
@@ -600,7 +654,7 @@ export interface LeagueDto {
   readonly rule: string;
   /** 競うもの（'今月 通った回数'） */
   readonly metric?: string;
-  /** 参加できる人（'だれでも' / '使いはじめて30日以内の人だけ'） */
+  /** 参加できる人（'だれでも' / 'はじめて30日以内'） */
   readonly eligibility?: string;
   /** タブに添える違いの一言（'通った回数' / '新しい場所の数' / '30日以内の人'） */
   readonly tabHint?: string;
@@ -608,6 +662,8 @@ export interface LeagueDto {
   readonly unit: string;
   /** 報酬（順位報酬とキープ報酬）。metric〜rewards と RankingDto の期間は GetRankingUseCase が必ず入れる（省略可はほかの画面のテストの手組みを壊さないため） */
   readonly rewards?: LeagueRewardsDto;
+  /** 次にねらえる順位報酬（不参加・すでに1位の段なら undefined） */
+  readonly nextPrize?: NextPrizeDto;
   /** あなたが参加しているか（ルーキーは使いはじめて30日まで） */
   readonly joined: boolean;
   /** 参加状況の補足（卒業済み・卒業まであと何日 など）。無ければ undefined */
@@ -718,8 +774,8 @@ export interface RankPointHistoryDto {
   readonly spotKind?: SpotKindDto;
   /** 地区の短い名前（マスタから消えていれば空文字） */
   readonly districtName: string;
-  /** visit=訪問の基本点、welcomeBack=おかえりボーナス */
-  readonly kind: 'visit' | 'welcomeBack';
+  /** visit=訪問の基本点、welcomeBack=おかえりボーナス、purchase=お店での購入 */
+  readonly kind: 'visit' | 'welcomeBack' | 'purchase';
   readonly points: number;
 }
 
@@ -729,6 +785,59 @@ export interface RankPointRulesDto {
   readonly shopPoints: number;
   /** おかえりボーナスの倍率（1.5） */
   readonly welcomeBackMultiplier: number;
+  /** お店での購入1回の EXP（同じお店は1日1回まで） */
+  readonly purchasePoints?: number;
+}
+
+/** EXP の特典の状態（獲得済み／次の特典／まだ） */
+export type RankPerkStateDto = 'earned' | 'next' | 'locked';
+
+/** EXP の特典でもらえるアバターの部品 */
+export interface RankPerkPartDto {
+  /** 部品ID（'title.veteran' など） */
+  readonly id: string;
+  readonly name: string;
+  readonly rarity: AvatarRarityDto;
+}
+
+/** EXP の特典（累計 EXP がこの数に届くとアバターの部品がもらえる。ランクアップと同時のものもある） */
+export interface RankPerkDto {
+  /** もらえる累計 EXP */
+  readonly at: number;
+  /** この EXP で上がる段の添字（ランクアップと同時の特典だけ） */
+  readonly rankIndex?: number;
+  readonly parts: readonly RankPerkPartDto[];
+  readonly state: RankPerkStateDto;
+}
+
+/** もうすぐもらえるクーポン1枚（ランク画面。まだ獲得していないもの） */
+export interface RankCouponDto {
+  /** クーポンID（ShopEventId） */
+  readonly id: string;
+  readonly spotId: string;
+  readonly spotName: string;
+  /** 地区の短い名前 */
+  readonly districtName: string;
+  /** お店のカテゴリ（看板商品の写真に使う） */
+  readonly category?: string;
+  readonly title: string;
+  /** open: いま期間中（期間中にそのお店でクエスト達成すればもらえる）／soon: もうすぐ始まる */
+  readonly state: 'open' | 'soon';
+  /** open: 期間の終わりまでの日数（当日終了=0）、soon: 始まるまでの日数 */
+  readonly days: number;
+  /** 期間（'YYYY-MM-DD'） */
+  readonly start: string;
+  readonly end: string;
+}
+
+/** ランク画面のクーポン */
+export interface RankCouponsDto {
+  /** 持っている（使える）チケット（期限の近い順） */
+  readonly held: readonly TicketDto[];
+  /** 使用済みのチケットの枚数（期限まで残っている分） */
+  readonly usedCount: number;
+  /** もうすぐもらえるクーポン（期間中 → もうすぐ始まる。それぞれ日数の少ない順） */
+  readonly upcoming: readonly RankCouponDto[];
 }
 
 /** ランク画面 */
@@ -763,6 +872,10 @@ export interface RankStatusDto {
   /** 最近のポイント（新しい順・最大 RANK_HISTORY_LIMIT 件） */
   readonly recent: readonly RankPointHistoryDto[];
   readonly rules: RankPointRulesDto;
+  /** EXP の特典（手に入る EXP の小さい順。省略時は特典の表示なし） */
+  readonly perks?: readonly RankPerkDto[];
+  /** 持っているクーポンと、もうすぐもらえるクーポン（省略時はクーポンの表示なし） */
+  readonly coupons?: RankCouponsDto;
 }
 
 // ---------------------------------------------------------------------------
@@ -826,4 +939,52 @@ export interface SwitchTravelerOutput {
 export interface MoveDemoPositionInput {
   readonly lat: number;
   readonly lng: number;
+}
+
+// ---------------------------------------------------------------------------
+// チケット（お店のクーポンを、その期間中にそのお店でクエスト達成すると獲得。QR で見せて使う。2026-11-10）
+// ---------------------------------------------------------------------------
+
+/** チケットの状態（使える／使用済み） */
+export type TicketStatusDto = 'ready' | 'used';
+
+/** 獲得したチケット1枚 */
+export interface TicketDto {
+  /** チケットID（クーポンの ShopEventId。1つのクーポンにつき1枚） */
+  readonly id: string;
+  readonly spotId: string;
+  readonly spotName: string;
+  readonly districtId: string;
+  /** お店のカテゴリ（看板商品の写真に使う） */
+  readonly category?: string;
+  readonly title: string;
+  readonly description: string;
+  /** 使える最後の日（クーポン期間の終わり。'YYYY-MM-DD'） */
+  readonly validUntil: string;
+  /** 期限までの日数（当日終了=0） */
+  readonly daysLeft: number;
+  /** 獲得した日（期間中に初めてクエスト達成した日。'YYYY-MM-DD'） */
+  readonly earnedOn: string;
+  readonly status: TicketStatusDto;
+  /** お店の人に見せるコード（'MQ-XXXX-XXXX'。旅人ID とクーポンID のハッシュ。個人情報を含めない） */
+  readonly code: string;
+  /** QR コードの中身（'MACHIQUEST:TICKET:1:<クーポンID>:<コード>'） */
+  readonly payload: string;
+  /** 使った日（使用済みのとき。'YYYY-MM-DD'） */
+  readonly usedOn?: string;
+}
+
+/** チケットを使う入力。operationId は操作ごとの UUID（冪等の鍵＝DI-07） */
+export interface UseTicketInput {
+  readonly operationId: string;
+  readonly ticketId: string;
+}
+
+/** チケットを使った結果 */
+export interface UseTicketOutput {
+  readonly ticketId: string;
+  /** 使った日（'YYYY-MM-DD'） */
+  readonly usedOn: string;
+  /** 同じ operationId の再実行だった（何も変わっていない） */
+  readonly duplicate: boolean;
 }

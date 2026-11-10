@@ -14,6 +14,7 @@
  * | POST /api/cms/shops/:spotId/events | クーポン・イベントの登録 | デモだけ |
  * | POST /api/cms/shops/:spotId/events/:eventId/withdraw | 取り下げ | デモだけ |
  * | GET  /api/cms/shops/:spotId/visit-stats | 来店データ（ダミー） | デモだけ |
+ * | GET  /api/cms/shops/:spotId/survey | アンケートの集計（サンプル。アプリの回答はまだ届かない） | ログイン |
  * | POST /api/cms/demo/reset | 登録内容をすべて消す | デモだけ |
  */
 
@@ -30,7 +31,7 @@ export const API_PATHS = Object.freeze({
 });
 
 /** 店舗の下の道筋 */
-export type CmsShopSubPath = 'info' | 'events' | 'visit-stats';
+export type CmsShopSubPath = 'info' | 'events' | 'visit-stats' | 'survey';
 
 /** デモの日付進行（ずらし日数）をサーバーへ伝えるヘッダー（デモのサーバーだけが読む） */
 export const DEMO_OFFSET_HEADER = 'x-demo-offset-days';

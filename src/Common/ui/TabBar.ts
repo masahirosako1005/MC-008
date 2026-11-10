@@ -1,7 +1,7 @@
 /**
  * @file 下部タブ部品（Common/ui 層）
  * 地図／図鑑／アバター／ランキング／ランクの5タブ（CLAUDE.md 6.1）。ラベル・記号・testid・選択時の処理は props で受ける（画面の知識を持たない）。
- * 選択中は aria-current="page" とアイコン下のピル・塗りアイコン・太字で示す（色だけに頼らない）。各タブは 44px 以上。
+ * 選択中は aria-current="page" と白い札・太い線・太字で示す（色だけに頼らない）。各タブは 44px 以上。
  * art（呼び出し側が描いた絵。canvas など）があればそれを、無ければタブID が Common/ui/icons の名前なら SVG の線画アイコン、そうでなければ icon の文字を出す。
  */
 import { createLogger, setCorrelationId } from '@/Common/logging/logger';

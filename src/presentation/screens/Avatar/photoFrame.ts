@@ -4,6 +4,7 @@
  * 画像は端末の中で作るだけで、外へ送らない。
  */
 import { createLogger } from '@/Common/logging/logger';
+import { CANVAS_FONT_FAMILY } from '@/Common/ui/canvas/drawUtils';
 import { h } from '@/Common/ui/dom';
 import { paintTwinkle } from '@/presentation/screens/Avatar/stageSparkle';
 
@@ -50,7 +51,7 @@ function paintBand(ctx: CanvasRenderingContext2D, rect: { readonly x: number; re
   ctx.fillStyle = '#fff5fb';
   ctx.beginPath(); ctx.roundRect(rect.x, rect.y, rect.w, rect.h, rect.h * 0.2); ctx.fill();
   const pad = rect.h * 0.28;
-  const font = '"M PLUS Rounded 1c", "Noto Sans JP", sans-serif';
+  const font = CANVAS_FONT_FAMILY;
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
   if (caption.title !== undefined) {

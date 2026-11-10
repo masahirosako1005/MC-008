@@ -1,31 +1,29 @@
 /**
  * @file 地図の上端に重ねるフィルタのチップ列（presentation/screens/Map/town 層）
- * 左端の「好み」ボタンと、今日だけ・ベビーカーOK・トイレ・子連れ歓迎・雨の日OK・行きたい の切替チップを横スクロールで並べる（A 初回満足度・C 再訪動機）。
+ * 絞り込みの丸ボタン（好み・行きたい場所のパネルを開く。好みの絞り込みの入切もパネルの中）・今日だけ・ベビーカーOK・トイレ・子連れ歓迎・雨の日OK の切替チップを横スクロールで並べる（A 初回満足度・C 再訪動機）。アイコンは線の絵。
  * チップは押すたびに入切し（aria-pressed）、当てはまるスポットの件数を小さな札で示す。地図の強調は呼び出し側（MapScreen）が行う。
  */
 import '@/presentation/screens/Map/town/mapTownUi.css';
 import { createLogger, setCorrelationId } from '@/Common/logging/logger';
 import { h } from '@/Common/ui/dom';
+import { createLineIcon } from '@/Common/ui/icons';
 import { userAction } from '@/Common/ui/userAction';
+import { mapLineIconPaths } from '@/presentation/screens/Map/town/mapLineIcons';
+import type { MapLineIconName } from '@/presentation/screens/Map/town/mapLineIcons';
 import { MAP_FILTERS } from '@/presentation/screens/Map/town/mapPrefs';
 import type { MapFilterId } from '@/presentation/screens/Map/town/mapPrefs';
-import { createMapUiIcon } from '@/presentation/screens/Map/town/mapUiIcons';
-import type { MapUiIcon } from '@/presentation/screens/Map/town/mapUiIcons';
 
 const logger = createLogger('presentation/screens/Map/town/MapFilterBar');
 
-/** チップのアイコンの大きさ（CSS px） */
-const CHIP_ICON_PX = 16;
+/** 円（中心 cx,cy・半径 r）の d 属性（線のアイコン用） */
+const ring = (cx: number, cy: number, r: number): string => `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${r * 2} 0a${r} ${r} 0 1 0 ${-r * 2} 0z`;
 
-/** フィルタ → チップのアイコン */
-const FILTER_ICONS: Readonly<Record<MapFilterId, MapUiIcon>> = {
-  today: 'today',
-  stroller: 'stroller',
-  toilet: 'toilet',
-  kids: 'kids',
-  rainOk: 'rainOk',
-  want: 'heart',
-};
+/** フィルタ → チップのアイコン（線の絵。お店カード・好みパネルと同じ mapLineIcons の絵） */
+const FILTER_ICONS: Readonly<Record<MapFilterId, MapLineIconName>> = { today: 'today', stroller: 'stroller', toilet: 'toilet', kids: 'kids', rainOk: 'rainOk', want: 'heart' };
+
+/** 好みを選ぶボタンのアイコン（つまみが2本の調整の絵） */
+const PREFS_ICON_PATHS: readonly string[] = ['M4 7.5h8', 'M17 7.5h3', ring(14.5, 7.5, 2.25), 'M4 16.5h3', 'M12 16.5h8', ring(9.5, 16.5, 2.25)];
+
 
 /** フィルタのチップ列の操作 */
 export interface MapFilterBarHandle {
@@ -55,8 +53,12 @@ export function createMapFilterBar(opts: MapFilterBarOptions): MapFilterBarHandl
   const log = logger.fn('createMapFilterBar');
   const active = new Set<MapFilterId>();
   const chips = new Map<MapFilterId, FilterChip>();
-  const items: HTMLElement[] = [prefsButton(opts.onOpenPrefs)];
+  // 「好み」のチップは出さない（2026-11-10 ユーザー指示「好みをフィルタ内に統合して」）。
+  // 好みの絞り込み（want）の入切は、絞り込みの丸ボタンから開くパネルの中で行い、入っているあいだは丸ボタンを選択中の色にする
+  const prefs = prefsButton(opts.onOpenPrefs);
+  const items: HTMLElement[] = [prefs];
   for (const filter of MAP_FILTERS) {
+    if (filter.id === 'want') continue;
     const chip = filterChip(filter, (): void => toggleFilter(filter.id));
     chips.set(filter.id, chip);
     items.push(chip.button);
@@ -76,6 +78,7 @@ export function createMapFilterBar(opts: MapFilterBarOptions): MapFilterBarHandl
     if (active.has(id)) active.delete(id);
     else active.add(id);
     syncPressed(chips, active);
+    prefs.dataset.active = active.has('want') ? '1' : '0';
     opts.onChange(new Set(active));
     toggleLog.exit(undefined);
   };
@@ -84,7 +87,10 @@ export function createMapFilterBar(opts: MapFilterBarOptions): MapFilterBarHandl
     element,
     update: (counts): void => updateCounts(chips, counts),
     active: (): ReadonlySet<MapFilterId> => new Set(active),
-    setActive: (ids): void => replaceActive(chips, active, ids),
+    setActive: (ids): void => {
+      replaceActive(chips, active, ids);
+      prefs.dataset.active = active.has('want') ? '1' : '0';
+    },
   });
 }
 
@@ -122,7 +128,7 @@ interface FilterChip {
 }
 
 /**
- * 左端の「好み」ボタンを作る。
+ * 好みを選ぶ丸いボタンを作る（「好み」のチップのとなり。文字は出さず、読み上げ名で伝える）。
  * @param onOpenPrefs 押されたとき
  * @returns button 要素
  */
@@ -133,10 +139,10 @@ function prefsButton(onOpenPrefs: () => void): HTMLButtonElement {
       'button',
       {
         class: 'map-filter-bar__prefs',
-        attrs: { type: 'button', 'data-testid': 'map-prefs-open', 'aria-label': '好みと行きたい場所を選ぶ' },
+        attrs: { type: 'button', 'data-testid': 'map-prefs-open', 'data-active': '0', 'aria-label': '絞り込み（好みと行きたい場所）' },
         on: { click: userAction('map-prefs-open', onOpenPrefs) },
       },
-      [createMapUiIcon('heart', CHIP_ICON_PX, 'map-filter-bar__icon'), h('span', { class: 'map-filter-bar__label', text: '好み' })],
+      [createLineIcon(PREFS_ICON_PATHS, ['icon', 'map-filter-bar__line-icon'])],
     ),
   );
 }
@@ -158,7 +164,7 @@ function filterChip(filter: (typeof MAP_FILTERS)[number], onToggle: () => void):
       attrs: { type: 'button', 'aria-pressed': 'false', 'data-testid': 'map-filter', 'data-filter': filter.id, 'aria-label': filter.label },
       on: { click: onToggle },
     },
-    [h('span', { class: 'map-filter-chip__badge' }, [createMapUiIcon(FILTER_ICONS[filter.id], CHIP_ICON_PX, 'map-filter-bar__icon')]), h('span', { class: 'map-filter-chip__label', text: filter.label }), count],
+    [createLineIcon(mapLineIconPaths(FILTER_ICONS[filter.id]), ['icon', 'map-filter-bar__line-icon']), h('span', { class: 'map-filter-chip__label', text: filter.label }), count],
   );
   return log.exit({ button, count });
 }

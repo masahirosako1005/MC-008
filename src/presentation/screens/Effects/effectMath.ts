@@ -4,6 +4,8 @@
  * requestAnimationFrame の描画ループから毎フレーム呼ばれるため関数ログは出さない（呼び出し側の start/stop でまとめてログ）。
  * 装飾の乱数は ID から作る決定論的な乱数（Math.random は使わない）。
  */
+import { clamp01, easeOutCubic, lerp } from '@/Common/ui/canvas/easing';
+export { clamp01, easeOutBack, easeOutCubic, lerp } from '@/Common/ui/canvas/easing';
 import { seededRandomFor } from '@/Common/ui/canvas/seededHash';
 
 /** 演出1つを自動で送るまでの時間（ミリ秒。docs/08 §6「各 2.5 秒で自動送り」） */
@@ -52,46 +54,6 @@ export interface ConfettiPose {
 
 /** 紙吹雪の形の並び（決定論的に選ぶ） */
 const CONFETTI_SHAPES: readonly ConfettiPiece['shape'][] = ['rect', 'tri', 'dot', 'bar'];
-
-/**
- * 値を 0〜1 に丸める（NaN は 0）。
- * @param t 値
- * @returns 0〜1
- */
-export function clamp01(t: number): number { // audit-ignore: fnlog-missing 毎フレーム描画で呼ぶ純粋な算術ヘルパー
-  return Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 0;
-}
-
-/**
- * 線形補間。
- * @param a 始点
- * @param b 終点
- * @param t 0〜1
- * @returns a + (b − a)·t
- */
-export function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * clamp01(t);
-}
-
-/**
- * 減速するイージング（3次）。
- * @param t 0〜1
- * @returns 0〜1
- */
-export function easeOutCubic(t: number): number {
-  return 1 - (1 - clamp01(t)) ** 3;
-}
-
-/**
- * 少し行き過ぎて戻るイージング（王冠が「ぽん」と出る動き）。
- * @param t 0〜1
- * @returns 0 から始まり 1 で終わる値（途中で 1 を少し超える）
- */
-export function easeOutBack(t: number): number { // audit-ignore: fnlog-missing 毎フレーム描画で呼ぶ純粋な算術ヘルパー
-  const c1 = 1.70158;
-  const x = clamp01(t) - 1;
-  return 1 + (c1 + 1) * x ** 3 + c1 * x ** 2;
-}
 
 /**
  * 経過時間から進み具合を求める。

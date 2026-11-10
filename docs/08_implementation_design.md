@@ -20,7 +20,7 @@ CLAUDE.md（企画）と docs/01〜07（規約）を、実装可能な粒度に�
 | D8 | 取り返し | 主が旅人→ライバルに交代したとき `lostByTraveler=true`。旅人が主に戻るまで「取り返し」理由を出す。必要回数 = 主の回数 − 自分の回数 + 1 | 4.5 |
 | D9 | ライバル | 実在ユーザーの代わりに**決定論的な模擬ライバル**（rivals.json）。各ライバルは地区ごとに「intervalDays 日ごとに1回訪問」の背景活動を持つ（日付から純粋計算）。デモの「ライバル行動」は当日付の追加訪問を記録する。本町地区には背景活動を置かない | 日付進行・月替わりでもランキングが空にならず、デモ手順5で主交代が確実に起きる |
 | D10 | ランキング | 月間（JST）の3リーグ：かよい＝訪問回数／はじめまして＝今月はじめて訪れたスポット数／ルーキー＝使いはじめて30日以内（仮）の人だけの訪問回数。同数は同順位（1,2,2,4）。PoC は各リーグ ダミー10人（application/usecases/competition/leagueDummies.ts）＋あなた | wireframe 07「順位は通った回数。ポイントではない」 |
-| D11 | ポイントとランク | 訪問ポイント 名所10・店舗15（店舗回遊を促す）。旅人ランクは累計ポイントで判定（0 はじめて／50 旅人／150 常連／400 顔なじみ／800 街の名士） | おかえりボーナスがランクに効くようにする |
+| D11 | ポイントとランク | 訪問ポイント 名所10・店舗15（店舗回遊を促す）。お店での購入（レジの QR）は1回10、同じお店は1日1回まで（2026-11-10 追加）。旅人ランクは累計ポイントで判定（0 はじめて／50 旅人／150 常連／400 顔なじみ／800 街の名士） | おかえりボーナスがランクに効くようにする。購入もお店の中（80m 以内）でしか記録できない |
 | D12 | 期限トリガー | 発見済みスポットのクーポン・イベントで、期間内かつ残り7日以内 | 未発見スポットの名前を漏らさない（B） |
 | D13 | デモ日付 | `DemoClock = 実時刻 + offsetDays`（offset はデモ名前空間に保存）。旅人切替で offset=0 に戻し、シードを今日基準で作り直す | 発表を何度でも同じ流れで再現できる |
 | D14 | デモ既定の旅人 | デモビルド初回起動は「通い慣れた人」。本番ビルドは新規旅人（端末ID = `t_` + UUID） | 実演シナリオ（7.2）がそのまま通る |
@@ -272,9 +272,11 @@ export function sortRevisitReasons(rs): RevisitReason[];  // 種別優先→同�
 
 ### 3.6 reward
 
-- `constants.ts`: `VISIT_POINTS_LANDMARK = 10`、`VISIT_POINTS_SHOP = 15`、`WELCOME_BACK_MULTIPLIER = 1.5`、`SILVER_CARD_VISITS = 3`、`GOLD_CARD_VISITS = 10`、`GOLD_CARD_SEASONS = 4`、`RANK_THRESHOLDS = [{min:0,name:'はじめての旅人'},{min:50,name:'旅人'},{min:150,name:'常連'},{min:400,name:'顔なじみ'},{min:800,name:'街の名士'}]`。
+- `constants.ts`: `VISIT_POINTS_LANDMARK = 10`、`VISIT_POINTS_SHOP = 15`、`WELCOME_BACK_MULTIPLIER = 1.5`、`PURCHASE_POINTS = 10`、`PURCHASE_LIMIT_PER_SPOT_PER_DAY = 1`、`SILVER_CARD_VISITS = 3`、`GOLD_CARD_VISITS = 10`、`GOLD_CARD_SEASONS = 4`、`RANK_THRESHOLDS = [{min:0,name:'はじめての旅人'},{min:50,name:'旅人'},{min:150,name:'常連'},{min:400,name:'顔なじみ'},{min:800,name:'街の名士'}]`。
 - `Points.of(n): Result<Points>`（0以上の整数）、`add`。
-- `LedgerEntry { entryId: string /* `${operationId}:visit` | `${operationId}:bonus` */; kind: 'visit' | 'welcomeBack'; points: number; districtId; spotId; at: Instant; localDate }`。
+- `LedgerEntry { entryId: string /* `${operationId}:visit` | `${operationId}:bonus` | `${operationId}:purchase` */; kind: 'visit' | 'welcomeBack' | 'purchase'; points: number; districtId; spotId; at: Instant; localDate }`。
+- `PurchaseRewardPolicy`（2026-11-10 追加。ユーザー指示「ポイントはチェックインや購入で獲得」）: `purchaseRejection({ spot, meters, accuracyM })`（お店だけ・精度・80m＝訪問と同じ。`NOT_SHOP` / `LOW_ACCURACY` / `OUT_OF_RANGE`）、`purchaseRewardFor(entries, spotId, localDate): { points; limited }`（同じお店・同じ日の購入の行が上限に達していれば 0 点）、`purchaseEntriesAt(entries, spotId, localDate?)`。
+- `RecordPurchaseUseCase`（application/usecases/reward。AppServices.`purchase?`）: `{ operationId, spotId }` → `{ spotId, districtId, localDate, points, limited, duplicate, purchasesAtSpot, totalPoints }`。行ID `${operationId}:purchase` で冪等（DI-07）。上限なら 0 点で台帳に載せない。台帳の保存は1回・楽観ロック（競合は読み直して1回だけやり直す）。ドメインイベントは出さない（`PointsAwarded` は訪問の演出のまとめに使うため）。
 - `PointLedger`（追記専用・DI-06）: `static empty(travelerId)`, `static restore(state): Result<PointLedger>`, `append(entries): Result<PointLedger>`（同じ entryId は無視＝冪等）, `balance(): number`, `version`, `toState()`。**setBalance を作らない**。
 - `PointLedgerRepository { find(travelerId): Promise<Result<PointLedger>>; save(ledger, expectedVersion): Promise<Result<PointLedger, AppError<'CONFLICT' | 'STORAGE_FAILED'>>>; delete(travelerId) }`。
 - `VisitRewardPolicy.rewardFor({ spot, visitsBefore, today }): { basePoints; bonusPoints; isWelcomeBackDay }`（D6）。`isRevival({ visitsBefore, districtId, today }): { revived: boolean; daysSinceLastVisit?: number }`。
@@ -413,8 +415,17 @@ DTO はプリミティブと配列のみ（Instant/LocalDate は string とし�
 - 再訪理由の見た目（`Common/ui/cards/RevisitReasonCard.ts` に集約）: 期限＝「期」／取り返し＝「取」／色あせ＝「色」／未訪問＝「未」／新着＝「新」。文字＋形（丸・菱形・四角など）で区別し、色だけに頼らない。
 - 演出（EffectHost）: 訪問操作中に届いたイベントをためて、訪問完了後に **復活（おかえりボーナス込み）→ カード → 主交代（自分が主になったときのみ）→ アイテム** の順で全画面表示。各 2.5 秒で自動送り、「スキップ」で即終了。`DistrictGrown` は全画面にせず地図のパルス＋トースト。
 - 歯車: 通常タップ＝設定、0.8秒長押し＝デモメニュー（デモビルドのみ）。
-- 地図（2026-11-09 作り直し。ユーザー指示「地図画面を抜本的に修正」）: 実在の地理（OSM）は描かず、スポットの位置と地区の形から作る**オリジナルの「ドット絵の街」**（5m 四方のセル。src/presentation/screens/Map/town/）。生成 townGenerator（川・商店街・大通り・通り・路地・公園・境内・桜の通り抜け・高架の線路と駅・建物。市域の外にも 700m 続き、空白なし）→ 描画 townArt（160m 四方のチャンクにドット絵を焼いてキャッシュ。引いて見るときは全体図）→ 重ねる townScene（お店・名所・公衆トイレのドット絵、看板商品の吹き出し、今日だけ・クーポン、行きたい・好み、フィルタの強調、陣地、円、道筋）。ドラッグで移動・2本指／ホイールで拡大縮小（mapCamera）。お店をタップすると自分のアイコンが道に沿って歩き（townPath の A*。デモ）、お店カード（SpotCard）でチェックイン。チェックインの半径は VISIT_RADIUS_M＝80m（地図の円と同じ。旧 40m）。陣取り（territory）: 訪問したスポットのまわり 30m＋通うごとに10m（8回まで）＋Lv×6m が自分の陣地、ライバルが主の地区はその地区の4か所×45m がライバルの陣地（どちらも訪問記録から導出・保存しない・減らない）。便利情報フィルタ（今日だけ／ベビーカーOK／トイレ／子連れ／雨の日OK／行きたい・好み）と好み・行きたいは端末内（`${STORAGE_PREFIX}map.prefs`）。「今日だけ」はクーポン・イベントの最終日と、デモのみ日替わりの特典（goods.todaySpecialOf、店の約13%）。公衆トイレの位置は OSM 由来なので地図に出典を出す。
+- 地図（2026-11-09 作り直し。ユーザー指示「地図画面を抜本的に修正」）: 実在の地理（OSM）は描かず、スポットの位置と地区の形から作る**オリジナルの「ドット絵の街」**（5m 四方のセル。src/presentation/screens/Map/town/）。生成 townGenerator（川・商店街・大通り・通り・路地・公園・境内・桜の通り抜け・高架の線路と駅・建物。市域の外にも 700m 続き、空白なし）→ 描画 townArtSimple（160m 四方のチャンクにドット絵を焼いてキャッシュ。引いて見るときは全体図）→ 重ねる townScene（お店・名所・公衆トイレのドット絵、看板商品の吹き出し、今日だけ・クーポン、行きたい・好み、フィルタの強調、陣地、円、道筋）。ドラッグで移動・2本指／ホイールで拡大縮小（mapCamera）。お店をタップすると自分のアイコンが道に沿って歩き（townPath の A*。デモ）、お店カード（SpotCard）でチェックイン。チェックインの半径は VISIT_RADIUS_M＝80m（地図の円と同じ。旧 40m）。陣取り（territory）: 訪問したスポットのまわり 30m＋通うごとに10m（8回まで）＋Lv×6m が自分の陣地、ライバルが主の地区はその地区の4か所×45m がライバルの陣地（どちらも訪問記録から導出・保存しない・減らない）。便利情報フィルタ（今日だけ／ベビーカーOK／トイレ／子連れ／雨の日OK／行きたい・好み）と好み・行きたいは端末内（`${STORAGE_PREFIX}map.prefs`）。「今日だけ」はクーポン・イベントの最終日と、デモのみ日替わりの特典（goods.todaySpecialOf、店の約13%）。公衆トイレの位置は OSM 由来なので地図に出典を出す。
 - （旧仕様。上の作り直しで置き換え）地図: 3段階ズーム（wide: 市域全体、地区名と名所のみ／district: 地区ポリゴンに合わせる、店舗が見える／near: 現在地中心で約 450m 幅（2026-11-09 ユーザー指示「地図を広めに」で 260m から拡大。右上の「広域／中間／詳細」切替で wide／district／near を直接選べる。中間は「いま見ている地区→現在地の地区→最寄りの地区」）、80m 破線円（1つだけ。2026-11-09 ユーザー指示「エリアの円は1周でOK」で 40m 円は廃止）・足あと）。地図タップ: wide は地区を選んでズーム、district/near はスポット（22px 以内）ならスポット詳細、それ以外はそこへ歩く（デモ。district は表示を保ったまま歩き、near は現在地を追う）。歩く速さは画面上で約 55px/秒（20〜90 m/秒、最長6秒。2026-11-09 ユーザー指示「高速で動くのが変。人が歩いているように」）で、描画位置は時間で補間してなめらかに動かし、自分はマイ街と同じアバター（ドット絵＋白いふち。presentation/shared/avatarSprite.ts。2026-11-09 ユーザー指示「かっこいい実際のアバターを反映」）を現在地に立たせ、歩くと1歩ごとに弾み、進む向きに左右反転する（アバターを読めないときは朱の人型バッジ）。ほかの旅人（模擬ライバル。GetOtherTravelersUseCase、地区単位）も同じドット絵のアバターで地区・詳細に立たせる（服の色・帽子・持ち物は人ごとに固定、地区の主は王冠。詳細では名前を添える）。記録は 10m 刻みで位置を更新し、20m ごとに発見判定。足あとはメモリのみ。
+- 地図の改修（2026-11-10 ユーザー指示8件）:
+  - **陣取りはお店単位**（「あなたの領地のマスの概念はいらない」）。`town/vitality.ts` が地区の活気 0..1（領主が自分か・ライバルか、直近30日の回数の差、成長段階、色あせ）と、お店ごとの持ち主（自分／ライバル）を決める。ライバルが領主の地区では活気が低いほど多くのお店がライバルの手に渡り、奪われた地区では通った回数の少ないお店から渡る（数値は（仮））。マスの数・境界線・面・「領地 +n マス」・左下の領地の札は出さない。セルは見た目（`townArtSimple` の建物の色）だけに使う
+  - **にぎわい／廃れ**: 自分のお店のまわりは色づいた建物・花・灯り、ライバルの手に渡ったお店のまわりは「廃れた街」（くすんだ茶色・シャッター・屋根のひび・枯れ木・雑草）。陣地の外も灰色をやめ淡い色の建物にした（「旅の温かみ」）。見た目だけで、Lv・カード・図鑑・EXP は減らない（4.3）
+  - **雰囲気が変わった演出**（`town/moodFx.ts`）: 地図を読み直したとき前回から悪くなった地区に「{地区}が奪われた…」（黒い雲・小雨・セピアの波・カラス）、良くなった地区に「{地区}ににぎわいが戻った！」（光の筋・暖かい色の波・花・紙吹雪）。前回の活気は画面の外（メモリ）に覚えるので、デモメニューでライバルが奪った後に地図へ戻っても出る。`DistrictLordChanged` でも読み直す
+  - **広域の王者の台座**（`town/championTowers.ts`）: 各地区の中心の石の台座に領主のアバター（ライバルは `personLookOf(lordKey)`、自分はアバター画面の装い）と浮かぶ王冠。自分＝金の後光と光の筋、ライバル＝紫の気配、主なし＝「？」。台座の下に布の旗（`town/districtBanners.ts`。Lv の印・領主の紙札・奪還の印・色あせのタグ）。タップで領主の情報カード（`town/ChampionPopup.ts`：アバター・名前・領主の30日の回数・自分の回数・奪還まで・よく来る地区・「この地区へ」）。そのため `DistrictMapDto` に任意の `lordKey`・`lordCount`・`myCount`・`needed`・`lordLost` を足した（`DistrictView.toDistrictMapDto`）
+  - **広域の地面**は手描き風のイラストの街（`town/wideIllustration.ts`）。地区の外も木・畑で埋める（手描き風の家のアイコンは同日ユーザー指示で削除。家に付く飾り＝シャッター・煙突・屋根のひびも出さない）。地区の活気で にぎやか／ふつう／廃れ気味 を描き分ける
+  - **中間は吹き出しだけ**（`town/middleBubbles.ts`。写真ピン・ドット絵は出さない。右側の「映っているお店」の写真の列は残し（同日ユーザー指示で復活）、吹き出しはその列を避ける）。地区の中心には布の旗を置き、吹き出しはそこを避ける（`SceneInput.reserved`）。**詳細のお店の声**はクリーム色の紙にオレンジの縁・お店の人の顔・ポンと出て揺れる誘う吹き出し（`town/shopVoices.ts`）。どちらもタップでお店を選べる
+  - **EXP**: 左下の札は累計 EXP（`services.rankStatus`）。チェックインと購入（`services.purchase`＝RecordPurchaseUseCase。同じお店・同じ日は1回、80m 以内）でコインが札へ飛んで数え上がる
+  - **チケット**: 左下のボタン（`town/TicketWallet.ts`）で、獲得したチケット（クーポン期間中にそのお店でクエスト達成すると獲得）を一覧し、QR（`Common/qr/qrCode.ts`、自前のエンコーダ。jsQR で読めることを確認）で見せて「使う」。チェックインで獲得したら帯に「チケット獲得！」
 - 画面読み上げと E2E 用に、地図の上に不可視のスポット一覧（`data-testid="map-spot"`、`data-spot-id`、`data-x`/`data-y` は canvas 内 CSS px）を置く。
 
 ---
@@ -453,6 +464,14 @@ DTO はプリミティブと配列のみ（Instant/LocalDate は string とし�
   範囲は接頭辞 P の利用者のデータすべて（除外: 店舗CMS の `P+'cms.*'`、本番から見た `nnishi.demo.*`、`nnishi.debug`）。`DataPort`／`LocalStorageDataPort`。
   書き出しは JSON（`format: 'kayoimachi-user-data'`（形式名は互換のため据え置き。ファイル名は machiquest-*）, `formatVersion: 1`）。削除は確認ダイアログ（既定のフォーカスは「やめる」）→ 物理削除 → `AppRouter.restart('#/map')` で読み込み直し、起動時の EnsureTraveler が旅人を作り直す（デモは最初のデモの状態）。
   `ExportDataUseCase`・`DeleteAllDataUseCase`。読み込み（インポート）は未着手。
+- チケット（クーポン利用。2026-11-10 ユーザー指示「自分が獲得したチケットをQRコードで表示して使えるように」）:
+  チケット＝お店のクーポン（shopEvents の kind='coupon'、CMS の上書き分も含む）を、その期間中にそのお店でクエスト達成すると1枚獲得（1クーポン1枚）。
+  訪問記録とクーポン利用記録（`Traveler.redemptions`）から毎回導出し、チケット自体は保存しない（`application/usecases/reward/tickets.ts`）。期限（期間の終わり）を過ぎたものは出さない。
+  `GetTicketsUseCase`（使える→使用済み、使えるものは期限の近い順）・`UseTicketUseCase`（operationId で冪等＝DI-07、お店から VISIT_RADIUS_M 以内＝`Traveler.redeem`、楽観ロック＝DI-10）。
+  利用記録は旅人の保存データの中なので、書き出し・全削除にそのまま含まれる（新しい保存キーは無い）。
+  QR の中身は `MACHIQUEST:TICKET:1:<クーポンID>:<コード>`、コードは `MQ-XXXX-XXXX`（旅人ID＋クーポンID の FNV-1a。一方向で個人情報を含めない＝PRV-03）。署名による改ざん防止とお店側の読み取り・照合は店頭QR（docs/09 Q10）で決める。
+  QR の符号化は自前（`Common/qr/qrCode.ts`。バイトモード・版1〜40・誤り訂正 M・仕様の失点でマスク選択。依存パッケージなし）、描画は `Common/ui/canvas/drawQr.ts`。
+  画面は地図の左下のボタン → 一覧（紙のチケット）→ QR（縁に光が回る・時計が進む）→「使う」→ 確認 → 使用済みの押印（`screens/Map/town/TicketWallet.ts`）。
 
 ---
 
@@ -520,7 +539,7 @@ DTO はプリミティブと配列のみ（Instant/LocalDate は string とし�
 ### 10.1 原則
 - 清潔・軽い・情報が読みやすい。装飾は最小限、余白と階層で見せる。テクスチャ（紙の繊維・しみ・破れた縁）・セピア・筆文字風は使わない。
 - 地図は Apple マップ／Google マップ風の淡いベースマップ。ゲーム要素（地区の色づき・建物・ピン）はその上に「重ねる情報レイヤー」として描く。
-- アクセントは **ロイヤルブルー #1E6BFF の1色**（現在地・主要ボタン・選択中タブ。2026-11-09 ユーザー指示でコーラル #FF5A36 から変更。地図の陣地は 自分＝青・ライバル＝赤 #FF5A3D）。地区色5色は地区の識別だけに使う。
+- アクセントは **落ち着いたオレンジ #BC5B1B の1色**、地はベージュ #F6F0E6（2026-11-10 ユーザー指示で青系から変更。地図の陣地は 自分＝オレンジ・ライバル＝紫。値は docs/10 §5。以下のかっこ内は 11/09 時点の記録）（現在地・主要ボタン・選択中タブ。2026-11-09 ユーザー指示でコーラル #FF5A36 から変更。地図の陣地は 自分＝青・ライバル＝赤 #FF5A3D）。地区色5色は地区の識別だけに使う。
 - 色だけに頼らない（色あせ＝彩度低下＋透明度＋破線＋◌アイコン＋「色あせ」チップ。再訪理由＝アイコン＋短いラベル）。
 
 ### 10.2 トークン（CSS: src/Common/ui/styles/tokens.css、Canvas: src/Common/ui/theme/palette.ts。名前は既存を保ち値を差し替える）
@@ -532,19 +551,19 @@ DTO はプリミティブと配列のみ（Instant/LocalDate は string とし�
 | ブランド | #FF5A36、白文字用 #D63D1F、ソフト #FFEDE7 |
 | 地区色（ink は白地の文字用） | 南森町 #6366F1 / #4338CA、天満 #F59E0B / #B45309、天六 #10B981 / #047857、扇町 #EC4899 / #BE185D、大川 #0EA5E9 / #0369A1 |
 | 金・銀・銅 | 金 #F5B700（グラデ #FDE68A→#F59E0B→#B45309）、銀 #E5E7EB→#9CA3AF、銅 #F3C6A5→#B8693D |
-| 色あせ（セピアをやめクールグレー） | #9CA3AF、ink #6B7280、soft #F1F3F6 |
+| 色あせ（温かいグレー） | #A89E92、ink #74695D、soft #F3EEE6 |
 | 期限 | #E11D48 / soft #FFE4E9 |
 | 未発見 / 発見済み | #9CA3AF / #6B7280 |
 | 地図 | 陸 #F2F4F7、街区 #EAEDF1、公園 #CDEBD5、境内 #F7E3DC（淡い朱ではなく淡いテラコッタ）、敷地 #E6E9EE、水面 #A8D8F4（ラベル #2B7BB9）、道路 白＋縁 #D9DEE5（幹線は縁 #CDD3DB）、商店街 #FFE3D9＋中心にブランド色の細い破線、鉄道 #9CA3AF＋白破線、駅 白丸＋濃グレー縁 |
 | 影 | 0 1px 2px rgba(17,24,39,.06), 0 4px 12px rgba(17,24,39,.08)（大: 0 12px 32px rgba(17,24,39,.14)） |
 | 角丸 | 8 / 12 / 16 / 20px、ピル 999px |
 
-- 書体: **Noto Sans JP**（@fontsource/noto-sans-jp を Vite でバンドル＝self-host、CSP font-src 'self'）400/500/700。見出し 700、本文 400〜500、数字は tabular-nums。Canvas も同じ書体（CANVAS_FONT_FAMILY / DISPLAY_FONT_FAMILY）。丸ゴシック（M PLUS Rounded）はやめる。
+- 書体（2026-11-10 再改訂。ユーザー指示「アプリ全体で使用しているフォントを LINE Seed JP で統制」）: アプリ・起動画面・Canvas・SVG・店舗CMS のすべてを **LINE Seed JP** の1書体にする（`--font-seed`＝`--font-display`＝`--font-body`）。太さは 400／700／800（500 の指定は 400、900 の指定は 800 で出る。base.css の `font-synthesis: style` で疑似太字にしない）。SIL OFL で @fontsource/line-seed-jp を Vite でバンドル（self-host、CSP font-src 'self'）。Canvas・SVG の文字は CANVAS_FONT_FAMILY／DISPLAY_FONT_FAMILY（同じ並び）。新しい画面は `--font-display`／`--font-body` だけで書き、書体名を直書きしない。旧: 同日午前は Mochiy Pop One＋M PLUS Rounded 1c（CMS は Noto Sans JP）、その前は Noto Sans JP を全体に使っていた。
 - アイコン: 線のアイコン（stroke 1.75〜2、round）。src/Common/ui/icons.ts に追加する。
 
 ### 10.3 部品
-- タブバー: 白、上に hairline。線アイコン＋ラベル、選択中はブランド色＋上部の短いインジケータ（またはピル背景）。
-- 上部バー・ステータスバー: 白〜半透明白（背景ぼかし可）。デモバッジは小さな黒のピル。
+- タブバー: 淡いブランド色の地（--brand-50→--brand-soft）＋上向きの淡い影で画面と分ける（境界線は引かない）。線アイコン＋ラベル、選択中は白い札＋ブランド色・太字（2026-11-10 変更。以前は白＋hairline＋上部の短いインジケータ）。
+- 上部バー・ステータスバー: タブバーと同じ淡いブランド色（ステータスバー --brand-soft、上部バー --brand-soft→--brand-50）＋下向きの淡い影。境界線は引かない（2026-11-10 変更。以前は白＋hairline）。ランクもほかの画面と同じ色（暗い盤は 2026-11-10 にやめた）。デモバッジは小さな黒のピル。
 - カード: 白、角丸 16px、影小、内側余白 16px。リストは区切り線よりカード／行の余白で区切る。
 - 再訪理由チップ: アイコン＋ラベル（期限＝時計、取り返し＝旗、色あせ＝しずく/かすれ円、未訪問＝コンパス、新着＝きらめき）。漢字1字の札・ひし形は使わない。
 - ボタン: 主要＝ブランド色のベタ（白文字 #D63D1F 系でコントラスト確保）、副＝白＋罫線、テキストボタン。高さ 48px、角丸 12px。

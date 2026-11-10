@@ -5,6 +5,8 @@
  * - 「スキップ」・Esc・自動送り（2.5 秒）のどれかで終わるのを待つ
  * - Canvas アニメーション（requestAnimationFrame。終わったら・止めたら必ず停止。prefers-reduced-motion なら完成形だけ描く）
  */
+import { prefersReducedMotion } from '@/Common/ui/a11y/reducedMotion';
+export { prefersReducedMotion } from '@/Common/ui/a11y/reducedMotion';
 import { createLogger } from '@/Common/logging/logger';
 import { createCanvasSurface } from '@/Common/ui/canvas/CanvasBase';
 import type { CanvasSize, CanvasSurface } from '@/Common/ui/canvas/CanvasBase';
@@ -44,16 +46,6 @@ export type CanvasFrameDrawer = (ctx: CanvasRenderingContext2D, size: CanvasSize
 export interface CanvasAnimationHandle {
   /** ループを止めて canvas を片付ける（何度呼んでもよい） */
   stop(): void;
-}
-
-/**
- * 利用者が動きを減らす設定にしているか。
- * @returns prefers-reduced-motion: reduce なら true
- */
-export function prefersReducedMotion(): boolean {
-  const log = logger.fn('prefersReducedMotion');
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return log.exit(false);
-  return log.exit(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 }
 
 /**

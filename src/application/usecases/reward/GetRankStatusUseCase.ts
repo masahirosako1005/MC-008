@@ -1,6 +1,6 @@
 /**
  * @file 旅人ランクの状況を返すユースケース（application 層・読取系。下部タブ「ランク」）
- * 累計ポイント（台帳の残高）からいまの段・次の段まで・すべての段を返し、最近のポイント・通いの実績・旅の日数を添える。
+ * 累計ポイント（台帳の残高）からいまの段・次の段まで・すべての段・EXP の特典を返し、最近のポイント・通いの実績・旅の日数・クーポン（持っている／もうすぐ）を添える。
  * ランク・カード・地区の主は訪問記録と台帳から毎回導出し、保存しない（docs/08 D4, D11）。ランクは下がらない（CLAUDE.md 5）。
  * 網羅率（％・全n件中m件）は返さない（CLAUDE.md 6.5）。書込みはしない。基準 C（再訪動機）。
  */
@@ -10,14 +10,17 @@ import type { Result } from '@/Common/result/Result';
 import { compareInstant, compareLocalDate, daysBetween } from '@/Common/utils/date';
 import type { LocalDate } from '@/Common/utils/date';
 import type { UseCase } from '@/application/AppServices';
-import type { RankPointHistoryDto, RankStatusDto, RankStepDto } from '@/application/dto/Dto';
+import type { RankPerkDto, RankPointHistoryDto, RankStatusDto, RankStepDto } from '@/application/dto/Dto';
+import { rankCouponsOf } from '@/application/usecases/reward/rankCoupons';
 import { districtViewsOf } from '@/application/usecases/shared/DistrictView';
 import type { DistrictView } from '@/application/usecases/shared/DistrictView';
 import { loadWorld } from '@/application/usecases/shared/World';
 import type { WorldDeps } from '@/application/usecases/shared/World';
+import { AVATAR_CATALOG } from '@/domain/avatar/AvatarCatalog';
+import type { AvatarPartDef } from '@/domain/avatar/AvatarCatalog';
 import type { VisitRecord } from '@/domain/exploration/VisitRecord';
 import { cardsOf } from '@/domain/reward/CardPolicy';
-import { RANK_THRESHOLDS, VISIT_POINTS_LANDMARK, VISIT_POINTS_SHOP, WELCOME_BACK_MULTIPLIER } from '@/domain/reward/constants';
+import { PURCHASE_POINTS, RANK_THRESHOLDS, VISIT_POINTS_LANDMARK, VISIT_POINTS_SHOP, WELCOME_BACK_MULTIPLIER } from '@/domain/reward/constants';
 import type { LedgerEntry } from '@/domain/reward/LedgerEntry';
 import { rankOf } from '@/domain/reward/TravelerRank';
 import type { SpotRepository } from '@/domain/spot/SpotRepository';
@@ -66,6 +69,34 @@ export function recentPointsOf(entries: readonly LedgerEntry[], spots: SpotRepos
     });
   });
   return log.exit(recent);
+}
+
+/**
+ * EXP の特典（累計 EXP で手に入るアバターの部品。AvatarCatalog の unlock.kind='exp'）を、手に入る EXP ごとにまとめて小さい順に返す。
+ * 届いたものは獲得済み、まだのうち一番小さいものが次の特典。ランクの閾値ちょうどの特典にはその段の添字を添える。
+ * 部品の所持はアバター画面と同じ判定（AvatarUnlockPolicy）で、ここでは状態を見せるだけ（書込みはしない）。
+ * @param points 累計ポイント（台帳の残高）
+ * @returns 特典（凍結済み）
+ */
+export function rankPerksOf(points: number): RankPerkDto[] {
+  const log = logger.fn('rankPerksOf', { points });
+  const byAt = new Map<number, AvatarPartDef[]>();
+  for (const part of AVATAR_CATALOG) {
+    if (part.unlock.kind !== 'exp') continue;
+    byAt.set(part.unlock.points, [...(byAt.get(part.unlock.points) ?? []), part]);
+  }
+  const ats = [...byAt.keys()].sort((a, b) => a - b);
+  const nextAt = ats.find((at) => at > points);
+  const perks = ats.map((at) => {
+    const rankIndex = RANK_THRESHOLDS.findIndex((t) => t.min === at);
+    return Object.freeze({
+      at,
+      ...(rankIndex > 0 ? { rankIndex } : {}),
+      parts: Object.freeze((byAt.get(at) ?? []).map((p) => Object.freeze({ id: p.id, name: p.name, rarity: p.rarity }))),
+      state: at <= points ? 'earned' : at === nextAt ? 'next' : 'locked',
+    } as const);
+  });
+  return log.exit(perks, `${perks.length} 段`);
 }
 
 /**
@@ -130,7 +161,9 @@ export class GetRankStatusUseCase implements UseCase<void, RankStatusDto> {
       lordDistricts: Object.freeze(views.filter((v) => v.standing.isMe).map((v) => v.district.shortName)),
       travelDays: travelDaysOf(visits, world.value.today),
       recent: Object.freeze(recentPointsOf(ledger.value.entries, this.deps.spots)),
-      rules: Object.freeze({ landmarkPoints: VISIT_POINTS_LANDMARK, shopPoints: VISIT_POINTS_SHOP, welcomeBackMultiplier: WELCOME_BACK_MULTIPLIER }),
+      rules: Object.freeze({ landmarkPoints: VISIT_POINTS_LANDMARK, shopPoints: VISIT_POINTS_SHOP, welcomeBackMultiplier: WELCOME_BACK_MULTIPLIER, purchasePoints: PURCHASE_POINTS }),
+      perks: Object.freeze(rankPerksOf(points)),
+      coupons: rankCouponsOf(world.value.traveler, this.deps.spots, world.value.today),
     });
     log.debug('ランク', { points, rank: rank.name, visits: dto.totalVisits, lords: dto.lordDistricts.length });
     return log.exit(ok(dto));

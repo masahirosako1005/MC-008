@@ -5,6 +5,8 @@
  * 投影は正距円筒（1m ≒ 緯度 1/111,000°、経度は cos(緯度) で補正）。位置座標はログに出さない（件数・距離・ID だけ）。
  * 投影・カメラ計算は描画ループから毎フレーム呼ぶので関数ログを出さない（呼び出し側でまとめてログ）。
  */
+import { clamp01 } from '@/Common/ui/canvas/easing';
+export { clamp01 } from '@/Common/ui/canvas/easing';
 import type { DistrictMapDto, FadeDto, MapDataDto, MapSpotDto, SpotKindDto, SpotStatusDto } from '@/application/dto/Dto';
 import { createLogger } from '@/Common/logging/logger';
 import { fadeVisual } from '@/Common/ui/canvas/fadeStyle';
@@ -31,8 +33,6 @@ export const DISTRICT_PADDING_PX = 24;
 export const NEAR_VIEW_WIDTH_M = 450;
 /** スポットのタップ判定半径（CSS px） */
 export const SPOT_HIT_RADIUS_PX = 22;
-/** カメラ遷移の時間（ミリ秒） */
-export const CAMERA_TRANSITION_MS = 350;
 /** 下シートで隠れる高さとして扱う上限（表示高さに対する割合） */
 export const MAX_BOTTOM_INSET_RATIO = 0.6;
 /** 建物どうしの最小間隔（メートル） */
@@ -323,15 +323,6 @@ export function interpolateCamera(from: Camera, to: Camera, t: number): Camera {
 export function easeInOutCubic(t: number): number { // audit-ignore: fnlog-missing 毎フレーム描画（カメラ遷移）
   const k = clamp01(t);
   return k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
-}
-
-/**
- * 値を 0〜1 に丸める（NaN は 0）。
- * @param value 値
- * @returns 0〜1
- */
-export function clamp01(value: number): number {
-  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
 }
 
 // ---------------------------------------------------------------------------

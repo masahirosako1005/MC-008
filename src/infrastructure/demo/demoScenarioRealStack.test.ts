@@ -38,8 +38,12 @@ import { GetTownStateUseCase } from '@/application/usecases/town/GetTownStateUse
 import { GetSettingsUseCase } from '@/application/usecases/settings/GetSettingsUseCase';
 import { UpdateTextScaleUseCase } from '@/application/usecases/settings/UpdateTextScaleUseCase';
 import { ExportDataUseCase } from '@/application/usecases/settings/ExportDataUseCase';
+import { ImportDataUseCase } from '@/application/usecases/settings/ImportDataUseCase';
 import { DeleteAllDataUseCase } from '@/application/usecases/settings/DeleteAllDataUseCase';
 import { InMemoryAvatarRepository } from '@/application/testing/InMemoryAvatarRepository';
+import { GetVisitLogUseCase } from '@/application/usecases/spot/GetVisitLogUseCase';
+import { SaveVisitMemoryUseCase } from '@/application/usecases/spot/SaveVisitMemoryUseCase';
+import { LocalStorageVisitMemoryRepository } from '@/infrastructure/storage/LocalStorageVisitMemoryRepository';
 import { DOMAIN_EVENT_TYPES } from '@/domain/events/DomainEvent';
 import type { DomainEvent } from '@/domain/events/DomainEvent';
 import type { SpotRepository } from '@/domain/spot/SpotRepository';
@@ -54,6 +58,7 @@ import { LocalStoragePointLedgerRepository } from '@/infrastructure/storage/Loca
 import { LocalStorageRivalActionRepository } from '@/infrastructure/storage/LocalStorageRivalActionRepository';
 import { LocalStorageSessionRepository } from '@/infrastructure/storage/LocalStorageSessionRepository';
 import { LocalStorageSettingsRepository } from '@/infrastructure/storage/LocalStorageSettingsRepository';
+import { parseJsonText } from '@/infrastructure/json/parseJsonText';
 import { LocalStorageDataPort } from '@/infrastructure/storage/LocalStorageDataPort';
 import { LocalStorageTravelerRepository } from '@/infrastructure/storage/LocalStorageTravelerRepository';
 import { DemoClock } from '@/infrastructure/time/DemoClock';
@@ -108,6 +113,7 @@ async function buildDemoStack(store: InMemoryKeyValueStore): Promise<Stack> {
   const updateLords = new UpdateDistrictLordUseCase(base);
   const bag = { ...base, updateLords };
   const avatars = new InMemoryAvatarRepository();
+  const memories = new LocalStorageVisitMemoryRepository(repo);
   const settings = new LocalStorageSettingsRepository(repo);
   const userData = new LocalStorageDataPort(repo);
   const published: DomainEvent[] = [];
@@ -130,8 +136,11 @@ async function buildDemoStack(store: InMemoryKeyValueStore): Promise<Stack> {
     reasons: new GetRevisitReasonsUseCase(bag), spotDetail: new GetSpotDetailUseCase(bag), town: new GetTownStateUseCase(bag), zukan: new GetZukanUseCase(bag), ranking: new GetRankingUseCase(bag), demo,
     myTown: new GetMyTownUseCase({ ...bag, avatars }), avatar: new GetAvatarClosetUseCase({ ...bag, avatars }), saveAvatar: new SaveAvatarUseCase({ ...bag, avatars }),
     rankStatus: new GetRankStatusUseCase(bag),
+    visitLog: new GetVisitLogUseCase({ ...bag, memories }), saveVisitMemory: new SaveVisitMemoryUseCase({ ...bag, memories }),
     settings: new GetSettingsUseCase({ settings }), updateTextScale: new UpdateTextScaleUseCase({ settings }),
-    exportData: new ExportDataUseCase({ userData, clock, demo: true }), deleteAllData: new DeleteAllDataUseCase({ userData }),
+    exportData: new ExportDataUseCase({ userData, clock, demo: true }),
+    importData: new ImportDataUseCase({ userData, demo: true, parseJson: (text) => parseJsonText(text, 'userDataImport') }),
+    deleteAllData: new DeleteAllDataUseCase({ userData }),
   };
   must(await demo.resetPosition.execute());
   return { services, demo, spots: master.spots, published, handlerFailures, ensured };

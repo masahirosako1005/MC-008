@@ -32,6 +32,10 @@ export interface AvatarProgress {
   readonly itemIds: ReadonlySet<string>;
   /** 季節（と地区）ごとに通った回数。キーは 'spring' や 'spring:d_okawa' */
   readonly seasonVisits: ReadonlyMap<string, number>;
+  /** 手に入れた月間リーグの報酬ID（domain/competition/LeagueReward） */
+  readonly leagueRewardIds: ReadonlySet<string>;
+  /** 累計 EXP（台帳の残高。0 以上の整数） */
+  readonly exp: number;
 }
 
 /**
@@ -50,6 +54,10 @@ export interface AvatarProgressInput {
   readonly silverCards: number;
   readonly goldCards: number;
   readonly itemIds: readonly string[];
+  /** 手に入れた月間リーグの報酬ID（省略時はなし） */
+  readonly leagueRewardIds?: readonly string[];
+  /** 累計 EXP（台帳の残高。省略・非数・負値は 0、小数は切り捨て） */
+  readonly exp?: number;
 }
 
 /** 部品1つの進み具合 */
@@ -62,8 +70,8 @@ export interface PartProgress {
 }
 
 /**
- * 訪問記録とカード・アイテムの数から、通った実績を求める。
- * @param input 訪問記録・カードの枚数・アイテム
+ * 訪問記録とカード・アイテムの数・累計 EXP から、通った実績を求める。
+ * @param input 訪問記録・カードの枚数・アイテム・月間リーグの報酬・累計 EXP
  * @returns 実績（凍結済み）
  */
 export function avatarProgressOf(input: AvatarProgressInput): AvatarProgress {
@@ -91,6 +99,8 @@ export function avatarProgressOf(input: AvatarProgressInput): AvatarProgress {
     goldCards: input.goldCards,
     itemIds: new Set(input.itemIds),
     seasonVisits,
+    leagueRewardIds: new Set(input.leagueRewardIds ?? []),
+    exp: input.exp !== undefined && Number.isFinite(input.exp) && input.exp > 0 ? Math.floor(input.exp) : 0,
   }));
 }
 
@@ -113,6 +123,8 @@ function valuesOf(unlock: AvatarUnlock, p: AvatarProgress): readonly [number, nu
     case 'goldCards': return [p.goldCards, unlock.count];
     case 'item': return [p.itemIds.has(unlock.itemId) ? 1 : 0, 1];
     case 'seasonVisits': return [p.seasonVisits.get(seasonKeyOf(unlock.season, unlock.districtId)) ?? 0, unlock.count];
+    case 'league': return [p.leagueRewardIds.has(unlock.rewardId) ? 1 : 0, 1];
+    case 'exp': return [p.exp, unlock.points];
   }
 }
 

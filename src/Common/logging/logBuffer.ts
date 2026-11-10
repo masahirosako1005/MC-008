@@ -7,9 +7,6 @@
 /** ログレベル（docs/04 §2.3） */
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-/** ログレベルの一覧（低い順） */
-export const LOG_LEVELS: readonly LogLevel[] = ['debug', 'info', 'warn', 'error'];
-
 /** レベルの大小比較用の順位 */
 export const LEVEL_ORDER: Readonly<Record<LogLevel, number>> = { debug: 0, info: 1, warn: 2, error: 3 };
 

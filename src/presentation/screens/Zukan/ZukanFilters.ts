@@ -42,11 +42,11 @@ interface OptionSpec {
 /**
  * 地区の状態の添え書き（色は select の中に出せないので文言で伝える）。
  * @param district 地区
- * @returns '（色あせ中）'／'（未訪問）'／''
+ * @returns '・色あせ'／'・未達成'／''（括弧書きにしない。呼び方は CLAUDE.md §11.1）
  */
 function districtNote(district: ZukanDistrictTabDto): string {
   const log = logger.fn('districtNote', { districtId: district.id, fade: district.fadeKind });
-  return log.exit(district.fadeKind === 'fading' ? '（色あせ中）' : district.fadeKind === 'never' ? '（未訪問）' : '');
+  return log.exit(district.fadeKind === 'fading' ? '・色あせ' : district.fadeKind === 'never' ? '・未達成' : '');
 }
 
 /**
@@ -56,7 +56,8 @@ function districtNote(district: ZukanDistrictTabDto): string {
  */
 export function districtOptionsOf(districts: readonly ZukanDistrictTabDto[]): OptionSpec[] {
   const log = logger.fn('districtOptionsOf', { count: districts.length });
-  return log.exit([{ value: ALL_DISTRICTS, label: 'すべての地区' }, ...districts.map((d) => ({ value: d.id, label: `${d.shortName}${districtNote(d)}` }))]);
+  // 左に小さな見出し「地区」があるので、選択肢は「すべて」だけにする（同じ語を2回出さない）
+  return log.exit([{ value: ALL_DISTRICTS, label: 'すべて' }, ...districts.map((d) => ({ value: d.id, label: `${d.shortName}${districtNote(d)}` }))]);
 }
 
 /**
@@ -65,7 +66,7 @@ export function districtOptionsOf(districts: readonly ZukanDistrictTabDto[]): Op
  */
 export function statusOptionsOf(): OptionSpec[] {
   const log = logger.fn('statusOptionsOf');
-  return log.exit(STATUS_FILTERS.map((s) => ({ value: s.value, label: s.value === 'all' ? 'すべての状態' : s.label })));
+  return log.exit(STATUS_FILTERS.map((s) => ({ value: s.value, label: s.label })));
 }
 
 /**

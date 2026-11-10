@@ -164,8 +164,27 @@ export function toDistrictMapDto(view: DistrictView): DistrictMapDto {
     fade: fadeDtoOf(status.fade),
     ...(standing.lordName === undefined ? {} : { lordName: standing.lordName }),
     isLordMe: standing.isMe,
+    ...lordFieldsOf(standing),
   });
   return log.exit(dto);
+}
+
+/**
+ * 地図の王者の台座に使う領主の情報（人ごとのキー・直近30日の回数・奪還までの回数）を返す。
+ * @param standing 地区の主の状況
+ * @returns DistrictMapDto に足す項目（主なしなら lordKey を持たない）
+ */
+function lordFieldsOf(standing: LordStanding): Pick<DistrictMapDto, 'lordKey' | 'lordCount' | 'myCount' | 'needed' | 'lordLost'> {
+  const log = logger.fn('lordFieldsOf', { districtId: standing.districtId, isMe: standing.isMe });
+  const holder = standing.holder;
+  const lordKey = holder === undefined ? undefined : holder.type === 'traveler' ? 'me' : holder.rivalId;
+  return log.exit({
+    ...(lordKey === undefined ? {} : { lordKey }),
+    lordCount: standing.lordCount,
+    myCount: standing.myCount,
+    needed: standing.needed,
+    lordLost: standing.lostByTraveler && !standing.isMe,
+  });
 }
 
 /**

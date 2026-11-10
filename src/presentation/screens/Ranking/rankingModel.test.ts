@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { KeepRewardDto, LeagueDto, RankingEntryDto, RankingLordDto } from '@/application/dto/Dto';
+import type { KeepRewardDto, LeagueDto, RankingDto, RankingEntryDto, RankingLordDto, RewardTierDto } from '@/application/dto/Dto';
+import { listItemsOf, newPrizesOf, nextGapLabelOf, tierOfRank, tierUpOf } from '@/presentation/screens/Ranking/rankingModel';
 import {
   chaserTextOf,
   districtShortOf,
@@ -200,5 +201,54 @@ describe('rankingModel 下の段の短い表示（報酬・地区の主）', () 
     expect(lordStatusOf({ ...lord, isMe: true })).toEqual({ text: 'あなた', tone: 'me' });
     expect(districtShortOf(lord)).toBe('南森町');
     expect(districtShortOf({ ...lord, districtShortName: '天満' })).toBe('天満');
+  });
+});
+
+describe('rankingModel 報酬の見せ方', () => {
+  /** 5段の順位報酬（isMine は番号で指定） */
+  function tiers(mine: number): RewardTierDto[] {
+    const rows: readonly (readonly [string, number, number | undefined, string, string])[] = [
+      ['1位', 1, 1, '金メダル', 'accessory.medal'], ['2位', 2, 2, '銀メダル', 'accessory.silverMedal'], ['3位', 3, 3, '銅メダル', 'accessory.bronzeMedal'],
+      ['4〜5位', 4, 5, '月桂冠', 'hat.laurel'], ['6位〜', 6, undefined, '応援フラッグ', 'held.cheerFlag'],
+    ];
+    return rows.map(([label, fromRank, toRank, name, partId], i) => ({ label, fromRank, ...(toRank === undefined ? {} : { toRank }), prizes: [{ kind: 'item', name, partId }], isMine: i === mine }));
+  }
+
+  /** 8人のリーグ（あなたは me 番目。0 始まり） */
+  function leagueOf(me: number, over: Partial<LeagueDto> = {}): LeagueDto {
+    const entries = Array.from({ length: 8 }, (_, i): RankingEntryDto => ({ rank: i + 1, name: `P${i + 1}`, isMe: i === me, count: 20 - i, lordOf: [], avatarKey: `P${i + 1}` }));
+    const mine = me < 3 ? me : me < 5 ? 3 : 4;
+    return { id: 'kayoi', name: 'かよいリーグ', shortName: 'かよい', icon: '♛', tagline: '', rule: '', unit: '回', joined: true, entries, myRank: me + 1, myCount: 20 - me, nextStepText: '', rewards: { tiers: tiers(mine), keeps: [] }, ...over };
+  }
+
+  it('リストには段の帯をはさむ（表彰台の段は置かない）。いまの段と次にねらえる段に印がつく', () => {
+    const league = leagueOf(6, { nextPrize: { gap: 2, label: '4〜5位', prizes: [{ kind: 'item', name: '月桂冠' }] } });
+    const items = listItemsOf(league).map((item) => (item.kind === 'band' ? `[${item.tier.label}:${item.state ?? '-'}]` : String(item.entry.rank)));
+    expect(items).toEqual(['[4〜5位:next]', '4', '5', '[6位〜:mine]', '6', '7', '8']);
+    expect(nextGapLabelOf(league)).toBe('あと2回');
+    expect(nextGapLabelOf(leagueOf(0))).toBeUndefined();
+  });
+
+  it('その段の順位の人がいなくても帯は出す。段に順位の範囲が無ければ行だけ', () => {
+    const league = leagueOf(7);
+    const gapped = { ...league, entries: league.entries.map((e) => (e.rank >= 4 ? { ...e, rank: e.rank + 3 } : e)) };
+    expect(listItemsOf(gapped).slice(0, 3).map((item) => item.kind)).toEqual(['band', 'band', 'row']);
+    const plain = { ...league, rewards: { tiers: [{ label: '1位', prizes: [], isMine: false }], keeps: [] } };
+    expect(listItemsOf(plain).every((item) => item.kind === 'row')).toBe(true);
+  });
+
+  it('順位から段を引く。昨日より上の段に上がった日だけ「報酬アップ」', () => {
+    const league = leagueOf(4, { myRankYesterday: 7 });
+    expect(tierOfRank(league, 5)?.label).toBe('4〜5位');
+    expect(tierOfRank(league, 9)?.label).toBe('6位〜');
+    expect(tierUpOf(league)?.label).toBe('4〜5位');
+    expect(tierUpOf(leagueOf(4, { myRankYesterday: 4 }))).toBeUndefined();
+    expect(tierUpOf(leagueOf(4))).toBeUndefined();
+  });
+
+  it('手に入れてまだ見ていない報酬だけを、部品ごとに1つ返す', () => {
+    const dto: RankingDto = { monthLabel: '11月', daysLeft: 21, leagues: [leagueOf(6), leagueOf(6, { id: 'hajimete' })], recommendedLeagueId: 'kayoi', lords: [] };
+    expect(newPrizesOf(dto, new Set(['held.cheerFlag', 'hair.bun'])).map((p) => p.name)).toEqual(['応援フラッグ']);
+    expect(newPrizesOf(dto, new Set())).toEqual([]);
   });
 });

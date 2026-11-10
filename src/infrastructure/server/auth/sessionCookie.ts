@@ -61,14 +61,18 @@ export function isSessionToken(raw: unknown): raw is string {
 export function parseCookieHeader(header: string | undefined): ReadonlyMap<string, string> {
   const log = logger.fn('parseCookieHeader', { length: header?.length ?? 0 });
   const cookies = new Map<string, string>();
-  if (header === undefined || header.length > MAX_COOKIE_HEADER_LENGTH) return log.exit(cookies, 'none');
+  if (header === undefined || header.length > MAX_COOKIE_HEADER_LENGTH) {
+    log.exit(undefined, 'none');
+    return cookies;
+  }
   for (const part of header.split(';')) {
     const eq = part.indexOf('=');
     if (eq <= 0) continue;
     const name = part.slice(0, eq).trim();
     if (name.length > 0 && !cookies.has(name)) cookies.set(name, part.slice(eq + 1).trim());
   }
-  return log.exit(cookies, `count=${cookies.size}`);
+  log.exit(undefined, `count=${cookies.size}`); // 値（トークン）はログに出さない
+  return cookies;
 }
 
 /**
@@ -79,7 +83,9 @@ export function parseCookieHeader(header: string | undefined): ReadonlyMap<strin
 export function sessionTokenOf(req: IncomingMessage): string | undefined {
   const log = logger.fn('sessionTokenOf');
   const raw = parseCookieHeader(req.headers.cookie).get(SESSION_COOKIE_NAME);
-  return log.exit(isSessionToken(raw) ? raw : undefined, raw === undefined ? 'none' : 'found');
+  const token = isSessionToken(raw) ? raw : undefined;
+  log.exit(token !== undefined, raw === undefined ? 'none' : 'found'); // トークンはログに出さない
+  return token;
 }
 
 /** Cookie の付け方 */
@@ -100,7 +106,8 @@ export function sessionCookieOf(token: string, opts: SessionCookieOptions): stri
   const log = logger.fn('sessionCookieOf', { secure: opts.secure, maxAgeSec: opts.maxAgeSec });
   const parts = [`${SESSION_COOKIE_NAME}=${token}`, `Path=${SESSION_COOKIE_PATH}`, 'HttpOnly', 'SameSite=Strict', `Max-Age=${Math.max(0, Math.floor(opts.maxAgeSec))}`];
   if (opts.secure) parts.push('Secure');
-  return log.exit(parts.join('; '));
+  log.exit(undefined, 'ok'); // トークンを含むのでログに出さない
+  return parts.join('; ');
 }
 
 /**

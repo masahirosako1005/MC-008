@@ -2,6 +2,7 @@
  * @file 封筒（schemaVersion・version・data）単位の読み書きと楽観ロック（infrastructure/storage 層）
  * 各 LocalStorage*Repository が共通で使う。キーは prefix（STORAGE_PREFIX）＋ suffix（'traveler.'+id など）。
  * - 読込: JSON → 封筒検証 → 版の移行 → 中身の検証。どこかで読めなければ P+'backup.'+suffix へ退避して STORAGE_FAILED（DI-01, DI-15）
+ *   今より新しい版だけは退避せず、元のまま残して STORAGE_FAILED（新しいアプリで開けば読める。書き込みも断るので上書きされない）
  * - 保存: 保存済みの version が expectedVersion と違えば CONFLICT。一致すれば version+1 で書く（DI-10）
  * localStorage は同期 API なので、読込→比較→書込の間に他の処理は割り込まない（同一タブ内で原子的）。
  */
@@ -11,7 +12,7 @@ import type { Result } from '@/Common/result/Result';
 import type { KeyValueStore, StorageError } from '@/infrastructure/storage/KeyValueStore';
 import { parseJsonText } from '@/infrastructure/json/parseJsonText';
 import { migrateEnvelope, quarantineRecord } from '@/infrastructure/storage/schema/migrations';
-import { parseEnvelope, wrapEnvelope } from '@/infrastructure/storage/schema/storageSchema';
+import { STORAGE_SCHEMA_VERSION, parseEnvelope, wrapEnvelope } from '@/infrastructure/storage/schema/storageSchema';
 import type { StoredRecord } from '@/infrastructure/storage/schema/storageSchema';
 
 const logger = createLogger('infrastructure/storage/schema/EnvelopeStore');
@@ -91,6 +92,11 @@ export class EnvelopeStore {
     if (!json.ok) return log.fail(this.quarantine(suffix, raw, 'json'));
     const envelope = parseEnvelope(json.value);
     if (!envelope.ok) return log.fail(this.quarantine(suffix, raw, 'envelope'));
+    if (envelope.value.schemaVersion > STORAGE_SCHEMA_VERSION) {
+      // 今より新しい版：新しいアプリが書いた正しいデータの見込みが高いので、退避せず元のまま残して読込だけ断る（古い版が進み具合を消さない）
+      log.warn('今より新しい版の保存データなので読み込みません（元のまま残します）', { suffix, schemaVersion: envelope.value.schemaVersion });
+      return log.fail(fail(AppError.of('STORAGE_FAILED', 'アプリを最新の版にしてから開いてください', { suffix, reason: 'newerVersion', backedUp: false })));
+    }
     const migrated = migrateEnvelope(envelope.value);
     if (!migrated.ok) return log.fail(this.quarantine(suffix, raw, 'schemaVersion'));
     return log.exit(ok({ record: migrated.value, raw }), `version=${migrated.value.version}`);

@@ -218,6 +218,7 @@ export function cmsRoutes(deps: CmsRouteDeps): readonly Route[] {
     route({ method: 'POST', pattern: `${SHOPS}/${ID}/events`, write: true, scope: 'shop', run: registerShopEvent }, deps),
     route({ method: 'POST', pattern: `${SHOPS}/${ID}/events/${ID}/withdraw`, write: true, scope: 'shop', run: withdrawShopEvent }, deps),
     route({ method: 'GET', pattern: `${SHOPS}/${ID}/visit-stats`, write: false, scope: 'shop', run: (s, ctx) => s.visitStats.execute({ spotId: param(ctx, 0) }) }, deps),
+    route({ method: 'GET', pattern: `${SHOPS}/${ID}/survey`, write: false, scope: 'shop', run: (s, ctx) => s.survey.execute({ spotId: param(ctx, 0) }) }, deps),
   ];
   if (deps.mode === 'demo') routes.push(route({ method: 'POST', pattern: '^/api/cms/demo/reset', write: true, scope: 'operator', run: resetDemo }, deps));
   return log.exit(routes, `count=${routes.length}`);

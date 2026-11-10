@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { addDays, jstInstantOf } from '@/Common/utils/date';
 import { createTestWorld, districtOf, must, seedLordship, seedTraveler, spotOf, TEST_TODAY, TEST_TRAVELER_ID, testOperationId } from '@/application/testing/fakes';
 import type { TestWorld } from '@/application/testing/fakes';
-import { GetRankStatusUseCase, RANK_HISTORY_LIMIT } from '@/application/usecases/reward/GetRankStatusUseCase';
+import { GetRankStatusUseCase, RANK_HISTORY_LIMIT, rankPerksOf } from '@/application/usecases/reward/GetRankStatusUseCase';
+import { avatarPartOf } from '@/domain/avatar/AvatarCatalog';
+import { RANK_THRESHOLDS } from '@/domain/reward/constants';
 import { createLedgerEntry } from '@/domain/reward/LedgerEntry';
 import type { LedgerEntry, LedgerEntryKind } from '@/domain/reward/LedgerEntry';
 import { PointLedger } from '@/domain/reward/PointLedger';
@@ -56,7 +58,7 @@ describe('GetRankStatusUseCase', () => {
     expect(status).toMatchObject({ totalVisits: 5, visitedSpots: 3, silverCards: 1, goldCards: 0 });
     expect(status.lordDistricts).toEqual([districtOf(tw.spots, 'd_joka').shortName]);
     expect(status.travelDays).toBe(7);
-    expect(status.rules).toEqual({ landmarkPoints: 10, shopPoints: 15, welcomeBackMultiplier: 1.5 });
+    expect(status.rules).toEqual({ landmarkPoints: 10, shopPoints: 15, welcomeBackMultiplier: 1.5, purchasePoints: 10 });
     expect(Object.keys(status)).not.toContain('rate');
   });
 
@@ -108,5 +110,45 @@ describe('GetRankStatusUseCase', () => {
   it('旅人がいなければ TRAVELER_NOT_FOUND', async () => {
     const result = await new GetRankStatusUseCase(createTestWorld()).execute();
     expect(result.ok ? undefined : result.error.code).toBe('TRAVELER_NOT_FOUND');
+  });
+});
+
+describe('EXP の特典（rankPerksOf）', () => {
+  it('手に入る EXP の小さい順に並べ、届いたものは獲得済み・まだのうち最小が次の特典・残りはまだ', () => {
+    const perks = rankPerksOf(600);
+    const ats = perks.map((p) => p.at);
+    expect(ats).toEqual([...ats].sort((a, b) => a - b));
+    expect(perks.filter((p) => p.at <= 600).every((p) => p.state === 'earned')).toBe(true);
+    expect(perks.filter((p) => p.state === 'next')).toHaveLength(1);
+    expect(perks.find((p) => p.state === 'next')?.at).toBe(Math.min(...ats.filter((at) => at > 600)));
+    expect(perks.filter((p) => p.at > 600 && p.state !== 'next').every((p) => p.state === 'locked')).toBe(true);
+  });
+
+  it('閾値ちょうどで獲得済みになり、ランクの閾値の特典には段の添字が付く', () => {
+    const perks = rankPerksOf(RANK_THRESHOLDS[1]?.min ?? 0);
+    const rankUp = perks.find((p) => p.at === RANK_THRESHOLDS[1]?.min);
+    expect(rankUp).toMatchObject({ state: 'earned', rankIndex: 1 });
+    expect(perks.filter((p) => p.rankIndex !== undefined).map((p) => p.rankIndex)).toEqual(RANK_THRESHOLDS.slice(1).map((_, i) => i + 1));
+  });
+
+  it('すべてのランクアップ（最初の段を除く）に特典があり、部品はアバターのカタログにある', () => {
+    const perks = rankPerksOf(0);
+    for (const threshold of RANK_THRESHOLDS.slice(1)) expect(perks.some((p) => p.at === threshold.min)).toBe(true);
+    for (const part of perks.flatMap((p) => p.parts)) expect(avatarPartOf(part.id)?.unlock).toEqual({ kind: 'exp', points: perks.find((p) => p.parts.includes(part))?.at });
+    expect(perks[0]?.state).toBe('next');
+  });
+
+  it('全部手に入れたら次の特典は無い', () => {
+    const perks = rankPerksOf(1_000_000);
+    expect(perks.every((p) => p.state === 'earned')).toBe(true);
+  });
+
+  it('ランク画面の中身に特典が入る', async () => {
+    const tw = createTestWorld();
+    await seedTraveler(tw);
+    await seedLedger(tw, [[1, 'visit', 30, 'l_jo01', -1]]);
+    const dto = must(await new GetRankStatusUseCase(tw).execute());
+    expect(dto.perks?.find((p) => p.state === 'next')?.at).toBe(rankPerksOf(30).find((p) => p.state === 'next')?.at);
+    expect(dto.perks?.filter((p) => p.state === 'earned').every((p) => p.at <= 30)).toBe(true);
   });
 });

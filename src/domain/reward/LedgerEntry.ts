@@ -1,7 +1,7 @@
 /**
  * @file ポイント台帳の1行（LedgerEntry）の型・作成・検証（domain/reward 層）
- * 台帳は追記専用（DI-06）。1行は「訪問の基本点」か「おかえりボーナスの差分」のどちらか。
- * entryId は `${operationId}:visit` / `${operationId}:bonus` で、同じ訪問操作の再実行を冪等にする鍵になる（DI-07）。
+ * 台帳は追記専用（DI-06）。1行は「訪問の基本点」「おかえりボーナスの差分」「お店での購入」のどれか（購入は 2026-11-10 追加）。
+ * entryId は `${operationId}:visit` / `${operationId}:bonus` / `${operationId}:purchase` で、同じ操作の再実行を冪等にする鍵になる（DI-07）。
  */
 import { createLogger } from '@/Common/logging/logger';
 import { AppError, fail, ok } from '@/Common/result/Result';
@@ -16,13 +16,13 @@ import { Points } from '@/domain/reward/Points';
 
 const logger = createLogger('domain/reward/LedgerEntry');
 
-/** 台帳の行の種別（訪問の基本点／おかえりボーナスの差分） */
-export const LEDGER_ENTRY_KINDS = ['visit', 'welcomeBack'] as const;
+/** 台帳の行の種別（訪問の基本点／おかえりボーナスの差分／お店での購入） */
+export const LEDGER_ENTRY_KINDS = ['visit', 'welcomeBack', 'purchase'] as const;
 
 /** 台帳の行の種別 */
 export type LedgerEntryKind = (typeof LEDGER_ENTRY_KINDS)[number];
 
-/** 台帳の行ID（`${operationId}:visit` | `${operationId}:bonus`） */
+/** 台帳の行ID（`${operationId}:visit` | `${operationId}:bonus` | `${operationId}:purchase`） */
 export type LedgerEntryId = Brand<string, 'LedgerEntryId'>;
 
 /**
@@ -31,11 +31,11 @@ export type LedgerEntryId = Brand<string, 'LedgerEntryId'>;
  */
 const OPERATION_ID_BODY = ID_PATTERNS.OperationId.source.replace(/^\^/, '').replace(/\$$/, '');
 
-/** 行IDの正規表現（`<OperationId>:visit` または `<OperationId>:bonus`） */
-export const LEDGER_ENTRY_ID_PATTERN = new RegExp(`^${OPERATION_ID_BODY}:(?:visit|bonus)$`);
+/** 行IDの正規表現（`<OperationId>:visit`・`<OperationId>:bonus`・`<OperationId>:purchase`） */
+export const LEDGER_ENTRY_ID_PATTERN = new RegExp(`^${OPERATION_ID_BODY}:(?:visit|bonus|purchase)$`);
 
 /** 種別ごとの行IDの接尾辞 */
-const ENTRY_ID_SUFFIX: Readonly<Record<LedgerEntryKind, string>> = { visit: 'visit', welcomeBack: 'bonus' };
+const ENTRY_ID_SUFFIX: Readonly<Record<LedgerEntryKind, string>> = { visit: 'visit', welcomeBack: 'bonus', purchase: 'purchase' };
 
 /** ポイント台帳の1行（凍結済み。points は 0 以上の整数） */
 export interface LedgerEntry {
@@ -73,16 +73,16 @@ function invalidEntry(rule: string): Result<never> {
 /**
  * 未検証の値が台帳の行の種別か判定する型ガード。
  * @param value 判定する値
- * @returns 'visit' または 'welcomeBack' なら true
+ * @returns 'visit'・'welcomeBack'・'purchase' なら true
  */
 export function isLedgerEntryKind(value: unknown): value is LedgerEntryKind {
-  return value === 'visit' || value === 'welcomeBack';
+  return value === 'visit' || value === 'welcomeBack' || value === 'purchase';
 }
 
 /**
- * 操作IDと種別から行IDを作る（訪問=`:visit`、おかえりボーナス=`:bonus`）。
- * 同じ訪問操作からは常に同じ行IDになるので、再実行しても台帳に2重に載らない（DI-07）。
- * @param operationId 訪問操作のID（検証済み）
+ * 操作IDと種別から行IDを作る（訪問=`:visit`、おかえりボーナス=`:bonus`、購入=`:purchase`）。
+ * 同じ操作からは常に同じ行IDになるので、再実行しても台帳に2重に載らない（DI-07）。
+ * @param operationId 訪問・購入の操作のID（検証済み）
  * @param kind 行の種別
  * @returns 行ID
  */

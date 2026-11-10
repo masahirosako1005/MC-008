@@ -135,7 +135,9 @@ export type Result<T, E = AppError> = { ok: true; value: T } | { ok: false; erro
 
 - Prettier（2スペース、セミコロンあり、シングルクォート、`printWidth: 100`）。
 - ESLint: `@typescript-eslint/recommended-type-checked` + `no-console: error` + `import/no-cycle` + 依存方向ルール（`eslint-plugin-boundaries` または `static-audit.mjs`）。
-- コミット前に `npm run audit:static`（`scripts/audit/static-audit.mjs`）を通す。
+- コミット前に `npm run check`（型検査 → `scripts/audit/static-audit.mjs` → テスト）を通す。
+- 使わなくなったコードは残さず消す（履歴は Git にある）。どこからも使われないファイル・export は静的監査の `orphan-file`／`unused-export` が、使い残しのローカル変数・import は `noUnusedLocals` が知らせる。
+- 複数の画面で使う小さな関数は `src/Common/` に1つだけ置く（例: 進み具合の算術は `Common/ui/canvas/easing.ts`、「動きを減らす」の判定は `Common/ui/a11y/reducedMotion.ts`）。画面ごとに同じ関数を書かない。
 
 ---
 

@@ -78,13 +78,13 @@
   transform: translateY(-50%);
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 0 0 1px var(--hairline-strong), 0 2px 6px rgba(17, 24, 39, 0.1);
+  box-shadow: 0 0 0 1px var(--hairline-strong), 0 2px 6px rgba(42, 33, 27, 0.1);
   z-index: -1;
   transition: background var(--motion-fast), box-shadow var(--motion-fast);
 }
 
 .map-filter-bar__prefs { color: var(--brand-ink); font-weight: var(--fw-bold); padding-right: 0.875rem; }
-.map-filter-bar__prefs::before { box-shadow: inset 0 0 0 1.5px var(--brand), 0 2px 6px rgba(17, 24, 39, 0.1); }
+.map-filter-bar__prefs::before { box-shadow: inset 0 0 0 1.5px var(--brand), 0 2px 6px rgba(42, 33, 27, 0.1); }
 
 /* アイコンは白い丸の台座に載せる（選択中の濃い地でも絵が読める） */
 .map-filter-chip__badge {
@@ -148,7 +148,7 @@
   padding: 0.75rem 0.75rem 0.75rem;
   border-radius: var(--radius-m);
   background: var(--surface);
-  box-shadow: 0 0 0 1px var(--hairline-strong), 0 8px 24px rgba(17, 24, 39, 0.16);
+  box-shadow: 0 0 0 1px var(--hairline-strong), 0 8px 24px rgba(42, 33, 27, 0.16);
   color: var(--ink);
   animation: spot-card-in var(--motion) ease-out;
 }
@@ -254,8 +254,16 @@
   z-index: -1;
 }
 
-.map-spot-card__want { z-index: 0; }
+.map-spot-card__want { z-index: 0; color: var(--g5); }
 .map-spot-card__want[aria-pressed="true"]::before { background: var(--brand-soft); }
+/* お店カードのアイコン（★・便利情報・ハート）は線のアイコン（ほかの UI と同じ。2026-11-10） */
+.map-spot-card__today-icon { width: 1rem; height: 1rem; color: var(--warning-ink); }
+.map-spot-card__today[data-tag="period"] .map-spot-card__today-icon { color: var(--danger-ink); }
+.map-spot-card__amenity-icon { width: 0.875rem; height: 0.875rem; }
+/* ハートは入れたらブランド色で塗る */
+.map-spot-card__want-icon { width: 1.375rem; height: 1.375rem; }
+.map-spot-card__want[aria-pressed="true"] { color: var(--brand); }
+.map-spot-card__want[aria-pressed="true"] .map-spot-card__want-icon path { fill: currentColor; }
 .map-spot-card__want:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 
 /* 今日の情報（今日だけ＝黄色の強調帯、期間ものは淡い朱） */
@@ -344,22 +352,9 @@
 .map-prefs-layer .modal { max-height: calc(100% - 2rem); display: flex; flex-direction: column; }
 .map-prefs { overflow-y: auto; min-height: 0; }
 
-.map-prefs__lead {
-  margin: 0;
-  color: var(--g5);
-  font-size: var(--fs-s);
-  line-height: 1.6;
-}
-
-.map-prefs__heading {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  margin: 0.875rem 0 0.375rem;
-  font-size: var(--fs-s);
-  font-weight: var(--fw-bold);
-  color: var(--ink);
-}
+/* 見出しは全画面共通の .section-title（13px・太字・g5）。ここでは上下の間隔だけ（セクションの間隔 24px） */
+.map-prefs__heading { margin: 1.5rem 0 0.5rem; }
+.map-prefs__heading:first-child { margin-top: 0; }
 
 .map-prefs__chips { display: flex; flex-wrap: wrap; gap: 0 0.375rem; }
 
@@ -398,7 +393,7 @@
 .map-prefs__chip[aria-pressed="true"]::before { background: var(--brand-ink); box-shadow: none; }
 .map-prefs__chip:focus-visible { outline: none; }
 .map-prefs__chip:focus-visible::before { box-shadow: var(--focus-ring); }
-.map-prefs__emoji { font-size: 1rem; line-height: 1; }
+.map-prefs__icon { flex: none; width: 1.125rem; height: 1.125rem; }
 
 .map-prefs__wants { margin: 0; padding: 0; list-style: none; }
 
@@ -428,12 +423,18 @@
 
 .map-prefs__remove:focus-visible { outline: 2px solid var(--ink); outline-offset: -4px; border-radius: var(--radius-control); }
 
+/* 空の状態は線の絵＋名詞1語（近くの一覧・記録と同じ形） */
 .map-prefs__empty {
-  padding: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 0 0.5rem;
   color: var(--g4);
   font-size: var(--fs-s);
-  line-height: 1.6;
+  font-weight: var(--fw-bold);
 }
+.map-prefs__empty-icon { width: 2.5rem; height: 2.5rem; stroke-width: 1.4; }
 
 /* ---- 陣地の札（地図の左下・つまみの上。DOM は MapScreen が作る） ---- */
 .map-territory-hud {
@@ -448,7 +449,7 @@
   padding: 0.25rem 0.625rem 0.25rem 0.4375rem;
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 0 0 1px var(--hairline-strong), 0 2px 8px rgba(17, 24, 39, 0.1);
+  box-shadow: 0 0 0 1px var(--hairline-strong), 0 2px 8px rgba(42, 33, 27, 0.1);
   color: var(--ink);
   font-size: var(--fs-s);
   font-weight: var(--fw-bold);
@@ -512,7 +513,7 @@
   border-radius: 50%;
   background: #ffffff;
   color: var(--g5);
-  box-shadow: 0 0 0 1px var(--hairline), 0 2px 8px rgba(17, 24, 39, 0.12);
+  box-shadow: 0 0 0 1px var(--hairline), 0 2px 8px rgba(42, 33, 27, 0.12);
   cursor: pointer;
   transition: opacity 0.15s ease;
 }
@@ -526,7 +527,6 @@
 /* ---- 2026-11-09: 下シートをやめ、上部の「近く」ボタンで一覧を開く ---- */
 /* 地図の下側はシートで隠れない。右下の切替・現在地ボタン・左下の陣地の札・カードを下端に寄せる */
 .map-area { --map-sheet-peek: 0px; }
-.map-area .map-zoom-toggle { bottom: 0.75rem; }
 .map-area .map-locate { bottom: 3.25rem; }
 
 .map-nearby-open[data-active="1"]::before { background: var(--accent); box-shadow: none; }
@@ -538,8 +538,8 @@
   border-radius: var(--radius-pill);
   background: var(--accent);
   color: #ffffff;
-  font-size: 0.6875rem;
-  font-weight: 800;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-heavy);
   line-height: 1.125rem;
   text-align: center;
 }
@@ -553,10 +553,11 @@
   z-index: 6;
   display: flex;
   flex-direction: column;
-  max-height: calc(100% - 4.25rem);
-  border-radius: 1rem;
+  /* 下端は出典の細い帯（地図の右下すみ）にかからない高さまで */
+  max-height: calc(100% - 3.375rem - 1.5rem);
+  border-radius: var(--radius-l);
   background: var(--g1);
-  box-shadow: 0 0 0 1px var(--hairline), 0 10px 28px rgba(17, 24, 39, 0.18);
+  box-shadow: 0 0 0 1px var(--hairline), 0 10px 28px rgba(42, 33, 27, 0.18);
   overflow: hidden;
   animation: map-nearby-in 0.2s ease-out;
 }
@@ -566,19 +567,8 @@
   to { opacity: 1; transform: none; }
 }
 .map-nearby__head { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.5rem 0.375rem 0.75rem; background: #ffffff; border-bottom: 1px solid var(--hairline); }
-.map-nearby__tabs { display: flex; flex: 1; gap: 0.125rem; padding: 0.1875rem; border-radius: var(--radius-pill); background: var(--g2); }
-.map-nearby__tab {
-  flex: 1;
-  min-height: 2.25rem;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--g5);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-.map-nearby__tab[aria-selected="true"] { background: #ffffff; color: var(--ink); box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12); }
+/* タブは全画面共通の切替（.seg）。ここでは幅だけ決める */
+.map-nearby__tabs { flex: 1; }
 .map-nearby__close {
   display: grid;
   place-items: center;
@@ -594,73 +584,74 @@
 .map-nearby__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 0.75rem 0.75rem; overscroll-behavior: contain; }
 @media (prefers-reduced-motion: reduce) { .map-nearby { animation: none; } }
 
-/* ---- 2026-11-09: 中間の表示で右側に「映っているお店」を並べる ---- */
+/*
+ * ---- 中間の表示: 「映っているお店」を、絞り込みの列のすぐ下に横1列で流す ----
+ * 浮いている部品は「上（絞り込み＋この列）＋下の左右」だけにする（右の縦の列はやめた。2026-11-10 UI/UX 改善 2周目）。
+ * 1件は 写真 40px＋札＋名前 の白い札（高さ 56px・幅 136px・角丸 16px）。右端で3件目が途中で切れて、続きがあると分かる。
+ */
 .map-side-list {
   position: absolute;
   top: 3.5rem;
-  right: 0.375rem;
-  bottom: 5.75rem;
+  left: 0;
+  right: 0;
   z-index: 2;
-  width: 4.75rem;
-  overflow-y: auto;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
-  border-radius: 0.875rem;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 0 0 1px var(--hairline), 0 4px 14px rgba(17, 24, 39, 0.12);
   animation: map-side-in 0.2s ease-out;
 }
 .map-side-list[hidden] { display: none; }
 .map-side-list::-webkit-scrollbar { display: none; }
-@keyframes map-side-in { from { opacity: 0; transform: translateX(0.5rem); } to { opacity: 1; transform: none; } }
-.map-side-list__items { display: flex; flex-direction: column; gap: 0.25rem; margin: 0; padding: 0.375rem 0.3125rem; list-style: none; }
+@keyframes map-side-in { from { opacity: 0; transform: translateY(-0.375rem); } to { opacity: 1; transform: none; } }
+.map-side-list__items { display: flex; gap: 0.5rem; width: max-content; margin: 0; padding: 0.25rem var(--gutter) 0.5rem; list-style: none; }
 .map-side-list__item {
-  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.1875rem;
-  width: 100%;
-  min-height: var(--tap);
-  padding: 0.25rem 0.125rem 0.3125rem;
+  gap: 0.5rem;
+  width: 8.5rem;
+  height: 3.5rem;
+  padding: 0 0.625rem 0 0.5rem;
   border: 0;
-  border-radius: 0.625rem;
-  background: transparent;
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--hairline-strong), 0 2px 6px var(--hairline);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
   cursor: pointer;
 }
-.map-side-list__item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.map-side-list__item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .map-side-list li[data-selected="1"] .map-side-list__item { background: var(--accent-soft); }
-.map-side-list__photo { display: block; border-radius: 0.625rem; box-shadow: 0 0 0 2px #ffffff, 0 2px 6px rgba(17, 24, 39, 0.18); }
-.map-side-list li[data-visited="1"] .map-side-list__photo { box-shadow: 0 0 0 2px var(--accent), 0 2px 6px rgba(17, 24, 39, 0.18); }
-.map-side-list li[data-want="1"] .map-side-list__photo { box-shadow: 0 0 0 2px var(--d-rose), 0 2px 6px rgba(17, 24, 39, 0.18); }
+.map-side-list__photo { display: block; flex: none; border-radius: var(--radius-m); }
+.map-side-list li[data-visited="1"] .map-side-list__photo { box-shadow: 0 0 0 2px var(--accent); }
+.map-side-list__text { display: flex; flex: 1; flex-direction: column; align-items: flex-start; gap: 0.125rem; min-width: 0; }
 .map-side-list__name {
   display: -webkit-box;
   max-width: 100%;
   overflow: hidden;
-  color: var(--ink);
-  font-size: 0.625rem;
-  font-weight: 700;
-  line-height: 1.25;
-  text-align: center;
-  word-break: break-all;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  line-height: 1.3;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
+.map-side-list__tag + .map-side-list__name { display: block; white-space: nowrap; text-overflow: ellipsis; }
 .map-side-list__tag {
-  position: absolute;
-  top: 0.125rem;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0 0.3125rem;
+  max-width: 100%;
+  padding: 0 0.375rem;
+  overflow: hidden;
   border-radius: var(--radius-pill);
-  background: #ffffff;
-  color: var(--accent);
-  font-size: 0.5625rem;
-  font-weight: 800;
-  line-height: 0.875rem;
+  background: var(--brand-soft);
+  color: var(--brand-text-s);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  line-height: 1rem;
   white-space: nowrap;
-  box-shadow: 0 0 0 1px var(--brand-300);
+  text-overflow: ellipsis;
 }
-.map-side-list__tag--hot { background: var(--gold); color: var(--ink); box-shadow: none; }
+.map-side-list__tag--hot { background: var(--warning-soft); color: var(--gold-ink); }
 @media (prefers-reduced-motion: reduce) { .map-side-list { animation: none; } }
 
 /* ---- 2026-11-09: QR でチェックイン・購入（読み取り画面） ---- */
@@ -675,7 +666,7 @@
 @keyframes map-qr-in { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
 .map-qr__view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .map-qr__top { position: absolute; top: 0.5rem; left: 0.75rem; right: 0.5rem; display: flex; align-items: center; justify-content: space-between; }
-.map-qr__title { margin: 0; color: #ffffff; font-size: 1rem; font-weight: 900; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); }
+.map-qr__title { margin: 0; color: #ffffff; font-size: var(--fs-ml); font-weight: var(--fw-heavy); text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); }
 .map-qr__close {
   display: grid;
   place-items: center;
@@ -698,8 +689,8 @@
   border-radius: var(--radius-pill);
   background: rgba(0, 0, 0, 0.45);
   color: #ffffff;
-  font-size: 0.8125rem;
-  font-weight: 700;
+  font-size: var(--fs-s);
+  font-weight: var(--fw-bold);
   white-space: nowrap;
 }
 .map-qr[data-done="1"] .map-qr__status { background: var(--success); animation: map-qr-done 0.3s ease-out; }
@@ -724,3 +715,122 @@
 .map-spot-card__actions { flex-wrap: wrap; }
 .map-spot-card__purchase[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .map-qr { animation: none; } .map-spot-card__checkin[data-fx="1"]::after, .map-spot-card__purchase[data-fx="1"]::after { animation: none; } }
+
+/* ---- EXP の札（左下）。2026-11-10 ユーザー指示「領地のマスの概念はいらない。ポイントはチェックインや購入で獲得」で領地のマス数から置き換え ---- */
+.map-exp-hud {
+  gap: 0.3125rem;
+  padding: 0.25rem 0.75rem 0.25rem 0.3125rem;
+  background: var(--paper);
+  box-shadow: 0 0 0 1.5px var(--brand-200), 0 2px 8px rgba(42, 33, 27, 0.12);
+}
+.map-exp-hud__coin {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--metal-gold-grad);
+  color: var(--metal-gold-ink);
+  box-shadow: inset 0 0 0 1.5px var(--metal-gold-edge);
+}
+.map-exp-hud__coin svg { width: 0.9375rem; height: 0.9375rem; }
+.map-exp-hud .map-territory-hud__label { color: var(--brand-ink); font-weight: var(--fw-bold); letter-spacing: 0.04em; }
+.map-exp-hud .map-territory-hud__count { color: var(--ink); font-family: var(--font-display); font-size: var(--fs-m); }
+
+/* ---- チケットのボタン（左下、EXP の札の上）。2026-11-10 ユーザー指示「獲得したチケットを QR で表示して使えるように」 ---- */
+.map-area .map-ticket-button {
+  position: absolute;
+  left: 0.5rem;
+  bottom: 3.25rem;
+  z-index: 3;
+}
+.map-area:has(.map-spot-card[data-open="1"]) .map-ticket-button { opacity: 0; pointer-events: none; }
+
+/*
+ * ---- UI/UX 改善 1周目（2026-11-10。評価 eval_r0 の M1〜M10・N1〜N9） ----
+ * 浮いている部品は「上1列（絞り込み）＋下の左右」だけ。左右は画面端から 16px、下端と高さ（44px）をそろえる。
+ * UI のアイコンは線の絵（ドット絵は Canvas の街の中だけ）。
+ */
+/* 上の列: 左端に一覧を開く丸ボタン、あとは1種類のチップ（白いピル 36px・当たり 44px） */
+.map-filter-bar__track { gap: 0.5rem; padding: 0 var(--gutter); }
+.map-filter-bar__prefs::before,
+.map-filter-chip::before { height: 2.25rem; }
+.map-filter-chip { gap: 0.375rem; padding: 0 0.875rem 0 0.75rem; color: var(--ink); font-weight: var(--fw-regular); }
+.map-filter-bar__line-icon { flex: none; width: 1.125rem; height: 1.125rem; }
+.map-filter-bar__prefs { justify-content: center; width: var(--tap); min-width: var(--tap); padding: 0; color: var(--ink); }
+.map-filter-bar__prefs::before { left: 0.25rem; right: 0.25rem; box-shadow: 0 0 0 1px var(--hairline-strong), 0 2px 6px var(--hairline); }
+.map-filter-bar__prefs .map-filter-bar__line-icon { width: 1.25rem; height: 1.25rem; }
+.map-filter-chip[data-empty="1"]:not([aria-pressed="true"]) .map-filter-bar__line-icon { opacity: 0.6; }
+/* 好みの絞り込みが入っているあいだ、絞り込みの丸ボタンは選択中の色（チップの選択中と同じ） */
+.map-filter-bar__prefs[data-active="1"] { color: #ffffff; }
+.map-filter-bar__prefs[data-active="1"]::before { background: var(--brand-ink); box-shadow: 0 2px 8px var(--brand-300); }
+/* 絞り込みのパネル: 「好み」の見出しの右に、好みで地図を絞り込むスイッチ */
+.map-prefs__head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.map-prefs__switch { position: relative; flex: none; width: 2.75rem; height: var(--tap); padding: 0; border: 0; background: transparent; cursor: pointer; }
+.map-prefs__switch::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1.5rem; transform: translateY(-50%); border-radius: var(--radius-pill); background: var(--g3); transition: background var(--motion-fast); }
+.map-prefs__switch::after { content: ""; position: absolute; left: 0.1875rem; top: 50%; width: 1.125rem; height: 1.125rem; transform: translateY(-50%); border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px var(--hairline-strong); transition: left var(--motion-fast); }
+.map-prefs__switch[aria-checked="true"]::before { background: var(--brand-ink); }
+.map-prefs__switch[aria-checked="true"]::after { left: 1.4375rem; }
+.map-prefs__switch:focus-visible { outline: none; }
+.map-prefs__switch:focus-visible::before { box-shadow: var(--focus-ring); }
+.map-nearby-open { margin-left: -0.25rem; }
+.map-nearby-open__count { position: absolute; top: 0.125rem; right: 0; }
+
+/* 下の左右: 高さ 44px、下端をそろえる（下端の右すみに出典の細い帯があるぶん少し上げる） */
+.map-area .map-territory-hud { left: var(--gutter); bottom: 1.25rem; min-height: var(--tap); padding: 0.25rem 0.875rem 0.25rem 0.5rem; }
+.map-area .map-ticket-button { left: var(--gutter); bottom: 4.5rem; width: var(--tap); height: var(--tap); }
+.map-area .map-ticket-button svg { width: 1.375rem; height: 1.375rem; }
+.map-area .map-locate { right: var(--gutter); bottom: 4.5rem; width: var(--tap); height: var(--tap); }
+.map-area .map-locate::after { content: none; }
+.map-exp-hud__coin { width: 1.75rem; height: 1.75rem; }
+
+/* 近くの一覧: カードの外縁は画面端から 16px、角丸 20px、タブは 44px、カードの間隔 12px */
+.map-nearby { border-radius: var(--radius-l); }
+.map-nearby__head { padding: 0.5rem 0.25rem 0.5rem 0.5rem; background: var(--g1); border-bottom: 0; }
+.map-nearby__body { padding: 0 0.5rem 0.75rem; }
+.map-nearby__body .map-sheet__list > .card { margin: 0.75rem 0 0; }
+.map-nearby__body .map-sheet__list > .card:first-child { margin-top: 0.25rem; }
+/* 種別の札に地区の色の点を入れない（種別の色に見えるため） */
+.map-nearby__body .spot-card .tag--district::before { content: none; }
+/* 空の状態は線の絵＋名詞1語 */
+.map-nearby__body .map-sheet__empty { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin: 0; padding: 2.5rem 0 2rem; color: var(--g4); font-size: var(--fs-s); font-weight: var(--fw-bold); }
+.map-nearby__body .map-sheet__empty .icon { width: 2.5rem; height: 2.5rem; stroke-width: 1.4; }
+/* 一覧のサムネは図鑑と同じ写真（44px の角丸） */
+.map-nearby-thumb { position: relative; flex: none; display: block; width: var(--tap); height: var(--tap); border-radius: var(--radius-control); overflow: hidden; background: var(--g2); }
+.map-nearby-thumb[data-status="discovered"] .spot-photo__img { filter: grayscale(1) contrast(0.95) brightness(1.05); }
+
+/*
+ * ---- UI/UX 改善 2周目（2026-11-10。評価 eval_r1 の 5-C3・5-C4・7-C1・X7） ----
+ * お店カード: 左右 16px・角丸 20px（大きいカード）。中の絵は写真と線のアイコンだけ。
+ * ボタンは 主（達成）を上の段の全幅、副（購入QR・詳しく）を下の段に半分ずつ。
+ */
+/* 線のアイコンは、ドット絵の canvas 用の指定（にじませない）を受けない */
+.map-spot-card__want-icon,
+.map-spot-card__amenity-icon,
+.map-spot-card__today-icon,
+.map-prefs__want-icon { image-rendering: auto; }
+.map-prefs__want-icon { width: 1.125rem; height: 1.125rem; color: var(--g5); }
+
+.map-spot-card { left: var(--gutter); right: var(--gutter); bottom: 0.75rem; padding: 1rem; border-radius: var(--radius-l); }
+.map-spot-card__close { display: grid; place-items: center; top: 0.25rem; right: 0.25rem; color: var(--g5); border-radius: 50%; }
+.map-spot-card__close .icon { width: 1.25rem; height: 1.25rem; }
+.map-spot-card__head { gap: 0.75rem; padding-right: 2.25rem; }
+.map-spot-card__thumb { border-radius: var(--radius-m); overflow: hidden; }
+.map-spot-card__thumb-canvas[hidden],
+.map-spot-card__thumb-icon[hidden] { display: none; }
+.map-spot-card__thumb-icon { display: grid; place-items: center; color: var(--brand-ink); }
+.map-spot-card__thumb-line { width: 1.5rem; height: 1.5rem; }
+.map-spot-card__name { word-break: auto-phrase; }
+.map-spot-card__goods { color: var(--brand-text-s); }
+.map-spot-card__today { margin-top: 0.75rem; padding: 0.375rem 0.75rem; border-radius: var(--radius-m); box-shadow: none; }
+.map-spot-card__today[data-tag="period"] { box-shadow: none; }
+.map-spot-card__today-title { word-break: auto-phrase; }
+/* 便利情報は線のアイコン＋文字を並べるだけ（押せるチップに見せない） */
+.map-spot-card__amenities { gap: 0.25rem 0.875rem; margin-top: 0.75rem; }
+.map-spot-card__amenity { padding: 0; border-radius: 0; background: none; }
+.map-spot-card__meta { margin-top: 0.5rem; }
+.map-spot-card__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem; }
+.map-spot-card__checkin { grid-column: 1 / -1; white-space: nowrap; }
+.map-spot-card__actions:has(.map-spot-card__purchase[hidden]) .map-spot-card__detail,
+.map-spot-card__actions:has(.map-spot-card__detail[hidden]) .map-spot-card__purchase { grid-column: 1 / -1; }
+.map-spot-card__checkin[data-state="done"] { color: var(--success-ink); }

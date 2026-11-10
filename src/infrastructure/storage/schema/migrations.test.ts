@@ -61,6 +61,15 @@ describe('quarantineRecord', () => {
     expect(backupKeyOf('nnishi.', 'traveler.t_ab')).toBe('nnishi.backup.traveler.t_ab');
   });
 
+  it('先に退避したデータは上書きせず、次の枠へ書く。枠が埋まったら最後の枠だけ入れ替える', () => {
+    const store = new InMemoryKeyValueStore({});
+    const base = backupKeyOf('nnishi.', 'session');
+    for (const raw of ['first', 'second', 'second', 'third', 'fourth']) {
+      expect(quarantineRecord({ store, prefix: 'nnishi.', suffix: 'session', raw, reason: 'json' }).ok).toBe(true);
+    }
+    expect(store.snapshot()).toEqual({ [base]: 'first', [`${base}.2`]: 'second', [`${base}.3`]: 'fourth' });
+  });
+
   it('複製に失敗したら元のキーを消さない（データを失わない）', () => {
     const inner = new InMemoryKeyValueStore({ 'nnishi.session': 'raw' });
     const failingSet: KeyValueStore = {

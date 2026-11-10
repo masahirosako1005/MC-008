@@ -72,9 +72,6 @@ export interface NewReason {
 /** 再訪理由（kind で判別するユニオン） */
 export type RevisitReason = DeadlineReason | ReclaimReason | FadeReason | UnvisitedReason | NewReason;
 
-/** 種別から理由の型を取り出す */
-export type RevisitReasonOfKind<K extends RevisitReasonKind> = Extract<RevisitReason, { readonly kind: K }>;
-
 /**
  * 未検証の値が再訪理由の種別か判定する型ガード。
  * @param value 判定する値

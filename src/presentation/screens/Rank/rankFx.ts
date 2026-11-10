@@ -5,6 +5,10 @@
  * - 出現: 画面に入ったまとまりに is-in を付ける（IntersectionObserver。使えなければすぐ付ける）
  * 動きを減らす設定では、数え上げ・傾きはしない（CSS 側の動きも止まる）。
  */
+import { easeOutCubic } from '@/Common/ui/canvas/easing';
+export { easeOutCubic } from '@/Common/ui/canvas/easing';
+import { prefersReducedMotion } from '@/Common/ui/a11y/reducedMotion';
+export { prefersReducedMotion } from '@/Common/ui/a11y/reducedMotion';
 import { createLogger } from '@/Common/logging/logger';
 import { setStyle } from '@/Common/ui/dom';
 
@@ -15,24 +19,6 @@ const TILT_DIGITS = 3;
 
 /** 出現とみなす見えている割合 */
 const REVEAL_THRESHOLD = 0.15;
-
-/**
- * 動きを減らす設定か。
- * @returns 減らす設定なら true
- */
-export function prefersReducedMotion(): boolean {
-  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-/**
- * 0..1 の進み具合を ease-out（三次）にする。
- * @param t 進み具合
- * @returns ゆるめた値
- */
-export function easeOutCubic(t: number): number { // audit-ignore: fnlog-missing 毎フレームの数え上げから呼ぶ純粋な算術
-  const c = Math.min(1, Math.max(0, t));
-  return 1 - (1 - c) ** 3;
-}
 
 /** 数え上げの1件 */
 interface Counting {

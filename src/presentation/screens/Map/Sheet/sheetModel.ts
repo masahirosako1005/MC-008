@@ -9,24 +9,21 @@ import { REVISIT_REASON_ORDER } from '@/Common/ui/cards/RevisitReasonCard';
 import { UNKNOWN_SPOT_NAME } from '@/Common/ui/cards/SpotCard';
 import { formatDistance } from '@/Common/ui/format';
 import { DISCOVERY_RADIUS_M } from '@/domain/exploration/constants';
-import { lastVisitLabel, STATUS_LABELS } from '@/presentation/shared/labels';
+import { fadeLabel, STATUS_LABELS } from '@/presentation/shared/labels';
 
 const logger = createLogger('presentation/screens/Map/Sheet/sheetModel');
 
 /** シートの項目をタップしたときの行き先 */
 export type SheetTarget = { readonly kind: 'spot'; readonly id: string } | { readonly kind: 'district'; readonly id: string };
 
-/** 近隣スポットとして取得する件数（docs/08 §6） */
-export const NEARBY_LIMIT = 8;
-
-/** 訪問できるスポットに付けるバッジ */
-export const CAN_VISIT_BADGE = '訪問できます';
+/** クエストを達成できる距離にあるスポットに付けるバッジ（呼び方は CLAUDE.md §11.1。名詞で止める） */
+export const CAN_VISIT_BADGE = '達成圏内';
 
 /** 未発見スポットをタップしたときの案内 */
-export const UNKNOWN_SPOT_MESSAGE = 'まだ見つけていないスポットです。近づくと発見できます';
+export const UNKNOWN_SPOT_MESSAGE = '近づくと発見';
 
-/** 全画面の注記（色あせは見た目だけ＝CLAUDE.md 4.3） */
-export const LEVEL_NEVER_DROPS_NOTE = '色あせても、Lv・育てた街・カードは減りません';
+/** まだ1回も達成していないスポット・地区の表示（§11.1） */
+export const NOT_CLEARED_LABEL = '未達成';
 
 /**
  * 再訪理由の表示優先順位（小さいほど先）を返す。未知の種別は最後。
@@ -72,6 +69,33 @@ export function reasonTarget(reason: RevisitReasonDto): SheetTarget {
 }
 
 /**
+ * クエスト（再訪理由）のカードに出す題と補足を作る。題は名前（お店・地区）だけにして、期限や日数は補足へ回す（文を題にしない）。
+ * カードの上のラベル（期限・色あせ・未達成）と同じ言葉は題に重ねない。「訪問」の語は出さない（CLAUDE.md §11.1）。
+ * application の文言が想定の形でなければ、そのまま返す。
+ * @param reason 再訪理由（文言は application で日本語化済み）
+ * @returns 題と補足
+ */
+export function reasonCardText(reason: Pick<RevisitReasonDto, 'kind' | 'title' | 'subtitle'>): { readonly title: string; readonly subtitle: string } {
+  const log = logger.fn('reasonCardText', { kind: reason.kind });
+  const subtitle = reason.subtitle.replace('最終訪問 ', '');
+  if (reason.kind === 'deadline') {
+    const m = /^(.+)の(?:クーポン|イベント)、(あと\d+日|今日まで)$/.exec(reason.title);
+    if (m?.[1] !== undefined && m[2] !== undefined) return log.exit({ title: m[1], subtitle: [m[2], subtitle].filter((p) => p.length > 0).join(' ・ ') });
+  }
+  if (reason.kind === 'fade') {
+    const soon = /^そろそろ色あせ：(.+) (あと\d+日)$/.exec(reason.title);
+    if (soon?.[1] !== undefined && soon[2] !== undefined) return log.exit({ title: soon[1], subtitle: [soon[2], subtitle].filter((p) => p.length > 0).join(' ・ ') });
+    const fading = /^色あせ中：(.+)$/.exec(reason.title);
+    if (fading?.[1] !== undefined) return log.exit({ title: fading[1], subtitle });
+  }
+  if (reason.kind === 'unvisited') {
+    const m = /^(.+)にまだ行っていないスポットが(\d+)件$/.exec(reason.title);
+    if (m?.[1] !== undefined && m[2] !== undefined) return log.exit({ title: `${m[1]} ${m[2]}件`, subtitle });
+  }
+  return log.exit({ title: reason.title, subtitle });
+}
+
+/**
  * いちばん近いスポットを返す（距離が同じなら先に来たもの）。
  * @param spots 近隣スポット
  * @returns いちばん近いスポット。無ければ undefined
@@ -97,11 +121,11 @@ export function spotDisplayName(spot: Pick<NearbySpotDto, 'status' | 'name'>): s
 /**
  * スポットカードの補足文（状態・通った回数・クーポン）を作る。距離は SpotCard が先頭に付ける。
  * @param spot 近隣スポット
- * @returns 例 '訪問2回 ・ クーポン・イベントあり'／'発見済み・未訪問'
+ * @returns 例 '2回達成 ・ クーポン・イベントあり'／'未達成'／'未発見'
  */
 export function nearbySubtitle(spot: NearbySpotDto): string {
   const log = logger.fn('nearbySubtitle', { spotId: spot.id, status: spot.status });
-  const parts = [spot.status === 'visited' ? `訪問${spot.visitCount}回` : STATUS_LABELS[spot.status]];
+  const parts = [spot.status === 'visited' ? `${spot.visitCount}回達成` : spot.status === 'discovered' ? NOT_CLEARED_LABEL : STATUS_LABELS[spot.status]];
   if (spot.status !== 'unknown' && spot.hasActiveShopEvent) parts.push('クーポン・イベントあり');
   return log.exit(parts.join(' ・ '));
 }
@@ -135,12 +159,16 @@ export function lordLabelOf(district: Pick<DistrictCardDto, 'lordName' | 'isLord
 }
 
 /**
- * 地区カードの2行目（最終訪問・次の目標）を作る。
+ * 地区カードの2行目（最後に達成してからの日数・次の目標）を作る。
+ * まだ達成していない地区は「未達成」だけ。次の目標が色あせの札と同じ文言なら出さない（同じ情報を2回出さない）。
  * @param district 地区カード
- * @returns 例 '最終訪問 23日前 ・ 次の目標：あと1回で銀カード'
+ * @returns 例 '23日前 ・ あと1回で銀カード'／'今日'／'未達成'
  */
 export function districtSubText(district: Pick<DistrictCardDto, 'fade' | 'nextGoalText'>): string {
   const log = logger.fn('districtSubText', { fade: district.fade.kind });
-  const parts = [lastVisitLabel(district.fade), district.nextGoalText].filter((text) => text.length > 0);
+  const days = district.fade.daysSinceVisit;
+  if (district.fade.kind === 'never' || days === undefined) return log.exit(NOT_CLEARED_LABEL);
+  const goal = district.nextGoalText === fadeLabel(district.fade) ? '' : district.nextGoalText;
+  const parts = [days === 0 ? '今日' : `${days}日前`, goal].filter((text) => text.length > 0);
   return log.exit(parts.join(' ・ '));
 }

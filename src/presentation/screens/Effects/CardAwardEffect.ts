@@ -99,7 +99,7 @@ function drawCardFace(ctx: CanvasRenderingContext2D, rect: Rect, model: CardAwar
   face.addColorStop(0.55, style.stops[1]);
   face.addColorStop(1, style.stops[2]);
   ctx.save();
-  ctx.shadowColor = 'rgba(17, 24, 39, 0.28)';
+  ctx.shadowColor = 'rgba(42, 33, 27, 0.28)';
   ctx.shadowBlur = 18;
   ctx.shadowOffsetY = 8;
   roundRectPath(ctx, rect, 12);
@@ -149,7 +149,7 @@ function drawCardText(ctx: CanvasRenderingContext2D, rect: Rect, model: CardAwar
 }
 
 /**
- * カードの裏面（濃いグレーにブランドの青の斜めの帯と輪のロゴ）を描く。
+ * カードの裏面（濃い墨色にブランドのオレンジの斜めの帯と輪のロゴ）を描く。
  * @param ctx 2D コンテキスト
  * @param rect カードの矩形（中心原点）
  * @sideEffect ctx に描画する

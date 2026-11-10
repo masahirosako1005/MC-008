@@ -2,6 +2,7 @@
  * @file アバターの部品の一覧（domain/avatar 層。固定データ）
  * 着せ替えで選べる部品（髪型・服・帽子・持ち物・相棒・背景・置くもの・称号など）と、その手に入れ方。
  * 手に入れ方はすべて「通った実績」（訪問記録から導出できる値）にする。報酬は網羅ではなく通いに出す（CLAUDE.md 4.6）。
+ * 月間リーグの報酬（手に入れ方 league）も、締めた月の順位・キープの達成を訪問記録から求める（application/usecases/competition/leagueAwards）。
  * 実績は追記専用の訪問記録から求めるので、一度手に入れた部品は失われない（地区の主のように奪われる条件は使わない＝CLAUDE.md 5 章）。
  * 回数のしきい値はすべて（仮）。部品ID は '<枠>.<種類>'。種類は presentation/shared/avatar/avatarLook.ts の型と同じ名前にする。
  */
@@ -33,7 +34,7 @@ export type AvatarRarity = 'N' | 'R' | 'SR' | 'SSR';
 /** 地区ID（マスタ public/master/districts.json と同じ。テストで一致を確かめる） */
 export type CatalogDistrictId = 'd_minamimori' | 'd_tenma' | 'd_tenroku' | 'd_ogimachi' | 'd_okawa';
 
-/** 手に入れ方（すべて訪問記録から求まり、減らない） */
+/** 手に入れ方（すべて訪問記録と追記専用の台帳から求まり、減らない） */
 export type AvatarUnlock =
   | { readonly kind: 'free' }
   /** 通った回数の合計 */
@@ -55,7 +56,11 @@ export type AvatarUnlock =
   /** 訪問で手に入るアイテム（domain/reward/ItemPolicy の ID） */
   | { readonly kind: 'item'; readonly itemId: string }
   /** ある季節に通った回数（地区を決めればその地区だけ）。季節は訪問した暦日の月で決まる（Common/utils/date の seasonOf） */
-  | { readonly kind: 'seasonVisits'; readonly season: Season; readonly count: number; readonly districtId?: CatalogDistrictId };
+  | { readonly kind: 'seasonVisits'; readonly season: Season; readonly count: number; readonly districtId?: CatalogDistrictId }
+  /** 月間リーグの報酬（報酬ID は domain/competition/LeagueReward。'rank1' / 'rank1.kayoi' / 'prize' / 'entry' / 'keep.podium' など） */
+  | { readonly kind: 'league'; readonly rewardId: string }
+  /** 累計 EXP（台帳の残高＝ランクと同じ数。減らないので一度手に入れたら失われない）。ランク画面の「特典」（2026-11-10 ユーザー指示） */
+  | { readonly kind: 'exp'; readonly points: number };
 
 /** 部品の定義 */
 export interface AvatarPartDef {
@@ -90,6 +95,11 @@ const item = (itemId: string): AvatarUnlock => ({ kind: 'item', itemId });
 /** 季節に通った回数（地区を決めればその地区だけ） */
 const inSeason = (season: Season, count: number, districtId?: CatalogDistrictId): AvatarUnlock => (districtId === undefined ? { kind: 'seasonVisits', season, count } : { kind: 'seasonVisits', season, count, districtId });
 
+/** 月間リーグの報酬 */
+const league = (rewardId: string): AvatarUnlock => ({ kind: 'league', rewardId });
+/** 累計 EXP の特典（ランクの閾値ちょうどはランクアップの特典。domain/reward/constants の RANK_THRESHOLDS とそろえる） */
+const exp = (points: number): AvatarUnlock => ({ kind: 'exp', points });
+
 /** 枠ごとの定義の元（[種類, 名前, レア度, 手に入れ方]） */
 type Row = readonly [style: string, name: string, rarity: AvatarRarity, unlock: AvatarUnlock];
 
@@ -108,6 +118,7 @@ const ROWS: Readonly<Record<AvatarSlot, readonly Row[]>> = {
     ['black', 'くろ', 'N', FREE], ['brown', 'こげ茶', 'N', FREE], ['chestnut', 'くり色', 'N', FREE], ['milktea', 'ミルクティー', 'N', FREE],
     ['ash', 'アッシュ', 'R', total(5)], ['sakura', 'さくら色', 'R', at('d_okawa', 2)], ['mint', 'ミント', 'R', at('d_tenroku', 3)],
     ['fuji', 'ふじ色', 'SR', at('d_minamimori', 5)], ['silver', 'ぎん色', 'SR', silver(2)], ['kogane', 'こがね色', 'SSR', gold(1)],
+    ['akane', 'あかね色', 'R', exp(25)], ['ruri', 'るり色', 'SR', exp(220)], ['hisui', 'ひすい色', 'SR', exp(500)], ['yozora', 'よぞら色', 'SSR', exp(1000)],
   ],
   eyes: [
     ['smile', 'にっこり', 'N', FREE], ['round', 'ぱっちり', 'N', FREE], ['calm', 'おだやか', 'N', FREE],
@@ -132,6 +143,7 @@ const ROWS: Readonly<Record<AvatarSlot, readonly Row[]>> = {
     ['sky', 'そら', 'N', FREE], ['coral', 'コーラル', 'N', FREE], ['navy', 'ネイビー', 'N', FREE], ['white', 'しろ', 'N', FREE],
     ['mustard', 'からし', 'N', FREE], ['leaf', 'わかば', 'N', FREE], ['lilac', 'ライラック', 'N', FREE], ['charcoal', 'すみ', 'N', FREE],
     ['sakura', 'さくら', 'R', at('d_okawa', 3)], ['gold', 'ゴールド', 'SSR', silver(3)],
+    ['ruby', 'ルビー', 'R', exp(100)], ['emerald', 'エメラルド', 'SR', exp(300)], ['platinum', 'プラチナ', 'SSR', exp(650)],
   ],
   bottom: [
     ['denim', 'デニム', 'N', FREE], ['shorts', 'ショートパンツ', 'N', FREE], ['skirt', 'スカート', 'N', FREE],
@@ -150,11 +162,14 @@ const ROWS: Readonly<Record<AvatarSlot, readonly Row[]>> = {
     ['tiara', 'ティアラ', 'SR', districts(3)],
     ['umeKanzashi', '梅のかんざし', 'R', at('d_minamimori', 4)], ['sugegasa', '菅笠', 'R', at('d_tenroku', 2)], ['sakuraKanzashi', '桜のかんざし', 'SR', inSeason('spring', 1, 'd_okawa')],
     ['kitsuneMask', 'きつねのお面', 'R', inSeason('summer', 1, 'd_tenma')], ['momijiBeret', '紅葉のベレー', 'R', inSeason('autumn', 1, 'd_ogimachi')], ['crown', '王冠', 'SSR', gold(1)], ['halo', '天使のわっか', 'SSR', total(40)],
+    ['laurel', '月桂冠', 'SR', league('prize')], ['nagezukin', '催太鼓の投げ頭巾', 'SSR', league('rank1')],
   ],
   accessory: [
     ['glasses', 'まるメガネ', 'N', FREE], ['bandaid', 'ばんそうこう', 'N', FREE], ['headphones', 'ヘッドホン', 'R', shops(1)],
     ['ribbon', 'おおきなリボン', 'R', days(2)], ['scarf', 'スカーフ', 'R', at('d_ogimachi', 1)], ['muffler', 'マフラー', 'R', at('d_tenroku', 2)],
-    ['sunglasses', 'サングラス', 'R', total(8)], ['heartglasses', 'ハートのサングラス', 'R', shops(3)], ['earmuffs', 'もこもこイヤーマフ', 'R', inSeason('winter', 1)], ['pochette', 'ポシェット', 'SR', at('d_tenma', 9)], ['medal', '金メダル', 'SSR', gold(2)],
+    ['sunglasses', 'サングラス', 'R', total(8)], ['heartglasses', 'ハートのサングラス', 'R', shops(3)], ['earmuffs', 'もこもこイヤーマフ', 'R', inSeason('winter', 1)], ['pochette', 'ポシェット', 'SR', at('d_tenma', 9)], ['medal', '金メダル', 'SSR', league('rank1')],
+    ['silverMedal', '銀メダル', 'SR', league('rank2')], ['bronzeMedal', '銅メダル', 'SR', league('rank3')],
+    ['umeTenugui', '梅鉢もんの手ぬぐい', 'R', league('entry')],
     ['wings', '天使のはね', 'SSR', days(20)],
   ],
   held: [
@@ -166,13 +181,15 @@ const ROWS: Readonly<Record<AvatarSlot, readonly Row[]>> = {
     ['filmcamera', 'フィルムカメラ', 'R', at('d_ogimachi', 3)], ['dango', '花見だんご', 'R', inSeason('spring', 1)], ['kingyo', '金魚すくいの金魚', 'R', inSeason('summer', 2)],
     ['yakiimo', '焼きいも', 'R', inSeason('autumn', 1, 'd_tenroku')], ['yukidaruma', 'ミニ雪だるま', 'R', inSeason('winter', 2)], ['bouquet', '花たば', 'SR', at('d_okawa', 3)],
     ['chochin', '提灯', 'SR', item('i_chochin')], ['nobori', 'のぼり', 'SR', item('i_nobori')], ['matsu', '松', 'SR', item('i_matsu')],
-    ['sparkler', '手持ち花火', 'SSR', total(25)],
+    ['sparkler', '手持ち花火', 'SSR', total(25)], ['cheerFlag', '応援フラッグ', 'R', league('entry')],
+    ['kiriko', '天満切子のグラス', 'SR', league('rank3')], ['sensu', '天満の寄席の扇子', 'SR', league('prize')],
   ],
   pet: [
     ['hiyoko', 'ひよこ', 'N', total(1)], ['pigeon', 'はと', 'N', at('d_minamimori', 1)], ['cat', 'ねこ', 'R', total(10)],
     ['shiba', 'しばいぬ', 'R', at('d_ogimachi', 3)], ['rabbit', 'うさぎ', 'R', days(5)], ['tanuki', 'たぬき', 'SR', at('d_tenroku', 4)],
     ['penguin', 'ペンギン', 'SR', at('d_okawa', 6)], ['fox', '白ぎつね', 'SSR', at('d_minamimori', 8)], ['unicorn', 'ゆめユニコーン', 'SSR', days(15)],
     ['mejiro', 'メジロ', 'R', inSeason('spring', 2)], ['tsukimiUsagi', 'お月見うさぎ', 'SR', inSeason('autumn', 8)], ['uso', 'うそ鳥', 'SSR', inSeason('winter', 1, 'd_minamimori')], ['dragon', 'ちびドラゴン', 'SSR', gold(1)],
+    ['shingyu', '天神さんの神牛', 'SSR', league('rank2')],
   ],
   background: [
     ['dreamy', 'ゆめかわの空', 'N', FREE], ['plain', 'パステル', 'N', FREE], ['room', 'マイルーム', 'N', FREE],
@@ -190,7 +207,9 @@ const ROWS: Readonly<Record<AvatarSlot, readonly Row[]>> = {
     ['signboard', '立て看板', 'R', at('d_tenma', 2)], ['tanuki', 'たぬきの置物', 'R', at('d_tenroku', 2)], ['gacha', 'カプセルトイ', 'R', days(4)],
     ['lantern', '吊り提灯', 'R', at('d_minamimori', 5)], ['torii', '小さな鳥居', 'SR', at('d_minamimori', 3)], ['sakura', '桜の木', 'SR', at('d_okawa', 2)],
     ['maneki', '招きねこ', 'SR', shops(6)], ['dresser', 'ひみつのドレッサー', 'SR', days(9)], ['fountain', '噴水', 'SR', at('d_ogimachi', 6)], ['stall', '屋台', 'SR', at('d_tenma', 8)],
-    ['fireworks', '打ち上げ花火', 'SSR', total(30)], ['trophy', '金のトロフィー', 'SSR', gold(1)],
+    ['fireworks', '打ち上げ花火', 'SSR', total(30)], ['trophy', '金のトロフィー', 'SSR', league('keep.top')],
+    ['winnerFlag', '表彰台の旗', 'SR', league('keep.podium')],
+    ['gojinto', '梅鉢もんの大ちょうちん', 'SR', league('keep.podium')], ['moyooshiDaiko', '天神祭の催太鼓', 'SSR', league('keep.top')],
   ],
   aura: [
     ['hearts', 'ハートオーラ', 'N', FREE], ['stars', 'スターオーラ', 'R', total(3)], ['notes', '音符オーラ', 'R', days(4)], ['sakura', '花びらオーラ', 'R', at('d_okawa', 2)],
@@ -209,6 +228,9 @@ const ROWS: Readonly<Record<AvatarSlot, readonly Row[]>> = {
     ['stroller', '扇町のおさんぽ好き', 'R', at('d_ogimachi', 3)], ['riverside', '川辺のカメラマン', 'R', at('d_okawa', 2)],
     ['shopper', 'お店めぐり名人', 'SR', shops(6)], ['historian', '名所ハンター', 'SR', landmarks(7)], ['collector', '銀カードコレクター', 'SR', silver(3)],
     ['allarea', '5地区の冒険者', 'SSR', districts(5)], ['legend', '伝説の常連', 'SSR', gold(1)],
+    ['kayoiKing', '天神さんの常連王', 'SSR', league('rank1.kayoi')], ['hajimeteKing', '天満の開拓王', 'SSR', league('rank1.hajimete')], ['rookieKing', '天満の新星', 'SSR', league('rank1.rookie')],
+    ['adventurer', '一人前の冒険者', 'R', exp(50)], ['veteran', '歴戦の冒険者', 'SR', exp(150)], ['hero', '街を救った英雄', 'SSR', exp(400)],
+    ['mythic', '語り継がれる伝説', 'SSR', exp(800)], ['machiquest', 'まちクエ王', 'SSR', exp(1200)],
   ],
 };
 
@@ -227,6 +249,15 @@ const BY_ID: ReadonlyMap<string, AvatarPartDef> = new Map(AVATAR_CATALOG.map((p)
  */
 export function avatarPartOf(id: string): AvatarPartDef | undefined {
   return BY_ID.get(id);
+}
+
+/**
+ * 月間リーグの報酬ID でもらえる部品を返す（カタログの表示順）。
+ * @param rewardId 報酬ID
+ * @returns 部品（無ければ空）
+ */
+export function leaguePartsOf(rewardId: string): readonly AvatarPartDef[] { // audit-ignore: fnlog-missing 固定の表を絞るだけの純粋な参照
+  return AVATAR_CATALOG.filter((p) => p.unlock.kind === 'league' && p.unlock.rewardId === rewardId);
 }
 
 /** 必ず1つ選ぶ枠の既定の部品（はじめから持っているもの） */

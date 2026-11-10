@@ -1,7 +1,9 @@
 /**
- * @file 店舗CMS のシェル（presentation/cms 層。docs/09 §5・§7.2 フェーズ1）
- * 上部バー（ロゴ・「デモ」のメニュー・ページのタブ・お店の切り替え・アプリを開く）と本文。ルートは '#/<スポットID>/<ページ>'。
- * - デモ用のもの（デモの日付・リセット、スマホでは「アプリを開く」も）は「デモ」の札のメニューにまとめる（業務の画面に並べない）
+ * @file 店舗CMS のシェル（presentation/cms 層。docs/09 §5・§7.2 フェーズ1・§7.4 ログイン）
+ * 上部バー（ロゴ・「デモ」のメニュー・ページのタブ・お店の切り替え・アカウントのメニュー・アプリを開く）と本文。ルートは '#/<スポットID>/<ページ>'。
+ * - ログイン（連携サーバーにつなぐ版だけ）：起動時にセッションを確かめ、無ければ本番はログイン画面、デモは運営者として自動で入る。
+ *   店舗のアカウントは担当する店舗だけがお店の切り替えに出る（1店なら切り替え無し）。運営者には「アカウント管理」のタブが出る
+ * - デモ用のもの（デモの日付・リセット、スマホでは「アプリを開く」も）は「デモ」の札のメニューにまとめる（業務の画面に並べない）。本番では出さない
  * - 本文は各画面が「左：見え方／右：フォーム」で組む。スマホ幅では見え方を全画面のシート（dialog）で開く（openPreview）。
  *   開いている間は後ろ（上部バー・本文へ移動・フォーム）を inert にし、Tab はシートの中だけを回る。Esc・×で閉じて「見え方」ボタンに戻る
  * - 通知は一度に1つだけ（前のものを消してから出す）
@@ -12,22 +14,32 @@ import '@/Common/ui/styles/tokens.css';
 import '@/Common/ui/styles/base.css';
 import '@/Common/ui/styles/components.css';
 import '@/presentation/cms/cms.css';
+import '@/presentation/cms/cmsAuth.css';
+import type { CmsPrincipalDto } from '@/application/dto/CmsAuthDto';
 import type { CmsShopInfoDto, CmsShopSummaryDto } from '@/application/dto/CmsDto';
 import type { CmsServices } from '@/application/CmsServices';
+import { isDemoBuild } from '@/Common/constants/env';
 import { createLogger } from '@/Common/logging/logger';
 import { clear, h } from '@/Common/ui/dom';
 import { openModal } from '@/Common/ui/Modal';
 import { ToastHost } from '@/Common/ui/Toast';
-import { CMS_PAGE_LABELS, CMS_PAGE_SHORT_LABELS, CMS_PAGES, cmsHashOf, parseCmsHash } from '@/presentation/cms/cmsRoute';
+import { CMS_OPERATOR_TAB_PAGES, CMS_PAGE_LABELS, CMS_PAGE_SHORT_LABELS, CMS_TAB_PAGES, cmsHashOf, parseCmsHash } from '@/presentation/cms/cmsRoute';
 import type { CmsPage, CmsRoute } from '@/presentation/cms/cmsRoute';
-import { APP_WINDOW_NAME, icon, markDanger, mdDate } from '@/presentation/cms/cmsUi';
+import { APP_WINDOW_NAME, appUrl, icon, markDanger, mdDate } from '@/presentation/cms/cmsUi';
 import type { CmsContext, CmsNotifier, CmsScreen } from '@/presentation/cms/cmsUi';
+import { CMS_LOGGED_OUT_EVENT, renderCmsAccountScreen } from '@/presentation/cms/screens/Account/CmsAccountScreen';
+import { renderCmsAccountsScreen } from '@/presentation/cms/screens/Accounts/CmsAccountsScreen';
 import { renderCmsDataScreen } from '@/presentation/cms/screens/Data/CmsDataScreen';
 import { renderCmsEventsScreen } from '@/presentation/cms/screens/Events/CmsEventsScreen';
 import { renderCmsHomeScreen } from '@/presentation/cms/screens/Home/CmsHomeScreen';
 import { renderCmsInfoScreen } from '@/presentation/cms/screens/Info/CmsInfoScreen';
+import { renderCmsSurveyScreen } from '@/presentation/cms/screens/Survey/CmsSurveyScreen';
+import { renderCmsLoginScreen } from '@/presentation/cms/screens/Login/CmsLoginScreen';
 
 const logger = createLogger('presentation/cms/CmsApp');
+
+/** セッションの確認の結果 */
+type SessionState = 'ready' | 'login' | 'failed';
 
 /** PC の配置になる幅（cms.css の @media (max-width: 959px) と合わせる） */
 const WIDE_QUERY = '(min-width: 960px)';
@@ -41,6 +53,9 @@ const SCREENS: Readonly<Record<CmsPage, CmsScreen>> = {
   info: renderCmsInfoScreen,
   events: renderCmsEventsScreen,
   data: renderCmsDataScreen,
+  survey: renderCmsSurveyScreen,
+  accounts: renderCmsAccountsScreen,
+  account: renderCmsAccountScreen,
 };
 
 /** 未保存の確認をするページと、その入力中の値の用途 */
@@ -113,6 +128,10 @@ export class CmsApp {
   private shown: string | undefined;
   /** いま表示しているルートと店 */
   private current: { readonly route: CmsRoute; readonly info: CmsShopInfoDto } | undefined;
+  /** ログイン中の人（ログインの無い CMS では undefined） */
+  private principal: CmsPrincipalDto | undefined;
+  /** セッションが切れたときに入り直して描き直した回数（無限に繰り返さない） */
+  private relogins = 0;
 
   /**
    * シェルを組み立てる。
@@ -130,6 +149,7 @@ export class CmsApp {
     };
     this.main.tabIndex = -1;
     this.shell.addEventListener('cms-close-preview', () => this.setPreviewOpen(false, true));
+    this.shell.addEventListener(CMS_LOGGED_OUT_EVENT, () => this.onLoggedOut());
     // PC の幅に広げたら、シートは閉じる（PC では見え方が左に常に出ている）
     if (typeof window.matchMedia === 'function') window.matchMedia(WIDE_QUERY).addEventListener('change', (event) => { if (event.matches) this.setPreviewOpen(false, false); });
     this.shell.append(this.skip, this.header, this.main, toastLayer);
@@ -194,17 +214,11 @@ export class CmsApp {
   }
 
   /**
-   * 起動する（店の一覧を読み、ハッシュの変化を監視して最初の画面を出す）。
+   * 起動する（セッションを確かめ、店の一覧を読み、ハッシュの変化を監視して最初の画面を出す）。
    * @sideEffect hashchange・beforeunload を監視し、画面を描く
    */
   async start(): Promise<void> {
-    const log = logger.fn('start');
-    const shops = await this.services.shops.execute();
-    if (!shops.ok) {
-      this.main.replaceChildren(h('p', { class: 'cms-error', text: '読み込めませんでした' }));
-      return log.fail(undefined, shops.error.code);
-    }
-    this.shops = shops.value;
+    const log = logger.fn('start', { auth: this.services.auth !== undefined });
     window.addEventListener('hashchange', () => void this.show());
     window.addEventListener('beforeunload', (event) => {
       if (this.dirty.size === 0) return;
@@ -212,6 +226,88 @@ export class CmsApp {
       // 古い仕様のブラウザ（Chromium 系の一部）は returnValue が空でないと確認を出さない
       event.returnValue = 'unsaved';
     });
+    const session = await this.ensureSession();
+    if (session === 'login') return log.exit(this.renderLogin(), 'login');
+    if (session === 'failed') {
+      this.main.replaceChildren(h('p', { class: 'cms-error', text: '読み込めませんでした' }));
+      return log.fail(undefined, 'session');
+    }
+    await this.boot();
+    return log.exit(undefined);
+  }
+
+  /**
+   * ログイン中の人を確かめる。無ければデモでは運営者として自動で入り、本番ではログイン画面へ。
+   * @returns ready: 進んでよい／login: ログイン画面を出す／failed: サーバーにつながらないなど
+   * @sideEffect デモではセッションを作る
+   */
+  private async ensureSession(): Promise<SessionState> {
+    const log = logger.fn('ensureSession');
+    const auth = this.services.auth;
+    if (auth === undefined) return log.exit('ready', 'noAuth');
+    const me = await auth.me.execute();
+    if (me.ok) {
+      this.principal = me.value;
+      return log.exit('ready', me.value.role);
+    }
+    if (me.error.code !== 'UNAUTHENTICATED') return log.exit('failed', me.error.code);
+    if (auth.demoLogin === undefined) return log.exit('login');
+    const demo = await auth.demoLogin.execute({ role: 'operator' });
+    if (!demo.ok) return log.exit(demo.error.code === 'FORBIDDEN' ? 'login' : 'failed', demo.error.code);
+    this.principal = demo.value;
+    return log.exit('ready', 'demo');
+  }
+
+  /**
+   * ログイン画面を出す（シェルの代わりに）。ログインできたらシェルに戻して起動を続ける。
+   * @sideEffect root の中身を置き換える
+   */
+  private renderLogin(): void {
+    const log = logger.fn('renderLogin');
+    const auth = this.services.auth;
+    if (auth === undefined) return log.exit(undefined, 'noAuth');
+    this.root.replaceChildren(renderCmsLoginScreen({
+      auth,
+      onLoggedIn: (me): void => {
+        this.principal = me;
+        this.root.replaceChildren(this.shell);
+        void this.boot();
+      },
+    }));
+    return log.exit(undefined);
+  }
+
+  /**
+   * ログアウトしたので、状態を消してログイン画面へ（デモではすぐに運営者として入り直す）。
+   * @sideEffect 画面を描き直す。URL のハッシュを消す
+   */
+  private onLoggedOut(): void {
+    const log = logger.fn('onLoggedOut');
+    this.principal = undefined;
+    this.shops = [];
+    this.drafts.clear();
+    this.dirty.clear();
+    this.seen.clear();
+    this.shown = undefined;
+    this.current = undefined;
+    // 見ていたページ（運営者だけのアカウント管理など）を次に入る人へ引き継がない。ハッシュを消して既定の画面から始める
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    void this.start();
+    return log.exit(undefined);
+  }
+
+  /**
+   * 店の一覧を読んで最初の画面を出す（ログインの後）。
+   * @sideEffect 画面を描く
+   */
+  private async boot(): Promise<void> {
+    const log = logger.fn('boot');
+    const shops = await this.services.shops.execute();
+    if (!shops.ok) {
+      this.main.replaceChildren(h('p', { class: 'cms-error', text: '読み込めませんでした' }));
+      return log.fail(undefined, shops.error.code);
+    }
+    this.shops = shops.value;
     await this.show();
     return log.exit(undefined);
   }
@@ -230,12 +326,29 @@ export class CmsApp {
     const info = await this.services.shopInfo.execute({ spotId: route.spotId });
     if (token !== this.token) return log.exit(undefined, 'stale');
     this.main.removeAttribute('aria-busy');
+    if (!info.ok && info.error.code === 'UNAUTHENTICATED') return log.exit(await this.recoverSession(), 'unauthenticated');
     if (!info.ok) {
       this.notifier.show('お店を開けませんでした', 'error');
       return log.exit(route.spotId === fallback ? undefined : this.redirect(fallback, route.page));
     }
+    this.relogins = 0;
     this.render(route, info.value);
     return log.exit(undefined);
+  }
+
+  /**
+   * セッションが切れていた（60 分の無操作など）ので、入り直す（デモは自動）かログイン画面を出す。
+   * @sideEffect 画面を描き直す
+   */
+  private async recoverSession(): Promise<void> {
+    const log = logger.fn('recoverSession', { relogins: this.relogins });
+    this.relogins += 1;
+    const session = this.relogins <= 1 ? await this.ensureSession() : 'login';
+    if (session === 'ready') return log.exit(await this.boot(), 'relogin');
+    this.principal = undefined;
+    if (session === 'login') return log.exit(this.renderLogin(), 'login');
+    this.main.replaceChildren(h('p', { class: 'cms-error', text: '読み込めませんでした' }));
+    return log.exit(undefined, 'failed');
   }
 
   /**
@@ -343,14 +456,15 @@ export class CmsApp {
   }
 
   /**
-   * お店の切り替え（協力店・その他に分ける。店名だけ）を作る。
+   * お店の切り替え（協力店・その他に分ける。店名だけ）を作る。担当する店が1つの店舗のアカウントには、切り替えではなく店名だけを出す。
    * @param route ルート
    * @param info 店の情報
-   * @returns select 要素
+   * @returns select 要素（1店なら店名の span）
    */
-  private shopSelect(route: CmsRoute, info: CmsShopInfoDto): HTMLSelectElement {
-    const log = logger.fn('shopSelect', { spotId: info.id });
-    const groups = [{ label: '協力店', shops: this.shops.filter((s) => s.partner) }, { label: 'その他', shops: this.shops.filter((s) => !s.partner) }];
+  private shopSelect(route: CmsRoute, info: CmsShopInfoDto): HTMLElement {
+    const log = logger.fn('shopSelect', { spotId: info.id, shops: this.shops.length });
+    if (this.shops.length <= 1) return log.exit(h('span', { class: 'cms-topbar__shopname', attrs: { 'data-testid': 'cms-shop-name' }, text: info.name }), 'single');
+    const groups = [{ label: '協力店', shops: this.shops.filter((s) => s.partner) }, { label: 'その他', shops: this.shops.filter((s) => !s.partner) }].filter((g) => g.shops.length > 0);
     const select = h('select', { class: 'cms-select cms-topbar__shop', attrs: { 'aria-label': 'お店を切り替え', 'data-testid': 'cms-shop-select' } },
       groups.map((g) => h('optgroup', { attrs: { label: g.label } }, g.shops.map((s) => h('option', { attrs: { value: s.id, selected: s.id === info.id }, text: s.name })))));
     select.addEventListener('change', () => {
@@ -367,8 +481,9 @@ export class CmsApp {
    * @returns nav 要素
    */
   private tabs(route: CmsRoute, spotId: string): HTMLElement {
-    const log = logger.fn('tabs', { page: route.page });
-    const items = CMS_PAGES.map((page) => {
+    const log = logger.fn('tabs', { page: route.page, role: this.principal?.role });
+    const pages = this.principal?.role === 'operator' ? [...CMS_TAB_PAGES, ...CMS_OPERATOR_TAB_PAGES] : CMS_TAB_PAGES;
+    const items = pages.map((page) => {
       const href = cmsHashOf(spotId, page);
       const draftKey = GUARDED_DRAFT[page];
       const unsaved = draftKey !== undefined && this.dirty.has(`${spotId}:${draftKey}`);
@@ -386,40 +501,86 @@ export class CmsApp {
   }
 
   /**
-   * 上部バー（ロゴ・「デモ」のメニュー・タブ・お店の切り替え・アプリを開く）を描く。
+   * 上部バー（ロゴ・「デモ」のメニュー・タブ・お店の切り替え・アカウントのメニュー・アプリを開く）を描く。
    * @param route ルート
    * @param info 店の情報
    * @sideEffect 上部バーを描き直す
    */
   private renderHeader(route: CmsRoute, info: CmsShopInfoDto): void {
     const log = logger.fn('renderHeader', { spotId: info.id });
+    const select = this.shopSelect(route, info);
     this.header.replaceChildren(
       this.brand(info),
       this.tabs(route, info.id),
       h('div', { class: 'cms-topbar__tools' }, [
-        h('span', { class: 'cms-selectwrap' }, [this.shopSelect(route, info), icon('chevronRight', 'cms-selectwrap__icon')]),
-        h('a', { class: 'cms-topbar__app', attrs: { href: './', target: APP_WINDOW_NAME, 'data-testid': 'cms-open-app' } }, ['アプリを開く', icon('arrowRight', 'cms-icon-external')]),
+        select instanceof HTMLSelectElement ? h('span', { class: 'cms-selectwrap' }, [select, icon('chevronRight', 'cms-selectwrap__icon')]) : select,
+        this.accountMenu(route, info.id),
+        h('a', { class: 'cms-topbar__app', attrs: { href: appUrl(), target: APP_WINDOW_NAME, 'data-testid': 'cms-open-app' } }, ['アプリを開く', icon('arrowRight', 'cms-icon-external')]),
       ]),
     );
     log.exit(undefined);
   }
 
   /**
-   * ロゴと「デモ」のメニュー（デモの日付・アプリを開く（スマホだけ）・リセット）を作る。
+   * アカウントのメニュー（名前のボタン → アカウント・ログアウト）を作る。ログインの無い CMS では出さない。
+   * @param route ルート
+   * @param spotId 店
+   * @returns 要素（ログインが無ければ undefined）
+   */
+  private accountMenu(route: CmsRoute, spotId: string): HTMLElement | undefined {
+    const log = logger.fn('accountMenu', { role: this.principal?.role });
+    const principal = this.principal;
+    if (principal === undefined || this.services.auth === undefined) return log.exit(undefined, 'noAuth');
+    const button = h('button', { class: 'cms-demo cms-account-btn', attrs: { type: 'button', 'aria-expanded': 'false', 'aria-controls': 'cms-account-menu', 'aria-label': 'アカウントのメニュー', 'data-testid': 'cms-account' } }, [
+      h('span', { class: 'cms-demo__pill' }, [icon('person'), h('span', { class: 'cms-account-btn__name', text: principal.displayName }), icon('chevronRight', 'cms-demo__caret')]),
+    ]);
+    const items: HTMLElement[] = [
+      h('button', { class: 'cms-demo__item', attrs: { type: 'button', 'data-testid': 'cms-account-open' }, text: 'アカウント', on: { click: () => { close(); if (route.page !== 'account') this.guardLeave(() => window.location.assign(cmsHashOf(spotId, 'account'))); } } }),
+    ];
+    if (!principal.demo) {
+      items.push(h('button', { class: 'cms-demo__item', attrs: { type: 'button', 'data-testid': 'cms-account-logout' }, text: 'ログアウト', on: { click: () => { close(); void this.logout(); } } }));
+    }
+    const menu = h('div', { class: 'cms-demo__menu', attrs: { id: 'cms-account-menu', hidden: true, 'data-testid': 'cms-account-menu' } }, items);
+    const wrap = h('div', { class: 'cms-topbar__brand cms-account-wrap' }, [button, menu]);
+    const close = bindDemoMenu(wrap, button, menu);
+    return log.exit(wrap);
+  }
+
+  /**
+   * ログアウトする（未保存の確認を通してから）。
+   * @sideEffect セッションを取り消し、ログイン画面へ
+   */
+  private async logout(): Promise<void> {
+    const log = logger.fn('logout');
+    const auth = this.services.auth;
+    if (auth === undefined) return log.exit(undefined, 'noAuth');
+    this.guardLeave(() => {
+      void auth.logout.execute().then((result) => {
+        if (!result.ok && result.error.code !== 'UNAUTHENTICATED') return this.notifier.show('ログアウトできませんでした', 'error');
+        this.onLoggedOut();
+      });
+    });
+    return log.exit(undefined);
+  }
+
+  /**
+   * ロゴと「デモ」のメニュー（デモの日付・アプリを開く（スマホだけ）・リセット）を作る。本番ではロゴだけ。
    * @param info 店の情報
    * @returns 要素
    */
   private brand(info: CmsShopInfoDto): HTMLElement {
-    const log = logger.fn('brand', { today: info.today });
+    const log = logger.fn('brand', { today: info.today, demo: isDemoBuild });
+    const logo = h('span', { class: 'cms-topbar__logo', text: 'まちクエ お店管理' });
+    if (!isDemoBuild) return log.exit(h('div', { class: 'cms-topbar__brand' }, [logo]), 'production');
     const button = h('button', { class: 'cms-demo', attrs: { type: 'button', 'aria-expanded': 'false', 'aria-controls': 'cms-demo-menu', 'aria-label': 'デモのメニュー', 'data-testid': 'cms-demo' } }, [
       h('span', { class: 'cms-demo__pill' }, ['デモ', icon('chevronRight', 'cms-demo__caret')]),
     ]);
     const menu = h('div', { class: 'cms-demo__menu', attrs: { id: 'cms-demo-menu', hidden: true, 'data-testid': 'cms-demo-menu' } }, [
       h('p', { class: 'cms-demo__date', attrs: { 'data-testid': 'cms-today' }, text: `デモの日付 ${mdDate(info.today)}` }),
-      h('a', { class: 'cms-demo__item cms-only-narrow', attrs: { href: './', target: APP_WINDOW_NAME, 'data-testid': 'cms-demo-app' }, on: { click: () => close() } }, ['アプリを開く', icon('arrowRight', 'cms-icon-external')]),
+      h('a', { class: 'cms-demo__item cms-only-narrow', attrs: { href: appUrl(), target: APP_WINDOW_NAME, 'data-testid': 'cms-demo-app' }, on: { click: () => close() } }, ['アプリを開く', icon('arrowRight', 'cms-icon-external')]),
       h('button', { class: 'cms-demo__item', attrs: { type: 'button', 'data-testid': 'cms-reset' }, text: 'リセット', on: { click: () => { close(); this.confirmReset(); } } }),
     ]);
-    const wrap = h('div', { class: 'cms-topbar__brand' }, [h('span', { class: 'cms-topbar__logo', text: 'まちクエ お店管理' }), button, menu]);
+    const wrap = h('div', { class: 'cms-topbar__brand' }, [logo, button, menu]);
     const close = bindDemoMenu(wrap, button, menu);
     return log.exit(wrap);
   }

@@ -56,10 +56,9 @@ export const SKY_BOTTOM = '#f4f8fb';
 
 /** 遠景のビル群の色（空に溶ける淡い青灰） */
 export const FAR_SKYLINE = '#e2eaf2';
-export const FAR_SKYLINE_NEAR = '#d6e0ea';
 
 /** シルエット（未訪問）の灰色 */
-const SILHOUETTE = { body: '#aab1bc', light: '#bcc2cb', deep: '#9ca3af' } as const;
+const SILHOUETTE = { body: '#aab1bc', light: '#bcc2cb', deep: '#a89e92' } as const;
 
 /**
  * 地区色からカラーの色一式を作る（訪問済み・色あざやかな地区）。
@@ -77,7 +76,7 @@ export function colorTone(accent: string, opts: { readonly lit?: boolean } = {})
     frame: '#9aa5b4',
     ink: '#475569',
     accent,
-    accentDeep: mixColors(accent, '#111827', 0.28),
+    accentDeep: mixColors(accent, '#2a211b', 0.28),
     accentSoft: mixColors(accent, '#ffffff', 0.72),
     leaf: PALETTE.tree,
     leafDeep: PALETTE.treeDark,

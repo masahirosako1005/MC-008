@@ -157,7 +157,7 @@
   opacity: 0;
   transform: rotate(var(--r));
 }
-.confetti__piece:nth-child(3n) { background: var(--medal-gold); }
+.confetti__piece:nth-child(3n) { background: var(--metal-gold); }
 .confetti__piece:nth-child(3n + 1) { background: var(--g0); }
 
 /* ---- 表彰台 ---- */
@@ -339,7 +339,7 @@
   .battle__rank-num--pop { animation: rk-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1); }
   .gauge__fill { animation: rk-grow 0.9s ease-out 0.2s both; }
   .battle__chaser--hot::before { display: inline-block; animation: rk-pulse 1s ease-in-out infinite; }
-  .ranking-row--me { animation: rk-glow 2s ease-in-out infinite; }
+  .ranking-row--me { animation: rk-glow 2s ease-in-out 2; }
   .confetti__piece { animation: rk-confetti 1.6s ease-in calc(var(--i) * 0.06s) 2 both; }
 }
 
@@ -388,7 +388,7 @@
 .finale { border-radius: var(--radius-pill); padding: 0.5rem 0.875rem; box-shadow: var(--shadow-2); }
 .league-tab { border: 0; background: var(--surface); box-shadow: var(--shadow-1); border-radius: var(--radius-m); }
 .league-tab__name { font-family: var(--font-display); font-weight: 800; }
-.league-tab[aria-selected="true"] { border: 0; background: var(--ink); color: #ffffff; box-shadow: 0 6px 16px rgba(17, 24, 39, 0.25); }
+.league-tab[aria-selected="true"] { border: 0; background: var(--ink); color: #ffffff; box-shadow: 0 6px 16px rgba(42, 33, 27, 0.25); }
 .league-tab[aria-selected="true"] .league-tab__rank { color: var(--metal-gold-light); }
 .league-tab--recommended::after { background: var(--gold); color: var(--ink); border-radius: var(--radius-pill); padding: 0 0.375rem; font-weight: 800; }
 .battle { background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--brand) 32%, transparent), transparent 55%), linear-gradient(150deg, var(--night-700) 0%, var(--night-950) 65%); box-shadow: var(--shadow-3); }
@@ -440,7 +440,7 @@
 .finale__flag { color: var(--brand); }
 .finale__days { color: var(--brand-ink); }
 .finale__prize { background: color-mix(in srgb, var(--metal-gold-light) 45%, #ffffff); color: var(--gold-ink); }
-.league-tab { background: transparent; box-shadow: inset 0 0 0 1px var(--hairline-strong, rgba(17, 24, 39, 0.14)); color: var(--g5); }
+.league-tab { background: transparent; box-shadow: inset 0 0 0 1px var(--hairline-strong, rgba(42, 33, 27, 0.14)); color: var(--g5); }
 .league-tab[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-2); }
 .league-tab[aria-selected="true"]::before {
   content: "";
@@ -506,7 +506,7 @@
   background: var(--surface) !important;
   color: var(--ink) !important;
   border-radius: var(--radius-m) var(--radius-m) 0.375rem 0.375rem;
-  box-shadow: 0 0 0 1px var(--hairline), 0 4px 12px rgba(17, 24, 39, 0.06);
+  box-shadow: 0 0 0 1px var(--hairline), 0 4px 12px rgba(42, 33, 27, 0.06);
   border-top: 4px solid var(--g3);
 }
 .podium__slot[data-place="first"] .podium__block { border-top-color: var(--metal-gold); }
@@ -526,7 +526,7 @@
 .podium__slot--me .podium__face { background: var(--brand-soft); }
 .podium__slot--me .podium__face::before { background: var(--brand); }
 .podium__slot[data-place] .podium__face { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--district, var(--g3)); }
-.podium__slot[data-place="first"] .podium__face { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--district, var(--metal-gold)), 0 6px 16px rgba(17, 24, 39, 0.12); }
+.podium__slot[data-place="first"] .podium__face { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--district, var(--metal-gold)), 0 6px 16px rgba(42, 33, 27, 0.12); }
 .podium-line { margin-top: 1rem; border-top: 0; background: none; color: var(--g5); text-align: left; padding: 0 0.25rem; font-size: var(--fs-s); }
 .podium-line > span[aria-hidden="true"] { display: none; }
 .lord-card__crown { display: inline-flex; font-size: 1.25rem; }
@@ -779,7 +779,7 @@
 .keep[data-state="keeping"] .keep__status { color: var(--metal-gold-edge); }
 .keep[data-state="achieved"] { background: var(--success-soft); }
 .keep[data-state="achieved"] .keep__status { color: var(--success-ink); }
-.keep-bar { position: relative; display: block; height: 0.375rem; border-radius: var(--radius-pill); background: rgba(17, 24, 39, 0.1); overflow: hidden; }
+.keep-bar { position: relative; display: block; height: 0.375rem; border-radius: var(--radius-pill); background: rgba(42, 33, 27, 0.1); overflow: hidden; }
 .keep-bar__fill { position: absolute; inset: 0 auto 0 0; width: var(--keep, 0%); border-radius: inherit; background: var(--gold); }
 .battle .keep-bar { background: rgba(255, 255, 255, 0.16); }
 .rewards .ranking__rule { margin: 0.75rem 0 0.625rem; }
@@ -854,7 +854,7 @@
   margin: 0.125rem 0 0;
   font-family: var(--font-display);
   font-size: 1.75rem;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1.1;
   letter-spacing: 0.02em;
   color: #ffffff;
@@ -889,7 +889,7 @@
   background: var(--brand);
   color: #ffffff;
   font-size: 0.5625rem;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.08em;
 }
 .stage-slot__badge {
@@ -931,7 +931,7 @@
 .stage-slot[data-place="second"] .stage-block { height: 6.375rem; background: var(--metal-silver); color: var(--metal-silver-ink); }
 .stage-slot[data-place="third"] .stage-block { height: 5.75rem; background: var(--metal-bronze); color: var(--metal-bronze-ink); }
 .stage-slot--me .stage-block { box-shadow: 0 0 0 3px var(--brand), inset 0 4px 0 rgba(255, 255, 255, 0.45), inset 0 -6px 0 rgba(0, 0, 0, 0.12); }
-.stage-block__rank { font-family: var(--font-display); font-size: 1.875rem; font-weight: 900; line-height: 1; text-shadow: 0 2px 0 rgba(255, 255, 255, 0.5); }
+.stage-block__rank { font-family: var(--font-display); font-size: 1.875rem; font-weight: 800; line-height: 1; text-shadow: 0 2px 0 rgba(255, 255, 255, 0.5); }
 .stage-slot[data-place="first"] .stage-block__rank { font-size: 2.75rem; }
 .stage-block__name { max-width: 100%; margin-top: 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.6875rem; font-weight: 800; line-height: 1.2; }
 .stage-block__count { font-size: 0.625rem; font-weight: 700; opacity: 0.75; font-variant-numeric: tabular-nums; }
@@ -987,11 +987,11 @@
 .me-strip__figure .emote { top: -0.375rem; right: -0.875rem; }
 .me-strip__badge { display: inline-flex; align-items: center; justify-content: center; width: 3rem; height: 3rem; border-radius: 50%; background: var(--brand); color: #ffffff; }
 .me-strip__rank { grid-area: rank; display: flex; align-items: baseline; gap: 0.125rem; margin: 0; padding-left: 0.375rem; line-height: 1; }
-.me-strip__num { display: inline-block; font-family: var(--font-display); font-size: 3.25rem; font-weight: 900; letter-spacing: -0.03em; color: var(--brand-400); text-shadow: 0 3px 0 rgba(0, 0, 0, 0.3); font-variant-numeric: tabular-nums; }
+.me-strip__num { display: inline-block; font-family: var(--font-display); font-size: 3.25rem; font-weight: 800; letter-spacing: -0.03em; color: var(--brand-400); text-shadow: 0 3px 0 rgba(0, 0, 0, 0.3); font-variant-numeric: tabular-nums; }
 .me-strip--podium .me-strip__num { color: var(--metal-gold-light); }
 .me-strip__unit { font-size: 1.125rem; font-weight: 800; }
-.me-strip__change { align-self: center; margin-left: 0.375rem; padding: 0.125rem 0.5rem; border-radius: var(--radius-pill); font-family: var(--font-display); font-size: 0.875rem; font-weight: 900; }
-.me-strip__change[data-kind="up"] { background: var(--success); color: #ffffff; }
+.me-strip__change { align-self: center; margin-left: 0.375rem; padding: 0.125rem 0.5rem; border-radius: var(--radius-pill); font-family: var(--font-display); font-size: 0.875rem; font-weight: 800; }
+.me-strip__change[data-kind="up"] { background: var(--success-ink); color: #ffffff; }
 .me-strip__change[data-kind="down"] { background: rgba(255, 255, 255, 0.18); color: #ffffff; }
 .me-strip__guest { grid-area: rank; margin: 0 0 0.5rem; padding-left: 0.375rem; font-size: 1.25rem; }
 .me-strip--guest { grid-template-areas: "fig rank go"; }
@@ -1038,7 +1038,7 @@
 .race__crown .icon { width: 1.5rem; height: 1.5rem; }
 .race__badge { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: #ffffff; color: var(--ink); font-size: 0.75rem; font-weight: 800; }
 .race__label { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; margin: 0; font-size: 0.875rem; }
-.race__label strong { font-weight: 900; }
+.race__label strong { font-weight: 800; }
 .race__chip { padding: 0.0625rem 0.5rem; border-radius: var(--radius-pill); font-size: 0.6875rem; font-weight: 800; }
 .race__chip--hot { background: var(--danger); color: #ffffff; }
 .race__chip--keep { background: var(--metal-gold-light); color: var(--metal-gold-ink); }
@@ -1048,23 +1048,34 @@
 
 /* ---- 動き ---- */
 @media (prefers-reduced-motion: no-preference) {
-  .stage { animation: st-shake 0.35s ease-out 1.55s both; }
+  /*
+   * 登場は 1.0 秒以内（1周目の UI/UX 改善）。あなた帯は最初から出し、数字だけ弾ませる。
+   * 着地のあともずっと続く動きは3種類だけ：回る光・1位の動き・エモート。
+   */
+  .stage { animation: st-shake 0.2s ease-out 0.5s both; }
   .stage__rays { animation: st-spin 40s linear infinite; }
-  .stage__spark { animation: st-twinkle 2.4s ease-in-out calc(var(--spark-i) * 0.3s) infinite both; }
-  .stage__title { animation: st-slam 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) 0.05s both; }
-  .stage__hint { animation: st-fade 0.4s ease-out 0.4s both; }
-  .stage-block { animation: st-rise 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) calc(0.15s + var(--land-i) * 0.15s) both; }
-  .stage-slot__figure { animation: st-drop 0.6s cubic-bezier(0.3, 1.4, 0.5, 1) calc(0.55s + var(--land-i) * 0.3s) both; }
-  .stage-slot[data-place="first"] .stage-slot__figure { animation: st-drop 0.6s cubic-bezier(0.3, 1.4, 0.5, 1) 1.15s both, st-victory 3s ease-in-out 2.4s infinite; }
-  .stage-slot:not([data-place="first"]) .stage-slot__figure .rk-avatar { animation: st-bob 2.2s ease-in-out calc(1.8s + var(--land-i) * 0.5s) infinite; }
-  .stage-slot__shock { animation: st-shock 0.7s ease-out 1.55s both; }
-  .emote { animation: st-emote 4.4s ease-in-out calc(2s + var(--emote-i) * 1s) infinite both; }
-  .me-strip { animation: st-slide 0.5s ease-out 1.7s both; }
-  .race__fill { animation: st-grow 1s cubic-bezier(0.2, 0.8, 0.2, 1) 2.1s both; }
-  .me-strip__num--pop { animation: rk-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1); }
-  .me-strip__change[data-kind="up"] { animation: rk-pulse 1.2s ease-in-out 2.3s 3; }
-  .race__chip--hot { animation: rk-pulse 1s ease-in-out infinite; }
-  .me-strip__go { animation: st-nudge 3.2s ease-in-out 3s infinite; }
+  .stage__spark { animation: st-twinkle 0.8s ease-in-out calc(var(--spark-i) * 0.04s) 1 backwards; }
+  .stage__title { animation: st-slam 0.3s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+  .stage__hint { animation: st-fade 0.25s ease-out 0.1s both; }
+  .stage-block { animation: st-rise 0.3s cubic-bezier(0.34, 1.4, 0.64, 1) calc(var(--land-i) * 0.05s) both; }
+  .stage-slot__figure { animation: st-drop 0.34s cubic-bezier(0.3, 1.4, 0.5, 1) calc(0.06s + var(--land-i) * 0.08s) both; }
+  .stage-slot[data-place="first"] .stage-slot__figure { animation: st-drop 0.34s cubic-bezier(0.3, 1.4, 0.5, 1) 0.22s both, st-victory 3s ease-in-out 1.6s infinite; }
+  .stage-slot__shock { animation: st-shock 0.28s ease-out 0.5s both; }
+  .emote { animation: st-emote 4.4s ease-in-out calc(0.9s + var(--emote-i) * 0.6s) infinite both; }
+  .me-strip__num { animation: rk-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  .race__fill { animation: st-grow 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both; }
+  .me-strip__num--pop { animation: rk-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .me-strip__change[data-kind="up"] { animation: rk-pulse 1.2s ease-in-out 0.8s 3; }
+  .race__chip--hot { animation: rk-pulse 1s ease-in-out 0.6s 3; }
+
+  /* 同じ起動の中で2回目以降・タブの切替：落下を省き、短いフェードだけ（0.6 秒以内） */
+  .ranking[data-quick="1"] .stage,
+  .ranking[data-quick="1"] .stage__spark,
+  .ranking[data-quick="1"] .stage-slot__shock,
+  .ranking[data-quick="1"] .me-strip__num { animation: none; }
+  .ranking[data-quick="1"] :is(.stage__title, .stage__hint, .stage-block, .stage-slot__figure) { animation: st-fade 0.25s ease-out both; }
+  .ranking[data-quick="1"] .stage-slot[data-place="first"] .stage-slot__figure { animation: st-fade 0.25s ease-out both, st-victory 3s ease-in-out 1.2s infinite; }
+  .ranking[data-quick="1"] .race__fill { animation: st-grow 0.35s ease-out both; }
 }
 
 @keyframes st-spin {
@@ -1149,7 +1160,7 @@
 .ranking-row[data-mark="target"] { background: none; }
 .ranking-row--me .ranking-row__name::before { content: none; }
 .ranking-row__emote { flex: none; display: inline-flex; }
-.ranking-row__emote .emote { position: relative; width: 1.5rem; height: 1.5rem; animation: none; box-shadow: 0 1px 4px rgba(17, 24, 39, 0.2); }
+.ranking-row__emote .emote { position: relative; width: 1.5rem; height: 1.5rem; animation: none; box-shadow: 0 1px 4px rgba(42, 33, 27, 0.2); }
 .ranking-row__emote .emote::after { display: none; }
 .ranking-row__emote .emote svg { width: 1rem; height: 1rem; }
 
@@ -1167,7 +1178,7 @@
 .rk-card__note { margin-left: auto; font-size: 0.6875rem; font-weight: 700; color: var(--g5); }
 .rk-card__muted { margin: 0 0 0.375rem; font-size: 0.75rem; color: var(--g5); }
 .rk-rows { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
-.rk-rows--keep { margin-top: 0.375rem; padding-top: 0.375rem; border-top: 1px dashed rgba(17, 24, 39, 0.14); }
+.rk-rows--keep { margin-top: 0.375rem; padding-top: 0.375rem; border-top: 1px dashed rgba(42, 33, 27, 0.14); }
 .rk-row { display: flex; align-items: center; gap: 0.625rem; min-height: 2.75rem; padding: 0.25rem 0.5rem; border-radius: var(--radius-m); font-size: 0.8125rem; color: var(--ink); }
 .rk-row--mine { background: var(--brand-soft); box-shadow: inset 0 0 0 1.5px var(--brand); }
 .rk-mark {
@@ -1181,7 +1192,7 @@
   background: var(--league-soft, var(--g1));
   color: var(--league-ink, var(--ink));
   font-size: 0.6875rem;
-  font-weight: 900;
+  font-weight: 800;
 }
 .rk-mark .icon { width: 1rem; height: 1rem; }
 .rk-mark[data-medal="gold"] { background: var(--metal-gold); color: var(--metal-gold-ink); box-shadow: inset 0 0 0 2px var(--metal-gold-edge); }
@@ -1189,8 +1200,8 @@
 .rk-mark[data-medal="bronze"] { background: var(--metal-bronze); color: var(--metal-bronze-ink); box-shadow: inset 0 0 0 2px var(--metal-bronze-edge); }
 .rk-mark[data-kind="stamp"] { background: var(--g1); color: var(--g5); }
 .rk-mark[data-kind="trophy"] { background: color-mix(in srgb, var(--metal-gold-light) 45%, #ffffff); color: var(--metal-gold-edge); }
-.rk-row__rank { flex: none; width: 2.75rem; font-family: var(--font-display); font-size: 0.9375rem; font-weight: 900; font-variant-numeric: tabular-nums; }
-.rk-row__text { flex: 1; min-width: 0; line-height: 1.4; }
+.rk-row__rank { flex: none; width: 2.75rem; font-family: var(--font-display); font-size: 0.9375rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rk-row__text { flex: 1; min-width: 0; line-height: 1.4; letter-spacing: -0.02em; }
 .rk-row__mine { flex: none; padding: 0.0625rem 0.5rem; border-radius: var(--radius-pill); background: var(--brand-ink); color: #ffffff; font-size: 0.625rem; font-weight: 800; }
 .rk-row__keep { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
 .rk-row__arrow { color: var(--g4); }
@@ -1251,5 +1262,367 @@
 .rk-rules__note { margin: 0 0 0.75rem; font-size: 0.75rem; color: var(--g5); }
 
 @media (prefers-reduced-motion: no-preference) {
-  .ranking-row__emote .emote { animation: st-bob 2s ease-in-out infinite; }
+  .ranking-row__emote .emote { animation: st-bob 1s ease-in-out 2; }
 }
+
+/*
+ * ---- ラウンド8: 報酬をランキングの上で見せて競わせる（2026-11-10 フィードバック） ----
+ * 報酬はアバターの部品。表彰台の台に1〜3位の報酬の絵、リストに段の帯（「4〜5位 → 月桂冠」。次の段に「あと○回」）、あなた帯に次の報酬までの数。
+ * 派手な演出: ステージ奥の花火、台の報酬のきらめき、「報酬アップ」の叩きつけ、報酬を手に入れたときの全画面の演出（.prize-get）。
+ * 色は tokens の名前だけ（docs/10）。動きは下の @media の中だけで、動きが無くてもすべて見える。
+ */
+
+/* 報酬の絵（レア度の枠。R＝銀／SR＝金／SSR＝虹） */
+.prize-strip { flex: none; display: inline-flex; align-items: center; gap: 0.1875rem; }
+.prize-icon {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--prize-size, 1.75rem);
+  height: var(--prize-size, 1.75rem);
+  border-radius: 22%;
+  background: var(--surface);
+  box-shadow: 0 0 0 1.5px var(--rarity-2), 0 1px 3px rgba(42, 33, 27, 0.25);
+  color: var(--metal-legend-edge);
+}
+.prize-icon > canvas { display: block; border-radius: inherit; }
+.prize-icon > .icon { position: relative; width: 62%; height: 62%; }
+.prize-icon[data-rarity="N"] { box-shadow: 0 0 0 1.5px var(--rarity-1), 0 1px 3px rgba(42, 33, 27, 0.25); }
+.prize-icon[data-rarity="SR"] { background: var(--metal-gold-soft); box-shadow: 0 0 0 1.5px var(--rarity-3), 0 1px 3px rgba(42, 33, 27, 0.25); }
+.prize-icon[data-rarity="SSR"] { background: var(--metal-legend-light); box-shadow: 0 0 0 2px var(--rarity-4), 0 0 8px color-mix(in srgb, var(--metal-legend) 70%, transparent); }
+.prize-icon[data-rarity="SSR"]::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--legend-grad); opacity: 0.38; }
+.prize-icon[data-rarity="SSR"] > canvas { position: relative; }
+.prize-icon__owned {
+  position: absolute;
+  right: -0.25rem;
+  bottom: -0.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  background: var(--success-ink);
+  color: #ffffff;
+  box-shadow: 0 0 0 1.5px #ffffff;
+}
+.prize-icon__owned .icon { width: 0.625rem; height: 0.625rem; }
+
+/* 表彰台の台の正面に、その順位の報酬 */
+.stage-slot[data-place="first"] .stage-block { height: 9.375rem; }
+.stage-slot[data-place="second"] .stage-block { height: 8.25rem; }
+.stage-slot[data-place="third"] .stage-block { height: 7.625rem; }
+.stage-block__prize {
+  position: relative;
+  display: inline-flex;
+  margin-top: auto;
+  padding: 0.1875rem 0.3125rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+  overflow: hidden;
+}
+.stage-block__prize::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  transform: skewX(-18deg);
+  opacity: 0;
+}
+
+/* ステージ奥の花火 */
+.stage__bursts { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.stage__burst, .prize-get__burst {
+  position: absolute;
+  width: 5.5rem;
+  aspect-ratio: 1;
+  margin: -2.75rem 0 0 -2.75rem;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, var(--metal-gold-light) 0deg 4deg, transparent 4deg 22.5deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 22%, #000 26% 58%, transparent 70%);
+  mask: radial-gradient(circle, transparent 0 22%, #000 26% 58%, transparent 70%);
+  opacity: 0;
+}
+.stage__burst:nth-child(3n + 2), .prize-get__burst:nth-child(3n + 2) { background: repeating-conic-gradient(from 8deg, color-mix(in srgb, var(--league, var(--brand)) 45%, #ffffff) 0deg 4deg, transparent 4deg 22.5deg); }
+.stage__burst:nth-child(3n), .prize-get__burst:nth-child(3n) { background: repeating-conic-gradient(from 4deg, var(--glow) 0deg 4deg, transparent 4deg 22.5deg); }
+
+/* 「報酬アップ」（段が上がった日。動きのあるときだけ出る） */
+.stage__tierup {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.375rem 1rem 0.375rem 1.125rem;
+  border-radius: var(--radius-pill);
+  background: var(--metal-gold-grad);
+  color: var(--metal-gold-ink);
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  box-shadow: 0 0 0 3px #ffffff, 0 10px 24px rgba(0, 0, 0, 0.45);
+  transform: translate(-50%, -50%) rotate(-4deg);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* あなた帯: 次の報酬までの数 */
+.race__chip--prize { display: inline-flex; align-items: center; gap: 0.3125rem; padding: 0.125rem 0.5rem 0.125rem 0.1875rem; background: #ffffff; color: var(--brand-ink); font-size: 0.75rem; }
+
+/* リストにはさむ段の帯 */
+.rk-band {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  margin: 0.25rem -0.25rem;
+  padding: 0.3125rem 0.5rem;
+  border-radius: var(--radius-s);
+  background: var(--g1);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  font-size: 0.75rem;
+  color: var(--g5);
+}
+.rk-band__rank { flex: none; min-width: 2.75rem; font-family: var(--font-display); font-size: 0.875rem; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rk-band__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.rk-band__gap, .rk-band__here { flex: none; padding: 0.125rem 0.5rem; border-radius: var(--radius-pill); font-size: 0.6875rem; font-weight: 800; white-space: nowrap; }
+.rk-band__gap { background: var(--brand-ink); color: #ffffff; }
+.rk-band__here { background: var(--surface); color: var(--brand-ink); box-shadow: inset 0 0 0 1px var(--brand); }
+.rk-band[data-state="next"] { background: var(--metal-gold-soft); box-shadow: inset 0 0 0 1.5px var(--metal-gold); color: var(--metal-gold-ink); }
+.rk-band[data-state="mine"] { background: var(--brand-soft); box-shadow: inset 0 0 0 1.5px var(--brand); }
+
+/* 報酬カードの行: 順位 → 報酬の絵 → 名前 */
+.rk-row { min-height: 3rem; }
+.rk-row__rank { width: 3.5rem; white-space: nowrap; }
+.rk-row > .prize-icon, .rk-row > .prize-strip { margin-right: 0.125rem; }
+
+/* 報酬を手に入れたときの全画面の演出 */
+.prize-get {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: radial-gradient(90% 60% at 50% 42%, color-mix(in srgb, var(--metal-gold) 38%, var(--night-900)) 0%, var(--night-950) 78%);
+  color: var(--on-night);
+}
+.prize-get__rays {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  z-index: -1;
+  width: 240%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--metal-gold-light) 55%, transparent) 0deg 6deg, transparent 6deg 18deg);
+  -webkit-mask: radial-gradient(circle, #000 0 12%, transparent 46%);
+  mask: radial-gradient(circle, #000 0 12%, transparent 46%);
+  opacity: 0.75;
+  pointer-events: none;
+}
+.prize-get__flash { position: absolute; inset: 0; z-index: 3; background: #ffffff; opacity: 0; pointer-events: none; }
+.prize-get__bursts, .prize-get__sparks { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.prize-get__burst { width: 9rem; margin: -4.5rem 0 0 -4.5rem; }
+.prize-get .confetti__piece { width: 0.5rem; height: 0.875rem; }
+.prize-get__body { display: flex; flex-direction: column; align-items: center; gap: 1rem; width: 100%; padding: 1.5rem 1rem; }
+.prize-get__title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #ffffff;
+  text-shadow: 0 3px 0 var(--metal-gold-edge), 0 0 24px var(--metal-gold);
+}
+.prize-get__title strong { font-size: 3.25rem; line-height: 1; color: var(--metal-gold-light); }
+.prize-get__items { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin: 0.5rem 0 0; padding: 0; list-style: none; }
+.prize-get__item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.625rem; }
+.prize-get__item .prize-icon { box-shadow: 0 0 0 3px var(--rarity-2), 0 0 28px color-mix(in srgb, var(--metal-gold-light) 80%, transparent), 0 12px 24px rgba(0, 0, 0, 0.5); }
+.prize-get__item[data-rarity="SR"] .prize-icon { box-shadow: 0 0 0 3px var(--rarity-3), 0 0 28px color-mix(in srgb, var(--metal-gold-light) 80%, transparent), 0 12px 24px rgba(0, 0, 0, 0.5); }
+.prize-get__item[data-rarity="SSR"] .prize-icon { box-shadow: 0 0 0 4px var(--rarity-4), 0 0 36px var(--metal-legend), 0 12px 24px rgba(0, 0, 0, 0.5); }
+.prize-get__ring {
+  position: absolute;
+  left: 50%;
+  top: 3rem;
+  width: 6rem;
+  height: 6rem;
+  margin: -3rem 0 0 -3rem;
+  border: 4px solid var(--metal-gold-light);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+.prize-get__name { max-width: 10.5rem; padding: 0.1875rem 0.75rem; border-radius: var(--radius-pill); background: #ffffff; color: var(--ink); font-size: 0.875rem; font-weight: 800; text-align: center; }
+.prize-get__rest { margin: 0; font-size: 0.75rem; font-weight: 700; color: var(--on-night-2); }
+.prize-get__actions { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-top: 0.75rem; }
+.prize-get__wear {
+  min-width: 11rem;
+  min-height: 3.25rem;
+  padding: 0 2rem;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: #ffffff;
+  font: inherit;
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 5px 0 var(--brand-700), 0 0 24px var(--glow-soft);
+}
+.prize-get__wear:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--brand-700); }
+.prize-get__close { min-height: var(--tap); padding: 0 1.5rem; border: 0; background: none; color: var(--on-night-2); font: inherit; font-size: 0.8125rem; font-weight: 700; cursor: pointer; }
+.prize-get__wear:focus-visible, .prize-get__close:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 花火・報酬のきらめき・札の脈動は登場のあと1〜2回だけ（ずっと続く動きを3種類までにする） */
+  .stage__burst { animation: rk-burst 2.4s ease-out calc(0.7s + var(--burst-i) * 0.5s) 1 both; }
+  .stage-block__prize { animation: st-fade 0.25s ease-out calc(0.35s + var(--land-i) * 0.05s) both; }
+  .stage-block__prize::after { animation: rk-shine 2.4s ease-in-out calc(0.4s + var(--land-i) * 0.3s) 1; }
+  .stage-slot[data-place="first"] .stage-block__prize { animation: st-fade 0.25s ease-out 0.45s both, rk-prize-glow 1.6s ease-in-out 0.9s 2; }
+  .stage__tierup { animation: rk-tierup 3s cubic-bezier(0.2, 1.4, 0.4, 1) 0.7s both; }
+  .race__chip--prize { animation: rk-pulse 1.4s ease-in-out 0.8s 2; }
+  .rk-band[data-state="next"] .rk-band__gap { animation: rk-pulse 1.2s ease-in-out 0.6s 2; }
+  .ranking[data-quick="1"] .stage-block__prize,
+  .ranking[data-quick="1"] .stage-slot[data-place="first"] .stage-block__prize { animation: st-fade 0.25s ease-out both; }
+  .ranking[data-quick="1"] :is(.stage__burst, .stage__tierup) { animation: none; }
+
+  .prize-get { animation: st-fade 0.25s ease-out both; }
+  .prize-get__rays { animation: st-spin 14s linear infinite; }
+  .prize-get__flash { animation: rk-flash 0.7s ease-out 0.15s both; }
+  .prize-get__burst { animation: rk-burst 2.4s ease-out calc(0.5s + var(--burst-i) * 0.45s) infinite both; }
+  .prize-get .stage__spark { animation: st-twinkle 1.6s ease-in-out calc(var(--spark-i) * 0.18s) infinite both; }
+  .prize-get .confetti__piece { animation: rk-confetti-fall 2.6s linear calc(var(--i) * 0.14s) infinite both; }
+  .prize-get__title { animation: st-slam 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) 0.2s both; }
+  .prize-get__item { animation: rk-prize-pop 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) calc(0.55s + var(--item-i) * 0.3s) both; }
+  .prize-get__item .prize-icon { animation: rk-prize-float 2.6s ease-in-out calc(1.4s + var(--item-i) * 0.3s) infinite; }
+  .prize-get__ring { animation: st-shock-center 0.9s ease-out calc(0.75s + var(--item-i) * 0.3s) both; }
+  .prize-get__actions { animation: st-slide 0.45s ease-out 1.5s both; }
+  .prize-get__wear { animation: st-slide 0.45s ease-out 1.5s both, st-nudge 2.6s ease-in-out 2.4s infinite; }
+}
+
+@keyframes rk-burst {
+  0% { opacity: 0; transform: scale(0.1); }
+  12% { opacity: 0.95; }
+  45% { opacity: 0.5; transform: scale(1); }
+  60%, 100% { opacity: 0; transform: scale(1.15); }
+}
+@keyframes rk-shine {
+  0%, 60% { left: -60%; opacity: 0; }
+  65% { opacity: 1; }
+  100% { left: 120%; opacity: 0; }
+}
+@keyframes rk-prize-glow {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7), 0 0 0 0 rgba(255, 255, 255, 0); }
+  50% { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7), 0 0 14px 3px rgba(255, 255, 255, 0.75); }
+}
+@keyframes rk-tierup {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(-4deg) scale(3); }
+  14% { opacity: 1; transform: translate(-50%, -50%) rotate(-4deg) scale(0.9); }
+  20%, 78% { opacity: 1; transform: translate(-50%, -50%) rotate(-4deg) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -90%) rotate(-4deg) scale(0.9); }
+}
+@keyframes rk-flash {
+  0% { opacity: 0.95; }
+  100% { opacity: 0; }
+}
+@keyframes rk-confetti-fall {
+  0% { opacity: 1; transform: translateY(-1rem) rotate(var(--r)); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(46rem) rotate(calc(var(--r) + 900deg)); }
+}
+@keyframes rk-prize-pop {
+  0% { opacity: 0; transform: translateY(2rem) scale(0.2) rotate(-18deg); }
+  60% { opacity: 1; transform: translateY(-0.5rem) scale(1.12) rotate(4deg); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes rk-prize-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px) rotate(2deg); }
+}
+@keyframes st-shock-center {
+  0% { opacity: 0.9; transform: scale(0.3); }
+  100% { opacity: 0; transform: scale(2.6); }
+}
+
+/*
+ * ---- ラウンド9: 報酬カードの文字を整える（2026-11-10 フィードバック: 文字が多く、変なところで折り返す） ----
+ * 名前は主役の報酬を1行（太字）、残りは小さく1行。どちらも折り返さず、入らなければ「…」。「いまココ」は順位の下へ。
+ * 段の帯・獲得の演出の名前も1行に収める。
+ */
+.rk-row { gap: 0.5rem; min-height: 3.25rem; padding: 0.375rem 0.5rem; }
+.rk-row__head { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; width: 3.875rem; }
+.rk-row__head .rk-row__rank { width: auto; font-size: 0.875rem; line-height: 1.2; white-space: nowrap; }
+.rk-row__head .rk-row__mine { padding: 0 0.3125rem; font-size: 0.5625rem; line-height: 1.5; white-space: nowrap; }
+.rk-row__names { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.0625rem; }
+.rk-row__lead, .rk-row__sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rk-row__lead { font-size: 0.8125rem; font-weight: 800; line-height: 1.35; color: var(--ink); }
+.rk-row__sub { font-size: 0.6875rem; font-weight: 700; line-height: 1.35; color: var(--g4); }
+.rk-row--keep[data-state="not-yet"] .rk-row__lead { color: var(--g5); }
+.rk-row--keep .keep-bar { margin-top: 0.1875rem; }
+.prize-get__name { max-width: none; font-size: 0.75rem; white-space: nowrap; }
+.prize-get__items { gap: 0.75rem 0.5rem; }
+
+/*
+ * ---- UI/UX 改善 1周目（2026-11-10）：部品と文字をそろえる ----
+ * リーグのタブは全画面共通の切替（.seg）。リーグの色は小さな点だけ。
+ * 文字は 11／12／13／14／22／28px と、見せる数字（1位の 44px・あなたの順位 52px）の8種類。最小 11px。
+ * 下段の見出しは共通のセクション見出し（13px・太字・g5）。
+ */
+/* カード同士の間隔は 12px */
+.stage { margin-bottom: 0.75rem; }
+.rk-card, .rk-rules { margin-top: 0.75rem; }
+.league-seg { margin-bottom: 0.75rem; grid-auto-columns: auto; }
+.league-seg__item { padding: 0 0.375rem; }
+.league-seg__dot { flex: none; width: 0.375rem; height: 0.375rem; border-radius: 50%; background: var(--league); }
+.league-seg__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.league-seg__rank { flex: none; font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--g5); font-variant-numeric: tabular-nums; }
+/* 文字の大きさ「大・特大」：リーグの名前は省略せず、順位を2段目に落とす（切替の高さは変えない） */
+html:is([data-text-scale="large"], [data-text-scale="xlarge"]) .league-seg__item { flex-wrap: wrap; align-content: center; row-gap: 0; padding: 0 0.25rem; line-height: 1.2; }
+html:is([data-text-scale="large"], [data-text-scale="xlarge"]) .league-seg__name { overflow: visible; }
+html:is([data-text-scale="large"], [data-text-scale="xlarge"]) .league-seg__rank { flex-basis: 100%; text-align: center; line-height: 1.2; }
+
+.stage__chip strong { font-size: var(--fs-m); font-weight: var(--fw-heavy); }
+.stage-block__rank { font-size: var(--fs-2xl); }
+/* 台の正面の名前と数：金・銀・銅の上でも読める大きさと濃さ */
+.stage-block__name { font-size: var(--fs-sm); }
+.stage-block__count { font-size: var(--fs-xs); opacity: 1; }
+.me-strip__unit { font-size: var(--fs-m); }
+.me-strip__go { font-size: var(--fs-m); }
+.rk-card__title { font-size: var(--fs-s); font-weight: var(--fw-bold); letter-spacing: 0.02em; color: var(--g5); }
+.rk-card__title .icon { color: var(--g4); }
+.rk-row__head .rk-row__mine, .rk-row__mine { font-size: var(--fs-xs); }
+.rk-lord__status, .league-compare__name small { font-size: var(--fs-xs); }
+.ranking-row--me { border-radius: var(--radius-m); }
+.rk-band { border-radius: var(--radius-pill); }
+/* 報酬の表：絵の列を3つぶんの固定幅にして、名前の始まる位置をそろえる */
+.rk-row { gap: 0.375rem; padding-inline: 0.375rem; }
+.rk-row__head { width: 3.375rem; }
+.rk-row > .prize-strip { width: 112px; margin-right: 0; }
+/* キープの行も順位の行と同じ列に置く（順位の列ぶん空けて、絵と名前の始まる位置をそろえる） */
+.rk-row--keep > .prize-strip { margin-left: 3.75rem; }
+/* 文字の大きさ「大・特大」：名前は絵の下の段に置いて、省略しない */
+html:is([data-text-scale="large"], [data-text-scale="xlarge"]) .rk-row { flex-wrap: wrap; row-gap: 0.4375rem; }
+html:is([data-text-scale="large"], [data-text-scale="xlarge"]) .rk-row__names { order: 2; flex: none; width: 100%; padding-left: 3.75rem; }
+html:is([data-text-scale="large"], [data-text-scale="xlarge"]) .rk-row__status { order: 1; margin-left: auto; }
+/* ルールの表：語の途中で折らない（文節で折る）。競うものの列を広めに */
+.league-compare__row { grid-template-columns: 5.25rem minmax(0, 1.15fr) minmax(0, 1fr); word-break: auto-phrase; overflow-wrap: normal; }
+/* あなた帯の報酬の札は絵だけ（「あと○か所」は左の一言と重なるので出さない） */
+.race__chip--prize { padding: 0.125rem 0.1875rem; }

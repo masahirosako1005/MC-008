@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "audit:static": "node scripts/audit/static-audit.mjs",
+    "check": "tsc --noEmit && node scripts/audit/static-audit.mjs && vitest run",
     "master:build": "node scripts/master/build-master.mjs",
     "master:check": "node scripts/master/check-master.mjs",
     "master:hash": "node scripts/master/hash-master.mjs",
@@ -23,17 +24,21 @@
     "build:backend": "node scripts/build/backend.mjs",
     "dev:backend": "node scripts/dev/backend.mjs dev",
     "demo:backend": "node scripts/dev/backend.mjs serve",
-    "e2e:backend": "node scripts/e2e/cms-backend.mjs"
+    "e2e:backend": "node scripts/e2e/cms-backend.mjs",
+    "serve:app-local": "node scripts/dev/app-local.mjs",
+    "demo:fresh": "node scripts/dev/demo-fresh.mjs"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@types/node": "^24.19.2",
+    "@types/pg": "^8.23.1",
     "playwright-core": "^1.65.0",
     "typescript": "^6.0.3",
     "vite": "^8.3.6",
     "vitest": "^5.1.0"
   },
   "dependencies": {
-    "@fontsource/m-plus-rounded-1c": "^5.3.0",
-    "@fontsource/noto-sans-jp": "^5.3.1"
+    "@fontsource/line-seed-jp": "^5.3.2",
+    "pg": "^8.23.1"
   }
 }

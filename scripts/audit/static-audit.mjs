@@ -5,6 +5,7 @@
  * 既定の対象: src/
  * 仕様: docs/07_audit_procedure.md §2
  * 除外: 行末に `// audit-ignore: <check> <理由>` を書くとその行のそのチェックを除外（理由必須）
+ * 対象が src 全体のときは、プロジェクト全体の検査（orphan-file / unused-export / long-file）も行う。
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -66,8 +67,8 @@ function listCssFiles(dir) {
 
 /** 色の値を置いてよい CSS（docs/10_color_system.md §3）: トークン本体と、トークンより先に読む起動スプラッシュ */
 const COLOR_SOURCE_FILES = ['src/Common/ui/styles/tokens.css', 'src/presentation/screens/Launch/splash.css'];
-/** CSS で直書きしてよい色: 白・黒・--ink（17,24,39）とその透過 */
-const ALLOWED_COLOR = /^(#fff|#ffffff|#000|#000000|rgba?\((255,255,255|0,0,0|17,24,39)(,[0-9.]+)?\))$/i;
+/** CSS で直書きしてよい色: 白・黒・--ink（42,33,27）とその透過 */
+const ALLOWED_COLOR = /^(#fff|#ffffff|#000|#000000|rgba?\((255,255,255|0,0,0|42,33,27)(,[0-9.]+)?\))$/i;
 
 /**
  * CSS の色の直書きを検査する（color-literal。docs/10_color_system.md）。トークン（var(--…)）以外の色を warn で知らせる。
@@ -238,6 +239,85 @@ function auditFile(file) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// プロジェクト全体の検査（保守性）: orphan-file / unused-export / long-file
+// 1ファイルだけでは分からない「どこからも使われていない」を見るので、対象が src 全体のときだけ動かす。
+// ---------------------------------------------------------------------------
+
+/** 入口（ほかのファイルから import されない前提のファイル） */
+const ENTRY_FILES = new Set(['src/main.ts', 'src/cmsMain.ts', 'src/serverMain.ts']);
+/** これを超える行数のファイルを long-file（info）で知らせる（03 §1「1ファイル1責務」の目安） */
+const LONG_FILE_LINES = 800;
+/** import・export の from 句（静的・動的）を拾う */
+const IMPORT_SPEC = /(?:from\s+|import\s*\(\s*|import\s+)['"]([^'"]+)['"]/g;
+/** export された宣言の名前を拾う（行頭の export だけ。再 export は対象外） */
+const EXPORT_DECL = /^export\s+(?:async\s+)?(?:function\s*\*?|const|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/;
+
+/**
+ * import の指定をプロジェクト内のファイル（ROOT からの相対パス）にする。外部モジュールや見つからないものは null。
+ * @param {string} fromRel import を書いたファイル
+ * @param {string} spec import の指定（'@/…' か相対パス）
+ * @param {Set<string>} known プロジェクト内のファイル
+ * @returns {string | null} 解決したファイル
+ */
+function resolveImport(fromRel, spec, known) {
+  const clean = spec.replace(/\?.*$/, '');
+  let base;
+  if (clean.startsWith('@/')) base = `src/${clean.slice(2)}`;
+  else if (clean.startsWith('.')) base = join(fromRel, '..', clean).split(sep).join('/');
+  else return null;
+  for (const candidate of [base, `${base}.ts`, `${base}.mjs`, `${base}/index.ts`]) if (known.has(candidate)) return candidate;
+  return null;
+}
+
+/**
+ * 識別子ごとの出現回数を数える（文字列・コメントの中も数える。使われているかの判定を甘い側に倒すため）。
+ * @param {string} text ソース
+ * @returns {Map<string, number>} 識別子 → 回数
+ */
+function countIdentifiers(text) {
+  const counts = new Map();
+  for (const word of text.match(/[A-Za-z_$][\w$]*/g) ?? []) counts.set(word, (counts.get(word) ?? 0) + 1);
+  return counts;
+}
+
+/**
+ * プロジェクト全体の検査を行う。
+ * - orphan-file（warn）: どこからも import されていないファイル（入口・テスト・型定義を除く）
+ * - unused-export（warn）: export しているのに、ほかのファイルでも自分の中でも使われていない宣言
+ * - long-file（info）: LONG_FILE_LINES 行を超えるファイル（分割の候補。件数には数えない）
+ * 使う側には scripts/ も含める（マスタのテストなどが src を import するため）。
+ * @sideEffect findings に追加する
+ */
+function auditProject() {
+  const sources = [...listFiles(join(ROOT, 'src')), ...listFiles(join(ROOT, 'scripts'))]
+    .map((full) => ({ full, rel: relative(ROOT, full).split(sep).join('/'), text: readFileSync(full, 'utf8') }));
+  const known = new Set(sources.map((s) => s.rel));
+  const imported = new Set();
+  const identifiers = new Map();
+  for (const s of sources) {
+    for (const m of s.text.matchAll(IMPORT_SPEC)) {
+      const target = resolveImport(s.rel, m[1], known);
+      if (target !== null && target !== s.rel) imported.add(target);
+    }
+    identifiers.set(s.rel, countIdentifiers(s.text));
+  }
+  for (const s of sources) {
+    if (!s.rel.startsWith('src/') || /\.test\.ts$/.test(s.rel)) continue;
+    const lines = s.text.split(/\r?\n/);
+    if (!ENTRY_FILES.has(s.rel) && !imported.has(s.rel) && !/audit-ignore:\s*orphan-file\s+\S/.test(s.text)) {
+      report('orphan-file', 'warn', s.full, 1, 'どこからも import されていません。使わないなら削除する（残す理由があるなら先頭のコメントに audit-ignore: orphan-file 理由）');
+    }
+    if (lines.length > LONG_FILE_LINES) report('long-file', 'info', s.full, 1, `${lines.length} 行（目安 ${LONG_FILE_LINES}）。責務ごとの分割を検討する（03 §1）`);
+    lines.forEach((line, i) => {
+      const name = line.match(EXPORT_DECL)?.[1];
+      if (name === undefined || ignored(line, 'unused-export')) return;
+      const usedElsewhere = sources.some((other) => other.rel !== s.rel && identifiers.get(other.rel).has(name));
+      if (!usedElsewhere && identifiers.get(s.rel).get(name) === 1) report('unused-export', 'warn', s.full, i + 1, `export ${name} はどこからも使われていません。削除する`);
+    });
+  }
+}
+
 for (const t of targets) {
   const full = join(ROOT, t);
   let st;
@@ -252,11 +332,14 @@ for (const t of targets) {
   (st.isDirectory() ? listCssFiles(full) : /\.css$/.test(full) ? [full] : []).forEach(auditCss);
 }
 
+if (targets.some((t) => t.split(/[\\/]/).filter(Boolean).join('/') === 'src')) auditProject();
+
 const errors = findings.filter((f) => f.level === 'error');
 const warns = findings.filter((f) => f.level === 'warn');
+const infos = findings.filter((f) => f.level === 'info');
 
 if (asJson) {
-  console.log(JSON.stringify({ generatedAt: new Date().toISOString(), targets, summary: { errors: errors.length, warnings: warns.length }, findings }, null, 2));
+  console.log(JSON.stringify({ generatedAt: new Date().toISOString(), targets, summary: { errors: errors.length, warnings: warns.length, infos: infos.length }, findings }, null, 2));
 } else {
   const byCheck = {};
   for (const f of findings) (byCheck[f.check] ??= []).push(f);
@@ -264,6 +347,7 @@ if (asJson) {
     console.log(`\n## ${check} (${list.length})`);
     for (const f of list) console.log(`  ${f.level.toUpperCase().padEnd(5)} ${f.file}:${f.line}  ${f.message}`);
   }
+  if (infos.length > 0) console.log(`\n（info ${infos.length} 件は参考。error・warn には数えない）`);
   console.log(`\n=== 静的監査: error ${errors.length} / warn ${warns.length} / 対象 ${targets.join(', ')} ===`);
 }
 process.exit(errors.length > 0 && !warnOnly ? 1 : 0);

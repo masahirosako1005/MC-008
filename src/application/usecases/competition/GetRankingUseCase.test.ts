@@ -103,20 +103,69 @@ describe('GetRankingUseCase リーグの違いと報酬', () => {
     const dto = must(await new GetRankingUseCase(tw).execute());
     const [kayoi, hajimete, rookie] = dto.leagues;
     expect(kayoi?.tabHint).toBe('通った回数');
-    expect(hajimete?.metric).toContain('はじめて訪れたスポットの数');
-    expect(rookie?.eligibility).toBe('使いはじめて30日以内の人だけ');
+    expect(hajimete?.metric).toContain('新しい場所の数');
+    expect(rookie?.eligibility).toBe('はじめて30日以内');
     expect(new Set(dto.leagues.map((l) => l.tabHint)).size).toBe(3);
   });
 
-  it('順位報酬は 1位・2位・3位・4位〜 の4段。1位は称号つきで、飾りはリーグごとに違う', async () => {
+  it('順位報酬は 1位・2位・3位・4〜5位・6位〜 の5段。景品はアバターの部品で、ご当地の景品が先・記念品が後。1位の称号はリーグごとに違う', async () => {
     const tw = createTestWorld();
     await seedTraveler(tw);
     const dto = must(await new GetRankingUseCase(tw).execute());
     const kayoi = dto.leagues.find((l) => l.id === 'kayoi');
-    expect(kayoi?.rewards?.tiers.map((t) => t.label)).toEqual(['1位', '2位', '3位', '4位〜']);
-    expect(kayoi?.rewards?.tiers[0]?.prizes.map((p) => p.name)).toEqual(['金メダル', '称号「11月の常連王」', '金の提灯']);
-    expect(dto.leagues.find((l) => l.id === 'hajimete')?.rewards?.tiers[0]?.prizes.map((p) => p.name)).toContain('金ののぼり');
-    expect(kayoi?.rewards?.tiers[3]).toMatchObject({ condition: '今月1回以上', prizes: [{ kind: 'stamp', name: '参加スタンプ' }] });
+    expect(kayoi?.rewards?.tiers.map((t) => t.label)).toEqual(['1位', '2位', '3位', '4〜5位', '6位〜']);
+    expect(kayoi?.rewards?.tiers[0]?.prizes).toEqual([
+      { kind: 'gold', name: '催太鼓の投げ頭巾', partId: 'hat.nagezukin', rarity: 'SSR', owned: false },
+      { kind: 'title', name: '天神さんの常連王', partId: 'title.kayoiKing', rarity: 'SSR', owned: false },
+      { kind: 'gold', name: '金メダル', partId: 'accessory.medal', rarity: 'SSR', owned: false },
+    ]);
+    expect(dto.leagues.find((l) => l.id === 'hajimete')?.rewards?.tiers[0]?.prizes.map((p) => p.name)).toEqual(['催太鼓の投げ頭巾', '天満の開拓王', '金メダル']);
+    expect(kayoi?.rewards?.tiers.slice(1).map((t) => t.prizes.map((p) => p.name))).toEqual([
+      ['天神さんの神牛', '銀メダル'], ['天満切子のグラス', '銅メダル'], ['天満の寄席の扇子', '月桂冠'], ['梅鉢もんの手ぬぐい', '応援フラッグ'],
+    ]);
+    expect(kayoi?.rewards?.tiers[3]).toMatchObject({ fromRank: 4, toRank: 5, prizes: [{ kind: 'item', partId: 'held.sensu' }, { partId: 'hat.laurel' }] });
+    expect(kayoi?.rewards?.tiers[4]).toMatchObject({ fromRank: 6, condition: '今月1回以上', prizes: [{ kind: 'stamp', partId: 'accessory.umeTenugui' }, { partId: 'held.cheerFlag' }] });
+    expect(kayoi?.rewards?.tiers[4]?.toRank).toBeUndefined();
+    expect(kayoi?.rewards?.keeps.map((k) => k.prizes?.map((p) => p.name))).toEqual([['梅鉢もんの大ちょうちん', '表彰台の旗'], ['天神祭の催太鼓', '金のトロフィー']]);
+  });
+
+  it('次にねらえる報酬: 記録なしは参加賞まであと1。3位ならひとつ上（2位）の人に並ぶまでの数', async () => {
+    const tw = createTestWorld();
+    await seedTraveler(tw);
+    const fresh = must(await new GetRankingUseCase(tw).execute()).leagues.find((l) => l.id === 'rookie');
+    expect(fresh?.nextPrize).toMatchObject({ gap: 1, label: '6位〜', prizes: [{ name: '梅鉢もんの手ぬぐい' }, { name: '応援フラッグ' }] });
+
+    const tw2 = createTestWorld();
+    await seedTraveler(tw2, { visits: [['l_jo01', -1], ['s_jo01', -1], ['s_jo03', 0]] });
+    const third = must(await new GetRankingUseCase(tw2).execute()).leagues.find((l) => l.id === 'rookie');
+    expect(third?.myRank).toBe(3);
+    expect(third?.nextPrize).toMatchObject({ gap: 1, label: '2位', prizes: [{ name: '天神さんの神牛' }, { name: '銀メダル' }] });
+  });
+
+  it('1位なら次の報酬は無い。卒業したルーキーリーグ（不参加）にも無い', async () => {
+    const tw = createTestWorld();
+    await seedTraveler(tw, { visits: [['l_jo01', -40], ...[0, -1, -2, -3, -4, -5].flatMap((day) => ['l_jo01', 's_jo01', 's_jo03'].map((spot): [string, number] => [spot, day]))] });
+    const dto = must(await new GetRankingUseCase(tw).execute());
+    expect(dto.leagues.find((l) => l.id === 'kayoi')).toMatchObject({ myRank: 1 });
+    expect(dto.leagues.find((l) => l.id === 'kayoi')?.nextPrize).toBeUndefined();
+    expect(dto.leagues.find((l) => l.id === 'rookie')?.nextPrize).toBeUndefined();
+  });
+
+  it('先月に参加していれば、締めた順位の段の報酬は手に入れている（今月の順位報酬は締めるまで手に入らない）', async () => {
+    const tw = createTestWorld();
+    await seedTraveler(tw, { visits: [['l_jo01', -20], ['l_jo01', -1], ['s_jo01', -1], ['s_jo03', 0]] });
+    const dto = must(await new GetRankingUseCase(tw).execute());
+    const kayoi = dto.leagues.find((l) => l.id === 'kayoi');
+    expect(kayoi?.rewards?.tiers[4]?.prizes).toMatchObject([{ name: '梅鉢もんの手ぬぐい', owned: true }, { name: '応援フラッグ', owned: true }]);
+    expect(kayoi?.rewards?.tiers.slice(0, 4).flatMap((t) => t.prizes).some((p) => p.owned)).toBe(false);
+  });
+
+  it('キープ報酬を達成していれば、その景品は手に入れている', async () => {
+    const tw = createTestWorld();
+    await seedTraveler(tw, { visits: [['l_jo01', -2], ['s_jo01', -2], ['s_jo03', -2]] });
+    const dto = must(await new GetRankingUseCase(tw).execute());
+    expect(dto.leagues.find((l) => l.id === 'rookie')?.rewards?.keeps[0]).toMatchObject({ state: 'achieved', prize: { name: '梅鉢もんの大ちょうちん', owned: true } });
+    expect(dto.leagues.find((l) => l.id === 'rookie')?.rewards?.keeps[1]?.prize.owned).toBe(false);
   });
 
   it('記録なし（今月0回）はどの段にも当たらず、キープ報酬はまだ', async () => {
@@ -135,7 +184,7 @@ describe('GetRankingUseCase リーグの違いと報酬', () => {
     const rookie = dto.leagues.find((l) => l.id === 'rookie');
     expect(rookie?.myRank).toBe(3);
     expect(rookie?.rewards?.tiers.find((t) => t.isMine)?.label).toBe('3位');
-    expect(rookie?.rewards?.keeps[0]).toMatchObject({ id: 'podium', state: 'keeping', heldHours: 0, remainingHours: 24, prize: { name: '表彰台の旗' } });
+    expect(rookie?.rewards?.keeps[0]).toMatchObject({ id: 'podium', state: 'keeping', heldHours: 0, remainingHours: 24, prize: { name: '梅鉢もんの大ちょうちん' } });
     expect(rookie?.rewards?.keeps[1]).toMatchObject({ id: 'top', state: 'not-yet' });
   });
 

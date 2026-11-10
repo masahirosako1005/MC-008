@@ -233,7 +233,7 @@ export async function discoverNearby(ctx: AppContext): Promise<readonly Discover
   const log = logger.fn('discoverNearby');
   const result = await ctx.services.discover.execute({ operationId: newOperationId() });
   if (!result.ok) return log.fail([], result.error.code);
-  for (const spot of result.value.newlyDiscovered) ctx.toast.show(`発見！ ${spot.name}（図鑑にシルエット登録）`, { kind: 'discover' });
+  for (const spot of result.value.newlyDiscovered) ctx.toast.show(`発見！ ${spot.name}`, { kind: 'discover' });
   return log.exit(result.value.newlyDiscovered);
 }
 

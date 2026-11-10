@@ -17,7 +17,6 @@ import type { TabBarHandle, TabItem } from '@/Common/ui/TabBar';
 import { ToastHost } from '@/Common/ui/Toast';
 import { createTopBar } from '@/Common/ui/TopBar';
 import type { AppContext } from '@/presentation/App/AppContext';
-import { createAppIcon } from '@/presentation/App/appIconArt';
 import { AppRouter } from '@/presentation/App/AppRouter';
 import type { RouteMatch, RouteName } from '@/presentation/App/AppRouter';
 import { createGearMenu } from '@/presentation/App/GearMenu';
@@ -37,17 +36,17 @@ import { mountLaunchScreen, shouldShowLaunch } from '@/presentation/screens/Laun
 
 const logger = createLogger('presentation/App/App');
 
-/** 下部タブの絵の一辺（CSS px） */
-const TAB_ART_PX = 28;
-
-/** 下部タブ（CLAUDE.md 6.1。絵はアイコン素材を使わず canvas で描く（appIconArt）。id はルートのパスと同じ。ランクは 2026-11-09 ユーザー指示で追加。マイ街は同日ユーザー指示でアバター（着せ替え）に置き換え） */
+/** 下部タブ（CLAUDE.md 6.1。絵は Common/ui/icons の線だけのアイコン（タブID＝アイコン名）。2026-11-10 ユーザー指示「色を排除してラインだけ」で canvas の色つきの絵から変更。id はルートのパスと同じ。ランクは 2026-11-09 ユーザー指示で追加。マイ街は同日ユーザー指示でアバター（着せ替え）に置き換え） */
 export const TAB_ITEMS: readonly TabItem[] = [
-  { id: 'map', label: '地図', icon: '◎', testId: 'tab-map', art: (): HTMLElement => createAppIcon('map', TAB_ART_PX) },
-  { id: 'zukan', label: '図鑑', icon: '▤', testId: 'tab-zukan', art: (): HTMLElement => createAppIcon('zukan', TAB_ART_PX) },
-  { id: 'avatar', label: 'アバター', icon: '☺', testId: 'tab-avatar', art: (): HTMLElement => createAppIcon('avatar', TAB_ART_PX) },
-  { id: 'ranking', label: 'ランキング', icon: '♛', testId: 'tab-ranking', art: (): HTMLElement => createAppIcon('ranking', TAB_ART_PX) },
-  { id: 'rank', label: 'ランク', icon: '◇', testId: 'tab-rank', art: (): HTMLElement => createAppIcon('rank', TAB_ART_PX) },
+  { id: 'map', label: '地図', icon: '◎', testId: 'tab-map' },
+  { id: 'zukan', label: '図鑑/記録', icon: '▤', testId: 'tab-zukan' },
+  { id: 'avatar', label: 'アバター', icon: '☺', testId: 'tab-avatar' },
+  { id: 'ranking', label: 'ランキング', icon: '♛', testId: 'tab-ranking' },
+  { id: 'rank', label: 'ランク', icon: '◇', testId: 'tab-rank' },
 ];
+
+/** 画面の切替のつなぎ（base.css の .screen のフェード 160ms）が終わるまでの時間（ms） */
+const ROUTE_FADE_MS = 200;
 
 /** ルートごとの画面ファクトリ */
 const SCREEN_FACTORIES: Readonly<Record<RouteName, ScreenFactory>> = {
@@ -118,6 +117,8 @@ export class App {
   private currentScreen: Screen | undefined;
   /** 画面切替の世代（mount 待ちの間に次の切替が来たら古い方の後処理をしない） */
   private routeToken = 0;
+  /** 直前のルート名（data-prev-route）を外すタイマー */
+  private prevRouteTimer: ReturnType<typeof setTimeout> | undefined;
   private started = false;
 
   /**
@@ -222,6 +223,7 @@ export class App {
     const log = logger.fn('showRoute', { name: route.name, params: route.params });
     const token = ++this.routeToken;
     this.unmountCurrent();
+    this.markRoute(route.name);
     this.tabBar.setActive(tabIdForRoute(route.name));
     const host = h('div', { class: 'screen', attrs: { 'data-testid': `screen-${route.name}`, 'data-route': route.name } });
     this.parts.screenRoot.append(host);
@@ -238,6 +240,27 @@ export class App {
     } finally {
       if (token === this.routeToken) this.parts.screenRoot.removeAttribute('aria-busy');
     }
+    log.exit(undefined);
+  }
+
+  /**
+   * スマホ枠に今のルート名と直前のルート名を書く（CSS が画面ごとの見た目を決めるのに使う。ランクの暗い画面は 2026-11-10 にやめたので、いま直前のルート名を使う CSS は無い）。
+   * 直前のルート名は、つなぎ（フェード）が終わるころに外す。
+   * @param name これから出すルート名
+   * @sideEffect phone の data-route／data-prev-route を書き換え、タイマーを登録する
+   */
+  private markRoute(name: RouteName): void {
+    const log = logger.fn('markRoute', { name });
+    const phone = this.parts.phone;
+    const prev = phone.dataset.route;
+    if (this.prevRouteTimer !== undefined) clearTimeout(this.prevRouteTimer);
+    if (prev === undefined || prev === name) delete phone.dataset.prevRoute;
+    else phone.dataset.prevRoute = prev;
+    phone.dataset.route = name;
+    this.prevRouteTimer = setTimeout(() => {
+      this.prevRouteTimer = undefined;
+      delete phone.dataset.prevRoute;
+    }, ROUTE_FADE_MS);
     log.exit(undefined);
   }
 

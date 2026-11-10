@@ -4,14 +4,18 @@
  * 見やすさのため、文字は最小限にして絵と動きで見せる:
  * - 上部は「ランキングどどーん！」のステージ（rankingStage.ts）。表彰台・エモート・あなた帯（順位・レース・出かける）
  * - リスト: 順位・アバター・名前・数だけ。すぐ上／すぐ後ろのライバルはエモート（！／炎）、地区の主はアバターの王冠で示す
- * - 報酬: メダル＋順位＋景品の1行ずつと、キープ報酬（「表彰台を24時間キープ → 表彰台の旗」）
+ * - 報酬はアバターの部品（メダル・称号・月桂冠・旗・トロフィー）。「この順位まではこれがもらえる」を順位表の上で見せて競わせる:
+ *   表彰台の台に1〜3位の報酬の絵、リストに段の帯（「4〜5位 → 月桂冠」。次の段には「あと○回」）、あなた帯に次の報酬までの数
+ * - 報酬: 報酬の絵＋順位＋名前の1行ずつと、キープ報酬（「表彰台を24時間キープ → 表彰台の旗」）。手に入れた報酬にはチェック
+ * - 報酬を手に入れたら全画面の演出（rankingPrizes.createPrizeGet）。「着る」でアバター画面へ
  * - 地区の主（かよいリーグのみ）: 5地区を小さなタイルで（地区名・主のアバター・あなた／あと○回）
  * - リーグのルール（3リーグの比較表）は一番下にたたんでおく
  * 初めての人でも活躍できるよう、最初に開くタブは「あなたが一番上位のリーグ」。基準 C。
  * 動きは prefers-reduced-motion: no-preference のときだけ（CSS 側と、順位の入れ替え演出の両方で判定）。
  */
+import { prefersReducedMotion } from '@/Common/ui/a11y/reducedMotion';
 import '@/presentation/screens/Ranking/RankingScreen.css';
-import type { KeepRewardDto, LeagueDto, LeagueIdDto, RankingDto, RankingEntryDto, RankingLordDto, RewardPrizeDto, RewardTierDto } from '@/application/dto/Dto';
+import type { KeepRewardDto, LeagueDto, LeagueIdDto, RankingDto, RankingEntryDto, RankingLordDto, RewardTierDto } from '@/application/dto/Dto';
 import { createLogger } from '@/Common/logging/logger';
 import { h, setStyle } from '@/Common/ui/dom';
 import { createIcon } from '@/Common/ui/icons';
@@ -28,17 +32,21 @@ import {
   keepChipOf,
   keepGoalTextOf,
   keepPercentOf,
-  listEntriesOf,
+  listItemsOf,
   lordStatusOf,
   metricShortOf,
   myEmoteOf,
   myEntryOf,
+  newPrizesOf,
+  nextGapLabelOf,
   raceLabelOf,
   rankChangeOf,
   rivalMarkOf,
   tabRankLabel,
-  tierPrizeTextOf,
+  tierOfRank,
+  tierUpOf,
 } from '@/presentation/screens/Ranking/rankingModel';
+import { createPrizeGet, createPrizeStrip, createTierBand, PRIZE_SIZE } from '@/presentation/screens/Ranking/rankingPrizes';
 import type { RankChange } from '@/presentation/screens/Ranking/rankingModel';
 import { createEmote, createStage } from '@/presentation/screens/Ranking/rankingStage';
 import type { AvatarMaker } from '@/presentation/screens/Ranking/rankingStage';
@@ -61,20 +69,20 @@ function leagueIconName(glyph: string): IconName { // audit-ignore: fnlog-missin
   return LEAGUE_ICONS[glyph] ?? 'star';
 }
 
-/** 順位が上がったとき、昨日の順位を見せてから今日の順位に入れ替えるまでの時間（ms。ステージの着地が終わるころ） */
-const RANK_SWAP_DELAY_MS = 1600;
+/** 順位が上がったとき、昨日の順位を見せてから今日の順位に入れ替えるまでの時間（ms。表示から 1.0 秒以内に今日の順位にする） */
+const RANK_SWAP_DELAY_MS = 450;
+
+/** この起動の中でステージの登場の演出を見せたか（2回目以降・タブの切替は、落下を省いて短いフェードだけにする） */
+let stageSeen = false;
 
 /** アバターの拡大率（1 で高さ約 70px） */
 const AVATAR_SCALE = { row: 0.42, me: 0.72, rival: 0.34, lord: 0.46 } as const;
 
-/** メダルの頭文字 */
-const MEDAL_GLYPH: Readonly<Record<'gold' | 'silver' | 'bronze', string>> = { gold: '金', silver: '銀', bronze: '銅' };
+/** 報酬獲得の演出を出すまでの時間（ms。ステージの着地が終わってから） */
+const PRIZE_GET_DELAY_MS = 1200;
 
-/** 景品の種類 → 線アイコン（メダルは丸い札、飾りはリーグごと） */
-const PRIZE_ICONS: Readonly<Record<'title' | 'stamp' | 'flag' | 'trophy', IconName>> = { title: 'crown', stamp: 'footprints', flag: 'flag', trophy: 'star' };
-
-/** リーグの飾り（表彰台の景品）の線アイコン */
-const ITEM_ICONS: Readonly<Record<LeagueIdDto, IconName>> = { kayoi: 'lantern', hajimete: 'flag', rookie: 'tree' };
+/** この起動中に獲得の演出を出した部品ID（アバター画面で見るまで NEW のままなので、ランキングを開くたびに繰り返さない） */
+const celebratedPartIds = new Set<string>();
 
 /** 報酬一覧の要素ID（「報酬」で飛ぶ先） */
 const REWARDS_ID = 'ranking-rewards';
@@ -91,27 +99,6 @@ export function createRankingScreen(ctx: AppContext): Screen {
     mount: (root: HTMLElement): Promise<void> => controller.mount(root),
     unmount: (): void => controller.unmount(),
   });
-}
-
-/**
- * 動きを減らす設定か。
- * @returns 減らす設定なら true
- */
-function prefersReducedMotion(): boolean {
-  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-/**
- * 景品の丸い印（メダルは金・銀・銅の色札、それ以外は線アイコン）を作る。
- * @param prize 景品
- * @param leagueId リーグ（飾りのアイコンを選ぶ）
- * @returns 要素（飾り。読み上げない）
- */
-function createPrizeMark(prize: RewardPrizeDto, leagueId: LeagueIdDto): HTMLElement { // audit-ignore: fnlog-missing 景品ごとに呼ぶ DOM 組立て（呼び出し側 createRewards でログ）
-  if (prize.kind === 'gold' || prize.kind === 'silver' || prize.kind === 'bronze') {
-    return h('span', { class: 'rk-mark', dataset: { medal: prize.kind }, attrs: { 'aria-hidden': 'true' }, text: MEDAL_GLYPH[prize.kind] });
-  }
-  return h('span', { class: 'rk-mark', dataset: { kind: prize.kind }, attrs: { 'aria-hidden': 'true' } }, [createIcon(prize.kind === 'item' ? ITEM_ICONS[leagueId] : PRIZE_ICONS[prize.kind])]);
 }
 
 /**
@@ -171,55 +158,66 @@ function rankingRow(entry: RankingEntryDto, league: LeagueDto, avatar: AvatarMak
 }
 
 /**
- * 表彰台より下のリストを作る（先頭に「表彰台まで あと○回」）。
+ * 表彰台より下のリストを作る。順位報酬の段の帯（「4〜5位 → 月桂冠」）をはさみ、次にねらえる段には「あと○回」を出す。
+ * 次の段が表彰台（リストに帯が無い）のときは、先頭に「表彰台まで あと○回」。
  * @param league リーグ
  * @param avatar アバターを作る関数
+ * @param base あなたの装い（報酬の絵に使う）
  * @returns 要素（4位以下がいなければ undefined）
  */
-function createList(league: LeagueDto, avatar: AvatarMaker): HTMLElement | undefined {
+function createList(league: LeagueDto, avatar: AvatarMaker, base: readonly string[]): HTMLElement | undefined {
   const log = logger.fn('createList', { leagueId: league.id });
-  const rows = listEntriesOf(league.entries);
-  if (rows.length === 0) return log.exit(undefined);
+  const items = listItemsOf(league);
+  if (!items.some((item) => item.kind === 'row')) return log.exit(undefined);
   const gap = league.podiumGap;
+  const nextInList = items.some((item) => item.kind === 'band' && item.state === 'next');
+  const gapLabel = nextGapLabelOf(league);
   return log.exit(
     h('div', { class: 'ranking-list-wrap' }, [
-      gap === undefined || gap === 0 ? undefined : h('p', { class: 'rk-podium-line', attrs: { 'data-testid': 'podium-line' } }, [createIcon('arrowUp'), `表彰台まで あと${countLabel(gap, league.unit)}`]),
-      h('ol', { class: 'ranking-list', attrs: { 'aria-label': '4位以下' } }, rows.map((e) => rankingRow(e, league, avatar))),
+      gap === undefined || gap === 0 || nextInList ? undefined : h('p', { class: 'rk-podium-line', attrs: { 'data-testid': 'podium-line' } }, [createIcon('arrowUp'), `表彰台まで あと${countLabel(gap, league.unit)}`]),
+      h('ol', { class: 'ranking-list', attrs: { 'aria-label': '4位以下' } }, items.map((item) => (item.kind === 'band' ? createTierBand(item.tier, base, item.state, gapLabel) : rankingRow(item.entry, league, avatar)))),
     ]),
   );
 }
 
 /**
- * 順位報酬の1段（メダル・順位・景品の1行）を作る。
+ * 順位報酬の1段（順位・報酬の絵・名前）を作る。名前は主役の報酬を1行、残りを小さく1行（どちらも折り返さず、入らなければ省略）。
  * @param tier 段
- * @param leagueId リーグ
+ * @param base あなたの装い（報酬の絵に使う）
  * @returns 要素
  */
-function rewardTierRow(tier: RewardTierDto, leagueId: LeagueIdDto): HTMLElement { // audit-ignore: fnlog-missing 段ごとに呼ぶ DOM 組立て（呼び出し側 createRewards でログ）
-  const head = tier.prizes[0];
-  return h('li', { class: ['rk-row', tier.isMine ? 'rk-row--mine' : undefined], attrs: { 'data-testid': 'reward-tier' } }, [
-    head === undefined ? h('span', { class: 'rk-mark' }) : createPrizeMark(head, leagueId),
-    h('strong', { class: 'rk-row__rank', text: tier.label }),
-    h('span', { class: 'rk-row__text', text: tierPrizeTextOf(tier) }),
-    tier.isMine ? h('span', { class: 'rk-row__mine', text: 'いまココ' }) : undefined,
+function rewardTierRow(tier: RewardTierDto, base: readonly string[]): HTMLElement { // audit-ignore: fnlog-missing 段ごとに呼ぶ DOM 組立て（呼び出し側 createRewards でログ）
+  const [lead, ...others] = tier.prizes;
+  return h('li', { class: ['rk-row', tier.isMine ? 'rk-row--mine' : undefined], attrs: { 'data-testid': 'reward-tier', 'aria-label': `${tier.label} ${tier.prizes.map((p) => p.name).join('・')}${tier.isMine ? '（いまの順位）' : ''}` } }, [
+    h('span', { class: 'rk-row__head', attrs: { 'aria-hidden': 'true' } }, [
+      h('strong', { class: 'rk-row__rank', text: tier.label }),
+      tier.isMine ? h('span', { class: 'rk-row__mine', text: 'いまココ' }) : undefined,
+    ]),
+    createPrizeStrip(tier.prizes, base, PRIZE_SIZE.card, true),
+    h('span', { class: 'rk-row__names', attrs: { 'aria-hidden': 'true' } }, [
+      h('strong', { class: 'rk-row__lead', text: lead?.name ?? '' }),
+      others.length === 0 ? undefined : h('span', { class: 'rk-row__sub', text: others.map((p) => p.name).join('・') }),
+    ]),
   ]);
 }
 
 /**
- * キープ報酬の1行（「表彰台を24時間キープ → 表彰台の旗」と状態）を作る。
+ * キープ報酬の1行（上に条件「表彰台を24時間キープ」、下に主役の報酬の名前。右に状態）を作る。
  * @param keep キープ報酬
- * @param leagueId リーグ
+ * @param base あなたの装い（報酬の絵に使う）
  * @returns 要素
  */
-function keepRow(keep: KeepRewardDto, leagueId: LeagueIdDto): HTMLElement { // audit-ignore: fnlog-missing キープ報酬ごとに呼ぶ DOM 組立て（呼び出し側 createRewards でログ）
+function keepRow(keep: KeepRewardDto, base: readonly string[]): HTMLElement { // audit-ignore: fnlog-missing キープ報酬ごとに呼ぶ DOM 組立て（呼び出し側 createRewards でログ）
   const status = keep.state === 'achieved' ? '獲得！' : keep.state === 'keeping' ? `あと${keep.remainingHours}時間` : undefined;
-  return h('li', { class: ['rk-row', 'rk-row--keep'], dataset: { state: keep.state }, attrs: { 'data-testid': `keep-${keep.id}` } }, [
-    createPrizeMark(keep.prize, leagueId),
-    h('span', { class: 'rk-row__keep' }, [
-      h('span', { class: 'rk-row__text' }, [keepGoalTextOf(keep), h('span', { class: 'rk-row__arrow', attrs: { 'aria-label': 'で' }, text: ' → ' }), h('strong', { text: keep.prize.name })]),
+  const prizes = keep.prizes ?? [keep.prize];
+  return h('li', { class: ['rk-row', 'rk-row--keep'], dataset: { state: keep.state }, attrs: { 'data-testid': `keep-${keep.id}`, 'aria-label': `${keepGoalTextOf(keep)}で ${prizes.map((prize) => prize.name).join('・')}${status === undefined ? '' : `（${status}）`}` } }, [
+    createPrizeStrip(prizes, base, PRIZE_SIZE.card, true),
+    h('span', { class: 'rk-row__names', attrs: { 'aria-hidden': 'true' } }, [
+      h('span', { class: 'rk-row__sub', text: keepGoalTextOf(keep) }),
+      h('strong', { class: 'rk-row__lead', text: keep.prize.name }),
       keep.state === 'keeping' ? createKeepBar(keep) : undefined,
     ]),
-    status === undefined ? undefined : h('span', { class: 'rk-row__status', text: status }),
+    status === undefined ? undefined : h('span', { class: 'rk-row__status', attrs: { 'aria-hidden': 'true' }, text: status }),
   ]);
 }
 
@@ -227,9 +225,10 @@ function keepRow(keep: KeepRewardDto, leagueId: LeagueIdDto): HTMLElement { // a
  * 今月の報酬（順位報酬とキープ報酬）を1枚のカードにまとめる。
  * @param dto ランキング
  * @param league リーグ
+ * @param base あなたの装い（報酬の絵に使う）
  * @returns 要素（報酬が無ければ undefined）
  */
-function createRewards(dto: RankingDto, league: LeagueDto): HTMLElement | undefined {
+function createRewards(dto: RankingDto, league: LeagueDto, base: readonly string[]): HTMLElement | undefined {
   const log = logger.fn('createRewards', { leagueId: league.id });
   const rewards = league.rewards;
   if (rewards === undefined) return log.exit(undefined, '報酬なし');
@@ -241,8 +240,8 @@ function createRewards(dto: RankingDto, league: LeagueDto): HTMLElement | undefi
         dto.closeLabel === undefined ? undefined : h('span', { class: 'rk-card__note', attrs: { 'data-testid': 'ranking-period' }, text: `${dto.closeLabel} 締め` }),
       ]),
       league.joined ? undefined : h('p', { class: 'rk-card__muted', text: '見学中のため対象外' }),
-      h('ol', { class: 'rk-rows' }, rewards.tiers.map((t) => rewardTierRow(t, league.id))),
-      h('ul', { class: ['rk-rows', 'rk-rows--keep'], attrs: { 'aria-label': 'キープ報酬' } }, rewards.keeps.map((k) => keepRow(k, league.id))),
+      h('ol', { class: 'rk-rows' }, rewards.tiers.map((t) => rewardTierRow(t, base))),
+      h('ul', { class: ['rk-rows', 'rk-rows--keep'], attrs: { 'aria-label': 'キープ報酬' } }, rewards.keeps.map((k) => keepRow(k, base))),
     ]),
   );
 }
@@ -263,6 +262,13 @@ class RankingController {
   private rulesOpen = false;
   /** 順位の入れ替え演出のタイマー */
   private swapTimer: ReturnType<typeof setTimeout> | undefined;
+  /** あなたの装い（報酬の絵は、これに報酬を着せて描く。読めなければ既定の姿） */
+  private myOutfit: readonly string[] = [];
+  /** 画面のルート（報酬獲得の演出を重ねる） */
+  private root: HTMLElement | undefined;
+  /** 報酬獲得の演出（出ていなければ undefined）と、出すまでのタイマー */
+  private prizeGet: HTMLElement | undefined;
+  private prizeGetTimer: ReturnType<typeof setTimeout> | undefined;
   /** 画面を離れた（以降の非同期結果は捨てる） */
   private disposed = false;
 
@@ -278,27 +284,70 @@ class RankingController {
   }
 
   /**
-   * 上部バーと本文を置き、ランキングとあなたのアバター（マイ街）を読み込んで描く。
+   * 上部バーと本文を置き、ランキングとあなたのアバター（マイ街・着せ替え）を読み込んで描く。
+   * 手に入れてまだ見ていない報酬があれば、ステージの着地のあとに獲得の演出を出す。
    * @param root 画面のルート要素
-   * @sideEffect root に DOM を追加し、services.ranking／myTown を呼ぶ
+   * @sideEffect root に DOM を追加し、services.ranking／myTown／avatar を呼ぶ。演出のタイマーを登録する
    */
   async mount(root: HTMLElement): Promise<void> {
     const log = logger.fn('mount');
+    this.root = root;
     root.append(createTopBar({ title: 'ランキング' }), this.body);
-    const [result, town] = await Promise.all([this.ctx.services.ranking.execute(), this.ctx.services.myTown.execute()]);
+    const [result, town, closet] = await Promise.all([this.ctx.services.ranking.execute(), this.ctx.services.myTown.execute(), this.ctx.services.avatar.execute()]);
     if (this.disposed) return log.exit(undefined, '画面を離れたため捨てる');
     if (!result.ok) {
       this.body.dataset.load = 'error';
       this.body.replaceChildren(h('p', { class: 'screen-message', text: result.error.message }));
       return log.fail(undefined, result.error.code);
     }
-    if (town.ok) this.myLook = avatarLookOfTown(town.value);
-    else log.warn('マイ街を読めないため、あなたのアバターは星のバッジにする', { code: town.error.code });
+    if (town.ok) {
+      this.myLook = avatarLookOfTown(town.value);
+      this.myOutfit = town.value.avatarPartIds;
+    } else log.warn('マイ街を読めないため、あなたのアバターは星のバッジにする', { code: town.error.code });
     this.dto = result.value;
     this.lordNames = new Set(result.value.lords.flatMap((l) => (l.lordName === undefined || l.isMe ? [] : [l.lordName])));
     this.avatarKeys = new Map(result.value.leagues.flatMap((l) => l.entries.map((e): [string, string] => [e.name, e.avatarKey])));
     this.selected = result.value.recommendedLeagueId;
     this.render();
+    if (closet.ok) this.schedulePrizeGet(result.value, new Set(closet.value.parts.filter((part) => part.owned && part.isNew).map((part) => part.id)));
+    else log.warn('着せ替えを読めないため、報酬獲得の演出は出さない', { code: closet.error.code });
+    log.exit(undefined);
+  }
+
+  /**
+   * 手に入れてまだ見ていない報酬があれば、獲得の演出を予約する（この起動中に出したものは繰り返さない）。
+   * @param dto ランキング
+   * @param newPartIds 手に入れてまだ見ていない部品ID
+   * @sideEffect タイマーを登録する
+   */
+  private schedulePrizeGet(dto: RankingDto, newPartIds: ReadonlySet<string>): void {
+    const prizes = newPrizesOf(dto, newPartIds).filter((prize) => prize.partId !== undefined && !celebratedPartIds.has(prize.partId));
+    const log = logger.fn('schedulePrizeGet', { prizes: prizes.length });
+    if (prizes.length === 0) return log.exit(undefined, '新しい報酬なし');
+    this.prizeGetTimer = setTimeout(() => {
+      this.prizeGetTimer = undefined;
+      if (this.disposed || this.root === undefined) return;
+      for (const prize of prizes) if (prize.partId !== undefined) celebratedPartIds.add(prize.partId);
+      this.prizeGet = createPrizeGet(prizes, this.myOutfit, {
+        onWear: (): void => {
+          this.closePrizeGet();
+          this.ctx.router.navigate('#/avatar');
+        },
+        onClose: (): void => this.closePrizeGet(),
+      });
+      this.root.append(this.prizeGet);
+    }, prefersReducedMotion() ? 0 : PRIZE_GET_DELAY_MS);
+    log.exit(undefined);
+  }
+
+  /**
+   * 報酬獲得の演出をとじる。
+   * @sideEffect 演出の要素を外す
+   */
+  private closePrizeGet(): void {
+    const log = logger.fn('closePrizeGet', { open: this.prizeGet !== undefined });
+    this.prizeGet?.remove();
+    this.prizeGet = undefined;
     log.exit(undefined);
   }
 
@@ -310,6 +359,9 @@ class RankingController {
     const log = logger.fn('unmount');
     this.disposed = true;
     this.clearSwapTimer();
+    if (this.prizeGetTimer !== undefined) clearTimeout(this.prizeGetTimer);
+    this.prizeGetTimer = undefined;
+    this.closePrizeGet();
     log.exit(undefined);
   }
 
@@ -376,19 +428,43 @@ class RankingController {
     if (league === undefined) return log.exit(undefined, 'リーグなし');
     this.clearSwapTimer();
     const avatar: AvatarMaker = this.avatarOf.bind(this);
+    const base = this.myOutfit;
+    const tierUp = tierUpOf(league);
     this.body.dataset.league = league.id;
+    this.body.dataset.quick = stageSeen ? '1' : '0';
+    stageSeen = true;
     this.body.replaceChildren(
       this.createTabs(dto, league.id),
       h('section', { class: 'ranking__panel', attrs: { role: 'tabpanel', 'data-testid': 'ranking-panel', 'data-league': league.id } }, [
-        createStage({ dto, league, avatar, meStrip: this.createMeStrip(league), onRewards: (): void => this.scrollToRewards(), leagueIcon: leagueIconName(league.icon) }),
-        createList(league, avatar),
-        createRewards(dto, league),
+        createStage({
+          dto,
+          league,
+          avatar,
+          meStrip: this.createMeStrip(league),
+          onRewards: (): void => this.scrollToRewards(),
+          leagueIcon: leagueIconName(league.icon),
+          prizeOf: this.podiumPrizeOf.bind(this, league),
+          ...(tierUp === undefined ? {} : { tierUp: createPrizeStrip(tierUp.prizes, base, PRIZE_SIZE.band) }),
+        }),
+        createList(league, avatar, base),
+        createRewards(dto, league, base),
       ]),
       ...(league.id === 'kayoi' ? [this.createLords(dto.lords)] : []),
       this.createLeagueRules(dto, league),
     );
     this.body.dataset.load = 'ready';
     log.exit(undefined);
+  }
+
+  /**
+   * 表彰台の台の正面に出す、その順位でもらえる報酬の絵を作る。
+   * @param league リーグ
+   * @param rank 順位
+   * @returns 要素（その順位の段が無ければ undefined）
+   */
+  private podiumPrizeOf(league: LeagueDto, rank: number): HTMLElement | undefined { // audit-ignore: fnlog-missing 表彰台の3枠ぶん呼ぶ DOM 組立て（絵は createPrizeStrip でログ）
+    const tier = tierOfRank(league, rank);
+    return tier === undefined ? undefined : createPrizeStrip(tier.prizes, this.myOutfit, PRIZE_SIZE.podium);
   }
 
   /**
@@ -447,6 +523,8 @@ class RankingController {
     setStyle(fill, '--race', `${gaugePercentOf(league)}%`);
     const hot = hotLabelOf(league);
     const keep = keepChipOf(league);
+    const next = league.nextPrize;
+    const nextGap = nextGapLabelOf(league);
     return log.exit(
       h('div', { class: 'race' }, [
         h('span', { class: 'race__track', attrs: { role: 'img', 'aria-label': above === undefined ? '1位を独走中' : `${above.rank}位 ${above.name}までの進み具合 ${gaugePercentOf(league)}%` } }, [
@@ -459,6 +537,11 @@ class RankingController {
           h('strong', { text: raceLabelOf(league) }),
           hot === undefined ? undefined : h('span', { class: ['race__chip', 'race__chip--hot'], text: hot }),
           keep === undefined ? undefined : h('span', { class: ['race__chip', 'race__chip--keep'], text: keep }),
+          next === undefined || nextGap === undefined
+            ? undefined
+            : h('span', { class: ['race__chip', 'race__chip--prize'], attrs: { 'data-testid': 'ranking-next-prize', 'aria-label': `${nextGap}で${next.label}の報酬 ${next.prizes.map((prize) => prize.name).join('・')}` } }, [
+                createPrizeStrip(next.prizes, this.myOutfit, PRIZE_SIZE.chip),
+              ]),
         ]),
       ]),
     );
@@ -513,7 +596,7 @@ class RankingController {
   }
 
   /**
-   * リーグタブを作る（リーグの色・アイコン・名前・あなたの順位）。
+   * リーグタブを作る（全画面共通の切替 .seg。リーグの色は小さな点・名前・あなたの順位）。
    * @param dto ランキング
    * @param selected 選択中のリーグ
    * @returns 要素
@@ -524,15 +607,15 @@ class RankingController {
       h(
         'button',
         {
-          class: ['league-tab', l.id === dto.recommendedLeagueId ? 'league-tab--recommended' : undefined],
+          class: ['seg__item', 'league-seg__item'],
           dataset: { league: l.id },
           attrs: { type: 'button', role: 'tab', 'aria-selected': l.id === selected ? 'true' : 'false', 'data-testid': `league-tab-${l.id}` },
           on: { click: userAction(`league-tab-${l.id}`, (): void => this.select(l.id)) },
         },
-        [h('span', { class: 'league-tab__name' }, [createIcon(leagueIconName(l.icon)), l.shortName]), h('span', { class: 'league-tab__rank', text: tabRankLabel(l) })],
+        [h('span', { class: 'league-seg__dot', attrs: { 'aria-hidden': 'true' } }), h('span', { class: 'league-seg__name', text: l.shortName }), h('span', { class: 'league-seg__rank', text: tabRankLabel(l) })],
       ),
     );
-    return log.exit(h('div', { class: 'league-tabs', attrs: { role: 'tablist', 'aria-label': 'リーグ' } }, tabs));
+    return log.exit(h('div', { class: ['seg', 'league-seg'], attrs: { role: 'tablist', 'aria-label': 'リーグ' } }, tabs));
   }
 
   /**

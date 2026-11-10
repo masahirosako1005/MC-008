@@ -53,7 +53,7 @@ function clampLevel(level: number): number {
 }
 
 /**
- * 成長段階と色あせを表すスウォッチ（色見本）を作る。
+ * 成長段階と色あせを表すスウォッチ（色見本）を作る。中に Lv の紋（地図の旗と同じ絵）を入れる。
  * @param opts 地区カードのオプション
  * @returns span 要素
  */
@@ -70,7 +70,11 @@ export function createDistrictSwatch(opts: Pick<DistrictCardOptions, 'color' | '
       dataset: { level, fade: opts.fadeKind, dashed: visual.dashed ? '1' : '0' },
       style: { '--swatch-fill': level === 0 ? 'transparent' : fadedFill(opts.color, visual, alpha) },
     },
-    [visual.icon === '' ? undefined : h('span', { class: 'district-swatch__icon' }, [createIcon('fade')])],
+    [
+      // 地図の旗と同じ「Lv の紋」（白い丸に Lv と数字）。色あせの印は右上に小さく添える
+      h('span', { class: 'district-swatch__lv' }, [h('small', { text: 'Lv' }), h('strong', { text: String(level) })]),
+      visual.icon === '' ? undefined : h('span', { class: 'district-swatch__icon' }, [createIcon('fade')]),
+    ],
   );
   return log.exit(swatch);
 }
@@ -86,7 +90,8 @@ export function createDistrictCard(opts: DistrictCardOptions): HTMLElement {
   const isFading = opts.fadeKind === 'fading';
   const head = h('span', { class: 'district-card__head' }, [
     h('span', { class: 'district-card__name', text: opts.name }),
-    h('span', { class: ['tag', 'tag--level'], text: `Lv${level}` }),
+    // Lv は左の色見本の紋で見せる（同じ情報を2回出さない）。読み上げ用にだけ文字を残す
+    h('span', { class: 'visually-hidden', text: `Lv${level}` }),
     opts.fadeLabel === undefined
       ? undefined
       : h('span', { class: ['tag', 'tag--fade'], dataset: { fade: opts.fadeKind } }, [isFading ? createIcon('fade') : undefined, opts.fadeLabel]),

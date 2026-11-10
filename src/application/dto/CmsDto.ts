@@ -145,3 +145,67 @@ export interface CmsVisitStatsDto {
   /** 施策の効果（発見→訪問・クーポン・おかえり） */
   readonly effects: readonly CmsCountDto[];
 }
+
+/** アンケートの選択肢ごとの数（docs/09 CMS-V03） */
+export interface CmsSurveyChoiceDto {
+  readonly key: string;
+  readonly label: string;
+  /** 選んだ回答の数 */
+  readonly count: number;
+  /** 回答全体に占める割合（%。整数） */
+  readonly pct: number;
+}
+
+/** 曜日・時間帯ごとの回答数と満足度 */
+export interface CmsSurveySlotDto {
+  readonly label: string;
+  readonly count: number;
+  /** 満足度の平均（小数1桁。回答が少ないときは undefined） */
+  readonly avg?: number;
+  /** いちばん多かった「気になったところ」の名前（2件以上あるときだけ） */
+  readonly topConcern?: string;
+  /** 数値の代わりに出す説明（「定休日」） */
+  readonly note?: string;
+}
+
+/** アンケートのひとこと */
+export interface CmsSurveyCommentDto {
+  /** 答えた日（'YYYY-MM-DD'） */
+  readonly date: string;
+  readonly satisfaction: number;
+  readonly text: string;
+}
+
+/** アンケートの集計（直近 windowDays 日。docs/09 CMS-V02〜V06） */
+export interface CmsSurveyDto {
+  /** 集計の終わりの日（今日） */
+  readonly today: string;
+  /** 集計の期間（日） */
+  readonly windowDays: number;
+  /** 回答の数（サンプルを含む） */
+  readonly total: number;
+  /** そのうちサンプルの数（0 ならすべてアプリからの回答） */
+  readonly sampleCount: number;
+  /** 満足度の平均（小数1桁。回答が無ければ undefined） */
+  readonly satisfactionAvg?: number;
+  /** 満足度の分布（5 → 1） */
+  readonly satisfaction: readonly CmsSurveyChoiceDto[];
+  /** 「また来たい」の割合（%。回答が無ければ undefined） */
+  readonly revisitPct?: number;
+  /** 来店のきっかけ */
+  readonly triggers: readonly CmsSurveyChoiceDto[];
+  /** よかったところ */
+  readonly goods: readonly CmsSurveyChoiceDto[];
+  /** 気になったところ */
+  readonly concerns: readonly CmsSurveyChoiceDto[];
+  /** 曜日別（月〜日） */
+  readonly byWeekday: readonly CmsSurveySlotDto[];
+  /** 時間帯別 */
+  readonly byTimeBand: readonly CmsSurveySlotDto[];
+  /** 直近14日の満足度の平均（回答が少ないときは undefined） */
+  readonly recentAvg?: number;
+  /** その前の14日の満足度の平均（回答が少ないときは undefined） */
+  readonly previousAvg?: number;
+  /** ひとこと（新しい順） */
+  readonly comments: readonly CmsSurveyCommentDto[];
+}

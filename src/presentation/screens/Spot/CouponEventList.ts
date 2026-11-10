@@ -26,7 +26,6 @@ function createShopEventCard(event: ShopEventDto): HTMLElement {
   const card = h('div', { class: ['card', 'spot-event'], attrs: { 'data-testid': 'shop-event', 'data-active': event.active ? '1' : '0', 'data-event-id': event.id } }, [
     tag,
     h('span', { class: 'spot-event__text' }, [
-      h('span', { class: 'spot-event__label', text: event.active ? '期限' : '予定' }),
       h('span', { class: 'spot-event__title', text: event.title }),
       h('span', { class: 'spot-event__sub', text: eventSubtitle(event) }),
       event.description.length === 0 ? undefined : h('span', { class: 'spot-event__desc', text: event.description }),

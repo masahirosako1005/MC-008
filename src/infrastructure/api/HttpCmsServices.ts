@@ -14,6 +14,7 @@ import type {
   CmsShopInfoDto,
   CmsShopInput,
   CmsShopSummaryDto,
+  CmsSurveyDto,
   CmsVisitStatsDto,
   RegisterShopEventInput,
   SaveShopInfoInput,
@@ -24,7 +25,7 @@ import { createHttpCmsAuthServices } from '@/infrastructure/api/HttpCmsAuthServi
 import type { HttpCmsAuthServicesOptions } from '@/infrastructure/api/HttpCmsAuthServices';
 import { requestApi } from '@/infrastructure/api/requestApi';
 import type { ApiClientDeps, ApiRequest } from '@/infrastructure/api/requestApi';
-import { CMS_SHOP_INFO_SHAPE, CMS_SHOP_LIST_SHAPE, CMS_VISIT_STATS_SHAPE } from '@/infrastructure/api/schema/cmsApiShapes';
+import { CMS_SHOP_INFO_SHAPE, CMS_SHOP_LIST_SHAPE, CMS_SURVEY_SHAPE, CMS_VISIT_STATS_SHAPE } from '@/infrastructure/api/schema/cmsApiShapes';
 import { parseWithShape } from '@/infrastructure/api/schema/shape';
 import type { Shape } from '@/infrastructure/api/schema/shape';
 import { WriteGuard } from '@/infrastructure/api/WriteGuard';
@@ -126,6 +127,7 @@ export function createHttpCmsServices(deps: HttpCmsServicesDeps = {}): CmsServic
       method: 'POST', path: cmsWithdrawPath(i.spotId, i.shopEventId), body: { operationId: i.operationId },
     }), info),
     visitStats: apiUseCase<CmsShopInput, CmsVisitStatsDto>(client, (i) => ({ method: 'GET', path: cmsShopPath(i.spotId, 'visit-stats') }), byShape(CMS_VISIT_STATS_SHAPE, 'CmsVisitStatsDto')),
+    survey: apiUseCase<CmsShopInput, CmsSurveyDto>(client, (i) => ({ method: 'GET', path: cmsShopPath(i.spotId, 'survey') }), byShape(CMS_SURVEY_SHAPE, 'CmsSurveyDto')),
     resetDemo: apiUseCase<void, void>(client, () => ({ method: 'POST', path: API_PATHS.cmsDemoReset, body: {} }), parseVoid),
     ...(deps.auth === undefined ? {} : { auth: createHttpCmsAuthServices(client.deps, deps.auth) }),
   }));

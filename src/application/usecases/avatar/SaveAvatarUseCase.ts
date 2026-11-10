@@ -19,7 +19,7 @@ import { normalizeOutfit } from '@/domain/avatar/AvatarUnlockPolicy';
 const logger = createLogger('application/usecases/avatar/SaveAvatarUseCase');
 
 /** SaveAvatarUseCase の依存 */
-export type SaveAvatarDeps = Pick<WorldDeps, 'session' | 'travelers' | 'spots'> & { readonly avatars: AvatarRepository };
+export type SaveAvatarDeps = Pick<WorldDeps, 'session' | 'travelers' | 'ledgers' | 'spots' | 'clock'> & { readonly avatars: AvatarRepository };
 
 /**
  * 入力の形を確かめる（配列の長さ・コーデの枠番号）。
@@ -53,7 +53,7 @@ function mergeSeen(before: readonly string[] | undefined, added: readonly unknow
 export class SaveAvatarUseCase implements UseCase<SaveAvatarInput, SaveAvatarOutput> {
   /**
    * 依存を受け取る。
-   * @param deps セッション・旅人・マスタ（所持の判定用）・装いのリポジトリ
+   * @param deps セッション・旅人・台帳とマスタ（所持の判定用）・装いのリポジトリ
    */
   constructor(private readonly deps: SaveAvatarDeps) {}
 
@@ -61,7 +61,7 @@ export class SaveAvatarUseCase implements UseCase<SaveAvatarInput, SaveAvatarOut
    * 装い・マイコーデ・見た部品を保存する。
    * @param input 保存する内容（省略した項目は変えない）
    * @returns 成功: 保存後の装い。失敗: INVALID_INPUT（形の違う入力）／TRAVELER_NOT_FOUND／STORAGE_FAILED
-   * @sideEffect 装いのリポジトリに書き込む
+   * @sideEffect 台帳を読み（所持の判定）、装いのリポジトリに書き込む
    */
   async execute(input: SaveAvatarInput): Promise<Result<SaveAvatarOutput>> {
     const log = logger.fn('execute', { outfit: input.outfit?.length, coord: input.coord?.index, seen: input.seenPartIds?.length });
@@ -69,9 +69,10 @@ export class SaveAvatarUseCase implements UseCase<SaveAvatarInput, SaveAvatarOut
     if (reason !== undefined) return log.fail(fail(AppError.of('INVALID_INPUT', '着せ替えの内容が正しくありません', { rule: reason })));
     const traveler = await loadActiveTraveler(this.deps);
     if (!traveler.ok) return log.fail(traveler);
-    const current = await this.deps.avatars.load(traveler.value.id);
+    const [current, ledger] = await Promise.all([this.deps.avatars.load(traveler.value.id), this.deps.ledgers.find(traveler.value.id)]);
     if (!current.ok) return log.fail(current);
-    const { owned } = wardrobeOf(traveler.value.visits, this.deps.spots);
+    if (!ledger.ok) return log.fail(ledger);
+    const { owned } = wardrobeOf(traveler.value, this.deps.spots, this.deps.clock, Number(ledger.value.balance()));
     const outfit = input.outfit === undefined ? outfitOfState(current.value, owned) : normalizeOutfit(input.outfit, owned);
     const coords = [...(current.value.coords ?? [])];
     while (coords.length < MAX_COORDS) coords.push(null);

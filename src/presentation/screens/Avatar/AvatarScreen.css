@@ -2,7 +2,7 @@
  * @file アバター画面（presentation/screens/Avatar）— キラキラ系アバターデザイナー
  * デザイン仕様（2026-11-09「モバゲーとかキラキラ系アバターデザイナーにしてほしい」）: 地は淡いクールグレー＋青の水玉、文字は --ink、
  * 輝きは①目 ②髪の天使の輪 ③レア枠の光 ④ステージの粒子 に集中。白文字を載せる面は --brand → --brand-ink（4.6:1 以上）。
- * 色は共通の体系（docs/10）だけ: 主ボタン・選択中・つけている印はブランドの青、試着中は --warning、
+ * 色は共通の体系（docs/10）だけ: 主ボタン・選択中・つけている印はブランドのオレンジ、試着中は --warning、
  * レア度の枠は金属の段（N 灰／R 銀／SR 金／SSR 伝説＝--legend-grad が流れる）。光の筋は絵の器と枠の上だけ。動きを減らす設定ではすべて止める。
  */
 
@@ -84,21 +84,20 @@
   clip-path: var(--kr-star);
   animation: avatar-twinkle 2s ease-in-out infinite;
 }
-.avatar-plate__name { font-size: 1.125rem; font-weight: 900; color: var(--kr-ink); line-height: 1.2; }
+.avatar-plate__name { font-size: 1.125rem; font-weight: 800; color: var(--kr-ink); line-height: 1.2; }
 .avatar-plate__rank { font-size: var(--fs-xs); color: var(--kr-sub); font-weight: 700; }
 .avatar-plate__title {
   display: inline-block;
   padding: 0.0625rem 0.625rem;
-  transform: skewX(-12deg);
-  border-radius: 4px;
+  border-radius: var(--radius-pill);
   font-size: 0.6875rem;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.04em;
   color: var(--g5);
   background: linear-gradient(180deg, #fff, var(--g1) 55%, var(--g2));
   box-shadow: inset 0 1px 0 #fff, 0 0 0 1px var(--g3);
 }
-.avatar-plate__title-text { display: inline-block; transform: skewX(12deg); }
+.avatar-plate__title-text { display: inline-block; }
 .avatar-plate__title--r { color: var(--metal-silver-ink); background: linear-gradient(180deg, #fff, var(--metal-silver-light) 45%, var(--metal-silver)); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px var(--metal-silver-edge); }
 .avatar-plate__title--sr { color: var(--metal-gold-ink); background: linear-gradient(180deg, #fff, var(--metal-gold-light) 50%, var(--metal-gold)); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px var(--metal-gold-edge); }
 .avatar-plate__title--ssr {
@@ -108,7 +107,7 @@
   animation: avatar-rainbow-flow 3s linear infinite;
 }
 
-.avatar-overlay__meta { position: absolute; right: 0.5rem; bottom: 0.875rem; }
+.avatar-overlay__meta { position: absolute; right: 0.5rem; bottom: 2rem; }
 .avatar-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; }
 .avatar-meta__chip {
   font-size: var(--fs-xs);
@@ -116,33 +115,27 @@
   padding: 0.1875rem 0.625rem;
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.92);
-  color: var(--kr-cta-bottom);
+  color: var(--brand-700);
   box-shadow: var(--kr-press);
 }
 .avatar-meta__chip--new { background: linear-gradient(180deg, var(--kr-cta-top), var(--kr-cta-bottom)); color: #fff; }
 
+/* 試着中の印（右上の歯車の下に小さく1語。中央のアバターに重ねない。名前・手に入れ方は下の詳しい情報に出す） */
 .avatar-overlay__ribbon { position: absolute; right: 0.5rem; top: 3.5rem; }
 .avatar-tryon {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.0625rem;
-  max-width: 13.5rem;
-  padding: 0.3125rem 0.75rem;
-  border-radius: 14px;
+  padding: 0.1875rem 0.625rem;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.94);
-  color: var(--kr-ink);
-  box-shadow: 0 0 0 2px var(--kr-try), 0 6px 14px color-mix(in srgb, var(--kr-try) 30%, transparent);
-  font-size: var(--fs-s);
+  color: var(--warning-ink);
+  box-shadow: 0 0 0 2px var(--kr-try);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  white-space: nowrap;
   animation: avatar-pop 220ms ease-out;
 }
-.avatar-tryon__row { display: flex; gap: 0.375rem; align-items: baseline; }
-.avatar-tryon b { color: var(--warning-ink); }
-.avatar-tryon em { font-style: normal; font-weight: 900; color: var(--kr-cta-bottom); }
-.avatar-tryon__hint { font-size: var(--fs-xs); color: var(--kr-sub); white-space: normal; text-align: right; }
 
-/* ポーズ */
-.avatar-poses { position: absolute; left: 0.5rem; bottom: 0.875rem; display: flex; gap: 0.375rem; pointer-events: auto; }
+/* ポーズ（左下に 2×2。横1列だとアバターの足元の輪に重なるため） */
+.avatar-poses { position: absolute; left: 0.5rem; bottom: 0.875rem; display: grid; grid-template-columns: repeat(2, 2.75rem); gap: 0.375rem; pointer-events: auto; }
 .avatar-pose {
   width: 2.75rem;
   height: 2.75rem;
@@ -158,7 +151,7 @@
 }
 .avatar-pose__art { display: block; }
 .avatar-pose:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--brand-100); }
-.avatar-pose[aria-pressed="true"] { border-color: #fff; background: radial-gradient(circle, var(--brand-50), var(--brand-100)); box-shadow: 0 0 0 3px var(--kr-on), var(--kr-press); }
+.avatar-pose[aria-pressed="true"] { border-color: #fff; background: var(--brand-50); box-shadow: 0 0 0 2px var(--kr-ink); }
 
 /* ---------------- 操作の列 ---------------- */
 .avatar-actions {
@@ -169,41 +162,38 @@
   padding: 0.5rem var(--gutter) 0.625rem;
   background: var(--kr-bg);
 }
+/* 副ボタン（共通の .btn と同じ形: 白＋細い枠・高さ 48px・同じ角丸）。3つを同じ幅で並べる */
 .avatar-action {
   position: relative;
+  flex: 1 1 0;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  min-height: 2.75rem;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 3rem;
   padding: 0 0.75rem;
-  border-radius: var(--radius-pill);
-  border: 2px solid var(--brand-100);
-  background: #fff;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--surface);
   color: var(--kr-ink);
-  font-size: var(--fs-s);
-  font-weight: 800;
-  box-shadow: var(--kr-press);
-  overflow: hidden;
+  font: inherit;
+  font-size: var(--fs-m);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--line);
+  white-space: nowrap;
   cursor: pointer;
 }
-.avatar-action:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--brand-100); }
+.avatar-action:active { background: var(--g1); transform: scale(0.98); }
+/* 主な操作（おまかせ）: --brand-ink のベタ。つやの帯・立体の縁・流れる光は付けない（2026-11-10 ユーザー「アクティブのボタンがポップ」） */
 .avatar-action--primary {
   border-color: transparent;
   color: #fff;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0 30%, transparent 30%), linear-gradient(180deg, var(--kr-cta-top), var(--kr-cta-bottom));
-  box-shadow: 0 3px 0 var(--kr-cta-edge), 0 6px 14px color-mix(in srgb, var(--brand) 25%, transparent);
+  background: var(--kr-cta-bottom);
+  box-shadow: none;
 }
-.avatar-action--primary:active { box-shadow: 0 1px 0 var(--kr-cta-edge); }
-.avatar-action--primary::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(110deg, transparent 40%, rgba(255, 255, 255, 0.45) 50%, transparent 60%);
-  transform: translateX(-120%);
-  animation: avatar-sweep 4s ease-in-out infinite;
-  pointer-events: none;
-}
-.avatar-actions__status { margin-left: auto; display: inline-flex; align-items: center; gap: 0.25rem; font-size: var(--fs-xs); font-weight: 700; color: var(--kr-sub); }
+.avatar-action--primary:active { box-shadow: none; }
+/* 保存の状態（ステージの右下。ボタンに見せない: 面も枠も付けない小さな文字） */
+.avatar-actions__status { position: absolute; right: 0.75rem; bottom: 0.625rem; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.6875rem; font-weight: 700; line-height: 1rem; color: var(--g5); }
 .avatar-actions__status:not([data-state="saved"]) .avatar-actions__check { display: none; }
 .avatar-actions__status[data-state="error"] { color: var(--danger-ink); }
 
@@ -230,31 +220,22 @@
   min-height: 2.75rem;
   padding: 0.3125rem 0.5rem 0.375rem;
   border: 0;
-  border-radius: 18px;
+  border-radius: var(--radius-m);
   background: transparent;
   color: var(--kr-sub);
   cursor: pointer;
 }
 .avatar-tab__bubble { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 50%; background: #fff; }
-.avatar-tab__icon { display: block; }
-.avatar-tab__label { font-size: var(--fs-xs); font-weight: 800; white-space: nowrap; }
+.avatar-tab__icon { display: block; color: var(--kr-sub); }
+.avatar-tab[aria-selected="true"] .avatar-tab__icon { color: var(--kr-ink); stroke-width: 2.1; }
+.avatar-tab__label { font-size: 0.6875rem; font-weight: 700; white-space: nowrap; }
+/* 選んでいるタブ: 下部タブと同じ白い札＋淡い輪・墨の線・太字（オレンジのグラデーション・立体の縁・きらめく星はやめた＝2026-11-10 ユーザー「アクティブのボタンがポップ」） */
 .avatar-tab[aria-selected="true"] {
-  color: #fff;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0 30%, transparent 30%), linear-gradient(180deg, var(--kr-cta-top), var(--kr-cta-bottom));
-  box-shadow: 0 3px 0 var(--kr-cta-edge);
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--brand-200), 0 2px 6px rgba(42, 33, 27, 0.08);
 }
-.avatar-tab[aria-selected="true"] .avatar-tab__bubble { background: rgba(255, 255, 255, 0.9); }
-.avatar-tab[aria-selected="true"]::before {
-  content: "";
-  position: absolute;
-  top: 0.375rem;
-  right: 0.625rem;
-  width: 6px;
-  height: 6px;
-  background: #fff;
-  clip-path: var(--kr-star);
-  animation: avatar-twinkle 1.6s ease-in-out infinite;
-}
+.avatar-tab[aria-selected="true"] .avatar-tab__bubble { background: var(--brand-50); }
 .avatar-tab__new {
   position: absolute;
   top: 0;
@@ -265,8 +246,8 @@
   border: 1.5px solid #fff;
   background: linear-gradient(180deg, var(--kr-cta-top), var(--kr-cta-bottom));
   color: #fff;
-  font-size: 0.625rem;
-  font-weight: 900;
+  font-size: 0.6875rem;
+  font-weight: 800;
   line-height: 1rem;
   text-align: center;
 }
@@ -280,13 +261,15 @@
   background: radial-gradient(circle, var(--kr-dot) 1px, transparent 1.5px) 0 0 / 16px 16px, var(--kr-bg);
 }
 .avatar-panel { padding: 0.75rem var(--gutter) 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
-.avatar-sub { display: flex; align-items: center; gap: 0.375rem; margin: 0.25rem 0 0; font-size: 0.875rem; font-weight: 800; color: var(--kr-ink); }
-.avatar-sub::before { content: ""; flex: none; width: 10px; height: 10px; background: linear-gradient(135deg, var(--brand-300), var(--brand)); clip-path: var(--kr-star); }
+.avatar-sub { display: flex; align-items: center; gap: 0.375rem; margin: 0; font-size: 0.8125rem; font-weight: 700; color: var(--g5); }
 .avatar-icon { display: inline-block; flex: none; vertical-align: middle; }
 .avatar-icon-text { display: inline-flex; align-items: center; gap: 0.375rem; }
 
 /* 部品の格子（階級枠は padding-box／border-box の二重背景） */
-.avatar-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem 0.5rem; padding-top: 4px; }
+.avatar-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; }
+/* 文字の大きさ「大」「特大」は3列（4列のままでは絵の器と名前がマスに入らない） */
+html[data-text-scale="large"] .avatar-grid,
+html[data-text-scale="xlarge"] .avatar-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .avatar-item {
   --frame: linear-gradient(var(--g3), var(--g3));
   --card: linear-gradient(180deg, #fff, var(--g1));
@@ -296,8 +279,8 @@
   flex-direction: column;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.375rem 0.25rem 0.5rem;
-  border-radius: 14px;
+  padding: 0.375rem 0.125rem 0.5rem; /* 左右は 2px: 7字の名前（ふわふわパーマ）を1行に収める */
+  border-radius: var(--radius-m);
   border: 2px solid transparent;
   background: var(--card) padding-box, var(--frame) border-box;
   box-shadow: var(--kr-press);
@@ -315,10 +298,12 @@
   place-items: center;
   width: 4rem;
   height: 4rem;
-  border-radius: 10px;
+  border-radius: var(--radius-m);
   background: radial-gradient(circle at 50% 40%, #fff, var(--well));
   overflow: hidden;
 }
+/* 絵（canvas は 64px で描く）は器いっぱいに広げる（文字の大きさ「大」「特大」で器と札が一緒に大きくなっても、絵だけ小さく残さない） */
+.avatar-item__art > .avatar-thumb { width: 100% !important; height: 100% !important; }
 .avatar-item--sr .avatar-item__art::after,
 .avatar-item--ssr .avatar-item__art::after {
   content: "";
@@ -331,7 +316,7 @@
   pointer-events: none;
 }
 .avatar-item--ssr .avatar-item__art::after { background: linear-gradient(115deg, transparent 41%, rgba(255, 255, 255, 0.85) 50%, transparent 59%); animation-duration: 2.8s; }
-.avatar-item__art--none { display: grid; place-items: center; }
+.avatar-item__art--none { display: grid; place-items: center; color: var(--kr-sub); }
 .avatar-thumb { display: block; position: relative; }
 .avatar-item__name {
   position: relative;
@@ -339,15 +324,25 @@
   max-width: 100%;
   font-size: 0.6875rem;
   font-weight: 800;
+  letter-spacing: -0.08em; /* 7字の名前（もこもこアフロ）を1行に収める */
   color: var(--kr-ink);
   line-height: 1.25;
   text-align: center;
+  /* 2行になる名前は語の区切り（phraseBreak が入れる wbr）でだけ折る（「紅葉の／ポンチョ」）。1語が入らないときだけ途中で折り、2行で省略 */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
-.avatar-item--locked .avatar-item__art canvas { filter: saturate(0.3); opacity: 0.7; }
+/* まだ持っていない部品は白黒（枠・器・絵・札から色を抜く。2026-11-10 ユーザー指示）。押すと上に手に入れ方が出る */
+.avatar-item--locked { --frame: linear-gradient(var(--g3), var(--g3)); --card: linear-gradient(180deg, #fff, var(--g1)); --well: var(--g1); animation: none; }
+.avatar-item--locked .avatar-item__art canvas { filter: grayscale(1); opacity: 0.7; }
+.avatar-item--locked .avatar-rarity,
+.avatar-item--locked .avatar-place { filter: grayscale(1); animation: none; }
+.avatar-item--locked .avatar-item__art::after { display: none; }
 .avatar-item__lock {
   position: absolute;
   top: 0.375rem;
@@ -360,73 +355,77 @@
   gap: 0.125rem;
   width: 4rem;
   height: 4rem;
-  border-radius: 10px;
-  background: rgba(17, 24, 39, 0.32);
+  border-radius: var(--radius-m);
+  background: rgba(42, 33, 27, 0.32);
 }
-.avatar-item__lock .avatar-icon { display: block; }
+.avatar-item__lock .avatar-icon { display: block; color: #fff; filter: drop-shadow(0 1px 1px rgba(42, 33, 27, 0.45)); }
 .avatar-item__lock small {
-  font-size: 0.625rem;
+  align-self: center;
+  font-size: 0.6875rem;
   font-weight: 800;
-  padding: 0 0.375rem;
+  line-height: 1rem;
+  padding: 0 0.1875rem;
   border-radius: var(--radius-pill);
   background: #fff;
-  color: var(--kr-cta-bottom);
+  color: var(--brand-700);
   box-shadow: 0 0 0 1px var(--kr-line-strong);
+  letter-spacing: -0.04em;
+  white-space: nowrap; /* 「もうすこし」を2行に割らない */
 }
-.avatar-item--on { box-shadow: 0 0 0 2px #fff, 0 0 0 5px var(--kr-on), var(--kr-press); }
-.avatar-item--trying { transform: translateY(-3px); box-shadow: 0 0 0 3px var(--kr-try), 0 6px 14px color-mix(in srgb, var(--kr-try) 35%, transparent); }
-.avatar-item--selected:not(.avatar-item--on):not(.avatar-item--trying) { box-shadow: 0 0 0 2px var(--kr-accent-soft), var(--kr-press); }
+/* つけている・試着中・選択中の輪はカードの内側に描く（外にはみ出させず、格子の左右 16px を保つ） */
+.avatar-item--on { outline: 3px solid var(--kr-on); outline-offset: -3px; }
+.avatar-item--trying { outline: 3px solid var(--kr-try); outline-offset: -3px; }
+.avatar-item--selected:not(.avatar-item--on):not(.avatar-item--trying) { outline: 2px solid var(--kr-accent-soft); outline-offset: -2px; }
 
-/* レア度バッジ（平行四辺形の金属グラデ） */
+/*
+ * レア度の札（図鑑のカードと同じ形: 絵の右上に載る小さなピル・11px・濃い半透明の地に白文字。最上位だけ虹）。
+ * 部品のカードでは絵の器（4rem）の右上、詳しい情報では名前の横に並ぶ。
+ */
 .avatar-rarity {
   position: absolute;
-  top: -6px;
-  left: -4px;
+  top: 0.5625rem;
+  right: calc(50% - 2rem + 0.1875rem);
   z-index: 2;
   display: inline-block;
-  height: 16px;
+  min-width: 1.5rem;
   padding: 0 0.375rem;
-  transform: skewX(-12deg);
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: 900;
+  border-radius: var(--radius-pill);
+  font-size: 0.6875rem;
+  font-weight: 800;
   letter-spacing: 0.04em;
-  line-height: 16px;
-  color: var(--g5);
-  background: linear-gradient(180deg, #fff, var(--g1) 55%, var(--g2));
-  box-shadow: inset 0 1px 0 #fff, 0 0 0 1px var(--g3);
+  line-height: 1rem;
+  text-align: center;
+  color: #fff;
+  background: rgba(42, 33, 27, 0.78);
 }
-.avatar-rarity__text { display: inline-block; transform: skewX(12deg); }
-.avatar-rarity--r { color: var(--metal-silver-ink); background: linear-gradient(180deg, #fff, var(--metal-silver-light) 45%, var(--metal-silver)); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px var(--metal-silver-edge); }
-.avatar-rarity--sr { color: var(--metal-gold-ink); background: linear-gradient(180deg, #fff, var(--metal-gold-light) 50%, var(--metal-gold)); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px var(--metal-gold-edge); }
+.avatar-rarity__text { display: inline-block; }
 .avatar-rarity--ssr {
   color: var(--metal-legend-ink);
   background: var(--legend-grad) 0 0 / 300% 100%;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 0 0 1px var(--metal-legend-edge);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.95);
   animation: avatar-rainbow-flow 3s linear infinite;
 }
+.avatar-title .avatar-rarity { top: 0.5rem; right: 0.5rem; }
 
 .avatar-badge {
   position: absolute;
-  top: -6px;
-  right: -4px;
+  top: 0.5625rem;
+  left: calc(50% - 2rem + 0.1875rem);
   z-index: 2;
   border-radius: var(--radius-pill);
-  font-size: 9px;
-  font-weight: 900;
-  line-height: 15px;
-  padding: 0 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  line-height: 1rem;
+  padding: 0 0.3125rem;
 }
+.avatar-title .avatar-badge { top: auto; bottom: 0.5rem; left: auto; right: 0.5rem; }
 .avatar-badge--new {
-  border: 1.5px solid #fff;
-  background: linear-gradient(180deg, var(--kr-cta-top), var(--kr-cta-bottom));
+  background: var(--kr-cta-bottom);
   color: #fff;
-  transform: rotate(-8deg);
-  animation: avatar-pulse 1.6s ease-in-out infinite;
 }
-.avatar-badge--on { position: absolute; bottom: 1.75rem; right: 0.25rem; z-index: 2; border-radius: 50%; box-shadow: 0 0 0 2px #fff; }
+.avatar-badge--on { position: absolute; top: auto; left: auto; bottom: 1.75rem; right: 0.25rem; z-index: 2; padding: 0; border-radius: 50%; background: #fff; color: var(--kr-ink); box-shadow: 0 0 0 2px #fff; }
 
-/* 色のチップ（球のつや） */
+/* 色のチップ（平らな色見本。つや・立体の影・星は付けない＝2026-11-10 ユーザー「色選択がポップなので落ち着いた表現に」。選んだ色は細い墨の輪とすき間） */
 .avatar-chips { display: flex; flex-direction: column; gap: 0.5rem; }
 .avatar-chips__row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .avatar-chip {
@@ -434,26 +433,17 @@
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 50%;
-  border: 3px solid #fff;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.55) 0, transparent 45%), var(--chip, var(--g3));
-  box-shadow: 0 0 0 1px var(--brand-100), 0 3px 0 var(--brand-100);
+  border: 0;
+  background: var(--chip, var(--g3));
+  box-shadow: inset 0 0 0 1px rgba(42, 33, 27, 0.14);
   cursor: pointer;
 }
-.avatar-chip--on { box-shadow: 0 0 0 3px var(--kr-on), 0 3px 0 var(--brand-100); }
-.avatar-chip--on::after {
-  content: "";
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 12px;
-  height: 12px;
-  background: #fff;
-  clip-path: var(--kr-star);
-  filter: drop-shadow(0 0 1px var(--kr-on));
-}
-.avatar-chip--trying { box-shadow: 0 0 0 3px var(--kr-try); }
+/* 選んだ色の輪は丸の内側に描く（外にはみ出させず、左右 16px を保つ） */
+.avatar-chip--on { box-shadow: inset 0 0 0 2px var(--kr-ink), inset 0 0 0 4px var(--kr-bg); }
+.avatar-chip--trying { box-shadow: inset 0 0 0 2px var(--kr-sub), inset 0 0 0 4px var(--kr-bg); }
 .avatar-chip--locked { filter: saturate(0.6); }
 .avatar-chip__lock { position: absolute; inset: 0; display: grid; place-items: center; }
+.avatar-chip__lock .avatar-icon { box-sizing: content-box; padding: 3px; border-radius: 50%; background: rgba(42, 33, 27, 0.45); color: #fff; }
 .avatar-chip__new { position: absolute; top: -0.125rem; right: -0.125rem; width: 0.625rem; height: 0.625rem; border-radius: 50%; background: var(--kr-accent); border: 2px solid #fff; }
 
 /* 選んだ部品の詳しい情報（部品カードと同じ階級枠） */
@@ -465,7 +455,7 @@
   flex-direction: column;
   gap: 0.375rem;
   padding: 0.75rem 0.875rem;
-  border-radius: 18px;
+  border-radius: var(--radius-m);
   border: 2px solid transparent;
   background: var(--card) padding-box, var(--frame) border-box;
   box-shadow: var(--kr-press);
@@ -483,6 +473,8 @@
   clip-path: var(--kr-star);
   animation: avatar-twinkle 2s ease-in-out infinite;
 }
+/* まだ持っていない部品の手に入れ方は、格子を下まで送っていても見えるように上に留める */
+.avatar-detail--locked { position: sticky; top: 0.5rem; z-index: 3; }
 .avatar-detail--r { --frame: var(--kr-frame-silver); }
 .avatar-detail--sr { --frame: var(--kr-frame-gold); --card: linear-gradient(180deg, var(--kr-card-gold), #fff); }
 .avatar-detail--ssr { --frame: var(--legend-grad); --card: var(--kr-card-legend); background-size: 100% 100%, 300% 100%; animation: avatar-pop 200ms ease-out, avatar-rainbow-flow 4s linear infinite; }
@@ -496,14 +488,16 @@
   pointer-events: none;
 }
 .avatar-detail__head { position: relative; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.avatar-detail__head .avatar-rarity { position: relative; top: 0; left: 0; }
-.avatar-detail__name { font-size: var(--fs-m); font-weight: 900; color: var(--kr-ink); }
-.avatar-detail__status { margin-left: auto; margin-right: 1rem; font-size: var(--fs-xs); color: var(--kr-cta-bottom); font-weight: 800; }
+.avatar-detail__head .avatar-rarity { position: relative; top: 0; right: 0; }
+.avatar-detail__name { font-size: var(--fs-m); font-weight: 800; color: var(--kr-ink); }
+.avatar-detail__status { margin-left: auto; margin-right: 1rem; font-size: var(--fs-xs); color: var(--brand-700); font-weight: 800; }
 .avatar-detail__status--locked { color: var(--kr-sub); }
-.avatar-detail__hint { margin: 0; font-size: var(--fs-s); color: var(--kr-sub); font-weight: 700; }
+.avatar-detail__hint { margin: 0; font-size: var(--fs-s); color: var(--kr-sub); font-weight: 700; word-break: auto-phrase; }
+.avatar-detail__hint .avatar-icon-text { display: flex; align-items: flex-start; }
+.avatar-detail__hint .avatar-icon { margin-top: 0.2em; }
 .avatar-detail__actions { position: relative; z-index: 1; display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
-/* 進み具合のバー（斜縞が流れ、先端に星） */
+/* 進み具合のバー（斜縞と、先端に星。縞は流さない＝ずっと動くものは「星のまたたき・光の筋・虹の流れ」の3種類まで） */
 .avatar-progress { display: flex; align-items: center; gap: 0.5rem; }
 .avatar-progress__bar { position: relative; flex: 1; height: 10px; border-radius: var(--radius-pill); background: var(--brand-100); box-shadow: inset 0 1px 2px color-mix(in srgb, var(--brand-800) 15%, transparent); }
 .avatar-progress__fill {
@@ -516,7 +510,6 @@
     linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0 50%, transparent 50%),
     repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.28) 0 4px, transparent 4px 8px) 0 0 / 11.3px 11.3px,
     linear-gradient(90deg, var(--brand-300), var(--brand) 60%, var(--brand-600));
-  animation: avatar-stripes 1.2s linear infinite;
 }
 .avatar-progress__fill::after {
   content: "";
@@ -532,30 +525,34 @@
 }
 .avatar-progress__text { font-size: var(--fs-xs); font-weight: 800; color: var(--kr-sub); white-space: nowrap; }
 
+/* パネルの中のボタン（共通の .btn と同じ形: 副＝白＋細い枠／主＝ブランドのベタ。高さ 48px・同じ角丸） */
 .avatar-pill {
   position: relative;
-  min-height: 2.75rem;
+  min-height: 3rem;
   padding: 0 1rem;
-  border-radius: var(--radius-pill);
-  border: 2px solid var(--brand-100);
-  background: #fff;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--surface);
   color: var(--kr-ink);
+  font: inherit;
   font-size: var(--fs-s);
-  font-weight: 800;
-  box-shadow: var(--kr-press);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--line);
+  white-space: nowrap;
   cursor: pointer;
 }
-.avatar-pill:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--brand-100); }
+.avatar-pill:active { background: var(--g1); transform: scale(0.98); }
 .avatar-pill--primary {
-  border-color: transparent;
   color: #fff;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0 30%, transparent 30%), linear-gradient(180deg, var(--kr-cta-top), var(--kr-cta-bottom));
-  box-shadow: 0 3px 0 var(--kr-cta-edge), 0 6px 14px color-mix(in srgb, var(--brand) 20%, transparent);
+  background: var(--kr-cta-bottom);
+  box-shadow: none;
 }
-.avatar-pill--on { background: var(--warning-soft); border-color: var(--kr-try); }
+.avatar-pill--primary:active { background: var(--brand-700); }
+.avatar-pill--on { background: var(--warning-soft); box-shadow: inset 0 0 0 1.5px var(--kr-try); }
 
 /* 称号 */
-.avatar-titles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem 0.5rem; padding-top: 4px; }
+.avatar-titles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+html[data-text-scale="xlarge"] .avatar-titles { grid-template-columns: minmax(0, 1fr); } /* 特大は1列（2列では6字の称号が入らない） */
 .avatar-title {
   --frame: linear-gradient(var(--g3), var(--g3));
   --card: linear-gradient(#fff, #fff);
@@ -565,60 +562,25 @@
   align-items: flex-start;
   gap: 0.25rem;
   min-height: 4rem;
-  padding: 0.75rem 0.625rem 0.5rem;
-  border-radius: 14px;
+  padding: 0.625rem 0.625rem 0.5rem;
+  border-radius: var(--radius-m);
   border: 2px solid transparent;
   background: var(--card) padding-box, var(--frame) border-box;
   box-shadow: var(--kr-press);
   text-align: left;
   cursor: pointer;
 }
-.avatar-title b { font-size: var(--fs-s); font-weight: 900; color: var(--kr-ink); }
-.avatar-title small { font-size: 0.625rem; color: var(--kr-sub); font-weight: 700; line-height: 1.3; }
+/* 称号は語の区切り（phraseBreak が入れる wbr）でだけ折る。手に入れ方の文は行の長さをそろえて、1〜2字だけ次の行に落とさない */
+.avatar-title b { padding-right: 2.25rem; font-size: var(--fs-s); font-weight: 800; color: var(--kr-ink); word-break: keep-all; overflow-wrap: anywhere; text-wrap: balance; }
+.avatar-title small { font-size: 0.6875rem; color: var(--kr-sub); font-weight: 700; line-height: 1.3; word-break: auto-phrase; text-wrap: balance; }
 .avatar-title--r { --frame: var(--kr-frame-silver); }
 .avatar-title--sr { --frame: var(--kr-frame-gold); --card: linear-gradient(180deg, var(--kr-card-gold), #fff); }
 .avatar-title--ssr { --frame: var(--legend-grad); --card: var(--kr-card-legend); background-size: 100% 100%, 300% 100%; animation: avatar-rainbow-flow 4s linear infinite; }
-.avatar-title--locked { opacity: 0.75; }
-.avatar-title--on { box-shadow: 0 0 0 2px #fff, 0 0 0 5px var(--kr-on), var(--kr-press); }
-.avatar-title--trying { box-shadow: 0 0 0 3px var(--kr-try); }
+.avatar-title--locked { --frame: linear-gradient(var(--g3), var(--g3)); --card: linear-gradient(#fff, #fff); opacity: 0.75; animation: none; }
+.avatar-title--locked .avatar-rarity { filter: grayscale(1); animation: none; }
+.avatar-title--on { outline: 3px solid var(--kr-on); outline-offset: -3px; }
+.avatar-title--trying { outline: 3px solid var(--kr-try); outline-offset: -3px; }
 .avatar-title--none { justify-content: center; align-items: center; color: var(--kr-sub); font-weight: 800; font-size: var(--fs-s); background: var(--brand-50); border: 2px dashed var(--kr-line-strong); }
-
-/* ピックアップ */
-.avatar-pickup { display: flex; flex-direction: column; gap: 0.625rem; }
-.avatar-nearly-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.625rem; }
-.avatar-nearly {
-  --frame: linear-gradient(var(--g3), var(--g3));
-  --well: var(--paper-2);
-  display: flex;
-  gap: 0.625rem;
-  padding: 0.625rem;
-  border-radius: 16px;
-  background: #fff;
-  border: 1.5px solid var(--kr-line);
-  box-shadow: var(--kr-press);
-}
-.avatar-nearly--r { --frame: var(--kr-frame-silver); --well: var(--kr-well-silver); }
-.avatar-nearly--sr { --frame: var(--kr-frame-gold); --well: var(--kr-well-gold); }
-.avatar-nearly--ssr { --frame: var(--legend-grad); --well: var(--kr-well-legend); }
-.avatar-nearly__art {
-  flex: none;
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 12px;
-  border: 2px solid transparent;
-  background: radial-gradient(circle at 50% 40%, #fff, var(--well)) padding-box, var(--frame) border-box;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-}
-.avatar-nearly__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
-.avatar-nearly__head { display: flex; align-items: center; gap: 0.375rem; }
-.avatar-nearly__head .avatar-rarity { position: relative; top: 0; left: 0; }
-.avatar-nearly__head b { font-size: var(--fs-s); font-weight: 900; color: var(--kr-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.avatar-nearly__left { margin-left: auto; padding: 0 0.5rem; border-radius: var(--radius-pill); background: var(--brand-50); font-size: var(--fs-xs); font-weight: 900; color: var(--kr-cta-bottom); white-space: nowrap; }
-.avatar-nearly__hint { margin: 0; font-size: var(--fs-xs); color: var(--kr-sub); font-weight: 700; }
-.avatar-nearly__actions { display: flex; gap: 0.375rem; margin-top: 0.125rem; }
-.avatar-nearly__actions .avatar-pill { padding: 0 0.875rem; font-size: var(--fs-xs); }
 
 /* マイコーデ（ポラロイド風） */
 .avatar-coords { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -636,15 +598,15 @@
 }
 .avatar-coord:nth-child(2) { transform: rotate(1deg); }
 .avatar-coord:nth-child(3) { transform: rotate(-1deg); }
-.avatar-coord__name { font-size: var(--fs-xs); font-weight: 900; color: var(--kr-ink); }
-.avatar-coord__frame { display: block; padding: 3px; border-radius: 10px; background: radial-gradient(circle at 50% 40%, #fff, var(--brand-100)); }
-.avatar-coord__thumb { display: block; border-radius: 8px; }
+.avatar-coord__name { font-size: var(--fs-xs); font-weight: 800; color: var(--kr-ink); }
+.avatar-coord__frame { display: block; padding: 3px; border-radius: var(--radius-m); background: radial-gradient(circle at 50% 40%, #fff, var(--brand-100)); }
+.avatar-coord__thumb { display: block; border-radius: var(--radius-m); }
 .avatar-coord__empty {
   position: relative;
   display: block;
   width: 6rem;
   height: 6rem;
-  border-radius: 10px;
+  border-radius: var(--radius-m);
   border: 2px dashed var(--kr-line-strong);
   background: var(--brand-50);
 }
@@ -664,19 +626,14 @@
   0%, 100% { transform: scale(0.4); opacity: 0.6; }
   50% { transform: scale(1); opacity: 1; }
 }
-@keyframes avatar-pulse {
-  0%, 100% { transform: rotate(-8deg) scale(1); }
-  50% { transform: rotate(-8deg) scale(1.1); }
-}
-@keyframes avatar-stripes { to { background-position: 0 0, 11.3px 0, 0 0; } }
 @keyframes avatar-pop {
   from { transform: translateY(4px) scale(0.98); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
   .avatar-item--ssr, .avatar-title--ssr, .avatar-detail--ssr, .avatar-detail, .avatar-tryon,
-  .avatar-item__art::after, .avatar-detail--ssr::after, .avatar-action--primary::after,
-  .avatar-rarity--ssr, .avatar-plate__title--ssr, .avatar-badge--new, .avatar-progress__fill,
-  .avatar-plate::before, .avatar-tab[aria-selected="true"]::before, .avatar-detail::before { animation: none; }
-  .avatar-item__art::after, .avatar-detail--ssr::after, .avatar-action--primary::after { display: none; }
+  .avatar-item__art::after, .avatar-detail--ssr::after,
+  .avatar-rarity--ssr, .avatar-plate__title--ssr,
+  .avatar-plate::before, .avatar-detail::before { animation: none; }
+  .avatar-item__art::after, .avatar-detail--ssr::after { display: none; }
 }

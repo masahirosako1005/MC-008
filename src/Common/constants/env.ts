@@ -4,9 +4,6 @@
  * import.meta.env はビルド時に定数へ置換されるので、デモ専用コードは本番ビルドから木構造ごと除外できる（SEC-02, DI-23）。
  */
 
-/** Vite のビルドモード名（'production' / 'demo' / 'development' / 'test'） */
-export const BUILD_MODE: string = import.meta.env.MODE;
-
 /** デモビルドなら true。デモメニュー・DemoClock・デモ用ストレージ名前空間の切替に使う（CLAUDE.md 14 MUST-8） */
 export const isDemoBuild: boolean = import.meta.env.MODE === 'demo';
 
@@ -27,7 +24,24 @@ export type CmsBackend = 'local' | 'server';
  * 'local'（既定）：同じブラウザの localStorage（フェーズ1）／'server'：連携サーバー（/api。別の端末どうしでもつながる）。
  * ビルド時の環境変数 VITE_CMS_BACKEND=server で切り替える（scripts/dev/backend.mjs が付ける）。
  */
-export const CMS_BACKEND: CmsBackend = import.meta.env['VITE_CMS_BACKEND'] === 'server' ? 'server' : 'local';
+export const CMS_BACKEND: CmsBackend = import.meta.env.VITE_CMS_BACKEND === 'server' ? 'server' : 'local';
+
+/** 利用者の記録（訪問・EXP）の置き場所 */
+export type AppBackend = 'local' | 'server';
+
+/**
+ * 利用者の記録の置き場所（docs/12 §3）。
+ * 'local'（既定）：端末の localStorage（発表用の PoC）／'server'：利用者データのサーバー（/api/app。ログインが要る。サーバーが正＝SEC-21）。
+ * ビルド時の環境変数 VITE_APP_BACKEND=server で切り替える（scripts/dev/app-local.mjs が付ける）。
+ */
+export const APP_BACKEND: AppBackend = import.meta.env.VITE_APP_BACKEND === 'server' ? 'server' : 'local';
+
+/**
+ * デモビルドで、保存済みの旅人が無いときに最初に用意する人。
+ * 'regular'（既定）：通い慣れた人（獲得済みの初期データつき）／'first'：初回の人（記録なし＝空の状態）。
+ * ビルド時の環境変数 VITE_DEMO_START=first で切り替える（scripts/dev/demo-fresh.mjs が付ける）。
+ */
+export const DEMO_START_PROFILE: 'first' | 'regular' = import.meta.env.VITE_DEMO_START === 'first' ? 'first' : 'regular';
 
 /** オリジンの書式（https://名前[:ポート]。末尾の / は無し） */
 const ORIGIN_PATTERN = /^https?:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?$/;
@@ -36,7 +50,7 @@ const ORIGIN_PATTERN = /^https?:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?$/;
  * 店舗CMS から開く利用者アプリのオリジン（docs/09 §7.1。CMS を別オリジンに置くとき）。
  * ビルド時の環境変数 VITE_APP_ORIGIN（例 'https://app.example.jp'）。無い・書式が違うときは ''（同じオリジン＝デモ）。
  */
-export const APP_ORIGIN: string = ORIGIN_PATTERN.test(String(import.meta.env['VITE_APP_ORIGIN'] ?? '')) ? String(import.meta.env['VITE_APP_ORIGIN']) : '';
+export const APP_ORIGIN: string = ORIGIN_PATTERN.test(String(import.meta.env.VITE_APP_ORIGIN ?? '')) ? String(import.meta.env.VITE_APP_ORIGIN) : '';
 
 /** アプリのバージョン（エクスポートデータ・ログに付ける） */
 export const APP_VERSION = '0.1.0';

@@ -9,18 +9,17 @@ import { createLogger } from '@/Common/logging/logger';
 import { createButton, setButtonDisabled, setButtonLabel } from '@/Common/ui/Button';
 import { h } from '@/Common/ui/dom';
 import { formatDistance } from '@/Common/ui/format';
+import { createIcon } from '@/Common/ui/icons';
 import { userAction } from '@/Common/ui/userAction';
 import { amenityLabel } from '@/presentation/shared/labels';
 import type { GoodsInfo } from '@/presentation/screens/Map/town/goods';
 import { paintGoodsPhoto } from '@/presentation/screens/Map/town/goodsPhoto';
-import { amenityIconOf, createMapUiIcon, paintMapUiIcon } from '@/presentation/screens/Map/town/mapUiIcons';
+import { amenityIconOf, createMapLineIcon } from '@/presentation/screens/Map/town/mapLineIcons';
 
 const logger = createLogger('presentation/screens/Map/town/SpotCard');
 
 /** カードの左の看板商品アイコンの大きさ（CSS px） */
 export const SPOT_CARD_THUMB_PX = 40;
-/** 便利情報のアイコンの大きさ（CSS px） */
-const AMENITY_ICON_PX = 14;
 /** 便利情報の並び順 */
 const AMENITY_ORDER: readonly string[] = ['toilet', 'stroller', 'kids', 'rainOk', 'nursing', 'parking'];
 
@@ -45,7 +44,7 @@ export interface SpotCardModel {
   readonly meters?: number;
   readonly phase: SpotCardPhase;
   readonly canCheckIn: boolean;
-  /** 達成できない理由（例 'あと25m近づくと達成できます'） */
+  /** 達成できないときに主ボタンに出す短い言葉（例 'あと25m'・'未発見'） */
   readonly checkInHint?: string;
   readonly visitedToday: boolean;
   readonly visitCount: number;
@@ -83,6 +82,8 @@ export interface SpotCardOptions {
 interface SpotCardParts {
   readonly root: HTMLElement;
   readonly thumb: HTMLCanvasElement;
+  /** 写真が無いとき（便利施設・看板商品なし）に出す線のアイコンの入れ物 */
+  readonly thumbIcon: HTMLElement;
   readonly eyebrow: HTMLElement;
   readonly name: HTMLElement;
   readonly goods: HTMLElement;
@@ -92,7 +93,7 @@ interface SpotCardParts {
   readonly amenities: HTMLElement;
   readonly meta: HTMLElement;
   readonly want: HTMLButtonElement;
-  readonly wantIcon: HTMLCanvasElement;
+  readonly wantIcon: SVGSVGElement;
   readonly actions: HTMLElement;
   readonly checkIn: HTMLButtonElement;
   readonly detail: HTMLButtonElement;
@@ -149,17 +150,20 @@ export function createSpotCard(opts: SpotCardOptions): SpotCardHandle {
 function buildParts(on: { onCheckIn(): void; onDetail(): void; onToggleWant(): void; onClose(): void; onPurchase(): void }): SpotCardParts {
   const log = logger.fn('buildParts');
   const thumb = h('canvas', { class: 'map-spot-card__thumb-canvas', attrs: { 'aria-hidden': 'true' } });
-  const wantIcon = createMapUiIcon('heartOutline', 20, 'map-spot-card__want-icon');
+  // 「行きたい」のハートは、ほかの UI と同じ線のアイコン（ドット絵をやめる。2026-11-10 ユーザー指示）。入れたら CSS で塗る
+  const wantIcon = createMapLineIcon('heart', 'map-spot-card__want-icon');
   const want = h('button', { class: 'map-spot-card__want', attrs: { type: 'button', 'aria-pressed': 'false', 'aria-label': '行きたいに入れる', 'data-testid': 'spot-card-want' }, on: { click: userAction('spot-card-want', on.onToggleWant) } }, [wantIcon]);
-  const close = h('button', { class: 'map-spot-card__close', attrs: { type: 'button', 'aria-label': 'カードを閉じる', 'data-testid': 'spot-card-close' }, text: '×', on: { click: userAction('spot-card-close', on.onClose) } });
+  const thumbIcon = h('span', { class: 'map-spot-card__thumb-icon', attrs: { 'aria-hidden': 'true' } });
+  const close = h('button', { class: 'map-spot-card__close', attrs: { type: 'button', 'aria-label': 'カードを閉じる', 'data-testid': 'spot-card-close' }, on: { click: userAction('spot-card-close', on.onClose) } }, [createIcon('close')]);
   const checkIn = createButton({ label: 'クエスト達成', variant: 'primary', testId: 'spot-card-checkin', onClick: on.onCheckIn });
   checkIn.classList.add('map-spot-card__checkin');
-  const detail = createButton({ label: '詳しく見る', variant: 'secondary', testId: 'spot-card-detail', onClick: on.onDetail });
+  const detail = createButton({ label: '詳しく', variant: 'secondary', testId: 'spot-card-detail', onClick: on.onDetail });
   detail.classList.add('map-spot-card__detail');
   const purchase = createButton({ label: '購入QR', variant: 'secondary', testId: 'spot-card-purchase', onClick: on.onPurchase });
   purchase.classList.add('map-spot-card__purchase');
   const parts = {
     thumb,
+    thumbIcon,
     eyebrow: h('p', { class: 'map-spot-card__eyebrow' }),
     name: h('h2', { class: 'map-spot-card__name' }),
     goods: h('p', { class: 'map-spot-card__goods' }),
@@ -174,11 +178,11 @@ function buildParts(on: { onCheckIn(): void; onDetail(): void; onToggleWant(): v
     detail,
     purchase,
   };
-  const today = h('p', { class: 'map-spot-card__today', attrs: { 'data-testid': 'spot-card-today' } }, [createMapUiIcon('today', 14, 'map-spot-card__today-icon'), parts.todayTag, parts.todayTitle]);
+  const today = h('p', { class: 'map-spot-card__today', attrs: { 'data-testid': 'spot-card-today' } }, [createMapLineIcon('today', 'map-spot-card__today-icon'), parts.todayTag, parts.todayTitle]);
   const root = h('section', { class: 'map-spot-card', attrs: { 'data-testid': 'spot-card', 'aria-live': 'polite', 'aria-label': 'スポットのカード' } }, [
     close,
     h('div', { class: 'map-spot-card__head' }, [
-      h('div', { class: 'map-spot-card__thumb' }, [thumb]),
+      h('div', { class: 'map-spot-card__thumb' }, [thumb, thumbIcon]),
       h('div', { class: 'map-spot-card__titles' }, [parts.eyebrow, parts.name, parts.goods]),
       want,
     ]),
@@ -205,9 +209,9 @@ function renderCard(parts: SpotCardParts, model: SpotCardModel): void {
   parts.root.dataset.status = model.status;
   parts.root.dataset.phase = model.phase;
   parts.root.dataset.spotId = model.id;
-  paintThumb(parts.thumb, model, unknown);
+  paintThumb(parts, model, unknown);
   parts.eyebrow.textContent = eyebrowText(model, unknown);
-  parts.name.textContent = unknown || model.name === undefined ? '？？？（近づくと分かる）' : model.name;
+  parts.name.textContent = unknown || model.name === undefined ? '？？？' : model.name;
   parts.goods.textContent = goodsText(model, unknown);
   parts.goods.hidden = parts.goods.textContent === '';
   parts.today.hidden = model.today === undefined;
@@ -220,7 +224,6 @@ function renderCard(parts: SpotCardParts, model: SpotCardModel): void {
   parts.meta.hidden = parts.meta.textContent === '';
   parts.want.setAttribute('aria-pressed', model.want ? 'true' : 'false');
   parts.want.setAttribute('aria-label', model.want ? '行きたいから外す' : '行きたいに入れる');
-  paintMapUiIcon(parts.wantIcon, model.want ? 'heart' : 'heartOutline', 20);
   renderActions(parts, model);
   parts.root.hidden = false;
   parts.root.dataset.open = '1';
@@ -228,17 +231,19 @@ function renderCard(parts: SpotCardParts, model: SpotCardModel): void {
 }
 
 /**
- * 左の看板商品アイコンを描く（便利施設はトイレ、看板商品が無ければピン。未発見はシルエット）。
- * @param canvas 描く先
+ * 左の絵を出す（看板商品の写真。未発見はシルエット。便利施設はトイレ、看板商品が無ければピンの線のアイコン）。
+ * @param parts カードの要素
  * @param model 出す内容
  * @param unknown 未発見なら true
- * @sideEffect canvas を描き直す
+ * @sideEffect canvas を描き直すか、線のアイコンに差し替える
  */
-function paintThumb(canvas: HTMLCanvasElement, model: SpotCardModel, unknown: boolean): void {
+function paintThumb(parts: SpotCardParts, model: SpotCardModel, unknown: boolean): void {
   const log = logger.fn('paintThumb', { kind: model.kind, hasGoods: model.goods !== undefined, unknown });
-  if (model.kind === 'toilet') paintMapUiIcon(canvas, 'toilet', SPOT_CARD_THUMB_PX);
-  else if (model.goods !== undefined) paintGoodsPhoto(canvas, model.goods.icon, SPOT_CARD_THUMB_PX, { silhouette: unknown });
-  else paintMapUiIcon(canvas, 'pin', SPOT_CARD_THUMB_PX);
+  const photo = model.kind !== 'toilet' && model.goods !== undefined;
+  parts.thumb.hidden = !photo;
+  parts.thumbIcon.hidden = photo;
+  if (model.kind !== 'toilet' && model.goods !== undefined) paintGoodsPhoto(parts.thumb, model.goods.icon, SPOT_CARD_THUMB_PX, { silhouette: unknown });
+  else parts.thumbIcon.replaceChildren(createMapLineIcon(model.kind === 'toilet' ? 'toilet' : 'pin', 'map-spot-card__thumb-line'));
   log.exit(undefined);
 }
 
@@ -256,16 +261,15 @@ function eyebrowText(model: SpotCardModel, unknown: boolean): string {
 }
 
 /**
- * 看板商品の行（「おすすめ: ◯◯」。未発見は「何のお店かは近づくと分かる」）。
+ * 看板商品の行（看板商品の名前だけ。未発見は出さない＝写真のシルエットと「？？？」で伝える）。
  * @param model 出す内容
  * @param unknown 未発見なら true
  * @returns 文言（出さなければ空）
  */
 function goodsText(model: SpotCardModel, unknown: boolean): string {
   const log = logger.fn('goodsText', { hasGoods: model.goods !== undefined, unknown });
-  if (model.kind === 'toilet') return log.exit('');
-  if (unknown) return log.exit('何があるかは近づくと分かります');
-  return log.exit(model.goods === undefined ? '' : `おすすめ: ${model.goods.label}`);
+  if (model.kind === 'toilet' || unknown) return log.exit('');
+  return log.exit(model.goods?.label ?? '');
 }
 
 /**
@@ -281,7 +285,7 @@ function amenityItems(amenities: readonly string[]): HTMLLIElement[] {
     const icon = amenityIconOf(amenity);
     const label = amenityLabel(amenity);
     if (icon === undefined || label === undefined) continue;
-    items.push(h('li', { class: 'map-spot-card__amenity', attrs: { 'data-amenity': amenity } }, [createMapUiIcon(icon, AMENITY_ICON_PX, 'map-spot-card__amenity-icon'), h('span', { text: label })]));
+    items.push(h('li', { class: 'map-spot-card__amenity', attrs: { 'data-amenity': amenity } }, [createMapLineIcon(icon, 'map-spot-card__amenity-icon'), h('span', { text: label })]));
   }
   return log.exit(items);
 }
@@ -294,7 +298,7 @@ function amenityItems(amenities: readonly string[]): HTMLLIElement[] {
 function metaText(model: SpotCardModel): string {
   const log = logger.fn('metaText', { hasMeters: model.meters !== undefined, visitCount: model.visitCount });
   const parts: string[] = [];
-  if (model.meters !== undefined) parts.push(`ここから${formatDistance(model.meters)}`);
+  if (model.meters !== undefined) parts.push(formatDistance(model.meters));
   if (model.kind !== 'toilet' && model.visitCount > 0) parts.push(`${model.visitCount}回達成`);
   if (model.note !== undefined && model.note !== '') parts.push(model.note);
   return log.exit(parts.join('・'));
@@ -327,10 +331,10 @@ function renderActions(parts: SpotCardParts, model: SpotCardModel): void {
  */
 export function checkInState(model: Pick<SpotCardModel, 'phase' | 'canCheckIn' | 'checkInHint' | 'visitedToday'>): { readonly kind: 'done' | 'walking' | 'ready' | 'blocked'; readonly label: string; readonly enabled: boolean } {
   const log = logger.fn('checkInState', { phase: model.phase, canCheckIn: model.canCheckIn, visitedToday: model.visitedToday });
-  if (model.visitedToday) return log.exit({ kind: 'done', label: '今日はチェックイン済み ✓', enabled: false });
-  if (model.phase === 'walking') return log.exit({ kind: 'walking', label: '向かっています…', enabled: false });
-  if (model.canCheckIn) return log.exit({ kind: 'ready', label: 'QRでチェックイン', enabled: true });
-  return log.exit({ kind: 'blocked', label: model.checkInHint ?? 'もう少し近づくと達成できます', enabled: false });
+  if (model.visitedToday) return log.exit({ kind: 'done', label: '達成済み', enabled: false });
+  if (model.phase === 'walking') return log.exit({ kind: 'walking', label: '移動中', enabled: false });
+  if (model.canCheckIn) return log.exit({ kind: 'ready', label: 'クエスト達成', enabled: true });
+  return log.exit({ kind: 'blocked', label: model.checkInHint ?? 'エリア外', enabled: false });
 }
 
 /**

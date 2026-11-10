@@ -21,6 +21,8 @@ import type {
   NearbySpotDto,
   OtherTravelerDto,
   PositionDto,
+  PurchaseInput,
+  PurchaseOutput,
   RankingDto,
   RankStatusDto,
   RevisitReasonDto,
@@ -36,8 +38,11 @@ import type {
   ZukanDto,
   ZukanInput,
 } from '@/application/dto/Dto';
-import type { DeleteAllDataInput, DeleteAllDataOutput, ExportDataDto, SettingsDto, UpdateTextScaleInput } from '@/application/dto/SettingsDto';
+import type { DeleteAllDataInput, DeleteAllDataOutput, ExportDataDto, ImportDataInput, ImportDataOutput, SettingsDto, UpdateTextScaleInput } from '@/application/dto/SettingsDto';
+import type { SubmitShopSurveyInput } from '@/application/usecases/survey/shopSurvey';
+import type { SaveVisitMemoryInput, SaveVisitMemoryOutput, VisitLogDto } from '@/application/dto/VisitLogDto';
 import type { EventSubscriber } from '@/application/events/EventBus';
+import type { TicketDto, UseTicketInput, UseTicketOutput } from '@/application/dto/Dto';
 
 /** ユースケースの共通形 */
 export interface UseCase<I, O, C extends string = string> {
@@ -76,12 +81,20 @@ export interface AppServices {
   readonly position: UseCase<void, PositionDto>;
   readonly discover: UseCase<DiscoverInput, DiscoverOutput>;
   readonly visit: UseCase<VisitInput, VisitOutput>;
+  /** お店での購入（レジの QR を読み取った後）を記録して EXP を付ける（同じお店は1日1回まで）。未提供なら購入で EXP は付かない */
+  readonly purchase?: UseCase<PurchaseInput, PurchaseOutput>;
   readonly nearby: UseCase<NearbyInput, readonly NearbySpotDto[]>;
   readonly reasons: UseCase<void, readonly RevisitReasonDto[]>;
   readonly spotDetail: UseCase<SpotDetailInput, SpotDetailDto>;
   readonly town: UseCase<void, TownStateDto>;
   /** 図鑑（地区別のタイルと通った回数。達成率は返さない） */
   readonly zukan: UseCase<ZukanInput, ZukanDto>;
+  /** 記録（訪問の年表と、各回に付けた思い出＝自分の写真・メモ。図鑑画面の「記録」） */
+  readonly visitLog: UseCase<void, VisitLogDto>;
+  /** 訪問した回に思い出（写真・メモ）を付ける・消す */
+  readonly saveVisitMemory: UseCase<SaveVisitMemoryInput, SaveVisitMemoryOutput>;
+  /** お店のアンケートに答える（匿名。EXP は付かない）。未提供ならスポット詳細にアンケートを出さない（回答が店舗CMS に届く構成のときだけ提供する） */
+  readonly submitSurvey?: UseCase<SubmitShopSurveyInput, void>;
   /** ランキング（月間3リーグ＋地区の主） */
   readonly ranking: UseCase<void, RankingDto>;
   /** 地図に出す「ほかの旅人」（模擬ライバル。地区単位）。未提供なら地図にほかの旅人を描かない */
@@ -94,12 +107,18 @@ export interface AppServices {
   readonly saveAvatar: UseCase<SaveAvatarInput, SaveAvatarOutput>;
   /** ランク（旅人ランクの段・ポイントの内訳・最近のポイント・通いの実績。下部タブ「ランク」） */
   readonly rankStatus: UseCase<void, RankStatusDto>;
+  /** 獲得したチケット（お店のクーポンを期間中にクエスト達成で獲得。QR で見せる）。未提供なら地図にチケットを出さない */
+  readonly tickets?: UseCase<void, readonly TicketDto[]>;
+  /** チケットを使う（使用済みにする。お店から VISIT_RADIUS_M 以内） */
+  readonly useTicket?: UseCase<UseTicketInput, UseTicketOutput>;
   /** 端末の設定（文字の大きさ）を読む。未保存なら既定値（標準） */
   readonly settings: UseCase<void, SettingsDto>;
   /** 文字の大きさ（標準／大／特大）を保存する */
   readonly updateTextScale: UseCase<UpdateTextScaleInput, SettingsDto>;
   /** 端末に保存した利用者のデータを JSON に書き出す（DI-21。店舗CMS の登録内容は含めない） */
   readonly exportData: UseCase<void, ExportDataDto>;
+  /** 書き出したファイルから、端末の利用者のデータを復元する（DI-21。確認済みで、形式・ビルドが合うときだけ） */
+  readonly importData: UseCase<ImportDataInput, ImportDataOutput>;
   /** 端末に保存した利用者のデータをすべて消す（PRV-05。確認済みのときだけ） */
   readonly deleteAllData: UseCase<DeleteAllDataInput, DeleteAllDataOutput>;
   readonly demo?: DemoServices;

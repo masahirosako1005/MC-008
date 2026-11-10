@@ -23,12 +23,13 @@
   background: var(--paper);
   box-shadow: 0 1px 0 var(--hairline);
 }
+/* 見た目は 36px のピル。当たり判定は select を上下に 4px ずつ広げて 44px にする */
 .zukan-select {
   position: relative;
   flex: 1 1 0;
   min-width: 0;
-  min-height: var(--tap);
-  border-radius: 0.75rem;
+  min-height: 2.25rem;
+  border-radius: var(--radius-pill);
   background: var(--surface);
   box-shadow: 0 0 0 1px var(--hairline-strong);
 }
@@ -58,16 +59,16 @@
 .zukan-select[data-picked="1"] .zukan-select__dot { display: block; }
 .zukan-select__input {
   position: absolute;
-  inset: 0;
+  inset: -0.25rem 0;
   width: 100%;
-  height: 100%;
+  height: calc(100% + 0.5rem);
   padding: 0 1.875rem 0 2.5rem;
   border: 0;
   border-radius: inherit;
   background: transparent;
   color: var(--ink);
   font: inherit;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -88,34 +89,32 @@
   transform: translateY(-70%) rotate(45deg);
   pointer-events: none;
 }
-.zukan__empty { margin: 2.5rem 0; }
+/* ---- 空の状態（線の絵＋名詞1語。0枚の絞り込み・記録なし・読み込み失敗） ---- */
+.zukan-empty { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin: 3rem 0; color: var(--g4); }
+.zukan-empty__art { display: block; color: var(--g3); }
+.zukan-empty__art .icon { width: 3.5rem; height: 3.5rem; stroke-width: 1.25; }
+.zukan-empty__text { font-size: 0.8125rem; font-weight: 700; }
 
-/* ---- 区分見出し ---- */
-.zukan-section { margin-top: 1rem; }
-.zukan-sections > .zukan-section:first-child { margin-top: 0.375rem; }
-.zukan-section__title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--g5);
-  letter-spacing: 0.15em;
-}
-.zukan-section__title::after { content: ""; flex: 1; height: 1px; background: var(--g2); }
+/* ---- 区分見出し（13px・700・g5。罫線と広い字間は付けない。最初の見出しの右に手持ち枚数） ---- */
+.zukan-section { margin-top: 1.5rem; }
+.zukan-sections > .zukan-section:first-child,
+.log > .log-month:first-child { margin-top: 0; }
+/* 見出しは折らない（文字を大きくして手持ち枚数が入らないときは、枚数の行ごと下の段へ落とす） */
+.zukan-section__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 0.5rem; min-height: 1.375rem; margin: 0 0 0.375rem; }
+.zukan-section__title { flex: none; margin: 0; font-size: 0.8125rem; font-weight: 700; line-height: 1.375rem; color: var(--g5); white-space: nowrap; }
 
-/* ---- カード格子 ---- */
-.zukan-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+/* ---- カード格子（文字の大きさ「特大」は2列: 3列のままでは回数・なじみの札と「あと○回で△」が入らない） ---- */
+.zukan-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+html[data-text-scale="xlarge"] .zukan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .zukan-card {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0.1875rem;
+  gap: 0.25rem;
   min-width: 0;
   min-height: var(--tap);
-  padding: 0.3125rem 0.3125rem 0.4375rem;
+  padding: 0.3125rem 0.3125rem 0.5rem;
   border: 1px solid var(--g2);
   border-radius: var(--radius-m);
   background: var(--g0);
@@ -136,21 +135,23 @@
   display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-m);
   overflow: hidden;
   background: var(--g1);
 }
 .zukan-card__art .zukan-card__canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .zukan-card__name {
   display: block;
-  margin-top: 0.125rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.75rem;
   font-weight: 700;
+  line-height: 1.125rem;
+  letter-spacing: -0.06em; /* 9字の店名を切らさない */
 }
-.zukan-card__caption { display: block; font-size: 0.625rem; line-height: 1.3; color: var(--g4); }
+.zukan-card__caption { display: block; font-size: 0.6875rem; line-height: 1rem; color: var(--g5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zukan-card__caption:empty { display: none; }
 
 /* カードの地区札（すべての地区を混ぜて並べるとき。地区で絞ったときは出さない） */
 .zukan-card__district {
@@ -161,15 +162,15 @@
   display: inline-flex;
   align-items: center;
   gap: 0.1875rem;
-  max-width: calc(100% - 3.25rem);
-  padding: 0 0.375rem 0 0.25rem;
+  max-width: calc(100% - 2.875rem); /* 右上のレア度の札（LG など）にかからない幅。「大」でも3文字の地区名が切れない */
+  padding: 0 0.25rem 0 0.1875rem;
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 0 0 1px var(--hairline);
   color: var(--g5);
-  font-size: 0.5625rem;
+  font-size: 0.6875rem;
   font-weight: 700;
-  line-height: 1.6;
+  line-height: 1rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -186,32 +187,32 @@
   top: 0.25rem;
   left: 0;
   padding: 0 0.375rem 0 0.3125rem;
-  border-radius: 0 0.5rem 0.5rem 0;
+  border-radius: var(--radius-pill);
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 0.5625rem;
+  font-size: 0.6875rem;
   font-weight: 800;
   line-height: 1.6;
   letter-spacing: 0.05em;
 }
 .zukan-card__today {
   position: absolute;
-  top: 0.25rem;
-  right: 0.25rem;
-  padding: 0 0.3125rem;
-  border-radius: 0.5rem;
+  right: 0.375rem;
+  bottom: 0.375rem;
+  padding: 0 0.375rem;
+  border-radius: var(--radius-pill);
   background: var(--ink);
   color: var(--g0);
-  font-size: 0.5625rem;
+  font-size: 0.6875rem;
   font-weight: 700;
-  line-height: 1.6;
+  line-height: 1rem;
 }
 .zukan-card__count {
   position: absolute;
   right: 0.25rem;
   bottom: 0.25rem;
   padding: 0 0.3125rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.95);
   color: var(--accent-strong);
   font-size: 0.6875rem;
@@ -230,10 +231,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-pill);
   border: 1px dashed var(--g3);
-  color: var(--g3);
-  font-size: 0.5625rem;
+  color: var(--g4);
+  font-size: 0.6875rem;
   font-weight: 700;
   line-height: 1;
 }
@@ -241,11 +242,11 @@
 
 /* 訪問済み＝カラー。なじみ度で枠が育つ（1=細線、2=太線＋帯、3=二重枠＋帯＋光） */
 .zukan-card[data-status="visited"] { border-color: var(--accent); }
-.zukan-card[data-status="visited"] .zukan-card__caption { color: var(--accent-strong); font-weight: 700; }
-.zukan-card[data-familiarity="2"] { border-width: 2px; padding: 0.25rem 0.25rem 0.375rem; }
+/* 小さいオレンジの文字は濃い段（--brand-700）で 4.5:1 以上にする。余白はなじみ度で変えない（同じ行のカードで高さをそろえる） */
+.zukan-card[data-status="visited"] .zukan-card__caption { color: var(--brand-700); font-weight: 700; }
+.zukan-card[data-familiarity="2"] { border-width: 2px; }
 .zukan-card[data-familiarity="3"] {
   border-width: 2px;
-  padding: 0.25rem 0.25rem 0.375rem;
   background: linear-gradient(180deg, var(--accent-soft), var(--g0) 55%);
   box-shadow: 0 0 0 2px var(--g0), 0 0 0 3.5px var(--accent), 0 3px 10px color-mix(in srgb, var(--accent) 30%, transparent);
 }
@@ -255,10 +256,12 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.55) 45%, transparent 60%);
+  /* 走る光は ★4 のカードと同じ動き（ZukanRarity.css の shiny-sweep）を使う＝ずっと動くものの種類を増やさない */
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%) no-repeat;
+  background-size: 260% 100%;
+  background-position: 160% 0;
   z-index: 2;
-  transform: translateX(-120%);
-  animation: zukan-shine 3.2s ease-in-out 0.8s infinite;
+  animation: shiny-sweep 3.2s ease-in-out 0.8s infinite;
   pointer-events: none;
 }
 
@@ -277,14 +280,9 @@
     repeating-linear-gradient(45deg, var(--g1) 0 0.375rem, var(--g2) 0.375rem 0.4375rem);
 }
 .zukan-card[data-status="unknown"] .zukan-card__canvas { filter: grayscale(1) contrast(0.85); opacity: 0.45; }
-.zukan-card[data-status="unknown"] .zukan-card__name { color: var(--g4); font-weight: 500; }
-.zukan-card[data-status="unknown"] .zukan-card__caption {
-  align-self: center;
-  padding: 0 0.375rem;
-  border-radius: var(--radius-pill);
-  border: 1px dashed var(--g3);
-  color: var(--g4);
-}
+/* 薄くするのは写真だけ。文字は g5 のまま読めるようにする（札の枠は付けない＝押せるチップに見せない） */
+.zukan-card[data-status="unknown"] .zukan-card__name { color: var(--g5); font-weight: 400; }
+.zukan-card[data-status="unknown"] .zukan-card__caption { color: var(--g5); }
 
 /*
  * 色あせ中の地区（見た目だけ。回数・なじみ度は変えない）。地区の「◌ 色あせ中」と併せて示す。
@@ -297,10 +295,6 @@
 @keyframes zukan-card-in {
   from { opacity: 0; transform: translateY(0.375rem) scale(0.97); }
   to { opacity: 1; transform: none; }
-}
-@keyframes zukan-shine {
-  0% { transform: translateX(-120%); }
-  45%, 100% { transform: translateX(120%); }
 }
 @media (prefers-reduced-motion: reduce) {
   .zukan-card { animation: none; }
@@ -318,13 +312,16 @@
 .zukan-card[data-status="discovered"] .spot-photo__img { filter: grayscale(1) contrast(0.95) brightness(1.06); }
 .zukan-card[data-status="unknown"] .spot-photo__img { filter: grayscale(1) contrast(0.85) blur(0.5px); opacity: 0.45; }
 .zukan__body[data-fade="fading"] .zukan-card[data-status="visited"] .spot-photo__img { filter: saturate(0.3); opacity: 0.75; }
+/* 写真を読み終えるまで「イメージ」の札は出さない（空の枠に札だけが先に出ないように。ZukanCardArt が data-loaded を付ける） */
+.zukan-card__art[data-photo]:not([data-loaded]):not([data-photo="failed"]) .spot-photo__badge { visibility: hidden; }
 .zukan-card__art .spot-photo__badge {
   top: auto;
-  bottom: 0.25rem;
-  left: 0.25rem;
-  padding: 0 0.3125rem;
-  font-size: 0.5rem;
-  letter-spacing: 0.04em;
+  bottom: 0.375rem;
+  left: 0.375rem;
+  padding: 0 0.375rem;
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  letter-spacing: 0;
 }
 
 /* 拡大プレビューの写真（大きなカードの上）とクレジット（カードの下） */
@@ -335,11 +332,11 @@
   width: 100%;
   aspect-ratio: 4 / 3;
   margin-bottom: 0.375rem;
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-m);
   overflow: hidden;
   background: var(--g1);
 }
-.card-preview__photo .spot-photo__badge { top: 0.375rem; left: 0.375rem; font-size: 0.625rem; }
+.card-preview__photo .spot-photo__badge { top: 0.375rem; left: 0.375rem; font-size: 0.6875rem; }
 .card-preview__card[data-status="discovered"] .card-preview__photo .spot-photo__img { filter: grayscale(1) contrast(0.95) brightness(1.06); }
 .card-preview__card[data-status="unknown"] .card-preview__photo .spot-photo__img { filter: grayscale(1) contrast(0.85); opacity: 0.55; }
 .card-preview__card:has(.card-preview__photo) { padding-top: 2rem; }
@@ -349,6 +346,7 @@
   justify-content: center;
   margin: -0.25rem 0 0;
   padding: 0;
+  border-radius: 0;
   background: none;
   color: var(--g4);
   font-size: 0.625rem;

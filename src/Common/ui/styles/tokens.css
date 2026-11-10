@@ -1,14 +1,16 @@
 /*
  * @file デザイントークン（Common/ui/styles）
- * コンセプト「街で使う、モダンな生活アプリ」：白とクールグレーの面＋地図アプリ風の淡いベースマップ＋アクセント1色（ロイヤルブルー）。docs/08 §10。
- * ブランド主色はロイヤルブルー（--brand）1色（2026-11-09 ユーザー指示でコーラル #ff5a36 から変更）。地区色5色（--d-*。名前は旧来のまま）は地区の識別だけに使う。グレーはクールグレー系。
+ * コンセプト「街で使う、モダンな生活アプリ」：ベージュの地と白い面＋淡いベースマップ＋アクセント1色（落ち着いたオレンジ）。docs/08 §10。
+ * ブランド主色は落ち着いたオレンジ（--brand）1色（2026-11-10 ユーザー指示で青系からベージュ・落ち着いたオレンジ系へ変更）。地区色5色（--d-*。名前は旧来のまま）は地区の識別だけに使う。グレーは温かいグレー（ベージュ寄り）。
  * Canvas 側の同じ色は src/Common/ui/theme/palette.ts（PALETTE）に置く。色を変えるときは両方を揃える。
  * 文字拡大: html[data-text-scale] でルートフォント 16/18/20px（docs/08 §6）。サイズは rem で書く。
- * フォント: Noto Sans JP（npm @fontsource/noto-sans-jp を Vite でバンドル＝self ホスト。CSP font-src 'self' を満たす）。
+ * フォント（2026-11-10 ユーザー指示「アプリ全体のフォントを LINE Seed JP で統制」）: 見出し・数字・本文・Canvas・店舗CMS まで LINE Seed JP の1書体。
+ * SIL OFL（商用可）。npm @fontsource を Vite でバンドル＝self ホスト（CSP font-src 'self' を満たす）。
+ * 太さは 400／700／800 の3つ。CSS でもこの3つだけを指定する（--fw-regular／--fw-bold／--fw-heavy）。
  */
-@import "@fontsource/noto-sans-jp/400.css";
-@import "@fontsource/noto-sans-jp/500.css";
-@import "@fontsource/noto-sans-jp/700.css";
+@import "@fontsource/line-seed-jp/400.css";
+@import "@fontsource/line-seed-jp/700.css";
+@import "@fontsource/line-seed-jp/800.css";
 
 :root {
   /*
@@ -17,36 +19,37 @@
    * 静的監査（scripts/audit/static-audit.mjs の color-literal）が、ここ以外の直書きを警告する。
    */
 
-  /* ブランド（ロイヤルブルー）の段。500 が主色。現在地・主要操作・選択中・「あなた」に使う */
-  --brand-50: #eef4ff;
-  --brand-100: #dbe7ff;
-  --brand-200: #b9d1ff;
-  --brand-300: #8bb3ff;
-  --brand-400: #5a90ff;
-  --brand-500: #1e6bff;          /* 白とのコントラスト 4.6:1 */
-  --brand-600: #1556d6;          /* 白文字の塗り・白地の文字（6.2:1） */
-  --brand-700: #1145b0;
-  --brand-800: #0e388c;
-  --brand-900: #0b2a66;
+  /* ブランド（落ち着いたオレンジ）の段。500 が主色。現在地・主要操作・選択中・「あなた」に使う */
+  --brand-50: #fdf5ed;
+  --brand-100: #f9e6d3;
+  --brand-200: #f2cba6;
+  --brand-300: #e8a973;
+  --brand-400: #d98244;
+  --brand-500: #bc5b1b;          /* 白とのコントラスト 4.5:1 */
+  --brand-600: #a54c14;          /* 白文字の塗り・白地の文字（5.8:1） */
+  --brand-700: #863c10;
+  --brand-800: #6b300d;
+  --brand-900: #4f240b;
   --brand: var(--brand-500);
   --brand-ink: var(--brand-600);
-  --brand-soft: #e8f0ff;
+  --brand-text-s: var(--brand-700);   /* 13px 未満の小さいオレンジの文字（ベージュの地でも 4.5:1 以上） */
+  --brand-soft: #fbeee0;
   --brand-grad: linear-gradient(135deg, var(--brand-400) 0%, var(--brand-500) 55%, var(--brand-700) 100%); /* 主要ボタンはフラット（--brand-ink のベタ）。これは強調の帯など限られた所だけ */
-  /* ゲームの光の差し色（シアン）。夜の盤の光・走る光・ゲージの先にだけ使う */
-  --glow: #5ee0ff;
-  --glow-soft: rgba(94, 224, 255, 0.35);
+  /* ゲームの光の差し色（灯りの琥珀）。夜の盤の光・走る光・ゲージの先にだけ使う */
+  --glow: #ffcf8a;
+  --glow-soft: rgba(255, 207, 138, 0.35);
 
-  /* 夜の盤（ゲームの画面：ランク・ランキングのバトル・起動画面・演出のパネル）。上ほど暗い */
-  --night-950: #070b17;
-  --night-900: #0b1530;
-  --night-800: #111d40;
-  --night-700: #1a2a5a;
-  --night-600: #26397a;
+  /* 夜の盤（ゲームの画面：ランキングのバトル・起動画面・演出のパネル）。上ほど暗い */
+  --night-950: #140d08;
+  --night-900: #20150e;
+  --night-800: #2d1f15;
+  --night-700: #402d1e;
+  --night-600: #5a412c;
   --night-line: rgba(255, 255, 255, 0.12);
   --night-fill: rgba(255, 255, 255, 0.07);   /* 夜の盤の上のマス */
   --on-night: #ffffff;
   --on-night-2: rgba(255, 255, 255, 0.76);
-  --on-night-3: rgba(255, 255, 255, 0.5);
+  --on-night-3: rgba(255, 255, 255, 0.62);   /* 夜の盤の上の小さな補足（4.5:1 以上） */
   --night-grad: linear-gradient(160deg, var(--night-700) 0%, var(--night-900) 60%, var(--night-950) 100%);
 
   /* 旧トークン名（他画面の CSS が参照）。ブランド色へ寄せる */
@@ -55,95 +58,96 @@
   --accent-strong: var(--brand-ink);
   --on-accent: #ffffff;
 
-  /* 文字色とクールグレー（--g4 以上は白地・薄いグレー地の小さな文字でもコントラスト 4.5:1 以上） */
-  --ink: #111827;
+  /* 文字色と温かいグレー（--g4 以上は白地・薄いグレー地の小さな文字でもコントラスト 4.5:1 以上） */
+  --ink: #2a211b;
   --g0: #ffffff;
-  --g1: #f5f6f8;
-  --g2: #e5e7eb;
-  --g3: #d1d5db;
-  --g4: #6b7280;
-  --g5: #374151;
+  --g1: #f7f3ec;
+  --g2: #ebe4d8;
+  --g3: #d9cfc0;
+  --g4: #74695d;
+  --g5: #4a4038;
 
-  /* 画面の地（クールグレー）。カードは白で浮かせる */
-  --paper: #f5f6f8;
-  --paper-2: #eef0f3;
+  /* 画面の地（ベージュ）。カードは白で浮かせる */
+  --paper: #f6f0e6;
+  --paper-2: #efe7da;
   --surface: #ffffff;
-  --hairline: rgba(17, 24, 39, 0.08);
-  --hairline-strong: rgba(17, 24, 39, 0.14);
-  --line: #e5e7eb;               /* 罫線（副ボタン・入力欄の枠） */
-  --page-bg: #e9ecf1;
-  --bezel: #1f2937;              /* PC 表示の端末枠 */
-  --bezel-edge: #4b5563;
+  --hairline: rgba(42, 33, 27, 0.08);
+  --hairline-strong: rgba(42, 33, 27, 0.14);
+  --line: #e6dfd2;               /* 罫線（副ボタン・入力欄の枠） */
+  --page-bg: #e9e1d3;
+  --bezel: #2a211b;              /* PC 表示の端末枠 */
+  --bezel-edge: #5a4e44;
   --positive: var(--success);    /* 状態の点（旅人がいる・成功） */
-  --scrim: rgba(17, 24, 39, 0.45);
-  --fx-bg: rgba(17, 24, 39, 0.66);   /* 演出の幕（暗めの半透明＋背景ぼかし。中央に白いカード） */
+  --scrim: rgba(42, 33, 27, 0.45);
+  --fx-bg: rgba(42, 33, 27, 0.66);   /* 演出の幕（暗めの半透明＋背景ぼかし。中央に白いカード） */
 
   /* 地区色（マスタの地区色と同じ5色。色相名で持ち、下の地区ID対応表で割り当てる）。-ink は白地の文字用（4.5:1 以上）、-soft は面の淡色 */
-  --d-wisteria: #6366f1;
-  --d-wisteria-ink: #4338ca;
-  --d-sea: #0ea5e9;
-  --d-sea-ink: #0369a1;
-  --d-mustard: #f59e0b;
-  --d-mustard-ink: #b45309;
-  --d-leaf: #10b981;
-  --d-leaf-ink: #047857;
-  --d-rose: #ec4899;
-  --d-rose-ink: #be185d;
+  --d-wisteria: #8577b8;
+  --d-wisteria-ink: #5b4d94;
+  --d-sea: #4f93a8;
+  --d-sea-ink: #2c6a7d;
+  --d-mustard: #d6a23c;
+  --d-mustard-ink: #8a5d0c;
+  --d-leaf: #6f9e6a;
+  --d-leaf-ink: #3f7040;
+  --d-rose: #cf7186;
+  --d-rose-ink: #a3445c;
 
   /* 意味色 */
   --gold: var(--metal-gold);     /* 金カード・地区の主の王冠・1位 */
   --gold-ink: #92400e;
-  --gold-grad: linear-gradient(160deg, #fde68a 0%, #f59e0b 55%, #b45309 100%);
-  --silver-grad: linear-gradient(160deg, #f9fafb 0%, #d1d5db 50%, #9ca3af 100%);
+  --gold-grad: linear-gradient(160deg, #f6e2a6 0%, #dfa62b 55%, #9a6410 100%);
+  --silver-grad: linear-gradient(160deg, #f8f6f2 0%, #d5d1ca 50%, #a39d94 100%);
   --bronze-grad: linear-gradient(160deg, #f3c6a5 0%, #d58a5a 50%, #b8693d 100%);
-  --sepia: #9ca3af;              /* 色あせ（クールグレー。名前は旧来のまま） */
-  --sepia-ink: #6b7280;
-  --sepia-soft: #f1f3f6;
+  --sepia: #a89e92;              /* 色あせ（温かいグレー） */
+  --sepia-ink: #74695d;
+  --sepia-soft: #f3eee6;
   --deadline: var(--danger);     /* 期限・クーポン */
   --deadline-soft: var(--danger-soft);
-  --unknown: #9ca3af;            /* 未発見 */
-  --discovered: #6b7280;         /* 発見済み（シルエット） */
+  --unknown: #a89e92;            /* 未発見 */
+  --discovered: #74695d;         /* 発見済み（シルエット） */
 
   /* 状態の色（意味が決まっている。飾りに使わない）。-ink は白地の文字、-soft は淡い面 */
-  --success: #10b981;
-  --success-ink: #047857;
-  --success-soft: #ecfdf5;
-  --warning: #f59e0b;            /* 注意・おすすめの★・今日だけ */
-  --warning-ink: #b45309;
-  --warning-soft: #fef3c7;
-  --danger: #e11d48;             /* 期限・失った・あと少し（急ぎ） */
-  --danger-ink: #be123c;
-  --danger-soft: #ffe4e9;
+  --success: #3c9d6e;
+  --success-ink: #256b49;
+  --success-soft: #eaf5ee;
+  --warning: #e0a32a;            /* 注意・おすすめの★・今日だけ */
+  --warning-ink: #8a5a00;
+  --warning-mid: #b57a10;        /* 白地の小さな印・アイコン（-ink より明るく、本体より濃い） */
+  --warning-soft: #fbf0d0;
+  --danger: #cf3a52;             /* 期限・失った・あと少し（急ぎ） */
+  --danger-ink: #a82a40;
+  --danger-soft: #fbe6e8;
 
   /*
    * 金属の段（報酬・ランク・レア度で共通の1本のはしご）。銅 → 銀 → 金 → 白金 → 伝説。
    * 各段: 本体 / -edge（ふち・影） / -light（光・淡い面） / -ink（その上の文字）
    */
-  --metal-bronze: #e0965f;
+  --metal-bronze: #c98e63;
   --metal-bronze-edge: #8f5524;
-  --metal-bronze-light: #fbe0c8;
+  --metal-bronze-light: #f6e0cc;
   --metal-bronze-ink: #4a2508;
-  --metal-silver: #c9d1dc;
-  --metal-silver-edge: #5b6472;
-  --metal-silver-light: #f1f5f9;
-  --metal-silver-ink: #1f2937;
-  --metal-gold: #f5b700;
-  --metal-gold-edge: #a16207;
-  --metal-gold-light: #fde68a;
+  --metal-silver: #d0cdc8;
+  --metal-silver-edge: #66615a;
+  --metal-silver-light: #f5f3ef;
+  --metal-silver-ink: #2a2622;
+  --metal-gold: #e2ab2e;
+  --metal-gold-edge: #94640f;
+  --metal-gold-light: #f6e2a6;
   --metal-gold-ink: #4a3500;
-  --metal-platinum: #3cc8ff;
-  --metal-platinum-edge: #0369a1;
-  --metal-platinum-light: #e6f8ff;
-  --metal-platinum-ink: #082f49;
-  --metal-legend: #cf8cff;
-  --metal-legend-edge: #6b21a8;
-  --metal-legend-light: #f8edff;
-  --metal-legend-ink: #3b0764;
-  --legend-grad: linear-gradient(115deg, #ff5f6d, #ffc371, #f9f871, #6ee7b7, #60a5fa, #a78bfa, #f472b6, #ff5f6d); /* 虹（伝説・★4・SSR） */
-  --metal-gold-soft: #fff6d6;         /* 白地の上の淡い金の面（報酬の札・1位の行など） */
+  --metal-platinum: #8fcfc9;
+  --metal-platinum-edge: #2f7a74;
+  --metal-platinum-light: #e8f6f4;
+  --metal-platinum-ink: #103b38;
+  --metal-legend: #c39ae0;
+  --metal-legend-edge: #6d3f92;
+  --metal-legend-light: #f6eefb;
+  --metal-legend-ink: #3d1c58;
+  --legend-grad: linear-gradient(115deg, #f08a7a, #f6c27e, #f3e58e, #9ad9b4, #8fc3d6, #b9a3e0, #e89ab8, #f08a7a); /* 虹（伝説・★4・SSR） */
+  --metal-gold-soft: #fbf2d6;         /* 白地の上の淡い金の面（報酬の札・1位の行など） */
   --metal-silver-grad: linear-gradient(160deg, var(--metal-silver-light) 0%, var(--metal-silver) 55%, var(--metal-silver-edge) 100%); /* 銀の枠・面 */
   --metal-gold-grad: linear-gradient(160deg, var(--metal-gold-light) 0%, var(--metal-gold) 55%, var(--metal-gold-edge) 100%);       /* 金の枠・面 */
-  --success-on-night: #6ee7b7;        /* 夜の盤の上の成功色（明るい緑） */
+  --success-on-night: #9ad9b4;        /* 夜の盤の上の成功色（明るい緑） */
 
   /* レア度（図鑑 ★1〜★4・アバター N/R/SR/SSR で共通）。金属の段に対応させる */
   --rarity-1: var(--g3);              /* N／★1 ノーマル */
@@ -152,29 +156,38 @@
   --rarity-4: var(--metal-legend);    /* SSR／★4 レジェンド（面は --legend-grad） */
 
   /* リーグ（ランキング。リーグの見分けにだけ使う） */
-  --league-kayoi: #7c3aed;
-  --league-kayoi-ink: #5b21b6;
-  --league-kayoi-soft: #f3efff;
-  --league-hajimete: #0d9488;
-  --league-hajimete-ink: #115e59;
-  --league-hajimete-soft: #e6f7f5;
-  --league-rookie: #65a30d;
-  --league-rookie-ink: #3f6212;
-  --league-rookie-soft: #f0f8e2;
+  --league-kayoi: #8a5aa8;
+  --league-kayoi-ink: #63407c;
+  --league-kayoi-soft: #f4eef7;
+  --league-hajimete: #3d8f86;
+  --league-hajimete-ink: #2a6660;
+  --league-hajimete-soft: #e8f3f1;
+  --league-rookie: #7d9a3a;
+  --league-rookie-ink: #51671f;
+  --league-rookie-soft: #f1f5e3;
 
-  /* フォント。見出し・本文とも Noto Sans JP（見出し 700、本文 400〜500。数字は tabular-nums） */
-  --font-display: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
-  --font-body: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  /*
+   * フォント。書体は --font-seed（LINE Seed JP）の1つだけ。見出し（--font-display）も本文（--font-body）も同じ書体で、差は太さと大きさでつける。
+   * Canvas 側の同じ並びは drawUtils.ts の CANVAS_FONT_FAMILY（palette.ts の DISPLAY_FONT_FAMILY も同じ値）、起動スプラッシュは splash.css
+   */
+  --font-seed: "LINE Seed JP", "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  --font-display: var(--font-seed);
+  --font-body: var(--font-seed);
+  /* 太さは書体にある 400／700／800 の3つだけ（500・600・900 は指定しない。--fw-medium は旧名で、400 と同じ） */
   --fw-regular: 400;
-  --fw-medium: 500;
+  --fw-medium: 400;
   --fw-bold: 700;
+  --fw-heavy: 800;
   --font: var(--font-body);
 
-  /* 文字サイズの段（24/18/15/13/11） */
-  --fs-xl: 1.5rem;
+  /* 文字サイズの8段（28/22/18/16/14/13/12/11）。ゲーム風の大きな数字・題字だけ例外。最小は 11px */
+  --fs-2xl: 1.75rem;
+  --fs-xl: 1.375rem;
   --fs-l: 1.125rem;
-  --fs-m: 0.9375rem;
+  --fs-ml: 1rem;
+  --fs-m: 0.875rem;
   --fs-s: 0.8125rem;
+  --fs-sm: 0.75rem;
   --fs-xs: 0.6875rem;
 
   /* 寸法（rem: 16px 基準） */
@@ -188,18 +201,19 @@
   --sheet-full-gap: 3.5rem;  /* 56px: 全画面でも上部に残す高さ */
   --gutter: 1rem;
 
+  /* 角丸は 16px（カード・ボタン）／20px（シート・大きいカード）／ピル の3種。--radius-control は旧名で、カードと同じ 16px */
   --radius-s: 0.5rem;
-  --radius-control: 0.75rem;    /* 12px: ボタン・入力欄・アイコンの台座 */
+  --radius-control: 1rem;       /* 16px: ボタン・入力欄・アイコンの台座 */
   --radius-m: 1rem;             /* 16px: カード */
   --radius-l: 1.25rem;          /* 20px: 大きいカード・下シート */
   --radius-pill: 999px;
   --phone-radius: 44px;
 
-  /* 影（奥行き3段。ニュートラルなクールグレーの影＋ごく細い輪郭。docs/08 §10.2） */
-  --shadow-1: 0 0 0 1px rgba(17, 24, 39, 0.04), 0 1px 2px rgba(17, 24, 39, 0.06), 0 2px 8px rgba(17, 24, 39, 0.04);
-  --shadow-2: 0 0 0 1px rgba(17, 24, 39, 0.03), 0 1px 2px rgba(17, 24, 39, 0.06), 0 4px 12px rgba(17, 24, 39, 0.08);
-  --shadow-3: 0 0 0 1px rgba(17, 24, 39, 0.04), 0 12px 32px rgba(17, 24, 39, 0.14);
-  --shadow-sheet: 0 -1px 0 rgba(17, 24, 39, 0.06), 0 -10px 30px rgba(17, 24, 39, 0.10);
+  /* 影（奥行き3段。温かい墨色の影＋ごく細い輪郭。docs/08 §10.2） */
+  --shadow-1: 0 0 0 1px rgba(42, 33, 27, 0.04), 0 1px 2px rgba(42, 33, 27, 0.06), 0 2px 8px rgba(42, 33, 27, 0.04);
+  --shadow-2: 0 0 0 1px rgba(42, 33, 27, 0.03), 0 1px 2px rgba(42, 33, 27, 0.06), 0 4px 12px rgba(42, 33, 27, 0.08);
+  --shadow-3: 0 0 0 1px rgba(42, 33, 27, 0.04), 0 12px 32px rgba(42, 33, 27, 0.14);
+  --shadow-sheet: 0 -1px 0 rgba(42, 33, 27, 0.06), 0 -10px 30px rgba(42, 33, 27, 0.10);
   --shadow-pop: var(--shadow-3);
   --focus-ring: 0 0 0 3px #ffffff, 0 0 0 5px var(--brand);
 

@@ -7,6 +7,8 @@
  * 失敗した取得（undefined）は、その部分を出さないか一般的な内容で補う（開始画面で起動を止めない）。
  * 演出の進み具合（イージング）もここに置く。毎フレーム呼ぶ算術はログを出さない。
  */
+import { clamp01 } from '@/Common/ui/canvas/easing';
+export { clamp01, easeOutBack, easeOutCubic } from '@/Common/ui/canvas/easing';
 import type { AppStatusDto, RankStatusDto, RevisitReasonDto, RevisitReasonKindDto, TownStateDto } from '@/application/dto/Dto';
 import { createLogger } from '@/Common/logging/logger';
 
@@ -88,7 +90,7 @@ export const REASON_KIND_LABELS: Readonly<Record<RevisitReasonKindDto, string>> 
 };
 
 /** 地区が取れないときの街並み（tokens.css の地区色5色。色づいた Lv1 の一般的な街） */
-const FALLBACK_COLORS: readonly string[] = ['#6366f1', '#f59e0b', '#10b981', '#ec4899', '#0ea5e9'];
+const FALLBACK_COLORS: readonly string[] = ['#8577b8', '#d6a23c', '#6f9e6a', '#cf7186', '#4f93a8'];
 
 /** 街並みに並べる地区の上限（画面幅 390px に5群） */
 export const MAX_LAUNCH_DISTRICTS = 5;
@@ -137,7 +139,7 @@ export function launchDistrictsOf(town: TownStateDto | undefined): readonly Laun
   return log.exit(
     list.slice(0, MAX_LAUNCH_DISTRICTS).map((d) => ({
       id: d.id,
-      color: /^#[0-9a-f]{6}$/i.test(d.color) ? d.color : FALLBACK_COLORS[0] ?? '#6366f1',
+      color: /^#[0-9a-f]{6}$/i.test(d.color) ? d.color : FALLBACK_COLORS[0] ?? '#8577b8',
       level: clampLevel(d.level),
       faded: d.fade.kind === 'fading',
       isLordMe: d.isLordMe,
@@ -216,15 +218,6 @@ export function launchModeOf(env: { readonly search: string; readonly webdriver:
 // ---------------------------------------------------------------------------
 
 /**
- * 0〜1 に収める。
- * @param x 値
- * @returns 0〜1
- */
-export function clamp01(x: number): number { // audit-ignore: fnlog-missing 毎フレーム描画で呼ぶ純粋な算術
-  return x <= 0 ? 0 : x >= 1 ? 1 : x;
-}
-
-/**
  * 区間の進み具合（開始前 0、終了後 1）。
  * @param t いまの時刻（ms）
  * @param start 開始（ms）
@@ -233,18 +226,6 @@ export function clamp01(x: number): number { // audit-ignore: fnlog-missing 毎�
  */
 export function spanProgress(t: number, start: number, duration: number): number { // audit-ignore: fnlog-missing 毎フレーム描画で呼ぶ純粋な算術
   return duration <= 0 ? (t >= start ? 1 : 0) : clamp01((t - start) / duration);
-}
-
-/**
- * 行きすぎて戻るイージング（建物がにょきっと伸びて少し縮む）。
- * @param x 0〜1
- * @returns 0 から始まり 1 で終わる値（途中で 1 を少し超える）
- */
-export function easeOutBack(x: number): number { // audit-ignore: fnlog-missing 毎フレーム描画で呼ぶ純粋な算術
-  const c1 = 1.70158;
-  const c3 = c1 + 1;
-  const p = clamp01(x) - 1;
-  return 1 + c3 * p * p * p + c1 * p * p;
 }
 
 /**
@@ -261,14 +242,4 @@ export function easeOutBounce(x: number): number { // audit-ignore: fnlog-missin
   if (p < 2.5 / d1) { p -= 2.25 / d1; return n1 * p * p + 0.9375; }
   p -= 2.625 / d1;
   return n1 * p * p + 0.984375;
-}
-
-/**
- * 減速するイージング（歩いて止まる）。
- * @param x 0〜1
- * @returns 0〜1
- */
-export function easeOutCubic(x: number): number { // audit-ignore: fnlog-missing 毎フレーム描画で呼ぶ純粋な算術
-  const p = 1 - clamp01(x);
-  return 1 - p * p * p;
 }

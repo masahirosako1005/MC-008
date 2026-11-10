@@ -2,7 +2,7 @@
  * @file 図鑑のカード格子（presentation/screens/Zukan 層）
  * 「名所」「店舗」の見出しごとに、収集カード風のタイルを3列で並べる（wireframes/05_zukan の③〜⑤）。すべての地区のカードを混ぜて並べ、カードに地区札を付ける。
  * - 訪問済み：カラーの街なみ絵、なじみ度の星と帯（なじみ／常連）、通った回数、訪れた季節の印、次のなじみ度まで
- * - 発見済み：同じ絵のシルエット（行けば色づく）と「まだ行っていない」
+ * - 発見済み：同じ絵のシルエット（行けば色づく）と「未達成」
  * - 未発見：同じ絵のシルエットを薄く＋破線の枠＋「未発見」（2026-11-09「アイコンが？になっているけどすべて表示」。位置は出さない＝B）
  * - 獲得した ★4（SSR 級）：虹の枠が回り、箔と光が走り、星がまたたく（2026-11-09「リッチコンテンツでキラキラ」）
  * 状態は「絵の色・枠線（実線／破線／二重）・記号・文言」の重ねがけで示す（色覚配慮）。タイルはすべて 44px 以上のボタン。
@@ -12,6 +12,7 @@ import type { ZukanDistrictTabDto, ZukanTileDto } from '@/application/dto/Dto';
 import { categoryIconOf, isShinyCard, rarityViewOf } from '@/presentation/screens/Zukan/cardFace';
 import { createLogger } from '@/Common/logging/logger';
 import { h, setStyle } from '@/Common/ui/dom';
+import { createIcon } from '@/Common/ui/icons';
 import { userAction } from '@/Common/ui/userAction';
 import { mountCardArt } from '@/presentation/screens/Zukan/ZukanCardArt';
 import type { ZukanArtModel } from '@/presentation/screens/Zukan/ZukanCardArt';
@@ -33,6 +34,8 @@ export interface SpotGridOptions {
   readonly onUnknown: () => void;
   /** 指定すると、どのタイルでもまず拡大プレビュー（レア度・取得方法）を開く（相関ID 発行済み） */
   readonly onPreview?: (tile: ZukanTileDto) => void;
+  /** 最初の見出しの行の右に置く要素（手持ち枚数。見出しと1行にまとめて、カードを上に寄せる） */
+  readonly headExtra?: HTMLElement;
 }
 
 /** カード格子の操作 */
@@ -119,6 +122,23 @@ function createVisitedMeta(tile: ZukanTileDto): HTMLElement | undefined {
 }
 
 /**
+ * まだ手に入れていないカードの入手の手がかり（線のアイコンだけ。文字は出さない）。
+ * 足あと＝現地で達成、チケット＝店頭QR でも可（★2 協力店）、きらめき＝四季で覚醒（★4）。
+ * @param rarity レア度
+ * @returns 要素
+ */
+function createHowIcons(rarity: number): HTMLElement {
+  const log = logger.fn('createHowIcons', { rarity });
+  return log.exit(
+    h('span', { class: 'zukan-card__how', attrs: { 'aria-hidden': 'true' } }, [
+      createIcon('footprints'),
+      rarity === 2 ? createIcon('ticket') : undefined,
+      rarity === 4 ? createIcon('sparkle') : undefined,
+    ]),
+  );
+}
+
+/**
  * カード1枚を作る。
  * @param tile タイル
  * @param index 表示順（出てくる動きの時間差に使う）
@@ -159,17 +179,13 @@ function createCard(tile: ZukanTileDto, index: number, opts: SpotGridOptions): H
       shiny ? createShinyLayer() : undefined,
       createArtFrame(tile),
       createDistrictTag(tile, opts.districts),
-      h('span', { class: 'rarity-card__strip', attrs: { 'aria-hidden': 'true' } }, [
-        h('span', { class: 'rarity-card__stars', text: view.stars }),
-        h('span', { class: 'rarity-card__rname', text: view.name }),
-      ]),
+      // レア度は札（LG など）と星だけ。名前の文字（レジェンド など）は拡大プレビューで見せる
+      h('span', { class: 'rarity-card__strip', attrs: { 'aria-hidden': 'true' } }, [h('span', { class: 'rarity-card__stars', text: view.stars })]),
       h('span', { class: 'zukan-card__name', attrs: { 'aria-hidden': 'true' }, text: tileName(tile) }),
       tile.category === undefined ? undefined : h('span', { class: 'zukan-card__category', attrs: { 'aria-hidden': 'true' }, text: tile.category }),
       createVisitedMeta(tile),
       h('span', { class: 'zukan-card__caption', attrs: { 'aria-hidden': 'true' }, text: tileCaption(tile) }),
-      tile.acquisitionShort === undefined || tile.status === 'visited'
-        ? undefined
-        : h('span', { class: 'zukan-card__how', attrs: { 'aria-hidden': 'true' }, text: `入手：${tile.acquisitionShort}` }),
+      tile.status === 'visited' ? undefined : createHowIcons(view.rarity),
     ],
   );
   setStyle(card, '--i', String(index));
@@ -185,7 +201,7 @@ export function createSpotGrid(opts: SpotGridOptions): SpotGridHandle {
   const log = logger.fn('createSpotGrid', { count: opts.tiles.length });
   const pending: PendingArt[] = [];
   let index = 0;
-  const sections = groupTiles(opts.tiles).map((group) => {
+  const sections = groupTiles(opts.tiles).map((group, groupIndex) => {
     const cards = group.tiles.map((tile) => {
       const card = createCard(tile, index++, opts);
       const model = artModelOf(tile);
@@ -193,7 +209,8 @@ export function createSpotGrid(opts: SpotGridOptions): SpotGridHandle {
       if (model !== undefined && host !== null) pending.push({ host, model });
       return card;
     });
-    return h('section', { class: 'zukan-section' }, [h('h3', { class: 'zukan-section__title', text: group.title }), h('div', { class: 'zukan-grid' }, cards)]);
+    const head = h('div', { class: 'zukan-section__head' }, [h('h3', { class: 'zukan-section__title', text: group.title }), groupIndex === 0 ? opts.headExtra : undefined]);
+    return h('section', { class: 'zukan-section' }, [head, h('div', { class: 'zukan-grid' }, cards)]);
   });
   // 未発見カードの見つけ方は格子の上に出さない（開いてすぐ写真が見えるように。2026-11-09）。
   // 見つけ方はカードの拡大プレビューの「取得方法」と、読み上げ名（tileAriaLabel）で伝える

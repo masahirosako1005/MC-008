@@ -73,7 +73,8 @@ export function validateNewPassword(raw: unknown): Result<string> {
   if (hasControlChars(password) || password.trim().length === 0) {
     return log.fail(fail(AppError.of('INVALID_INPUT', 'パスワードに使えない文字があります', { field: 'password' })));
   }
-  return log.exit(ok(password));
+  log.exit(undefined, 'ok'); // パスワードはログに出さない
+  return ok(password);
 }
 
 /**

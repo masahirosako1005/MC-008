@@ -38,13 +38,13 @@ export const PREVIEW_SPOT = {
   name: '福まるどら焼き本舗',
   kindLabel: '店舗',
   meters: 62,
-  subtitle: '訪問2回',
+  subtitle: '2回達成',
   chip: 'クーポン',
   districtId: 'd_minamimori',
 } as const;
 
 /** 将来の通知項目（今は操作できない。wireframes/10_settings 注記3） */
-export const FUTURE_NOTIFICATIONS: readonly string[] = ['色あせのお知らせ（7日前）', 'クーポン・イベントの期限', '地区の主を奪われたとき'];
+export const FUTURE_NOTIFICATIONS: readonly string[] = ['色あせの7日前', 'クーポン・イベントの期限', '領主を奪われたとき'];
 
 /** 見出しと値の1行 */
 export interface SettingsRow {
@@ -80,53 +80,35 @@ export function nextScaleForKey(current: TextScale, key: string): TextScale | un
  * @returns 位置情報の利用のしかた（1行に収まる短さ）
  */
 export function locationUsageText(isDemo: boolean): string {
-  return logger.fn('locationUsageText', { isDemo }).exit(isDemo ? '使いません（デモ版）' : 'アプリの使用中のみ');
+  return logger.fn('locationUsageText', { isDemo }).exit(isDemo ? 'オフ' : '使用中のみ');
 }
 
 /**
- * 位置情報のまとまりの補足を返す（CLAUDE.md 10 章：地区単位で集計し、移動の道すじは端末の中で扱う）。
- * @param isDemo デモビルドなら true（地図タップで動くことを添える）
- * @returns 補足の文
- */
-export function locationNote(isDemo: boolean): string {
-  const log = logger.fn('locationNote', { isDemo });
-  const policy = '来訪の記録は地区ごとにまとめて扱い、あなたの移動の道すじは端末の中だけに置きます。';
-  return log.exit(isDemo ? `デモ版は地図をタップして歩きます。${policy}` : policy);
-}
-
-/**
- * 文字の大きさのまとまりの補足を返す。
- * @param isDemo デモビルドなら true（発表向けのおすすめを添える）
- * @returns 補足の文
- */
-export function textScaleNote(isDemo: boolean): string {
-  const log = logger.fn('textScaleNote', { isDemo });
-  const base = '地図のラベル・下シート・スポット詳細など、すべての画面に反映されます。';
-  return log.exit(isDemo ? `${base}発表では「大」がおすすめです。` : base);
-}
-
-/**
- * 「このアプリについて」の行を返す。
- * @param isDemo デモビルドなら true（バージョンに「デモ版」と添える）
+ * 「このアプリについて」の行を返す（括弧書きの補足は付けない。デモかどうかはステータスバーで分かる）。
+ * @param isDemo デモビルドなら true（表示は同じ）
  * @returns 行の一覧
  */
 export function aboutRows(isDemo: boolean): readonly SettingsRow[] {
   const log = logger.fn('aboutRows', { isDemo });
   return log.exit([
     { label: 'アプリ名', value: APP_DISPLAY_NAME },
-    { label: 'バージョン', value: isDemo ? `${APP_VERSION}（デモ版）` : APP_VERSION },
+    { label: 'バージョン', value: APP_VERSION },
   ]);
 }
 
-/** データのまとまりの文言（DI-21 書き出し・PRV-05 削除） */
+/** データのまとまりの文言（DI-21 書き出し・読み込み、PRV-05 削除） */
 export const DATA_TEXTS = {
-  exportLead: 'クエストの記録・EXP・カード・着せ替え・設定を、JSON ファイルにして端末に保存します。',
-  exportButton: 'データを書き出す',
-  exported: (count: number): string => `データを書き出しました（${count}件）`,
+  exportButton: '書き出す',
+  exported: (count: number): string => `${count}件を書き出しました`,
   exportFailed: 'データを書き出せませんでした',
-  deleteLead: 'この端末に保存したあなたのデータをすべて消します。元には戻せません。',
-  deleteButton: 'すべてのデータを削除',
-  confirmTitle: 'すべてのデータを削除しますか？',
+  importButton: '読み込む',
+  importConfirmTitle: '読み込む',
+  importConfirmBody: 'この端末のデータを、選んだファイルの内容に置き換えます。元には戻せません。',
+  importConfirmOk: '置き換える',
+  importRejected: 'このファイルは読み込めません',
+  importFailed: 'データを読み込めませんでした。元のままです',
+  deleteButton: '全削除',
+  confirmTitle: '全削除',
   confirmCancel: 'やめる',
   confirmDelete: '削除する',
   deleteFailed: 'データを削除できませんでした。もう一度お試しください',
@@ -134,23 +116,12 @@ export const DATA_TEXTS = {
 
 /**
  * 削除の確認ダイアログの本文を返す。
- * @param isDemo デモビルドなら true（最初の状態からやり直すことを添える）
- * @returns 本文
+ * @param isDemo デモビルドなら true（文は同じ。括弧書きの補足は付けない）
+ * @returns 本文（元に戻せないことだけを短く伝える）
  */
 export function deleteConfirmText(isDemo: boolean): string {
   const log = logger.fn('deleteConfirmText', { isDemo });
-  const base = 'クエストの記録、EXP、カード、アイテム、着せ替え、設定がこの端末から消え、アプリを最初から始め直します。元には戻せません。残しておきたいときは、先に「データを書き出す」で保存してください。';
-  return log.exit(isDemo ? `${base}（デモ版は、最初のデモの状態に戻ります）` : base);
-}
-
-/**
- * データのまとまりの補足を返す。
- * @param isDemo デモビルドなら true
- * @returns 補足の文（お店側のデータは消えないことを示す）
- */
-export function dataNote(isDemo: boolean): string {
-  const log = logger.fn('dataNote', { isDemo });
-  return log.exit(isDemo ? 'お店の CMS で登録した内容は、お店側のデータなので消えません。デモの日付も今日に戻ります。' : 'お店に渡すのは地区ごとの集計だけで、あなた個人のデータは渡しません。');
+  return log.exit('この端末のデータをすべて消します。元には戻せません。');
 }
 
 /**

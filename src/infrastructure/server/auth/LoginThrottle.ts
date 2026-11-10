@@ -65,7 +65,7 @@ export class LoginThrottle {
    * @param now 今
    * @returns 状態（無ければ undefined）
    */
-  private alive(key: string, now: number): Entry | undefined {
+  private alive(key: string, now: number): Entry | undefined { // audit-ignore: fnlog-missing 要求ごとに呼ぶ小さな読み出し（呼び出し元が記録する）
     const entry = this.entries.get(key);
     if (entry === undefined) return undefined;
     if (entry.lockedUntil > now) return entry;
@@ -133,7 +133,7 @@ export class LoginThrottle {
    * 覚える数が上限を超えたら、古い順に捨てる（Map は入れた順に並ぶ）。
    * @sideEffect 記憶を減らす
    */
-  private forgetOldest(): void {
+  private forgetOldest(): void { // audit-ignore: fnlog-missing 失敗のたびに呼ぶ小さな掃除（recordFailure で記録する）
     const max = this.options.maxKeys ?? DEFAULT_MAX_KEYS;
     for (const key of this.entries.keys()) {
       if (this.entries.size <= max) break;

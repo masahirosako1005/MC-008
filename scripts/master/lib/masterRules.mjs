@@ -49,11 +49,11 @@ export const RULES = Object.freeze({
 
 /** 地区の固定値（docs/08 §9.1）。名所数・店舗数も地区ごとに固定 */
 export const EXPECTED_DISTRICTS = Object.freeze([
-  { id: 'd_minamimori', code: 'mm', name: '南森町・天満宮地区', shortName: '南森町', theme: '門前町', color: '#6366f1', landmarks: 3, shops: 14 },
-  { id: 'd_tenma', code: 'tm', name: '天満地区', shortName: '天満', theme: '市場と食', color: '#f59e0b', landmarks: 3, shops: 15 },
-  { id: 'd_tenroku', code: 'tr', name: '天六地区', shortName: '天六', theme: '暮らし', color: '#10b981', landmarks: 2, shops: 12 },
-  { id: 'd_ogimachi', code: 'og', name: '扇町・中崎町地区', shortName: '扇町', theme: '公園と路地', color: '#ec4899', landmarks: 3, shops: 12 },
-  { id: 'd_okawa', code: 'ok', name: '大川沿い地区', shortName: '大川', theme: '川辺と桜', color: '#0ea5e9', landmarks: 3, shops: 13 },
+  { id: 'd_minamimori', code: 'mm', name: '南森町・天満宮地区', shortName: '南森町', theme: '門前町', color: '#8577b8', landmarks: 3, shops: 14 },
+  { id: 'd_tenma', code: 'tm', name: '天満地区', shortName: '天満', theme: '市場と食', color: '#d6a23c', landmarks: 3, shops: 15 },
+  { id: 'd_tenroku', code: 'tr', name: '天六地区', shortName: '天六', theme: '暮らし', color: '#6f9e6a', landmarks: 2, shops: 12 },
+  { id: 'd_ogimachi', code: 'og', name: '扇町・中崎町地区', shortName: '扇町', theme: '公園と路地', color: '#cf7186', landmarks: 3, shops: 12 },
+  { id: 'd_okawa', code: 'ok', name: '大川沿い地区', shortName: '大川', theme: '川辺と桜', color: '#4f93a8', landmarks: 3, shops: 13 },
 ]);
 
 /** 舞台の名前（districts.json の city.name） */

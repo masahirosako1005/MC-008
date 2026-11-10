@@ -1,7 +1,8 @@
 /**
- * @file 中間の表示で右側に出す「映っているお店」の列（presentation/screens/Map/town 層）
+ * @file 中間の表示で出す「映っているお店」の列（presentation/screens/Map/town 層）
  * 2026-11-09 ユーザー指示「広域と中域でアイコン見えないので改善したい。例えば、リスト表示で右側で出るとか」。
- * 地図を引いて見ているとき（中間）、画面に映っているお店を写真つきで縦に並べる（今日だけ・行きたい・フィルタに合うものが上）。
+ * 地図を引いて見ているとき（中間）、画面に映っているお店を写真つきで並べる（今日だけ・行きたい・フィルタに合うものが先）。
+ * 置き場所は絞り込みの列のすぐ下の横1列（浮いている部品を「上＋下の左右」に収めるため。2026-11-10 UI/UX 改善 2周目）。
  * 押すと、そのお店へ向かう（MapScreen がカードを出して歩き出す）。中身が変わったときだけ作り直す。
  */
 import { createLogger } from '@/Common/logging/logger';
@@ -12,10 +13,8 @@ import type { GoodsIcon } from '@/presentation/screens/Map/town/pixelSprites';
 
 const logger = createLogger('presentation/screens/Map/town/SideShopList');
 
-/** 列に出す最大の件数 */
-export const SIDE_LIST_MAX = 14;
 /** 写真の大きさ（CSS px） */
-const PHOTO_PX = 52;
+const PHOTO_PX = 40;
 
 /** 列の1件 */
 export interface SideShopItem {
@@ -103,9 +102,11 @@ function itemElement(item: SideShopItem, selected: boolean, onSelect: (id: strin
   const log = logger.fn('itemElement', { id: item.id });
   const photo = h('canvas', { class: 'map-side-list__photo', attrs: { 'aria-hidden': 'true' } });
   paintGoodsPhoto(photo, item.icon, PHOTO_PX, { silhouette: item.unknown });
-  const children: HTMLElement[] = [photo];
-  if (item.tag !== undefined) children.push(h('span', { class: ['map-side-list__tag', item.hot ? 'map-side-list__tag--hot' : undefined], text: item.tag }));
-  children.push(h('span', { class: 'map-side-list__name', text: item.name ?? '？？？' }));
+  const text = h('span', { class: 'map-side-list__text' }, [
+    item.tag === undefined ? undefined : h('span', { class: ['map-side-list__tag', item.hot ? 'map-side-list__tag--hot' : undefined], text: item.tag }),
+    h('span', { class: 'map-side-list__name', text: item.name ?? '？？？' }),
+  ]);
+  const children: HTMLElement[] = [photo, text];
   const button = h(
     'button',
     {

@@ -1,8 +1,10 @@
 /**
  * @file ログイン・セッション・アカウント管理の手順（infrastructure/server/auth 層。docs/09 CMS-A04〜A07、§4.1）
  * - ログイン：相手ごとの回数制限（SEC-18）→ アカウントを探す → パスワードを照合（知らない ID でも同じ計算）→
- *   失敗が続けばロック（CMS-A06）→ 成功したら失敗回数を戻し、新しいセッションを発行する（SEC-19）
- * - セッション：トークンの SHA-256 で探し、期限（12 時間）と最後の操作（60 分）を確かめ、停止されたアカウントは通さない
+ *   「ID＋相手」の失敗が続けばロック（CMS-A06。LoginThrottle。ほかの相手＝本人は締め出さない）→ 成功したら新しいセッションを発行する（SEC-19）。
+ *   失敗の応答は、知らない ID・違うパスワード・ロック中のどれでも同じ 401 と同じ文（ID の有無を漏らさない）
+ * - セッション：トークンの SHA-256 で探し、期限（12 時間）と最後の操作（60 分）を確かめ、停止されたアカウントは通さない。
+ *   本番の版ではデモのアカウントのセッションを通さない（デモの DB をそのまま使ってしまったとき用）
  * - アカウント管理：運営者だけ（呼び出し側の経路がロールを確かめる。ここでも入力を検証する）
  * すべての書き込みは cms_auth_log に残す（SEC-24）。パスワード・IP・メールは記録しない（SEC-25）。
  */
@@ -28,6 +30,7 @@ import type {
 import type { Clock } from '@/domain/ports/Clock';
 import type { IdGenerator } from '@/domain/ports/IdGenerator';
 import type { SpotRepository } from '@/domain/spot/SpotRepository';
+import { LoginThrottle } from '@/infrastructure/server/auth/LoginThrottle';
 import { hashPassword, needsRehash, UNUSABLE_PASSWORD_HASH, validateNewPassword, verifyPassword } from '@/infrastructure/server/auth/passwordHash';
 import { ACCOUNT_ID_PATTERN } from '@/infrastructure/server/auth/principal';
 import type { Principal } from '@/infrastructure/server/auth/principal';
@@ -37,10 +40,12 @@ import type { AccountRecord, SqliteAuthStore } from '@/infrastructure/server/sql
 
 const logger = createLogger('infrastructure/server/auth/AuthService');
 
-/** ログインの失敗がこの回数続いたらロックする（CMS-A06。仮） */
+/** 同じ ID＋同じ相手で、ログインの失敗がこの回数続いたらロックする（CMS-A06。仮） */
 export const LOGIN_FAILURES_BEFORE_LOCK = 5;
 /** ロックの長さ（ミリ秒。15 分。仮） */
 export const LOGIN_LOCK_MS = 15 * 60 * 1000;
+/** ログインの失敗の文（知らない ID・違うパスワード・ロック中で同じ） */
+export const LOGIN_FAILED_MESSAGE = 'ID かパスワードが違います。何度も失敗したときは、しばらくしてからお試しください';
 /** ログインの試みの回数制限（1つの相手につき1分に10回。SEC-18） */
 export const LOGIN_RATE_LIMIT: RateLimitOptions = { limit: 10, windowMs: 60_000 };
 /** 最後の操作の日時を書き直す間隔（ミリ秒。要求のたびに書かない） */
@@ -94,7 +99,7 @@ function storageFailed(reason: string, cause?: unknown): Result<never> {
  * @returns AUTH_FAILED
  */
 function authFailed(): Result<never> {
-  return fail(AppError.of('AUTH_FAILED', 'ID かパスワードが違います'));
+  return fail(AppError.of('AUTH_FAILED', LOGIN_FAILED_MESSAGE));
 }
 
 /**
@@ -159,25 +164,38 @@ function instantOf(raw: string | undefined): Instant | undefined { // audit-igno
 /**
  * アカウントを画面用の DTO にする（パスワードのハッシュは入れない）。
  * @param account アカウント
- * @param now 今
+ * @param locked いまロック中の相手がいるか
  * @returns DTO
  */
-function accountDtoOf(account: AccountRecord, now: Instant): CmsAccountDto { // audit-ignore: fnlog-missing 形を写すだけの純粋なヘルパー（呼び出し元が記録する）
-  const lockedUntil = instantOf(account.lockedUntil);
+function accountDtoOf(account: AccountRecord, locked: boolean): CmsAccountDto { // audit-ignore: fnlog-missing 形を写すだけの純粋なヘルパー（呼び出し元が記録する）
   return {
     id: account.id, loginId: account.loginId, displayName: account.displayName, role: account.role, status: account.status,
-    shopIds: [...account.shopIds], demo: account.demo, locked: lockedUntil !== undefined && epochMsOf(lockedUntil) > epochMsOf(now),
+    shopIds: [...account.shopIds], demo: account.demo, locked,
     createdAt: account.createdAt, ...(account.lastLoginAt === undefined ? {} : { lastLoginAt: account.lastLoginAt }),
   };
 }
 
 /** ログイン・セッション・アカウント管理 */
 export class AuthService {
+  /** ID＋相手ごとの失敗の数え方 */
+  private readonly throttle: LoginThrottle;
+
   /**
    * 依存を受け取る。
    * @param deps 表・時計・ID・マスタ・モード・回数制限
    */
-  constructor(private readonly deps: AuthServiceDeps) {}
+  constructor(private readonly deps: AuthServiceDeps) {
+    this.throttle = new LoginThrottle({ maxFailures: LOGIN_FAILURES_BEFORE_LOCK, lockMs: LOGIN_LOCK_MS, nowMs: () => epochMsOf(deps.clock.now()) });
+  }
+
+  /**
+   * アカウントを画面用の DTO にする（ロック中かを足す）。
+   * @param account アカウント
+   * @returns DTO
+   */
+  private dtoOf(account: AccountRecord): CmsAccountDto {
+    return accountDtoOf(account, this.throttle.hasLockFor(account.loginId));
+  }
 
   /**
    * 今の日時を返す。
@@ -231,7 +249,8 @@ export class AuthService {
     const now = this.now();
     const expiresAt = instantFromEpochMs(epochMsOf(now) + SESSION_TTL_MS);
     this.deps.store.insertSession({ id, accountId: account.id, createdAt: now, expiresAt, lastSeenAt: now });
-    return log.exit({ principal: this.principalOf(account, id), token });
+    log.exit(undefined, 'issued'); // トークンはログに出さない
+    return { principal: this.principalOf(account, id), token };
   }
 
   /**
@@ -257,6 +276,10 @@ export class AuthService {
       }
       const account = this.deps.store.findAccountById(session.accountId);
       if (account === undefined || account.status !== 'active') return log.exit(ok(undefined), 'inactive');
+      if (account.demo && this.deps.mode !== 'demo') {
+        log.warn('本番の版でデモのアカウントのセッションを断りました');
+        return log.exit(ok(undefined), 'demoAccount');
+      }
       if (nowMs - epochMsOf(lastSeenAt) > TOUCH_INTERVAL_MS) this.deps.store.touchSession(id, now);
       return log.exit(ok(this.principalOf(account, id)), account.role);
     } catch (error) {
@@ -266,30 +289,29 @@ export class AuthService {
   }
 
   /**
-   * ログインの失敗を数え、続けばロックする。
-   * @param account アカウント
-   * @returns 記録に残す補足
-   * @sideEffect cms_accounts を書き換える
+   * ログインの失敗を数える（同期的。並行して届いた失敗も数え漏れない）。上限に達したらロックし、記録に残す。
+   * @param key ID＋相手の鍵
+   * @param targetId 記録に残す対象（アカウントID。知らない ID なら '-'）
+   * @param reason 理由
+   * @sideEffect LoginThrottle を書き換え、記録を残す
    */
-  private countFailure(account: AccountRecord): Readonly<Record<string, number | boolean>> {
-    const log = logger.fn('countFailure', { accountId: account.id, failed: account.failedLogins });
-    const failed = account.failedLogins + 1;
-    const now = this.now();
-    if (failed >= LOGIN_FAILURES_BEFORE_LOCK) {
-      this.deps.store.updateAccount(account.id, { failedLogins: 0, lockedUntil: instantFromEpochMs(epochMsOf(now) + LOGIN_LOCK_MS), updatedAt: now });
-      log.warn('ログインの失敗が続いたためロックしました', { accountId: account.id });
-      return log.exit({ failed, locked: true });
+  private countFailure(key: string, targetId: string, reason: 'unknown' | 'mismatch' | 'suspended'): void {
+    const log = logger.fn('countFailure', { targetId, reason });
+    const outcome = this.throttle.recordFailure(key);
+    this.record(targetId === '-' ? ANONYMOUS_ACTOR : targetId, 'login.failed', targetId, { reason, failures: outcome.failures });
+    if (outcome.locked) {
+      log.warn('ログインの失敗が続いたため、この相手からの ID をロックしました', { targetId, failures: outcome.failures });
+      this.record(targetId === '-' ? ANONYMOUS_ACTOR : targetId, 'login.locked', targetId);
     }
-    this.deps.store.updateAccount(account.id, { failedLogins: failed, updatedAt: now });
-    return log.exit({ failed, locked: false });
+    log.exit(undefined);
   }
 
   /**
-   * ログインする。
+   * ログインする。失敗は理由によらず同じ AUTH_FAILED（ID の有無を漏らさない）。
    * @param input ID とパスワード
-   * @param clientKey 相手の識別子（回数制限の鍵。記録には残さない）
-   * @returns 成功: Principal とトークン。失敗: RATE_LIMITED / AUTH_FAILED / ACCOUNT_LOCKED / INVALID_INPUT / STORAGE_FAILED
-   * @sideEffect 失敗回数・ロック・最終ログイン・セッションを書き、記録を残す
+   * @param clientKey 相手の識別子（回数制限・ロックの鍵。記録には残さない）
+   * @returns 成功: Principal とトークン。失敗: RATE_LIMITED / AUTH_FAILED / STORAGE_FAILED
+   * @sideEffect 失敗の数・ロック・最終ログイン・セッションを書き、記録を残す
    */
   async login(input: CmsLoginInput, clientKey: string): Promise<Result<LoginOutcome>> {
     const log = logger.fn('login');
@@ -302,14 +324,21 @@ export class AuthService {
       await verifyPassword('', UNUSABLE_PASSWORD_HASH);
       return log.fail(authFailed(), 'format');
     }
+    const key = LoginThrottle.keyOf(loginId.value, clientKey);
+    if (this.throttle.isLocked(key)) {
+      await verifyPassword(input.password, UNUSABLE_PASSWORD_HASH);
+      this.record(ANONYMOUS_ACTOR, 'login.lockedAttempt', '-');
+      return log.fail(authFailed(), 'locked');
+    }
     try {
       const account = this.deps.store.findAccountByLoginId(loginId.value);
       if (account === undefined) {
         await verifyPassword(input.password, UNUSABLE_PASSWORD_HASH);
-        this.record(ANONYMOUS_ACTOR, 'login.failed', '-', { known: false });
+        this.countFailure(key, '-', 'unknown');
         return log.fail(authFailed(), 'unknown');
       }
-      return log.exit(await this.loginKnown(account, input.password));
+      const outcome = await this.loginKnown(account, input.password, key);
+      return outcome.ok ? log.exit(outcome, 'ok') : log.fail(outcome, outcome.error.code); // 成功の値（トークン）はログに出さない
     } catch (error) {
       log.error('ログインの処理で DB の失敗');
       return log.fail(storageFailed('login', error));
@@ -317,32 +346,32 @@ export class AuthService {
   }
 
   /**
-   * 見つかったアカウントでログインを続ける。
+   * 見つかったアカウントでログインを続ける。照合の後にもう一度ロックを確かめる（照合中に別の要求がロックしたとき）。
    * @param account アカウント
    * @param password 入力されたパスワード
-   * @returns 成功: Principal とトークン。失敗: ACCOUNT_LOCKED / AUTH_FAILED
-   * @sideEffect 失敗回数・ロック・最終ログイン・セッションを書き、記録を残す
+   * @param key ID＋相手の鍵
+   * @returns 成功: Principal とトークン。失敗: AUTH_FAILED
+   * @sideEffect 失敗の数・ロック・最終ログイン・セッションを書き、記録を残す
    */
-  private async loginKnown(account: AccountRecord, password: string): Promise<Result<LoginOutcome>> {
+  private async loginKnown(account: AccountRecord, password: string, key: string): Promise<Result<LoginOutcome>> {
     const log = logger.fn('loginKnown', { accountId: account.id, status: account.status });
-    const now = this.now();
-    const lockedUntil = instantOf(account.lockedUntil);
-    if (lockedUntil !== undefined && epochMsOf(lockedUntil) > epochMsOf(now)) {
-      await verifyPassword(password, UNUSABLE_PASSWORD_HASH);
-      this.record(account.id, 'login.locked', account.id);
-      return log.fail(fail(AppError.of('ACCOUNT_LOCKED', 'しばらく使えません。時間をおいてからお試しください')), 'locked');
-    }
     const matched = await verifyPassword(password, account.passwordHash);
     if (!matched || account.status !== 'active') {
-      const detail = matched ? { suspended: true } : this.countFailure(account);
-      this.record(account.id, 'login.failed', account.id, detail);
+      this.countFailure(key, account.id, matched ? 'suspended' : 'mismatch');
       return log.fail(authFailed(), matched ? 'suspended' : 'mismatch');
     }
+    if (this.throttle.isLocked(key)) {
+      this.record(account.id, 'login.lockedAttempt', account.id);
+      return log.fail(authFailed(), 'lockedAfterVerify');
+    }
+    this.throttle.clear(key);
+    const now = this.now();
     const rehash = needsRehash(account.passwordHash) ? await hashPassword(password) : undefined;
-    this.deps.store.updateAccount(account.id, { failedLogins: 0, lockedUntil: null, lastLoginAt: now, updatedAt: now, ...(rehash === undefined ? {} : { passwordHash: rehash }) });
+    this.deps.store.updateAccount(account.id, { lastLoginAt: now, updatedAt: now, ...(rehash === undefined ? {} : { passwordHash: rehash }) });
     const outcome = this.issueSession(account);
     this.record(account.id, 'login.success', account.id, { role: account.role });
-    return log.exit(ok(outcome));
+    log.exit(undefined, 'ok');
+    return ok(outcome);
   }
 
   /**
@@ -414,7 +443,8 @@ export class AuthService {
       if (account.status !== 'active') return log.fail(fail(AppError.of('FORBIDDEN', 'このデモのアカウントは停止されています')));
       const outcome = this.issueSession(account);
       this.record(account.id, 'login.demo', account.id, { role: account.role });
-      return log.exit(ok(outcome));
+      log.exit(undefined, 'ok');
+      return ok(outcome);
     } catch (error) {
       log.error('デモのログインで DB の失敗');
       return log.fail(storageFailed('demoLogin', error));
@@ -468,8 +498,7 @@ export class AuthService {
   listAccounts(): Result<readonly CmsAccountDto[]> {
     const log = logger.fn('listAccounts');
     try {
-      const now = this.now();
-      return log.exit(ok(this.deps.store.listAccounts().map((a) => accountDtoOf(a, now))));
+      return log.exit(ok(this.deps.store.listAccounts().map((a) => this.dtoOf(a))));
     } catch (error) {
       log.error('アカウントの一覧で DB の失敗');
       return log.fail(storageFailed('accounts', error));
@@ -506,7 +535,7 @@ export class AuthService {
       };
       this.deps.store.insertAccount(account);
       this.record(actor, 'account.create', account.id, { role: account.role, shops: account.shopIds.length });
-      return log.exit(ok(accountDtoOf(account, now)));
+      return log.exit(ok(this.dtoOf(account)));
     } catch (error) {
       log.error('アカウントの作成で DB の失敗');
       return log.fail(storageFailed('createAccount', error));
@@ -546,7 +575,7 @@ export class AuthService {
       const now = this.now();
       this.deps.store.replaceAccountShops(account.value.id, shopIds.value, now);
       this.record(actor, 'account.shops', account.value.id, { before: account.value.shopIds.length, after: shopIds.value.length });
-      return log.exit(ok(accountDtoOf({ ...account.value, shopIds: shopIds.value, updatedAt: now }, now)));
+      return log.exit(ok(this.dtoOf({ ...account.value, shopIds: shopIds.value, updatedAt: now })));
     } catch (error) {
       log.error('担当店舗の変更で DB の失敗');
       return log.fail(storageFailed('accountShops', error));
@@ -572,7 +601,7 @@ export class AuthService {
       this.deps.store.updateAccount(account.value.id, { status, updatedAt: now });
       const revoked = status === 'suspended' ? this.deps.store.revokeSessionsOfAccount(account.value.id, now) : 0;
       this.record(actor, status === 'suspended' ? 'account.suspend' : 'account.resume', account.value.id, { revokedSessions: revoked });
-      return log.exit(ok(accountDtoOf({ ...account.value, status, updatedAt: now }, now)));
+      return log.exit(ok(this.dtoOf({ ...account.value, status, updatedAt: now })));
     } catch (error) {
       log.error('停止・再開で DB の失敗');
       return log.fail(storageFailed('accountStatus', error));
@@ -581,9 +610,10 @@ export class AuthService {
 
   /**
    * パスワードを設定し直す（運営者・コマンドライン。そのアカウントのセッションはすべて切れる）。
+   * 自分のパスワードは今のパスワードを確かめる changePassword でしか変えられない（席を離れた画面からの乗っ取りを防ぐ）。
    * @param actor 操作した人
    * @param input アカウントと新しいパスワード
-   * @returns 成功: void。失敗: INVALID_INPUT / ACCOUNT_NOT_FOUND / FORBIDDEN（デモのアカウント）/ STORAGE_FAILED
+   * @returns 成功: void。失敗: INVALID_INPUT / ACCOUNT_NOT_FOUND / FORBIDDEN（デモのアカウント・自分）/ STORAGE_FAILED
    * @sideEffect cms_accounts・cms_sessions を書き換え、記録を残す
    */
   async resetAccountPassword(actor: string, input: ResetCmsAccountPasswordInput): Promise<Result<void>> {
@@ -594,8 +624,9 @@ export class AuthService {
       const account = this.requireAccount(input.accountId);
       if (!account.ok) return log.fail(account);
       if (account.value.demo) return log.fail(fail(AppError.of('FORBIDDEN', 'デモのアカウントにはパスワードを設定できません')));
+      if (account.value.id === actor) return log.fail(fail(AppError.of('FORBIDDEN', '自分のパスワードは「アカウント」から今のパスワードを入れて変えてください')));
       const now = this.now();
-      this.deps.store.updateAccount(account.value.id, { passwordHash: await hashPassword(password.value), failedLogins: 0, lockedUntil: null, updatedAt: now });
+      this.deps.store.updateAccount(account.value.id, { passwordHash: await hashPassword(password.value), updatedAt: now });
       const revoked = this.deps.store.revokeSessionsOfAccount(account.value.id, now);
       this.record(actor, 'password.reset', account.value.id, { revokedSessions: revoked });
       return log.exit(okVoid());

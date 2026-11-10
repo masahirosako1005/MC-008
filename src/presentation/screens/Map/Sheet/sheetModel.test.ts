@@ -9,6 +9,7 @@ import {
   nearbySubtitle,
   nearestSpot,
   nearestSpotLines,
+  reasonCardText,
   reasonTarget,
   sortReasons,
   spotDisplayName,
@@ -42,6 +43,26 @@ describe('再訪理由の並びとタップ先', () => {
   });
 });
 
+describe('クエストのカードの題と補足', () => {
+  it('期限は題＝お店の名前、補足＝残り日数と特典', () => {
+    expect(reasonCardText(reason('deadline', { title: '福まるどら焼き本舗のクーポン、あと2日', subtitle: 'どら焼き1個サービス' }))).toEqual({
+      title: '福まるどら焼き本舗',
+      subtitle: 'あと2日 ・ どら焼き1個サービス',
+    });
+  });
+  it('色あせ・未達成は題＝地区の名前。「訪問」の語は出さない', () => {
+    expect(reasonCardText(reason('fade', { title: 'そろそろ色あせ：大川沿い地区 あと5日', subtitle: '最終訪問 25日前' }))).toEqual({ title: '大川沿い地区', subtitle: 'あと5日 ・ 25日前' });
+    expect(reasonCardText(reason('fade', { title: '色あせ中：扇町・中崎町地区', subtitle: '最終訪問 45日前・再訪で復活＋おかえりボーナス' }))).toEqual({
+      title: '扇町・中崎町地区',
+      subtitle: '45日前・再訪で復活＋おかえりボーナス',
+    });
+    expect(reasonCardText(reason('unvisited', { title: '天満地区にまだ行っていないスポットが9件', subtitle: 'お好み焼き てんご' }))).toEqual({ title: '天満地区 9件', subtitle: 'お好み焼き てんご' });
+  });
+  it('想定の形でない文言はそのまま返す', () => {
+    expect(reasonCardText(reason('reclaim', { title: '天満地区の領主を奪われた', subtitle: 'あと2回' }))).toEqual({ title: '天満地区の領主を奪われた', subtitle: 'あと2回' });
+  });
+});
+
 describe('近隣スポットの表示', () => {
   it('いちばん近いスポットを選ぶ', () => {
     expect(nearestSpot([spot({ id: 'a', meters: 90 }), spot({ id: 'b', meters: 20 }), spot({ id: 'c', meters: 20 })])?.id).toBe('b');
@@ -53,8 +74,8 @@ describe('近隣スポットの表示', () => {
     expect(nearestSpotLines(spot({ status: 'unknown', name: undefined, meters: 62 })).title).not.toContain('秘密');
   });
   it('補足は訪問回数とクーポンの有無（未発見はクーポンを出さない）', () => {
-    expect(nearbySubtitle(spot({ status: 'visited', visitCount: 2, hasActiveShopEvent: true }))).toBe('訪問2回 ・ クーポン・イベントあり');
-    expect(nearbySubtitle(spot({ status: 'discovered' }))).toBe('まだ行っていない');
+    expect(nearbySubtitle(spot({ status: 'visited', visitCount: 2, hasActiveShopEvent: true }))).toBe('2回達成 ・ クーポン・イベントあり');
+    expect(nearbySubtitle(spot({ status: 'discovered' }))).toBe('未達成');
     expect(nearbySubtitle(spot({ status: 'unknown', hasActiveShopEvent: true }))).toBe('未発見');
   });
 });
@@ -65,10 +86,12 @@ describe('地区カードの文言', () => {
     expect(lordLabelOf({ isLordMe: false, lordName: 'おまいり番長' })).toBe('領主：おまいり番長');
     expect(lordLabelOf({ isLordMe: false })).toBeUndefined();
   });
-  it('2行目は最終訪問と次の目標（達成率は出さない）', () => {
+  it('2行目は最後に達成してからの日数と次の目標（達成率は出さない。色あせの札と同じ文言は重ねない）', () => {
     expect(districtSubText({ fade: { kind: 'soon', daysSinceVisit: 25, daysUntilFade: 5 }, nextGoalText: '次の目標：あと1回で銀カード' })).toBe(
-      '最終訪問 25日前 ・ 次の目標：あと1回で銀カード',
+      '25日前 ・ 次の目標：あと1回で銀カード',
     );
-    expect(districtSubText({ fade: { kind: 'never' }, nextGoalText: '' })).toBe('まだ訪れていない');
+    expect(districtSubText({ fade: { kind: 'soon', daysSinceVisit: 25, daysUntilFade: 5 }, nextGoalText: 'あと5日で色あせ' })).toBe('25日前');
+    expect(districtSubText({ fade: { kind: 'fresh', daysSinceVisit: 0 }, nextGoalText: '' })).toBe('今日');
+    expect(districtSubText({ fade: { kind: 'never' }, nextGoalText: 'まずクエストを1つ達成しよう' })).toBe('未達成');
   });
 });

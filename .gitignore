@@ -33,4 +33,6 @@ e2e-output/
 dist-server/
 dist-backend/
 dist-cms/
+dist-app-local/
+dist-demo-fresh/
 .data/

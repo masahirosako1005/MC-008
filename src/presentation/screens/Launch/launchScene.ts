@@ -79,7 +79,7 @@ interface SkyColors {
 /** 時間帯ごとの色 */
 const SKY_COLORS: Readonly<Record<SkyPhase, SkyColors>> = {
   dawn: { sky: ['#ffbfa0', '#ffe0c6', '#fff4e8'], far: ['#f3cfbf', '#eabda9'], sidewalk: '#f6ece4', sidewalkLine: '#ead9cc', road: '#6b6472', plaza: '#f5e6da', orb: '#ffb46b', lit: false },
-  day: { sky: ['#7cc3f2', '#bfe2f8', '#eef8fe'], far: ['#cfe3f3', '#bad3e9'], sidewalk: '#eef0f3', sidewalkLine: '#dfe3e9', road: '#4b5563', plaza: '#e3eaf1', orb: '#ffd166', lit: false },
+  day: { sky: ['#7cc3f2', '#bfe2f8', '#eef8fe'], far: ['#cfe3f3', '#bad3e9'], sidewalk: '#f1eadf', sidewalkLine: '#dfe3e9', road: '#5a4e44', plaza: '#e3eaf1', orb: '#ffd166', lit: false },
   dusk: { sky: ['#5546ad', '#ee7a7c', '#ffd39a'], far: ['#b9809f', '#9d6890'], sidewalk: '#f1e1d8', sidewalkLine: '#e3cbbd', road: '#4a3f5c', plaza: '#ecd6cc', orb: '#ff9a5a', lit: true },
   night: { sky: ['#0a1030', '#1b2552', '#33427a'], far: ['#1d2750', '#26346a'], sidewalk: '#384365', sidewalkLine: '#2f3858', road: '#1b2140', plaza: '#232b4c', orb: '#fff6d5', lit: true },
 };
@@ -385,7 +385,8 @@ function paintSkyLayer(ctx: CanvasRenderingContext2D, plan: ScenePlan, t: number
   for (let i = 0; i < 3; i++) {
     const speed = 0.006 + i * 0.003;
     const x = ((i * 157 + t * speed) % span) - 120;
-    paintCloud(ctx, x, L.groundY * (0.28 + i * 0.13), 64 + i * 18);
+    // タイトルと一言の帯・ビルの上のピンには雲を重ねない。空のいちばん上（ロゴより上）に流す
+    paintCloud(ctx, x, L.groundY * (0.045 + i * 0.03), 64 + i * 18);
   }
   ctx.restore();
   if (!night) paintBirds(ctx, L, t);
@@ -415,7 +416,7 @@ function paintStars(ctx: CanvasRenderingContext2D, L: SceneLayout, t: number): v
  */
 function paintBirds(ctx: CanvasRenderingContext2D, L: SceneLayout, t: number): void { // audit-ignore: fnlog-missing 毎フレーム描画
   ctx.save();
-  ctx.strokeStyle = 'rgba(31, 41, 55, 0.55)';
+  ctx.strokeStyle = 'rgba(42, 33, 27, 0.55)';
   ctx.lineWidth = 1.4;
   ctx.lineCap = 'round';
   const span = L.width + 80;
@@ -460,7 +461,7 @@ function paintGround(ctx: CanvasRenderingContext2D, plan: ScenePlan): void { // 
   fillBox(ctx, [0, y0, L.width, L.sidewalkH], c.sidewalk);
   ctx.fillStyle = c.sidewalkLine;
   for (let x = 12; x < L.width; x += 26) ctx.fillRect(x, y0 + 3, 1, L.sidewalkH - 6);
-  fillBox(ctx, [0, y0 + L.sidewalkH - 3, L.width, 3], mixColors(c.sidewalk, '#111827', 0.12));
+  fillBox(ctx, [0, y0 + L.sidewalkH - 3, L.width, 3], mixColors(c.sidewalk, '#2a211b', 0.12));
   const ry = y0 + L.sidewalkH;
   fillBox(ctx, [0, ry, L.width, L.roadH], c.road);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
@@ -531,7 +532,7 @@ function paintPin(ctx: CanvasRenderingContext2D, pin: ScenePin, t: number): void
   const r = 9.5;
   const headY = y - 17;
   ctx.save();
-  ctx.fillStyle = 'rgba(17, 24, 39, 0.18)';
+  ctx.fillStyle = 'rgba(42, 33, 27, 0.18)';
   ctx.beginPath();
   ctx.ellipse(x, pin.y + 1, 6 * (landed ? 1 : raw), 2, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -662,7 +663,7 @@ function paintTraveler(ctx: CanvasRenderingContext2D, plan: ScenePlan, frame: Sc
   const hop = hopAge >= 0 && hopAge < SCENE_TIMING.hopDuration ? Math.sin(Math.PI * hopAge / SCENE_TIMING.hopDuration) * 14 : 0;
   const bob = walking ? Math.abs(Math.sin(t / 95)) * 3 : Math.sin(t / 520) * 0.8;
   ctx.save();
-  ctx.fillStyle = 'rgba(17, 24, 39, 0.2)';
+  ctx.fillStyle = 'rgba(42, 33, 27, 0.2)';
   ctx.beginPath();
   ctx.ellipse(x, footY, 11 - hop * 0.3, 3, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -695,7 +696,7 @@ function paintFootprints(ctx: CanvasRenderingContext2D, fromX: number, toX: numb
   for (let fx = fromX + step, k = 0; fx < toX - 10; fx += step, k++) {
     const a = Math.max(0, 1 - (toX - fx) / 150) * 0.32;
     if (a <= 0.01) continue;
-    ctx.fillStyle = dark ? `rgba(255, 255, 255, ${a.toFixed(3)})` : `rgba(17, 24, 39, ${a.toFixed(3)})`;
+    ctx.fillStyle = dark ? `rgba(255, 255, 255, ${a.toFixed(3)})` : `rgba(42, 33, 27, ${a.toFixed(3)})`;
     ctx.beginPath();
     ctx.ellipse(fx, y + (k % 2 === 0 ? -2.5 : 2), 2.6, 1.5, 0, 0, Math.PI * 2);
     ctx.fill();

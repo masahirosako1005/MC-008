@@ -52,24 +52,24 @@ describe('GetSpotDetailUseCase', () => {
     expect(tw.demo.positions).toHaveLength(0);
   });
 
-  it('今日訪問済みなら「今日はもう訪問しました（1日1回）」（位置が取れなくても同じ）', async () => {
+  it('今日訪問済みなら「今日は達成済み」（位置が取れなくても同じ）', async () => {
     const tw = createTestWorld();
     await seedTraveler(tw, { visits: [['l_jo01', 0]] });
     standNear(tw, 'l_jo01', 0);
     const useCase = new GetSpotDetailUseCase(tw);
     const detail = must(await useCase.execute({ spotId: 'l_jo01' }));
-    expect(detail).toMatchObject({ status: 'visited', canVisit: false, visitedToday: true, visitBlockedReason: '今日はもう訪問しました（1日1回）' });
+    expect(detail).toMatchObject({ status: 'visited', canVisit: false, visitedToday: true, visitBlockedReason: '今日は達成済み' });
     tw.geo.setError('GEO_DENIED');
-    expect(must(await useCase.execute({ spotId: 'l_jo01' })).visitBlockedReason).toBe('今日はもう訪問しました（1日1回）');
+    expect(must(await useCase.execute({ spotId: 'l_jo01' })).visitBlockedReason).toBe('今日は達成済み');
   });
 
-  it('測位精度が粗いと「現在地の精度が低いため訪問できません」', async () => {
+  it('測位精度が粗いと「現在地の精度が低いため達成できません」', async () => {
     const tw = createTestWorld();
     await seedTraveler(tw, { discovered: ['l_jo01'] });
     standNear(tw, 'l_jo01', 0);
     tw.geo.setAccuracy(150);
     const detail = must(await new GetSpotDetailUseCase(tw).execute({ spotId: 'l_jo01' }));
-    expect(detail).toMatchObject({ canVisit: false, visitBlockedReason: '現在地の精度が低いため訪問できません' });
+    expect(detail).toMatchObject({ canVisit: false, visitBlockedReason: '現在地の精度が低いため達成できません' });
   });
 
   it('終了日が今日以降のクーポン・イベントだけを返し、daysLeft は期間内のときだけ', async () => {

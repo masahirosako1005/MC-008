@@ -1,9 +1,10 @@
 /**
  * @file アバター画面のタブの中身（presentation/screens/Avatar 層。DOM 部品）
  * 部品の格子（試着サムネイル・レア度の枠・NEW・鍵）、色のチップ、選んだ部品の詳しい情報、称号の札、
- * ピックアップ（NEW・もうすぐ手に入る）、マイコーデを作る。状態は持たず、押したときの処理は呼び出し側に渡す。
+ * マイコーデを作る。状態は持たず、押したときの処理は呼び出し側に渡す。
  * まだ持っていない部品は「手に入れ方」と進み具合を見せ、試着できる（B 未開拓への興味・C 再訪動機）。
  */
+import '@/presentation/screens/Avatar/AvatarPlaceTags.css';
 import type { AvatarCoordDto, AvatarPartDto } from '@/application/dto/Dto';
 import { createLogger, setCorrelationId } from '@/Common/logging/logger';
 import { h } from '@/Common/ui/dom';
@@ -11,6 +12,7 @@ import { createAvatarIcon, iconText } from '@/presentation/screens/Avatar/avatar
 import type { AvatarIconName } from '@/presentation/screens/Avatar/avatarIcons';
 import { REMOVABLE_SLOTS, remainingTextOf } from '@/presentation/screens/Avatar/avatarScreenModel';
 import { createOutfitThumb, createPartThumb } from '@/presentation/screens/Avatar/partThumb';
+import { phraseNodes } from '@/presentation/screens/Avatar/phraseBreak';
 import { HAIR_COLORS, SKIN_COLORS, TOP_COLORS, splitPartId } from '@/presentation/shared/avatar/avatarLook';
 
 const logger = createLogger('presentation/screens/Avatar/AvatarPanels');
@@ -68,9 +70,9 @@ export const SEASON_LABEL: Readonly<Record<string, string>> = { spring: '春', s
  * 季節のアイコンを作る。
  * @param season 季節
  * @param size 一辺（CSS px）
- * @returns canvas（知らない季節なら undefined）
+ * @returns 線のアイコン（知らない季節なら undefined）
  */
-export function createSeasonIcon(season: string, size: number): HTMLCanvasElement | undefined { // audit-ignore: fnlog-missing 札ごとに呼ぶ小さな分岐（作るときは createAvatarIcon がログを出す）
+export function createSeasonIcon(season: string, size: number): SVGSVGElement | undefined { // audit-ignore: fnlog-missing 札ごとに呼ぶ小さな分岐（作るときは createAvatarIcon がログを出す）
   const icon = SEASON_ICON[season];
   return icon === undefined ? undefined : createAvatarIcon(icon, size);
 }
@@ -109,8 +111,8 @@ function createPartCell(part: AvatarPartDto, input: PartListInput, index = 0): H
     style: { '--i': String(index % 12) },
   }, [
     h('span', { class: 'avatar-item__art' }, [createPartThumb(part.id, input.preview, THUMB_PX), createPlaceTag(part)]),
-    h('span', { class: 'avatar-item__name', text: part.name }),
-    part.owned ? undefined : h('span', { class: 'avatar-item__how', text: part.hint }),
+    h('span', { class: 'avatar-item__name' }, phraseNodes(part.name)),
+    // 手に入れ方の文はマスには出さない（「あと◯回」と土地・季節の札で足りる。文は押したときの詳しい情報と読み上げ名に出す）
     createRarityTag(part.rarity),
     part.isNew ? h('span', { class: 'avatar-badge avatar-badge--new', text: 'NEW' }) : undefined,
     equipped ? createAvatarIcon('check', 20, 'avatar-badge--on') : undefined,
@@ -128,7 +130,7 @@ function createPartCell(part: AvatarPartDto, input: PartListInput, index = 0): H
  */
 function createNoneCell(slot: string, isEmpty: boolean, onClear: () => void): HTMLButtonElement {
   const log = logger.fn('createNoneCell', { slot, isEmpty });
-  const label = slot === 'object' ? 'ぜんぶ片づける' : 'なし';
+  const label = slot === 'object' ? '片づける' : 'なし';
   const button = h('button', {
     class: ['avatar-item', 'avatar-item--none', isEmpty ? 'avatar-item--on' : undefined],
     attrs: { type: 'button', 'aria-pressed': isEmpty ? 'true' : 'false', 'data-testid': `avatar-none-${slot}` },
@@ -208,7 +210,7 @@ export interface DetailActions {
 export function createPartDetail(part: AvatarPartDto, input: PartListInput, actions: DetailActions): HTMLElement {
   const log = logger.fn('createPartDetail', { id: part.id, owned: part.owned });
   const equipped = input.outfit.includes(part.id);
-  const status = part.owned ? (equipped ? '身につけています' : '持っています') : '試着中（まだ持っていません）';
+  const status = part.owned ? (equipped ? '着用中' : '入手ずみ') : input.tryOnId === part.id ? '試着中' : '未入手';
   const buttons: HTMLElement[] = [];
   if (!part.owned && input.tryOnId === part.id) buttons.push(onTap(h('button', { class: 'avatar-pill', text: '試着をやめる', attrs: { type: 'button' } }), actions.onStopTryOn));
   if (!part.owned) {
@@ -216,13 +218,13 @@ export function createPartDetail(part: AvatarPartDto, input: PartListInput, acti
     buttons.push(onTap(h('button', { class: ['avatar-pill', 'avatar-pill--primary'], text: label, attrs: { type: 'button', 'data-testid': 'avatar-detail-go' } }), () => actions.onGoMap(part.districtId)));
   }
   if (part.owned && equipped && REMOVABLE_SLOTS.has(part.slot)) buttons.push(onTap(h('button', { class: 'avatar-pill', text: 'はずす', attrs: { type: 'button' } }), () => actions.onUnequip(part)));
-  return log.exit(h('section', { class: ['avatar-detail', `avatar-detail--${part.rarity.toLowerCase()}`], attrs: { 'aria-live': 'polite', 'data-testid': 'avatar-detail' } }, [
+  return log.exit(h('section', { class: ['avatar-detail', `avatar-detail--${part.rarity.toLowerCase()}`, part.owned ? undefined : 'avatar-detail--locked'], attrs: { 'aria-live': 'polite', 'data-testid': 'avatar-detail' } }, [
     h('div', { class: 'avatar-detail__head' }, [
       createRarityTag(part.rarity),
       h('b', { class: 'avatar-detail__name', text: part.name }),
       h('span', { class: ['avatar-detail__status', part.owned ? undefined : 'avatar-detail__status--locked'], text: status }),
     ]),
-    h('p', { class: 'avatar-detail__hint' }, [iconText('key', part.owned ? `手に入れ方：${part.hint}` : part.hint)]),
+    h('p', { class: 'avatar-detail__hint' }, [iconText('key', part.hint)]),
     part.target > 0 ? createProgressBar(part) : undefined,
     buttons.length > 0 ? h('div', { class: 'avatar-detail__actions' }, buttons) : undefined,
   ]));
@@ -241,62 +243,11 @@ export function createTitleList(input: PartListInput, onClear: () => void): HTML
     const plate = h('button', {
       class: ['avatar-title', `avatar-title--${p.rarity.toLowerCase()}`, p.owned ? undefined : 'avatar-title--locked', on ? 'avatar-title--on' : undefined, input.tryOnId === p.id ? 'avatar-title--trying' : undefined],
       attrs: { type: 'button', 'aria-pressed': on ? 'true' : 'false', 'data-testid': `avatar-part-${p.id}` },
-    }, [createRarityTag(p.rarity), h('b', { text: p.name }), p.owned ? h('small', { text: on ? 'つけています' : p.hint }) : h('small', {}, [iconText('lock', `${remainingTextOf(p)}・${p.hint}`, 13)]), p.isNew ? h('span', { class: 'avatar-badge avatar-badge--new', text: 'NEW' }) : undefined]);
+    }, [createRarityTag(p.rarity), h('b', {}, phraseNodes(p.name)), p.owned ? h('small', { text: on ? '着用中' : p.hint }) : h('small', {}, [iconText('lock', `${remainingTextOf(p)}・${p.hint}`, 13)]), p.isNew ? h('span', { class: 'avatar-badge avatar-badge--new', text: 'NEW' }) : undefined]);
     return onTap(plate, () => input.onPick(p));
   });
-  const none = onTap(h('button', { class: ['avatar-title', 'avatar-title--none'], text: '称号をつけない', attrs: { type: 'button' } }), onClear);
+  const none = onTap(h('button', { class: ['avatar-title', 'avatar-title--none'], text: 'なし', attrs: { type: 'button', 'aria-label': '称号をつけない' } }), onClear);
   return log.exit(h('div', { class: 'avatar-titles' }, [none, ...titles]));
-}
-
-/** ピックアップの入力 */
-export interface PickupInput extends PartListInput {
-  /** いまの季節（'autumn' など） */
-  readonly season: string;
-  /** もうすぐ手に入る部品 */
-  readonly nearly: readonly AvatarPartDto[];
-  readonly onGoMap: (districtId?: string) => void;
-}
-
-/**
- * もうすぐ手に入る部品の1行を作る。
- * @param part 部品
- * @param input ピックアップの入力
- * @returns 要素
- */
-function createNearlyRow(part: AvatarPartDto, input: PickupInput): HTMLElement {
-  const log = logger.fn('createNearlyRow', { id: part.id });
-  const tryOn = onTap(h('button', { class: ['avatar-pill', input.tryOnId === part.id ? 'avatar-pill--on' : undefined], text: input.tryOnId === part.id ? '試着中' : '試着', attrs: { type: 'button' } }), () => input.onPick(part));
-  const go = onTap(h('button', { class: ['avatar-pill', 'avatar-pill--primary'], text: part.districtId === undefined ? '地図で探す' : '地図で向かう', attrs: { type: 'button' } }), () => input.onGoMap(part.districtId));
-  return log.exit(h('li', { class: ['avatar-nearly', `avatar-nearly--${part.rarity.toLowerCase()}`] }, [
-    h('span', { class: 'avatar-nearly__art' }, [part.slot === 'title' ? createAvatarIcon('tag', 40) : createPartThumb(part.id, input.preview, 56)]),
-    h('div', { class: 'avatar-nearly__body' }, [
-      h('div', { class: 'avatar-nearly__head' }, [createRarityTag(part.rarity), h('b', { text: part.name }), h('span', { class: 'avatar-nearly__left', text: remainingTextOf(part) })]),
-      h('p', { class: 'avatar-nearly__hint', text: part.hint }),
-      createProgressBar(part),
-      h('div', { class: 'avatar-nearly__actions' }, [tryOn, go]),
-    ]),
-  ]));
-}
-
-/**
- * ピックアップ（手に入れたばかり・もうすぐ手に入る）を作る。
- * @param input ピックアップの入力
- * @returns 要素
- */
-export function createPickup(input: PickupInput): HTMLElement {
-  const log = logger.fn('createPickup', { nearly: input.nearly.length });
-  const fresh = input.parts.filter((p) => p.isNew && p.slot !== 'title');
-  const freshGrid = h('div', { class: 'avatar-grid' }, fresh.map((p, i) => createPartCell(p, input, i)));
-  const seasonal = input.parts.filter((p) => !p.owned && p.season === input.season);
-  const seasonTitle = 'いまの季節だけ（' + (SEASON_LABEL[input.season] ?? '') + '）';
-  return log.exit(h('div', { class: 'avatar-pickup', attrs: { 'data-testid': 'avatar-pickup' } }, [
-    fresh.length > 0 ? h('h3', { class: 'avatar-sub' }, [iconText('party', `手に入れたばかり（${fresh.length}）`, 20)]) : undefined,
-    fresh.length > 0 ? freshGrid : undefined,
-    seasonal.length > 0 ? h('h3', { class: 'avatar-sub' }, [iconText(SEASON_ICON[input.season] ?? 'key', seasonTitle, 20)]) : undefined,
-    seasonal.length > 0 ? h('ul', { class: 'avatar-nearly-list' }, seasonal.map((p) => createNearlyRow(p, input))) : undefined,
-    h('h3', { class: 'avatar-sub' }, [iconText('key', 'もうすぐ手に入る', 20)]),
-    h('ul', { class: 'avatar-nearly-list' }, input.nearly.filter((p) => p.season !== input.season).map((p) => createNearlyRow(p, input))),
-  ]));
 }
 
 /** マイコーデの操作 */
@@ -331,8 +282,8 @@ export function createCoordPanel(coords: readonly AvatarCoordDto[], actions: Coo
       h('b', { class: 'avatar-coord__name', text: `コーデ ${c.index + 1}` }),
       saved === undefined ? h('span', { class: 'avatar-coord__empty', attrs: { 'aria-label': '空き' } }) : h('span', { class: 'avatar-coord__frame' }, [createOutfitThumb(saved, 96)]),
       h('div', { class: 'avatar-coord__actions' }, saved === undefined
-        ? [pill('今の服を保存', () => actions.onSave(c.index), true)]
-        : [pill('着る', () => actions.onWear(c), true), pill('上書き', () => actions.onSave(c.index)), pill('消す', () => actions.onDelete(c.index))]),
+        ? [pill('保存', () => actions.onSave(c.index))]
+        : [pill('着る', () => actions.onWear(c)), pill('上書き', () => actions.onSave(c.index)), pill('消す', () => actions.onDelete(c.index))]),
     ]);
   });
   return log.exit(h('div', { class: 'avatar-coords' }, [

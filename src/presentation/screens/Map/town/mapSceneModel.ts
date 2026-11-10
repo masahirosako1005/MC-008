@@ -5,7 +5,6 @@
  */
 import { createLogger } from '@/Common/logging/logger';
 import type { MapDataDto, MapSpotDto, SpotDetailDto } from '@/application/dto/Dto';
-import { DISCOVERY_RADIUS_M } from '@/domain/exploration/constants';
 import { distanceMeters } from '@/presentation/screens/Map/MapViewModel';
 import type { LatLng, MapViewModel } from '@/presentation/screens/Map/MapViewModel';
 import type { SpotCardModel, SpotCardPhase } from '@/presentation/screens/Map/town/SpotCard';
@@ -90,9 +89,11 @@ export function todayOf(spot: MapSpotDto, goodsLabel: string, today: string, isD
 export function buildSceneSpots(dto: MapDataDto, vm: MapViewModel, grid: TownGrid, prefs: MapPrefs, isDemo: boolean): SceneSpot[] {
   const log = logger.fn('buildSceneSpots', { spots: dto.spots.length });
   const fadeOf = new Map(vm.districts.map((d) => [d.id, 1 - d.fade.saturation]));
+  const colorOf = new Map(vm.districts.map((d) => [d.id, d.color]));
   const wants = new Set(prefs.wants);
   const out: SceneSpot[] = dto.spots.map((s) => {
     const goods = goodsOf({ id: s.id, kind: s.kind, category: s.category });
+    const districtColor = colorOf.get(s.districtId);
     return {
       id: s.id,
       kind: s.kind,
@@ -110,6 +111,7 @@ export function buildSceneSpots(dto: MapDataDto, vm: MapViewModel, grid: TownGri
       liked: matchesInterests({ kind: s.kind, category: s.category, amenities: s.amenities }, prefs),
       fade: Math.max(0, Math.min(1, fadeOf.get(s.districtId) ?? 0)),
       seed: hashString(s.id),
+      ...(districtColor === undefined ? {} : { districtColor }),
     };
   });
   for (const a of dto.backdrop.amenityPoints) out.push(amenitySpot(a, grid, prefs, wants));
@@ -212,7 +214,7 @@ export function filterCounts(spots: readonly SceneSpot[], prefs: MapPrefs): Reco
  */
 export function highlightColorOf(active: ReadonlySet<MapFilterId>): string { // audit-ignore: fnlog-missing 毎フレーム描画
   for (const f of MAP_FILTERS) if (active.has(f.id)) return FILTER_COLORS[f.id];
-  return '#1e6bff';
+  return '#bc5b1b';
 }
 
 /**
@@ -258,7 +260,8 @@ export function cardModelOf(spot: SceneSpot, extras: CardExtras): SpotCardModel 
   const meters = extras.detail?.meters ?? (extras.position === undefined ? undefined : Math.round(distanceMeters(extras.position, extras.truePosition)));
   const detail = extras.detail;
   const unknown = spot.status === 'unknown' && detail === undefined;
-  const hint = unknown ? `${DISCOVERY_RADIUS_M}m以内で発見` : detail?.visitBlockedReason;
+  // 主ボタンに出す短い言葉（文にしない）: 未発見／あと n m／それ以外はカード側の既定
+  const hint = unknown ? '未発見' : detail?.metersToVisit !== undefined && detail.metersToVisit > 0 ? `あと${Math.ceil(detail.metersToVisit)}m` : undefined;
   const model: SpotCardModel = {
     id: spot.id,
     kind: spot.kind,

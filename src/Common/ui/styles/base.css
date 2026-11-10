@@ -1,8 +1,8 @@
 /*
  * @file 基本スタイルとアプリの骨組み（Common/ui/styles）
  * スマホ枠（幅 500px 以上は 390×844 の枠を中央に、狭い画面は全画面）、ステータスバー、画面領域、上部バー、歯車、下部タブ。
- * トーンは「都会の生活アプリ」（docs/08 §10）: 白とクールグレーの面、細い線（hairline）、ニュートラルな影、余白で階層を作る。
- * アクセントはブランド色（ロイヤルブルー）1色。選択中タブ・主要ボタン・現在地だけに使う。
+ * トーンは「都会の生活アプリ」（docs/08 §10）: ベージュの地と白い面、細い線（hairline）、ニュートラルな影、余白で階層を作る。
+ * アクセントはブランド色（落ち着いたオレンジ）1色。選択中タブ・主要ボタン・現在地だけに使う。
  */
 *,
 *::before,
@@ -21,6 +21,8 @@ body {
   line-height: 1.6;
   letter-spacing: 0.01em;
   font-feature-settings: "palt" 1;
+  /* LINE Seed JP の太さは 400／700／800。900 の指定は 800 で出し、疑似太字（にじむ）にしない */
+  font-synthesis: style;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
@@ -34,6 +36,8 @@ body {
 #app { min-height: 100%; }
 
 h1, h2, h3, p { margin: 0; }
+/* strong／b の既定（bolder）は、太字の中で 900 になる。書体にある太さ（700）に固定する。より太くしたい所は --fw-heavy（800）を指定する */
+strong, b { font-weight: var(--fw-bold); }
 h1, h2, h3 { font-family: var(--font-display); font-weight: var(--fw-bold); letter-spacing: 0.01em; }
 
 /* 数字（順位・回数・距離）は等幅数字で桁をそろえる */
@@ -99,8 +103,8 @@ button:disabled { cursor: default; }
     box-shadow:
       0 0 0 10px var(--bezel),
       0 0 0 11px var(--bezel-edge),
-      0 30px 60px rgba(17, 24, 39, 0.28),
-      0 8px 20px rgba(17, 24, 39, 0.12);
+      0 30px 60px rgba(42, 33, 27, 0.28),
+      0 8px 20px rgba(42, 33, 27, 0.12);
   }
   .phone::after {
     content: "";
@@ -118,7 +122,7 @@ button:disabled { cursor: default; }
   .phone:has(.fx)::after { background: rgba(255, 255, 255, 0.85); }
 }
 
-/* ---- ステータスバー（白。時刻・デモ表示・日付・旅人を小さく） ---- */
+/* ---- ステータスバー（淡いブランド色。上部バー・下部タブと同じ地。時刻・デモ表示・日付・旅人を小さく） ---- */
 .status-bar {
   flex: none;
   position: relative;
@@ -127,14 +131,15 @@ button:disabled { cursor: default; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.25rem 1.5rem 0;
-  font-size: var(--fs-xs);
+  gap: 8px;
+  padding: 0.25rem 24px 0;
+  /* 端末の状態表示にあたるので、文字の大きさ（大・特大）では拡大しない（px 固定。日付と冒険者の種別が切れない） */
+  font-size: 11px;
   color: var(--g4);
-  background: var(--surface);
+  background: var(--brand-soft);
   white-space: nowrap;
 }
-.status-bar__time { font-weight: var(--fw-bold); font-size: 0.9375rem; color: var(--ink); min-width: 2.5rem; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.status-bar__time { flex: none; font-weight: var(--fw-bold); font-size: 14px; color: var(--ink); min-width: 40px; letter-spacing: 0; font-variant-numeric: tabular-nums; }
 .status-bar__center { display: flex; align-items: center; gap: 0.375rem; overflow: hidden; font-variant-numeric: tabular-nums; }
 .status-bar__date { overflow: hidden; text-overflow: ellipsis; color: var(--g5); font-weight: var(--fw-medium); }
 .status-bar__demo {
@@ -142,11 +147,11 @@ button:disabled { cursor: default; }
   background: var(--ink);
   color: #ffffff;
   border-radius: var(--radius-pill);
-  padding: 0 0.4375rem;
-  font-size: 0.625rem;
+  padding: 0 7px;
+  font-size: 11px;
   font-weight: var(--fw-bold);
   letter-spacing: 0.06em;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 .status-bar__profile { min-width: 2.5rem; text-align: right; overflow: hidden; text-overflow: ellipsis; font-weight: var(--fw-medium); color: var(--g5); }
 .status-bar__profile:not(:empty)::before {
@@ -179,6 +184,14 @@ button:disabled { cursor: default; }
   z-index: var(--z-screen);
 }
 
+/* タブ・画面の切替のつなぎ（新しい画面を 160ms でフェードイン。動きを減らす設定では付けない） */
+@media (prefers-reduced-motion: no-preference) {
+  .screen { animation: screen-in 0.16s ease-out backwards; }
+}
+@keyframes screen-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 .screen-scroll {
   flex: 1;
   min-height: 0;
@@ -193,23 +206,25 @@ button:disabled { cursor: default; }
   text-align: center;
 }
 
-/* ---- 上部バー（白＋下に hairline。タブの画面は大きめの見出し、戻る付きは標準の見出し） ---- */
+/* ---- 上部バー（淡いブランド色の地＋下向きの淡い影。境界線は引かない。タブの画面は大きめの見出し、戻る付きは標準の見出し） ---- */
 .top-bar {
   flex: none;
   position: relative;
   z-index: 2;
+  /* 高さは固定：タブの画面 56px、戻る付き 52px（副題の有無・地図のズームで変わらない） */
+  height: 3.5rem;
   min-height: 3.5rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.25rem var(--gear-gap) 0.5rem var(--gutter);
-  background: var(--surface);
-  box-shadow: 0 1px 0 var(--hairline);
+  background: linear-gradient(180deg, var(--brand-soft) 0%, var(--brand-50) 100%);
+  box-shadow: 0 2px 10px rgba(42, 33, 27, 0.08);
 }
-.top-bar:has(.top-bar__back) { padding-left: 0.25rem; min-height: var(--topbar-h); padding-bottom: 0.25rem; }
-.top-bar__titles { min-width: 0; display: flex; flex-direction: column; gap: 0; }
+.top-bar:has(.top-bar__back) { padding-left: 0.25rem; height: 3.25rem; min-height: 3.25rem; padding-bottom: 0.25rem; }
+.top-bar__titles { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 0; }
 .top-bar__title {
-  font-size: 1.5rem;
+  font-size: var(--fs-xl);
   font-weight: var(--fw-bold);
   line-height: 1.3;
   letter-spacing: 0.01em;
@@ -223,6 +238,7 @@ button:disabled { cursor: default; }
   align-items: center;
   gap: 0.3125rem;
   font-size: var(--fs-xs);
+  line-height: 1.3;
   color: var(--g4);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -284,18 +300,22 @@ button:disabled { cursor: default; }
   height: 2.25rem;
   border-radius: 50%;
   background: var(--surface);
-  box-shadow: 0 0 0 1px var(--hairline), 0 1px 3px rgba(17, 24, 39, 0.08);
+  box-shadow: 0 0 0 1px var(--hairline), 0 1px 3px rgba(42, 33, 27, 0.08);
   color: var(--g5);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .gear__face svg { width: 1.25rem; height: 1.25rem; display: block; }
-.gear__face .app-icon { display: block; transition: transform var(--motion); }
-.gear[data-pressing="1"] .gear__face .app-icon { transform: rotate(45deg); }
+.gear__face .app-icon,
+.gear__face .icon { display: block; transition: transform var(--motion); }
+.gear[data-pressing="1"] .gear__face .app-icon,
+.gear[data-pressing="1"] .gear__face .icon { transform: rotate(45deg); }
 .gear[data-pressing="1"] .gear__face { color: var(--brand-ink); }
+/* 設定の画面では歯車を出さない（押しても同じ画面） */
+.phone[data-route="settings"] .gear { display: none; }
 
-/* ---- 下部タブ（白＋上に hairline。線アイコン＋ラベル、選択中はブランド色・太字・アイコンの淡い塗り・上の短いバー） ---- */
+/* ---- 下部タブ（淡いブランド色の地と上向きの淡い影で画面と分ける。線だけのアイコン（色・塗りなし。2026-11-10 ユーザー指示）＋ラベル、選択中は白い札・墨の色の太い線・太字） ---- */
 .tab-bar {
   flex: none;
   position: relative;
@@ -303,8 +323,8 @@ button:disabled { cursor: default; }
   height: var(--tabbar-h);
   display: flex;
   padding: 0 0.5rem env(safe-area-inset-bottom, 0);
-  background: var(--surface);
-  box-shadow: 0 -1px 0 var(--hairline);
+  background: linear-gradient(180deg, var(--brand-50) 0%, var(--brand-soft) 100%);
+  box-shadow: 0 -2px 10px rgba(42, 33, 27, 0.08);
 }
 .tab-bar__tab {
   flex: 1;
@@ -314,24 +334,28 @@ button:disabled { cursor: default; }
   align-items: center;
   justify-content: center;
   gap: 0.125rem;
-  font-size: 0.6875rem;
+  /* 5つ並ぶので、文字の大きさ「大・特大」でも 12px まで（「ランキング」が選択の札いっぱいにならない） */
+  font-size: min(0.6875rem, 12px);
   font-weight: var(--fw-medium);
   letter-spacing: 0.02em;
+  white-space: nowrap;
   color: var(--g4);
   position: relative;
+  isolation: isolate;
   transition: color var(--motion-fast);
 }
+/* 選択中の白い札（タブの中身の後ろ） */
 .tab-bar__tab::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 50%;
-  width: 1.75rem;
-  height: 0.1875rem;
-  border-radius: 0 0 var(--radius-pill) var(--radius-pill);
-  background: var(--brand);
-  transform: translateX(-50%) scaleX(0);
-  transition: transform var(--motion);
+  inset: 0.375rem 0.125rem 0.25rem;
+  z-index: -1;
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--brand-200), 0 2px 6px rgba(42, 33, 27, 0.1);
+  opacity: 0;
+  transform: scale(0.86);
+  transition: opacity var(--motion-fast), transform var(--motion);
 }
 .tab-bar__icon {
   width: 2.75rem;
@@ -343,15 +367,11 @@ button:disabled { cursor: default; }
   transition: transform var(--motion-fast);
 }
 .tab-bar__icon svg { width: 1.5rem; height: 1.5rem; display: block; }
-.tab-bar__tab[aria-current="page"] { color: var(--brand-ink); font-weight: var(--fw-bold); }
-.tab-bar__tab[aria-current="page"]::before { transform: translateX(-50%) scaleX(1); }
-.tab-bar__tab[aria-current="page"] .tab-bar__icon { color: var(--brand); }
-.tab-bar__tab[aria-current="page"] .tab-bar__icon svg { stroke-width: 2.1; }
-.tab-bar__tab[aria-current="page"] .tab-bar__icon svg path:first-child { fill: color-mix(in srgb, var(--brand) 16%, transparent); }
+.tab-bar__tab[aria-current="page"] { color: var(--ink); font-weight: var(--fw-bold); }
+.tab-bar__tab[aria-current="page"]::before { opacity: 1; transform: scale(1); }
+.tab-bar__tab[aria-current="page"] .tab-bar__icon { color: var(--ink); }
+.tab-bar__tab[aria-current="page"] .tab-bar__icon svg { stroke-width: 2.2; }
 .tab-bar__tab:active .tab-bar__icon { transform: scale(0.94); }
-/* canvas で描いたタブの絵（presentation/App/appIconArt）。選んでいないときは淡く、選ぶと色がつく */
-.tab-bar__icon .app-icon { display: block; filter: grayscale(0.7) opacity(0.7); transition: filter var(--motion-fast), transform var(--motion-fast); }
-.tab-bar__tab[aria-current="page"] .tab-bar__icon .app-icon { filter: none; transform: translateY(-1px) scale(1.08); }
 /* PC 表示の端末枠ではホームバーの分だけタブの下を空ける */
 @media (min-width: 500px) {
   .tab-bar { padding-bottom: 1.125rem; height: calc(var(--tabbar-h) + 0.5rem); }

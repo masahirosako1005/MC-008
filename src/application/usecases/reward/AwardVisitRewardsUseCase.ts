@@ -51,6 +51,22 @@ export class AwardVisitRewardsUseCase {
    */
   async handle(event: SpotVisited): Promise<Result<void>> {
     const log = logger.fn('handle', { eventId: event.eventId, spotId: event.spotId, operationId: event.operationId });
+    const first = await this.award(event);
+    if (first.ok || first.error.code !== 'CONFLICT') return first.ok ? log.exit(first) : log.fail(first);
+    // 台帳の保存が競合したら、読み直して1回だけやり直す（訪問だけ残って加点が抜けるのを防ぐ。加点済みなら何もしない＝DI-07）
+    log.warn('台帳の保存が競合したので読み直して1回だけやり直す', { operationId: event.operationId });
+    const second = await this.award(event);
+    return second.ok ? log.exit(second) : log.fail(second);
+  }
+
+  /**
+   * 1回分の加点（読込 → 計算 → 台帳の保存 → イベント発行）。
+   * @param event SpotVisited
+   * @returns 成功: void。失敗: handle と同じ
+   * @sideEffect PointLedgerRepository.save、EventBus.publish
+   */
+  private async award(event: SpotVisited): Promise<Result<void>> {
+    const log = logger.fn('award', { eventId: event.eventId, operationId: event.operationId });
     const context = await loadVisitContext(this.deps, event);
     if (!context.ok) return log.fail(context);
     const { traveler, record, spot } = context.value;

@@ -1,12 +1,10 @@
 /**
  * @file ランク画面の表示用モデル（presentation/screens/Rank 層の純粋関数）
- * RankStatusDto・RankingDto・AppStatusDto と、いま適用中の文字の大きさから、絵で見せるための数値と短いラベルを作る。DOM は触らない。
+ * RankStatusDto・RankingDto から、絵で見せるための数値と短いラベルを作る。DOM は触らない。
  * ランクは累計ポイントで決まり下がらない（CLAUDE.md 5）ので、「あと何ptで次の段」だけを前向きに見せる。網羅率は出さない。
  */
-import type { AppStatusDto, LeagueIdDto, RankPointHistoryDto, RankStatusDto, RankingDto } from '@/application/dto/Dto';
+import type { LeagueIdDto, RankPerkDto, RankPointHistoryDto, RankStatusDto, RankingDto } from '@/application/dto/Dto';
 import { createLogger } from '@/Common/logging/logger';
-import { TEXT_SCALE_LABELS } from '@/Common/ui/a11y/textScale';
-import type { TextScale } from '@/Common/ui/a11y/textScale';
 import type { IconName } from '@/Common/ui/icons';
 
 const logger = createLogger('presentation/screens/Rank/rankModel');
@@ -96,59 +94,105 @@ export function shortDateOf(date: string): string {
 }
 
 /**
- * 最近のポイント1行のアイコン（おかえり＝きらめき、お店＝店、名所＝星）。
+ * 最近のポイント1行のアイコン（おかえり＝きらめき、お買い物＝コイン、お店＝店、名所＝星）。
  * @param entry 最近のポイント
  * @returns アイコンの名前
  */
 export function historyIconOf(entry: RankPointHistoryDto): IconName {
   const log = logger.fn('historyIconOf', { kind: entry.kind, spotKind: entry.spotKind });
   if (entry.kind === 'welcomeBack') return log.exit('sparkle');
+  if (entry.kind === 'purchase') return log.exit('coin');
   return log.exit(entry.spotKind === 'shop' ? 'shop' : 'star');
 }
 
-/** 設定状況の1マス */
-export interface SettingTile {
-  readonly key: 'textScale' | 'traveler' | 'location' | 'date' | 'storage' | 'build';
-  /** 線のアイコン（glyph があればそちらを出す） */
-  readonly icon?: IconName;
-  /** アイコンの代わりの文字（文字の大きさの 'Aa'） */
-  readonly glyph?: string;
-  /** 読み上げ用の名前 */
-  readonly label: string;
-  /** 短い値 */
-  readonly value: string;
-  /** 値に添える小さな札（'+30日'・'デモ'） */
-  readonly badge?: string;
+/**
+ * 最近のポイント1行の名前（お買い物は「{お店}でお買い物」、それ以外はスポット名）。
+ * @param entry 最近のポイント
+ * @returns 行に出す名前
+ */
+export function historyTextOf(entry: RankPointHistoryDto): string {
+  const log = logger.fn('historyTextOf', { kind: entry.kind });
+  return log.exit(entry.kind === 'purchase' ? `${entry.spotName}でお買い物` : entry.spotName);
 }
 
-/** settingTilesOf の入力 */
-export interface SettingTilesInput {
-  /** アプリ状態（読めなかったら undefined） */
-  readonly status: AppStatusDto | undefined;
-  /** いま適用中の文字の大きさ */
-  readonly textScale: TextScale;
-  /** デモビルドか */
-  readonly isDemo: boolean;
-  readonly nickname: string;
+/** 「つぎの目標」のゲージ1本（ランクアップ・特典） */
+export interface GoalGauge {
+  /** ゲージの左端の累計 EXP（いまの段の下限、または直前の特典） */
+  readonly from: number;
+  /** ゲージの右端の累計 EXP（次の段、または次の特典） */
+  readonly to: number;
+  /** あと何 EXP（1 以上。最上段・全部獲得なら 0） */
+  readonly remaining: number;
+  /** ゲージの進み具合 0..100 */
+  readonly percent: number;
+}
+
+/** ランクアップのゲージ */
+export interface RankGoal extends GoalGauge {
+  /** 次の段の添字（最上段ならいまの段） */
+  readonly index: number;
+  /** 次の段の名前（最上段ならいまの段の名前） */
+  readonly name: string;
+  readonly isTop: boolean;
+}
+
+/** 特典のゲージ */
+export interface PerkGoal extends GoalGauge {
+  readonly perk: RankPerkDto;
+}
+
+/** つぎの目標（ランクアップと次の特典） */
+export interface NextGoals {
+  readonly rank: RankGoal;
+  /** 次の特典（特典が無い・全部獲得なら undefined） */
+  readonly perk?: PerkGoal;
 }
 
 /**
- * 設定状況のマスを作る（文字の大きさ・旅人・位置情報・日付・記録の保存先・版）。言葉は短く、アイコンで伝える。
- * 位置座標そのものは出さない（地区単位・端末内が原則＝CLAUDE.md 10）。
- * @param input アプリ状態・文字の大きさ・デモか・表示名
- * @returns マス（表示順）
+ * from→to の間で、いまの EXP がどこまで来たか（0..100 の整数。切り捨て）。
+ * @param points いまの累計 EXP
+ * @param from 左端
+ * @param to 右端
+ * @returns 0..100
  */
-export function settingTilesOf(input: SettingTilesInput): SettingTile[] {
-  const log = logger.fn('settingTilesOf', { textScale: input.textScale, isDemo: input.isDemo, hasStatus: input.status !== undefined });
-  const status = input.status;
-  const offset = status?.dayOffset ?? 0;
-  const tiles: SettingTile[] = [
-    { key: 'textScale', glyph: 'Aa', label: '文字の大きさ', value: TEXT_SCALE_LABELS[input.textScale] },
-    { key: 'traveler', icon: 'person', label: '冒険者', value: input.nickname, badge: status !== undefined && status.travelerProfile !== 'user' ? 'デモ' : undefined },
-    { key: 'location', icon: 'pin', label: '位置情報', value: input.isDemo ? 'タップ歩行' : 'GPS' },
-    { key: 'date', icon: 'calendar', label: '日付', value: status === undefined ? '—' : shortDateOf(status.today), badge: offset > 0 ? `+${offset}日` : undefined },
-    { key: 'storage', icon: 'phone', label: '記録の保存先', value: '端末内' },
-    { key: 'build', icon: 'info', label: '版', value: input.isDemo ? 'デモ版' : '本番' },
-  ];
-  return log.exit(tiles);
+function percentBetween(points: number, from: number, to: number): number { // audit-ignore: fnlog-missing ゲージごとに呼ぶ純粋な算術（呼び出し側 nextGoalsOf でログ）
+  if (to <= from) return points >= to ? 100 : 0;
+  return Math.min(100, Math.max(0, Math.floor(((points - from) / (to - from)) * 100)));
+}
+
+/**
+ * ランクアップと次の特典まで「あと何 EXP」と、ゲージの進み具合を返す。
+ * 特典のゲージは直前に手に入れた特典（無ければ 0）から次の特典まで。
+ * @param dto ランク
+ * @returns つぎの目標
+ */
+export function nextGoalsOf(dto: RankStatusDto): NextGoals {
+  const log = logger.fn('nextGoalsOf', { points: dto.points, index: dto.rank.index, perks: dto.perks?.length });
+  const from = dto.steps[dto.rank.index]?.min ?? 0;
+  const { nextAt, remaining, nextName } = dto.rank;
+  const rank: RankGoal =
+    nextAt === undefined
+      ? { from, to: from, remaining: 0, percent: 100, index: dto.rank.index, name: dto.rank.name, isTop: true }
+      : { from, to: nextAt, remaining: remaining ?? Math.max(0, nextAt - dto.points), percent: percentBetween(dto.points, from, nextAt), index: dto.rank.index + 1, name: nextName ?? '', isTop: false };
+  const perks = dto.perks ?? [];
+  const next = perks.find((p) => p.state === 'next');
+  if (next === undefined) return log.exit({ rank });
+  const before = perks.filter((p) => p.state === 'earned').reduce((max, p) => Math.max(max, p.at), 0);
+  const perk: PerkGoal = { from: before, to: next.at, remaining: Math.max(1, next.at - dto.points), percent: percentBetween(dto.points, before, next.at), perk: next };
+  return log.exit({ rank, perk });
+}
+
+/**
+ * 特典の並び（左から EXP の小さい順）で、各特典から次の特典までの線をどこまで塗るか（0..100）。
+ * @param perks 特典（EXP の小さい順）
+ * @param points いまの累計 EXP
+ * @returns 各特典の右へ伸びる線の塗り（最後の特典は 0）
+ */
+export function perkLinkFillsOf(perks: readonly RankPerkDto[], points: number): number[] {
+  const log = logger.fn('perkLinkFillsOf', { perks: perks.length, points });
+  const fills = perks.map((perk, i) => {
+    const next = perks[i + 1];
+    return next === undefined ? 0 : percentBetween(points, perk.at, next.at);
+  });
+  return log.exit(fills);
 }

@@ -64,7 +64,7 @@ const THEME_BY_DISTRICT: Readonly<Record<string, TownTheme>> = {
 const THEME_CYCLE: readonly TownTheme[] = ['monzen', 'market', 'living', 'alley', 'river'];
 
 /**
- * テーマごとの屋根の色（townArt の ROOF_COLORS の番号: 0赤 1橙 2青緑 3青 4紫 5こげ茶 6瓦 7明るい灰）。
+ * テーマごとの屋根の色（屋根の色の番号: 0赤 1橙 2青緑 3青 4紫 5こげ茶 6瓦 7明るい灰）。
  * 地区ごとに色味をそろえ、街全体がまだらに見えないようにする（同じ番号を重ねて選ばれやすさを調整）。
  */
 const ROOF_PALETTES: Readonly<Record<TownTheme, readonly number[]>> = {

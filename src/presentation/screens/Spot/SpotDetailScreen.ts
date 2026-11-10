@@ -2,10 +2,12 @@
  * @file スポット詳細画面（presentation/screens/Spot 層。ルート '#/spot/:spotId'）
  * スポット情報（写真＝名所は実写・店舗はイメージ写真、無ければ街なみ絵・説明・便利情報・営業時間）、現在地からの距離、訪問ボタン（80m 以内で有効）、
  * クーポン・イベント、自分の訪問履歴を出す（CLAUDE.md 6.4、wireframes/04_spot）。基準 A・C。
+ * お店には「アンケート」ボタンを出す（回答は匿名で店舗CMS に届く。services.submitSurvey があるときだけ＝docs/09 CMS-V01）。
  * 訪問フロー: 演出のため込み開始 → visit → 演出を再生（復活・カード・主交代）→ トースト → 地区ズームの地図へ。
  */
 import '@/presentation/screens/Spot/SpotDetailScreen.css';
 import type { SpotDetailDto } from '@/application/dto/Dto';
+import type { SurveyAnswers } from '@/application/usecases/survey/shopSurvey';
 import { createLogger } from '@/Common/logging/logger';
 import { h } from '@/Common/ui/dom';
 import { createTopBar } from '@/Common/ui/TopBar';
@@ -16,6 +18,7 @@ import { createMyVisitHistory } from '@/presentation/screens/Spot/MyVisitHistory
 import type { SpotIllustrationHandle } from '@/presentation/screens/Spot/SpotIllustrationCanvas';
 import { createSpotVisual } from '@/presentation/screens/Spot/SpotPhotoView';
 import { createSpotInfo } from '@/presentation/screens/Spot/SpotInfo';
+import { createSurveyButton } from '@/presentation/screens/Spot/SurveyForm';
 import { growthToastMessage, visitToastMessage } from '@/presentation/screens/Spot/spotDetailModel';
 import { createVisitButton } from '@/presentation/screens/Spot/VisitButton';
 import { newOperationId } from '@/presentation/shared/operation';
@@ -115,7 +118,8 @@ class SpotDetailController {
     if (this.disposed) return log.exit(undefined, '画面を離れたため捨てる');
     if (!result.ok) {
       this.body.dataset.load = 'error';
-      this.ctx.toast.show(result.error.message, { kind: 'error' });
+      // 未発見は名詞1語で知らせる（文にしない）。ほかの失敗は application の文言
+      this.ctx.toast.show(result.error.code === 'NOT_DISCOVERED' ? '未発見' : result.error.message, { kind: 'error' });
       this.ctx.router.navigate('#/map', { replace: true });
       return log.fail(undefined, result.error.code);
     }
@@ -137,11 +141,32 @@ class SpotDetailController {
     // 写真があれば写真（2026-11-09「リアル写真風に」）、無いか読めなければ街なみイラスト
     this.illustration = createSpotVisual(this.body, { seed: dto.id, kind: dto.kind, category: dto.category, status: dto.status, name: dto.name, districtId: dto.districtId });
     const events = createCouponEventList(dto.shopEvents);
-    this.body.append(createSpotInfo(dto), ...(events === undefined ? [] : [events]), createMyVisitHistory(dto));
+    const survey = dto.kind === 'shop' && this.ctx.services.submitSurvey !== undefined ? [createSurveyButton(dto.status === 'visited', (answers) => this.submitSurvey(dto.id, answers))] : [];
+    this.body.append(createSpotInfo(dto), ...(events === undefined ? [] : [events]), createMyVisitHistory(dto), ...survey);
     this.body.dataset.load = 'ready';
     this.body.dataset.status = dto.status;
     this.footer.replaceChildren(createVisitButton(dto, (): Promise<void> => this.visit(dto)));
     log.exit(undefined);
+  }
+
+  /**
+   * アンケートの答えを送る（匿名。EXP は付かない）。
+   * @param spotId お店のスポットID
+   * @param answers 答え
+   * @returns 送れたら true
+   * @sideEffect services.submitSurvey を呼び（書込み・operationId 付き＝DI-07）、トーストを出す
+   */
+  private async submitSurvey(spotId: string, answers: SurveyAnswers): Promise<boolean> {
+    const log = logger.fn('submitSurvey', { spotId });
+    const submit = this.ctx.services.submitSurvey;
+    if (submit === undefined) return log.exit(false, 'unavailable');
+    const result = await submit.execute({ ...answers, operationId: newOperationId(), spotId });
+    if (!result.ok) {
+      this.ctx.toast.show('送信に失敗', { kind: 'error' });
+      return log.fail(false, result.error.code);
+    }
+    this.ctx.toast.show('回答ありがとう！', { kind: 'success' });
+    return log.exit(true);
   }
 
   /**
@@ -158,7 +183,7 @@ class SpotDetailController {
     } catch (error) {
       // 画面の境界：想定外の例外でボタンが押せないままにならないよう、記録して案内する
       log.error('訪問の処理で想定外の例外が起きました', { error });
-      this.ctx.toast.show('訪問を記録できませんでした。もう一度お試しください', { kind: 'error' });
+      this.ctx.toast.show('クエスト達成に失敗', { kind: 'error' });
     } finally {
       this.visiting = false;
     }
@@ -183,7 +208,7 @@ class SpotDetailController {
       return log.fail(undefined, result.error.code);
     }
     const summary = await effects.flush();
-    if (result.value.duplicate) this.ctx.toast.show('この訪問はすでに記録されています', { kind: 'info' });
+    if (result.value.duplicate) this.ctx.toast.show('達成済み', { kind: 'info' });
     else this.ctx.toast.show(visitToastMessage(summary), { kind: 'success' });
     await this.announceGrowth(summary.grownDistrictIds);
     this.moveToDistrictMap(result.value.districtId);
@@ -191,7 +216,7 @@ class SpotDetailController {
   }
 
   /**
-   * 成長した地区を地図のパルスに設定し、「{地区}が Lv{n} に育ちました」をトーストする。
+   * 成長した地区を地図のパルスに設定し、「{地区} Lv{n}」をトーストする。
    * @param districtIds 成長した地区ID
    * @sideEffect ctx.ui.pulseDistrictId を設定し、services.town を呼んでトーストを出す
    */

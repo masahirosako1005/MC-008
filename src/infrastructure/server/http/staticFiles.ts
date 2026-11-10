@@ -23,6 +23,9 @@ const PAGE_SECURITY_HEADERS: Readonly<Record<string, string>> = Object.freeze({
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'geolocation=(self), camera=(), microphone=()',
+  // ほかのオリジンの窓から、この画面の窓を操作・読み込みできないようにする（CMS から開いたアプリの窓が CMS の窓を別の画面へ動かせない）
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Resource-Policy': 'same-origin',
 });
 
 /** 拡張子 → Content-Type（ここに無いものは配らない） */

@@ -65,7 +65,7 @@ const ALL_BACKGROUNDS: readonly BackgroundStyle[] = ['plain', 'room', 'minamimor
 /** 契約（avatarLook）の置くものの種類すべて */
 const ALL_OBJECTS: readonly ObjectStyle[] = [
   'bench', 'plant', 'bicycle', 'vending', 'lamp', 'signboard', 'stall', 'torii', 'sakura',
-  'lantern', 'postbox', 'maneki', 'tanuki', 'fountain', 'gacha', 'fireworks', 'trophy', 'heartballoon', 'dresser',
+  'lantern', 'postbox', 'maneki', 'tanuki', 'fountain', 'gacha', 'fireworks', 'trophy', 'heartballoon', 'dresser', 'winnerFlag', 'gojinto', 'moyooshiDaiko',
 ];
 
 describe('stageArt の種類の一覧', () => {

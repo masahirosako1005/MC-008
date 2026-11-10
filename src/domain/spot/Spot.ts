@@ -26,22 +26,3 @@ export interface Spot {
   /** 店舗協力あり（QR・クーポン） */
   readonly partner: boolean;
 }
-
-/**
- * 未検証の値がスポット種別か判定する型ガード。
- * @param value 判定する値
- * @returns 'landmark' または 'shop' なら true
- */
-export function isSpotKind(value: unknown): value is SpotKind {
-  return value === 'landmark' || value === 'shop';
-}
-
-/**
- * スポットがその便利情報を持つか判定する（便利情報フィルタ用）。
- * @param spot スポット
- * @param amenity 便利情報
- * @returns 持っていれば true
- */
-export function spotHasAmenity(spot: Spot, amenity: Amenity): boolean {
-  return spot.amenities.includes(amenity);
-}

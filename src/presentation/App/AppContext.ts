@@ -43,6 +43,8 @@ export interface MapUiState {
   sheetState: 'peek' | 'half' | 'full';
   /** 地図のカメラ（ドラッグ・拡大縮小した位置を画面をまたいで保つ。メモリのみ） */
   camera?: { centerLat: number; centerLng: number; metersPerPx: number };
+  /** 旅人を切り替えた回数（デモ）。地図が覚えている「前回の街の活気」が別の旅人のものなら比べないための目印（メモリのみ） */
+  travelerEpoch?: number;
 }
 
 /** 画面ファクトリに渡すコンテキスト */

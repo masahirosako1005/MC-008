@@ -2,10 +2,12 @@
  * @file 街の地面を「簡易表示」で描く（presentation/screens/Map/town 層）
  * 2026-11-09 ユーザー指示「街のオブジェクトが多すぎて大変。お店以外は簡易オブジェクトに」で、建物は四角・木は丸い点・道は白い帯に。
  * 2026-11-09 ユーザー指示「陣取り＋街の成長要素が無いので入れてほしい」で、陣地によって街の育ち方を描き分ける:
- * - 自分の陣地の外: 灰色の四角（まだ育っていない街）。木もくすんだ色
- * - ライバルの陣地: 薄紫の四角
+ * - 自分の陣地の外: 淡い色の四角（まだ育っていない街）。木はやわらかい緑
+ * 2026-11-10 ユーザー指示「陣地がとられていくと街が廃れていく感じに」「街の表示がシステム表示みたい。旅の温かみある表示に」:
+ * - ライバルの手に渡ったお店のまわりは「廃れた街」（くすんだ茶色の建物にシャッターの縞・屋根のひび、枯れ木、空き地の雑草、セピアの膜）
+ * - 陣地の外も灰色をやめ、淡い色の建物と暖かいクリーム色の地・砂色の道にして、旅先の街の温かみを出す
  * - 自分の陣地の中: 色づいた建物（屋根の明るい縁）。地区の成長段階で増える（Lv1 花、Lv2 窓と街灯、Lv3 灯る窓・屋根の小旗・道の提灯）
- * 主役（お店・名所・トイレの絵）は townScene が上に重ねる。townArt（細かいドット絵版）と同じ形の API（paintChunk・paintOverview）。
+ * 主役（お店・名所・トイレの絵）は townScene が上に重ねる。townRenderer から paintChunk・paintOverview で呼ばれる。
  */
 import { createLogger } from '@/Common/logging/logger';
 import { CELL_PX, CHUNK_CELLS, CHUNK_PX, Cell, OVERLAY_VIADUCT, OVERVIEW_PX_PER_CELL, TERRITORY_MINE, TERRITORY_RIVAL, isStreet } from '@/presentation/screens/Map/town/townTypes';
@@ -19,47 +21,55 @@ export const VIVID_BUILDING_COLORS: readonly string[] = ['#f4a596', '#f7bd84', '
 const VIVID_HIGHLIGHT: readonly string[] = ['#f9c9bf', '#fbd8b3', '#bfe7df', '#c7d8f3', '#ddd2f6', '#ead6c4', '#cdd5e3', '#ebedf2'];
 /** 色づいた建物の影 */
 const VIVID_SHADOW = '#b9a99a';
-/** まだ育っていない建物（陣地の外） */
-const DORMANT_BUILDING = '#e5e5e8';
-const DORMANT_SHADOW = '#d3d3d8';
-/** ライバルの陣地の建物 */
-const RIVAL_BUILDING = '#ddd5f2';
-const RIVAL_SHADOW = '#c7bde3';
+/** まだ育っていない建物（陣地の外）。灰色ではなく、屋根の色を淡くした暖かい色（roof 0..7） */
+export const CALM_BUILDING_COLORS: readonly string[] = ['#f2dcd3', '#f3e0cb', '#d9ebe2', '#dde6f0', '#e5def0', '#ecdfd0', '#e2e2e2', '#ebe6dd'];
+const DORMANT_BUILDING = '#ebe4d8';
+const DORMANT_SHADOW = '#d9cdbb';
+/** ライバルの手に渡ったお店のまわりの建物（廃れた街: くすんだ茶色・シャッター・ひび） */
+export const DECAY_BUILDING = '#c9bba6';
+const DECAY_SHADOW = '#a3937c';
+const DECAY_SHUTTER = '#b2a48f';
+const DECAY_CRACK = '#8c7d68';
+/** 廃れた街の枯れ木・雑草 */
+const TREE_WITHERED = { light: '#cbb98f', dark: '#ab9670' };
+const WEED = '#9aa36a';
 /** 互換のため残す: 簡易表示の建物の基本色（全体図の凡例・テスト用） */
 export const SIMPLE_BUILDING_COLORS: readonly string[] = VIVID_BUILDING_COLORS;
 
 /** セルの種類ごとの地面の色 */
 const GROUND: Readonly<Record<number, string>> = {
-  [Cell.GRASS]: '#f4f2ee',
-  [Cell.ROAD]: '#ffffff',
-  [Cell.AVENUE]: '#ffffff',
+  [Cell.GRASS]: '#f4ead9',
+  [Cell.ROAD]: '#fffaf1',
+  [Cell.AVENUE]: '#fffaf1',
   [Cell.ARCADE]: '#fde8d2',
   [Cell.ALLEY]: '#fbfaf7',
   [Cell.PATH]: '#efe8d8',
-  [Cell.PLAZA]: '#ecebe6',
-  [Cell.BRIDGE]: '#e9e7e2',
-  [Cell.WATER]: '#a9d9f0',
-  [Cell.BANK]: '#d3e6ec',
+  [Cell.PLAZA]: '#ece7dc',
+  [Cell.BRIDGE]: '#e9e3d8',
+  [Cell.WATER]: '#b5d6dc',
+  [Cell.BANK]: '#dbe6e4',
   [Cell.PARK]: '#dcebd2',
-  [Cell.POND]: '#a9d9f0',
-  [Cell.BUILDING]: '#f4f2ee',
-  [Cell.LOT]: '#f8f7f3',
-  [Cell.TREE]: '#f4f2ee',
-  [Cell.SAKURA]: '#f4f2ee',
-  [Cell.GARDEN]: '#f4f2ee',
-  [Cell.PARKING]: '#f4f2ee',
+  [Cell.POND]: '#b5d6dc',
+  [Cell.BUILDING]: '#f4ead9',
+  [Cell.LOT]: '#f8f1e4',
+  [Cell.TREE]: '#f4ead9',
+  [Cell.SAKURA]: '#f4ead9',
+  [Cell.GARDEN]: '#f4ead9',
+  [Cell.PARKING]: '#f4ead9',
   [Cell.PLAYGROUND]: '#dcebd2',
 };
 /** 自分の陣地の中の地面（暖かい色） */
-const MINE_GROUND = '#eef4ff';
+const MINE_GROUND = '#fdf5ed';
 const MINE_PARK = '#cfeab9';
 /** 道の縁（道でないセルとの境） */
-const STREET_EDGE = '#dcd6ca';
+const STREET_EDGE = '#e4d5bf';
+/** 廃れた街の地面（少し枯れた色） */
+const DECAY_GROUND = '#ebe0cc';
 /** 大通りの面（ふつうの道と見分けるため、ほんの少し黄色に） */
 const AVENUE_TINT = '#fffaea';
 /** 木の色（色づいた・くすんだ） */
 const TREE = { light: '#a8d596', dark: '#8cc47a' };
-const TREE_DORMANT = { light: '#d3dccd', dark: '#c3cebc' };
+const TREE_DORMANT = { light: '#c9dfb8', dark: '#b4d0a1' };
 const SAKURA = { light: '#f8cdda', dark: '#efb3c6' };
 const SAKURA_DORMANT = { light: '#eadde2', dark: '#ddcdd3' };
 /** 花の色 */
@@ -69,11 +79,11 @@ const LAMP_POST = '#6b6f80';
 const LAMP_LIGHT = '#ffd84d';
 const LANTERN = '#ff5a3d';
 /** 高架の色（桁・縁・レール） */
-const VIADUCT_FILL = '#dadde4';
-const VIADUCT_EDGE = '#c2c6d0';
-const VIADUCT_RAIL = '#b3b8c3';
+const VIADUCT_FILL = '#dedad2';
+const VIADUCT_EDGE = '#c8c2b8';
+const VIADUCT_RAIL = '#b8b1a6';
 /** 陣地の境を目立たせる地面の色づけ（自分は地面の色を変えるので、ここはライバルだけ） */
-const RIVAL_TINT = { r: 123, g: 97, b: 255, a: 0.1 };
+const RIVAL_TINT = { r: 110, g: 86, b: 60, a: 0.09 };
 /** 色あせで重ねる色と、色あせ 1 のときの濃さ */
 const FADE_TINT = { r: 238, g: 238, b: 238, a: 0.55 };
 
@@ -110,13 +120,14 @@ function ownerAt(grid: TownGrid, state: TownPaintState, col: number, row: number
  * @param chunkCol チャンクの列
  * @param chunkRow チャンクの行
  * @param state 成長・色あせ・陣地
+ * @param far 引いて見る用（中間・広域）なら true。木を1本ずつの点にせず、並木・公園の縁だけを緑の帯にまとめる
  * @sideEffect canvas に描く
  */
-export function paintChunk(ctx: CanvasRenderingContext2D, grid: TownGrid, chunkCol: number, chunkRow: number, state: TownPaintState): void {
+export function paintChunk(ctx: CanvasRenderingContext2D, grid: TownGrid, chunkCol: number, chunkRow: number, state: TownPaintState, far = false): void {
   const log = logger.fn('paintChunk', { chunkCol, chunkRow });
   const c0 = chunkCol * CHUNK_CELLS;
   const r0 = chunkRow * CHUNK_CELLS;
-  ctx.fillStyle = GROUND[Cell.GRASS] ?? '#f4f2ee';
+  ctx.fillStyle = GROUND[Cell.GRASS] ?? '#f3ede2';
   ctx.fillRect(0, 0, CHUNK_PX, CHUNK_PX);
   const buildings = new Set<number>();
   for (let r = 0; r < CHUNK_CELLS; r++) {
@@ -125,8 +136,9 @@ export function paintChunk(ctx: CanvasRenderingContext2D, grid: TownGrid, chunkC
       const row = r0 + r;
       const kind = kindAt(grid, col, row);
       const own = ownerAt(grid, state, col, row);
-      paintCell(ctx, grid, kind, col, row, c * CELL_PX, r * CELL_PX, own.owner === TERRITORY_MINE);
+      paintCell(ctx, grid, kind, col, row, c * CELL_PX, r * CELL_PX, own.owner, far);
       if (own.owner === TERRITORY_MINE) paintGrowth(ctx, grid, kind, col, row, c * CELL_PX, r * CELL_PX, own.level);
+      else if (own.owner === TERRITORY_RIVAL) paintDecay(ctx, grid, kind, col, row, c * CELL_PX, r * CELL_PX);
       const b = col < grid.cols && row < grid.rows && col >= 0 && row >= 0 ? (grid.buildingAt[row * grid.cols + col] ?? -1) : -1;
       if (b >= 0) buildings.add(b);
     }
@@ -138,7 +150,7 @@ export function paintChunk(ctx: CanvasRenderingContext2D, grid: TownGrid, chunkC
 }
 
 /**
- * 1セルの地面（と道の縁・木）を描く。自分の陣地の中は地面を暖かい色に、木を色づける。
+ * 1セルの地面（と道の縁・木）を描く。自分の陣地の中は地面を暖かい色に、木を色づける。廃れた街は地面が枯れ色、木は枯れ木。
  * @param ctx 2D コンテキスト
  * @param grid 街
  * @param kind セルの種類
@@ -146,20 +158,26 @@ export function paintChunk(ctx: CanvasRenderingContext2D, grid: TownGrid, chunkC
  * @param row 行
  * @param x チャンク内の左（ドット）
  * @param y チャンク内の上（ドット）
- * @param mine 自分の陣地か
+ * @param owner 陣地（TERRITORY_*）
+ * @param far 引いて見る用なら true（木は緑の帯にまとめる）
  * @sideEffect canvas に描く
  */
-function paintCell(ctx: CanvasRenderingContext2D, grid: TownGrid, kind: number, col: number, row: number, x: number, y: number, mine: boolean): void { // audit-ignore: fnlog-missing チャンクを描くときにセルごとに呼ぶ（paintChunk でまとめてログ）
+function paintCell(ctx: CanvasRenderingContext2D, grid: TownGrid, kind: number, col: number, row: number, x: number, y: number, owner: number, far: boolean): void { // audit-ignore: fnlog-missing チャンクを描くときにセルごとに呼ぶ（paintChunk でまとめてログ）
+  const mine = owner === TERRITORY_MINE;
+  const decay = owner === TERRITORY_RIVAL;
   const open = kind === Cell.GRASS || kind === Cell.BUILDING || kind === Cell.TREE || kind === Cell.SAKURA || kind === Cell.GARDEN || kind === Cell.PARKING || kind === Cell.LOT;
   const park = kind === Cell.PARK || kind === Cell.PLAYGROUND;
-  ctx.fillStyle = mine && open ? MINE_GROUND : mine && park ? MINE_PARK : (GROUND[kind] ?? '#f4f2ee');
+  ctx.fillStyle = mine && open ? MINE_GROUND : mine && park ? MINE_PARK : decay && open ? DECAY_GROUND : (GROUND[kind] ?? '#f4ead9');
   ctx.fillRect(x, y, CELL_PX, CELL_PX);
   if (isStreet(kind)) {
     paintStreetEdges(ctx, grid, kind, col, row, x, y);
     return;
   }
-  if (kind === Cell.TREE || kind === Cell.SAKURA) paintTree(ctx, x, y, kind === Cell.SAKURA ? (mine ? SAKURA : SAKURA_DORMANT) : mine ? TREE : TREE_DORMANT);
-  else if (kind === Cell.BANK) {
+  if (isTreeKind(kind)) {
+    const color = decay ? TREE_WITHERED : kind === Cell.SAKURA ? (mine ? SAKURA : SAKURA_DORMANT) : mine ? TREE : TREE_DORMANT;
+    if (!far) paintTree(ctx, x, y, color);
+    else if (inGrove(grid, col, row)) paintGrove(ctx, grid, col, row, x, y, color);
+  } else if (kind === Cell.BANK) {
     ctx.fillStyle = '#c3dbe3';
     ctx.fillRect(x, y + CELL_PX - 1, CELL_PX, 1);
   }
@@ -206,6 +224,49 @@ function paintTree(ctx: CanvasRenderingContext2D, x: number, y: number, color: {
 }
 
 /**
+ * そのセルが木（木・桜）か。
+ * @param kind セルの種類
+ * @returns 木なら true
+ */
+function isTreeKind(kind: number): boolean { // audit-ignore: fnlog-missing セルごとに呼ぶ純粋な判定ヘルパー
+  return kind === Cell.TREE || kind === Cell.SAKURA;
+}
+
+/**
+ * 木のセルが「まとまり」（並木・木立・公園の縁）の一部か。引いて見るとき、ぽつんと立つ木は粒に見えるので描かない。
+ * @param grid 街
+ * @param col 列
+ * @param row 行
+ * @returns 上下左右のどこかが木か公園なら true
+ */
+export function inGrove(grid: TownGrid, col: number, row: number): boolean { // audit-ignore: fnlog-missing セルごとに呼ぶ純粋な判定ヘルパー
+  for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    const k = kindAt(grid, col + dc, row + dr);
+    if (isTreeKind(k) || k === Cell.PARK || k === Cell.PLAYGROUND) return true;
+  }
+  return false;
+}
+
+/**
+ * 引いて見る用の木。セルいっぱいの緑で塗り、隣の木とつながった帯にする（南の端だけ影）。
+ * @param ctx 2D コンテキスト
+ * @param grid 街
+ * @param col 列
+ * @param row 行
+ * @param x 左（ドット）
+ * @param y 上（ドット）
+ * @param color 明るい色と暗い色
+ * @sideEffect canvas に描く
+ */
+function paintGrove(ctx: CanvasRenderingContext2D, grid: TownGrid, col: number, row: number, x: number, y: number, color: { light: string; dark: string }): void { // audit-ignore: fnlog-missing セルごとに呼ぶ（paintChunk でまとめてログ）
+  ctx.fillStyle = color.light;
+  ctx.fillRect(x, y, CELL_PX, CELL_PX);
+  if (isTreeKind(kindAt(grid, col, row + 1))) return;
+  ctx.fillStyle = color.dark;
+  ctx.fillRect(x, y + CELL_PX - 2, CELL_PX, 2);
+}
+
+/**
  * 自分の陣地の中の「街が育った」しるし（地区の成長段階で増える）。
  * Lv0 以上: 空き地にときどき花。Lv1 以上: 花が増える。Lv2 以上: 道ばたに街灯。Lv3: 道に提灯。
  * @param ctx 2D コンテキスト
@@ -247,7 +308,34 @@ function paintGrowth(ctx: CanvasRenderingContext2D, grid: TownGrid, kind: number
 }
 
 /**
- * 建物を四角で描く。自分の陣地の中は色づき（成長段階で窓・灯り・屋根の小旗が増える）、外は灰色、ライバルの陣地は薄紫。
+ * 廃れた街のしるし（空き地のところどころに雑草、道ばたに枯れ色の点）。
+ * @param ctx 2D コンテキスト
+ * @param grid 街
+ * @param kind セルの種類
+ * @param col 列
+ * @param row 行
+ * @param x 左（ドット）
+ * @param y 上（ドット）
+ * @sideEffect canvas に描く
+ */
+function paintDecay(ctx: CanvasRenderingContext2D, grid: TownGrid, kind: number, col: number, row: number, x: number, y: number): void { // audit-ignore: fnlog-missing セルごとに呼ぶ（paintChunk でまとめてログ）
+  const v = grid.variant[row * grid.cols + col] ?? 0;
+  if (kind === Cell.GRASS || kind === Cell.GARDEN || kind === Cell.PARKING || kind === Cell.PARK) {
+    if (v % 5 !== 0) return;
+    ctx.fillStyle = WEED;
+    ctx.fillRect(x + 2 + (v % 3), y + 4, 1, 3);
+    ctx.fillRect(x + 3 + (v % 3), y + 3, 1, 4);
+    ctx.fillRect(x + 4 + (v % 3), y + 5, 1, 2);
+    return;
+  }
+  if (isStreet(kind) && v % 11 === 0) {
+    ctx.fillStyle = TREE_WITHERED.dark;
+    ctx.fillRect(x + 1 + (v % 5), y + 2 + ((v >> 3) % 4), 2, 1);
+  }
+}
+
+/**
+ * 建物を四角で描く。自分の陣地の中は色づき（成長段階で窓・灯り・屋根の小旗が増える）、外は淡い色、ライバルの手に渡った所は廃れた建物（シャッター・ひび）。
  * @param ctx 2D コンテキスト
  * @param grid 街
  * @param state 描画状態
@@ -264,10 +352,14 @@ function paintBuilding(ctx: CanvasRenderingContext2D, grid: TownGrid, state: Tow
   const w = b.w * CELL_PX - 2;
   const h = b.h * CELL_PX - 2;
   const own = ownerAt(grid, state, b.col + Math.floor(b.w / 2), b.row + Math.floor(b.h / 2));
+  if (own.owner === TERRITORY_RIVAL) {
+    paintDecayedBuilding(ctx, x, y, w, h, b.seed);
+    return;
+  }
   if (own.owner !== TERRITORY_MINE) {
-    ctx.fillStyle = own.owner === TERRITORY_RIVAL ? RIVAL_SHADOW : DORMANT_SHADOW;
+    ctx.fillStyle = DORMANT_SHADOW;
     ctx.fillRect(x, y + 1, w, h);
-    ctx.fillStyle = own.owner === TERRITORY_RIVAL ? RIVAL_BUILDING : DORMANT_BUILDING;
+    ctx.fillStyle = b.style === 'station' ? DORMANT_BUILDING : (CALM_BUILDING_COLORS[b.roof] ?? DORMANT_BUILDING);
     ctx.fillRect(x, y, w, h - 1);
     return;
   }
@@ -284,6 +376,35 @@ function paintBuilding(ctx: CanvasRenderingContext2D, grid: TownGrid, state: Tow
     ctx.fillStyle = LANTERN;
     ctx.fillRect(x + w - 3, y - 4, 3, 2);
   }
+}
+
+/**
+ * 廃れた建物（くすんだ茶色・閉じたシャッターの横縞・屋根のひび）。
+ * @param ctx 2D コンテキスト
+ * @param x 左
+ * @param y 上
+ * @param w 幅
+ * @param h 高さ
+ * @param seed ひびの位置を決める種
+ * @sideEffect canvas に描く
+ */
+function paintDecayedBuilding(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, seed: number): void { // audit-ignore: fnlog-missing 建物ごとに呼ぶ（paintChunk でまとめてログ）
+  ctx.fillStyle = DECAY_SHADOW;
+  ctx.fillRect(x, y + 1, w, h);
+  ctx.fillStyle = DECAY_BUILDING;
+  ctx.fillRect(x, y, w, h - 1);
+  if (w >= 8 && h >= 8) {
+    // 下半分に閉じたシャッター（横縞）
+    ctx.fillStyle = DECAY_SHUTTER;
+    const top = y + Math.floor(h * 0.5);
+    for (let sy = top; sy < y + h - 2; sy += 2) ctx.fillRect(x + 2, sy, w - 4, 1);
+  }
+  // 屋根のひび（斜めの折れ線を点で）
+  ctx.fillStyle = DECAY_CRACK;
+  const cx = x + 2 + (seed % Math.max(1, w - 5));
+  ctx.fillRect(cx, y + 1, 1, 2);
+  ctx.fillRect(cx + 1, y + 3, 1, 1);
+  ctx.fillRect(cx + 2, y + 4, 1, 2);
 }
 
 /**
@@ -393,7 +514,9 @@ export function paintOverview(grid: TownGrid, state: TownPaintState): Uint8Clamp
   for (const [kind, hex] of Object.entries(GROUND)) ground.set(Number(kind), rgbOf(hex));
   const vivid = VIVID_BUILDING_COLORS.map(rgbOf);
   const dormant = rgbOf(DORMANT_BUILDING);
-  const rival = rgbOf(RIVAL_BUILDING);
+  const calm = CALM_BUILDING_COLORS.map(rgbOf);
+  const rival = rgbOf(DECAY_BUILDING);
+  const withered = rgbOf(TREE_WITHERED.light);
   const mineGround = rgbOf(MINE_GROUND);
   const tree = rgbOf(TREE.light);
   const treeDormant = rgbOf(TREE_DORMANT.light);
@@ -405,8 +528,8 @@ export function paintOverview(grid: TownGrid, state: TownPaintState): Uint8Clamp
       const owner = state.territory[i] ?? 0;
       const b = grid.buildingAt[i] ?? -1;
       let rgb: { r: number; g: number; b: number };
-      if (b >= 0) rgb = owner === TERRITORY_MINE ? (vivid[grid.buildings[b]?.roof ?? 7] ?? dormant) : owner === TERRITORY_RIVAL ? rival : dormant;
-      else if (kind === Cell.TREE || kind === Cell.SAKURA) rgb = owner === TERRITORY_MINE ? tree : treeDormant;
+      if (b >= 0) rgb = owner === TERRITORY_MINE ? (vivid[grid.buildings[b]?.roof ?? 7] ?? dormant) : owner === TERRITORY_RIVAL ? rival : (calm[grid.buildings[b]?.roof ?? 7] ?? dormant);
+      else if (isTreeKind(kind) && inGrove(grid, col, row)) rgb = owner === TERRITORY_MINE ? tree : owner === TERRITORY_RIVAL ? withered : treeDormant;
       else if (owner === TERRITORY_MINE && kind === Cell.GRASS) rgb = mineGround;
       else rgb = ground.get(kind) ?? viaduct;
       if (((grid.overlay[i] ?? 0) & OVERLAY_VIADUCT) !== 0) rgb = viaduct;

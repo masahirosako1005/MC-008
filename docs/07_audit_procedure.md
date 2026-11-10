@@ -42,6 +42,14 @@ node scripts/audit/static-audit.mjs --json > docs/audit/$(date +%Y%m%d)_static.j
 | `long-function` | 50 行超の関数 | 03 §3 |
 | `magic-radius` | `80` / `40` のリテラルが domain/exploration/constants.ts 以外にある | 01 §3-9 |
 | `color-literal`（warn） | CSS の色の直書き（`#hex`・`rgb()`・`hsl()`）。白・黒・`--ink` の透過は可。`tokens.css`・`splash.css` は対象外。除外は `/* audit-ignore: color-literal <理由> */` | docs/10 |
+| `orphan-file`（warn） | どこからも import されていないファイル（入口 main／cmsMain／serverMain・テストを除く）。残す理由があるなら先頭のコメントに `audit-ignore: orphan-file <理由>` | 03 §1 |
+| `unused-export`（warn） | export しているのに、ほかのファイル（`scripts/` も含む）でも自分の中でも使われていない宣言 | 03 §1 |
+| `long-file`（info） | 800 行を超えるファイル（分割の候補）。info は参考で、error・warn の件数には数えない | 03 §1 |
+
+`orphan-file`・`unused-export`・`long-file` はプロジェクト全体を見る検査で、対象が `src` 全体のときだけ動く（サブツリー指定では動かない）。
+ローカル変数・import の使い残しは TypeScript の `noUnusedLocals`（`tsconfig.json`）が型検査で止める。
+
+コミット前は `npm run check`（型検査 → 静的監査 → テストをまとめて実行）を通す。
 
 終了コード: 違反 0 件 → 0、`error` 違反あり → 1。CI ではこのコードで失敗させる。
 誤検知は行末に `// audit-ignore: <チェック名> <理由>` を書くと除外される（理由必須）。
@@ -88,6 +96,7 @@ node scripts/audit/static-audit.mjs --json > docs/audit/$(date +%Y%m%d)_static.j
 | T-08 | 旧 schemaVersion のデータで起動 | マイグレーション or 安全に拒否 | DI-15 |
 | T-09 | ログビューアで `lat`/`token` を検索 | ヒットなし（マスク済） | LG-03, SEC-25 |
 | T-10 | レスポンスヘッダ確認 | CSP/HSTS/nosniff/frame-ancestors あり | SEC-04, SEC-05 |
+| T-11 | 正常系の通し確認：`npm run build:demo && npm run preview:demo` を動かしたまま `npm run e2e`（`scripts/e2e/demo-scenario.mjs`。ヘッドレス Edge で全画面と実演の手順を通す） | すべて PASS（終了コード 0） | — |
 
 ---
 

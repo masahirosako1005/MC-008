@@ -15,12 +15,6 @@ const logger = createLogger('presentation/screens/Map/MapBackdropModel');
 export const DEFAULT_ATTRIBUTION = '© OpenStreetMap contributors';
 /** 線の最小の太さ（CSS px）。広域でも道路が消えないように */
 export const MIN_LINE_WIDTH_PX = 2;
-/** 鉄道の最小の太さ（CSS px）。黒白の破線が読めるように */
-export const MIN_RAIL_WIDTH_PX = 3;
-/** 川の最小の太さ（CSS px） */
-export const MIN_WATER_WIDTH_PX = 4;
-/** 商店街の最小の太さ（CSS px）。屋根の破線模様が読めるように */
-export const MIN_ARCADE_WIDTH_PX = 4;
 /** widthM が無い線の太さ（メートル） */
 export const DEFAULT_LINE_WIDTH_M: Readonly<Record<MapFeatureKindDto, number>> = {
   water: 60,

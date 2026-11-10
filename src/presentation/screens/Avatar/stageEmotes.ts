@@ -4,6 +4,7 @@
  * 吹き出しは「ぽん」と出て、終わりにふわっと消える。粒の位置・大きさは番号から決まる（乱数・時刻は使わない）。
  * 座標は足元（x, y）とアバターの拡大率 unit で決める（拡大率1でアバターの高さ約70px）。e はエモートが始まってからの秒。
  */
+import { CANVAS_FONT_FAMILY } from '@/Common/ui/canvas/drawUtils';
 import type { AvatarPose, EmoteStyle } from '@/presentation/shared/avatar/avatarLook';
 import { paintHeart, paintTwinkle } from '@/presentation/screens/Avatar/stageSparkle';
 
@@ -101,7 +102,7 @@ export function paintNote(ctx: CanvasRenderingContext2D, x: number, y: number, r
  * @param color 色
  */
 function paintGlyph(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number, color: string): void { // audit-ignore: fnlog-missing 毎フレーム描画
-  ctx.font = `900 ${size}px "M PLUS Rounded 1c", "Noto Sans JP", sans-serif`;
+  ctx.font = `900 ${size}px ${CANVAS_FONT_FAMILY}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineWidth = size * 0.18;

@@ -12,6 +12,12 @@ export const VISIT_POINTS_SHOP = 15;
 /** おかえりボーナスの倍率（当日その地区の基本点×1.5、端数切捨て）（仮） */
 export const WELCOME_BACK_MULTIPLIER = 1.5;
 
+/** お店での購入（レジの QR）1回のポイント（2026-11-10 ユーザー指示「ポイントはチェックインや購入で獲得」）（仮） */
+export const PURCHASE_POINTS = 10;
+
+/** 同じお店・同じ日に、ポイントが付く購入の回数の上限（買い物を繰り返して稼げないように）（仮） */
+export const PURCHASE_LIMIT_PER_SPOT_PER_DAY = 1;
+
 /** 銀カード: 同じ地区への訪問回数（仮） */
 export const SILVER_CARD_VISITS = 3;
 

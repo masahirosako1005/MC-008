@@ -73,7 +73,7 @@ function paintStreet(ctx: CanvasRenderingContext2D, size: CanvasSize, model: Rev
     else if (p.kind === 'shop') paintShopfront(ctx, box, tone, { seed: p.seed, floors: 1, icon: p.seed % 2 === 0 ? 'cup' : 'bag' });
     else paintStreetTree(ctx, box, tone);
   }
-  fillBox(ctx, [0, groundY, W, H - groundY], faded ? '#e5e7eb' : '#e9edf2');
+  fillBox(ctx, [0, groundY, W, H - groundY], faded ? '#ebe4d8' : '#e9edf2');
   ctx.save();
   ctx.strokeStyle = faded ? '#b6bcc5' : mixColors(model.color, '#ffffff', 0.2);
   ctx.lineWidth = 2;

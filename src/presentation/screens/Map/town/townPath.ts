@@ -296,22 +296,6 @@ export function simplifyPath(cells: readonly CellPos[]): CellPos[] {
   return log.exit(out, `${out.length} 点`);
 }
 
-/**
- * 折れ線の長さ（メートル）を返す。
- * @param points 緯度経度の折れ線
- * @param metersPerDegLng 経度1度あたりのメートル
- * @returns 長さ（メートル）
- */
-export function polylineMeters(points: readonly PathLatLng[], metersPerDegLng: number): number { // audit-ignore: fnlog-missing 歩行の毎フレームでも呼ぶ純粋な算術ヘルパー
-  let total = 0;
-  for (let k = 1; k < points.length; k++) {
-    const a = points[k - 1] as PathLatLng;
-    const b = points[k] as PathLatLng;
-    total += Math.hypot((b.lng - a.lng) * metersPerDegLng, (b.lat - a.lat) * 111_000);
-  }
-  return total;
-}
-
 /** 経路の目的地 */
 export type RouteTarget = { readonly anchorId: string } | { readonly point: PathLatLng };
 

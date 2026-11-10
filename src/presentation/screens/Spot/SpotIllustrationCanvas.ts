@@ -154,9 +154,9 @@ function resolveTint(ctx: CanvasRenderingContext2D, model: SpotIllustrationModel
 function paintBackdrop(ctx: CanvasRenderingContext2D, size: CanvasSize, seed: number, visited: boolean): void { // audit-ignore: fnlog-missing paintIllustration でまとめてログ
   const { width, height } = size;
   const groundY = height * GROUND_RATIO;
-  paintSky(ctx, [0, 0, width, groundY], visited ? undefined : ['#e5e8ec', '#f3f4f6']);
+  paintSky(ctx, [0, 0, width, groundY], visited ? undefined : ['#e5e8ec', '#f3eee6']);
   if (visited && height >= 60) paintCloud(ctx, width * (0.12 + (seed % 20) / 100), height * 0.2, width * 0.16);
-  paintFarSkyline(ctx, { from: 0, to: width }, { base: groundY, offset: seed % 37, color: visited ? FAR_SKYLINE : '#e5e7eb', minH: groundY * 0.25, maxH: groundY * 0.5, seed, unit: Math.max(10, width / 14) });
+  paintFarSkyline(ctx, { from: 0, to: width }, { base: groundY, offset: seed % 37, color: visited ? FAR_SKYLINE : '#ebe4d8', minH: groundY * 0.25, maxH: groundY * 0.5, seed, unit: Math.max(10, width / 14) });
   fillBox(ctx, [0, groundY, width, height - groundY], PALETTE.paper);
   fillBox(ctx, [0, groundY, width, Math.max(1, height * 0.01)], '#dfe3e9');
 }
@@ -306,7 +306,7 @@ export function paintIllustration(ctx: CanvasRenderingContext2D, size: CanvasSiz
   ctx.save();
   if (size.width < THUMB_MAX_PX) {
     const groundY = size.height * 0.84;
-    paintSky(ctx, [0, 0, size.width, groundY], visited ? undefined : ['#e5e8ec', '#f3f4f6']);
+    paintSky(ctx, [0, 0, size.width, groundY], visited ? undefined : ['#e5e8ec', '#f3eee6']);
     fillBox(ctx, [0, groundY, size.width, size.height - groundY], PALETTE.paper);
     paintSubject(ctx, { x: size.width * 0.1, base: groundY, w: size.width * 0.8, h: groundY * 0.8 }, model, tone);
   } else {

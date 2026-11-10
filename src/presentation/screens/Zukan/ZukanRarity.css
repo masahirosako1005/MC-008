@@ -22,14 +22,16 @@
 .zukan-card[data-status="discovered"] .zukan-card__icon { filter: brightness(0) opacity(0.55); }
 .zukan-card__category {
   align-self: center;
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   line-height: 1.4;
   padding: 0 0.375rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--g1);
   color: var(--g5);
 }
-.zukan-card__how { font-size: 0.5625rem; color: var(--g4); line-height: 1.3; }
+/* まだ手に入れていないカードの入手の手がかり（線のアイコンだけ） */
+.zukan-card__how { display: flex; align-items: center; justify-content: center; gap: 0.375rem; height: 1rem; color: var(--g4); }
+.zukan-card__how .icon { width: 0.875rem; height: 0.875rem; stroke-width: 2; }
 
 /* ---- レア度の略号と帯 ---- */
 .rarity-card { position: relative; isolation: isolate; }
@@ -38,18 +40,19 @@
   bottom: 0.1875rem;
   left: 0.1875rem;
   z-index: 3;
-  min-width: 1.25rem;
-  padding: 0 0.25rem;
-  border-radius: 0.25rem;
-  font-size: 0.5625rem;
-  font-weight: 900;
-  line-height: 1.5;
+  min-width: 1.5rem;
+  padding: 0 0.375rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  line-height: 1rem;
   letter-spacing: 0.04em;
+  text-align: center;
   background: var(--g4);
   color: var(--g0);
 }
-.rarity-card__strip { display: flex; align-items: center; justify-content: center; gap: 0.25rem; font-size: 0.5625rem; line-height: 1.3; white-space: nowrap; overflow: hidden; }
-.rarity-card__stars { letter-spacing: -0.05em; color: var(--g4); }
+.rarity-card__strip { display: flex; align-items: center; justify-content: center; gap: 0.25rem; height: 0.875rem; font-size: 0.6875rem; line-height: 0.875rem; white-space: nowrap; overflow: hidden; }
+.rarity-card__stars { letter-spacing: 0.05em; color: var(--g4); }
 .rarity-card__rname { font-weight: 800; color: var(--g5); }
 .rarity-card__foil { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; }
 .rarity-card__sparkles { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
@@ -93,7 +96,6 @@
   background: var(--legend-grad);
   background-size: 300% 300%;
   color: var(--metal-legend-ink);
-  font-size: 0.625rem;
   box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
 }
 .rarity-card[data-rarity="4"] .rarity-card__foil {
@@ -109,7 +111,6 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  font-size: 0.6875rem;
 }
 .rarity-card[data-rarity="4"] .rarity-card__rname { color: var(--metal-legend-edge); letter-spacing: 0.06em; }
 .rarity-card[data-rarity="4"] .zukan-card__name { font-weight: 800; }
@@ -154,9 +155,9 @@
 .rarity-legend__chip {
   min-width: 1.5rem;
   text-align: center;
-  border-radius: 0.25rem;
-  font-size: 0.625rem;
-  font-weight: 900;
+  border-radius: var(--radius-pill);
+  font-size: 0.6875rem;
+  font-weight: 800;
   line-height: 1.5;
   background: var(--g4);
   color: var(--g0);
@@ -186,7 +187,7 @@
   align-items: center;
   gap: 0.25rem;
   margin: 0 auto;
-  width: 13rem;
+  width: 14rem;
   padding: 1.75rem 0.75rem 0.875rem;
   border: 2px solid var(--g3);
   border-radius: var(--radius-l);
@@ -199,38 +200,47 @@
 .card-preview__card[data-status="discovered"] .rarity-card__icon { filter: brightness(0) opacity(0.55); }
 .card-preview__card[data-status="unknown"] .rarity-card__icon { color: var(--g4); font-weight: 700; }
 .card-preview__card .rarity-card__stars { position: relative; z-index: 2; font-size: 1.125rem; color: var(--g4); }
-.card-preview__card .rarity-card__rname { position: relative; z-index: 2; font-size: 0.875rem; font-weight: 900; color: var(--g5); }
-.card-preview__name { position: relative; z-index: 2; font-size: 1.125rem; }
+.card-preview__card .rarity-card__rname { position: relative; z-index: 2; font-size: 0.875rem; font-weight: 800; color: var(--g5); }
+/* 文字は段のサイズ（札 12・星 18・レア度名 14・名前 22・種別 12px）。長い名前は語の区切り（CardPreview が入れる wbr）でだけ折る */
+.card-preview__name { position: relative; z-index: 2; font-size: 1.375rem; line-height: 1.3; text-align: center; word-break: keep-all; overflow-wrap: anywhere; }
 .card-preview__category { position: relative; z-index: 2; font-size: 0.75rem; color: var(--g4); }
 .card-preview__card[data-rarity="2"] .rarity-card__stars { color: var(--metal-silver-edge); }
 .card-preview__card[data-rarity="3"] .rarity-card__stars { color: var(--metal-gold-edge); }
-.card-preview__card[data-rarity="4"] .rarity-card__stars { font-size: 1.375rem; }
 .card-preview__card[data-rarity="4"] .rarity-card__icon { filter: drop-shadow(0 0 12px var(--metal-gold-light)) drop-shadow(0 3px 3px rgba(0, 0, 0, 0.3)); }
 .card-preview__card[data-rarity="4"] .rarity-card__sparkles > span { font-size: 1.25rem; }
 .card-preview__card[data-awakened="1"] .card-preview__category,
 .card-preview__card[data-awakened="1"] .rarity-card__rname { color: var(--metal-gold-light); }
 .card-preview__how-title { margin: 0 0 0.25rem; font-weight: 800; color: var(--ink); font-size: 0.8125rem; }
-.card-preview__steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
-.card-preview__step { display: flex; gap: 0.4rem; align-items: flex-start; font-size: 0.75rem; color: var(--g5); }
-.card-preview__step-mark {
-  flex: none;
-  width: 1.375rem;
-  height: 1.375rem;
+/*
+ * 手順は線の絵＋名詞を横に並べるだけ（文・取り消し線・丸い輪は使わない＝押せるものに見せない）。
+ * 済み＝墨の絵＋右下に小さなチェック、次＝ブランド色の絵と太字、これから＝淡い絵。
+ */
+.modal:has(.card-preview) .modal__title { display: none; }
+.card-preview__steps { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; gap: 1.75rem; }
+.card-preview__step { display: flex; flex-direction: column; align-items: center; gap: 0.125rem; min-width: 3rem; font-size: 0.6875rem; line-height: 1rem; color: var(--g4); font-variant-numeric: tabular-nums; }
+.card-preview__step-mark { position: relative; display: block; color: var(--g3); }
+.card-preview__step-mark > .icon { width: 1.5rem; height: 1.5rem; stroke-width: 1.75; }
+.card-preview__step-check {
+  position: absolute;
+  right: -0.4375rem;
+  bottom: -0.125rem;
+  display: grid;
+  place-items: center;
+  width: 0.875rem;
+  height: 0.875rem;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.625rem;
-  font-weight: 800;
-  border: 1.5px solid var(--g3);
-  color: var(--g4);
+  background: var(--success-ink);
+  color: var(--on-accent);
+  box-shadow: 0 0 0 1.5px var(--surface);
 }
-.card-preview__step-mark .icon { width: 0.8125rem; height: 0.8125rem; stroke-width: 2.6; }
-.card-preview__step[data-state="todo"] .card-preview__step-mark { border-style: dashed; }
-.card-preview__step[data-state="done"] .card-preview__step-mark { background: var(--g5); border-color: var(--g5); color: var(--g0); }
-.card-preview__step[data-state="done"] { color: var(--g4); text-decoration: line-through; text-decoration-color: var(--g3); }
-.card-preview__step[data-state="next"] { color: var(--ink); font-weight: 700; }
-.card-preview__step[data-state="next"] .card-preview__step-mark { background: var(--brand-ink); border-color: var(--brand-ink); color: var(--on-accent); }
+.card-preview__step-check .icon { width: 0.625rem; height: 0.625rem; stroke-width: 3; }
+.card-preview__step[data-state="done"] { color: var(--g5); }
+.card-preview__step[data-state="done"] .card-preview__step-mark { color: var(--g5); }
+.card-preview__step[data-state="next"] { color: var(--brand-700); font-weight: 700; }
+.card-preview__step[data-state="next"] .card-preview__step-mark { color: var(--brand); }
+/* 「出典」は当たり判定を 44px に広げる（見た目は文字のまま） */
+.card-preview .spot-photo__credit-link { position: relative; }
+.card-preview .spot-photo__credit-link::after { content: ""; position: absolute; inset: -0.875rem -0.75rem; }
 
 /* ---- 動き ---- */
 @media (prefers-reduced-motion: no-preference) {
@@ -312,7 +322,7 @@
 .zukan-grid .rarity-card[data-rarity] {
   border: 0 !important;
   background: var(--surface) !important;
-  box-shadow: 0 0 0 1px var(--hairline), 0 2px 8px rgba(17, 24, 39, 0.05) !important;
+  box-shadow: 0 0 0 1px var(--hairline), 0 2px 8px rgba(42, 33, 27, 0.05) !important;
   animation: none !important;
   overflow: hidden;
 }
@@ -334,7 +344,7 @@
   top: 0.375rem;
   bottom: auto;
   left: 0.375rem;
-  background: rgba(17, 24, 39, 0.78) !important;
+  background: rgba(42, 33, 27, 0.78) !important;
   color: #ffffff !important;
   animation: none !important;
   font-weight: 700;
@@ -342,7 +352,7 @@
 .zukan-grid .rarity-card__stars { color: var(--g4) !important; animation: none !important; background: none !important; -webkit-text-fill-color: currentColor; }
 .zukan-grid .rarity-card__rname { color: var(--g5) !important; letter-spacing: 0; font-weight: 700; }
 .zukan-grid .zukan-card__name { font-weight: 700; }
-.rarity-legend__teaser { background: var(--surface); border: 0; box-shadow: 0 0 0 1px var(--hairline); color: var(--ink); font-weight: 500; }
+.rarity-legend__teaser { background: var(--surface); border: 0; box-shadow: 0 0 0 1px var(--hairline); color: var(--ink); font-weight: 400; }
 .rarity-legend__teaser::before { content: ""; display: inline-block; width: 0.5rem; height: 0.5rem; margin-right: 0.375rem; border-radius: 50%; background: var(--brand); vertical-align: 0.0625rem; }
 .rarity-legend__item[data-rarity="4"] .rarity-legend__chip { background: var(--legend-grad) !important; color: var(--metal-legend-ink); animation: none !important; }
 .rarity-legend__item[data-rarity="3"] .rarity-legend__chip { background: var(--rarity-3) !important; color: var(--ink); }
@@ -394,7 +404,7 @@
 .card-preview__card[data-shiny="1"] {
   border: 0 !important;
   background: linear-gradient(160deg, color-mix(in srgb, var(--metal-gold-light) 15%, #fff) 0%, var(--metal-legend-light) 48%, var(--metal-platinum-light) 100%) !important;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7), 0 0 12px color-mix(in srgb, var(--metal-legend) 55%, transparent), 0 0 24px color-mix(in srgb, var(--metal-platinum) 40%, transparent), 0 4px 12px rgba(17, 24, 39, 0.18) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7), 0 0 12px color-mix(in srgb, var(--metal-legend) 55%, transparent), 0 0 24px color-mix(in srgb, var(--metal-platinum) 40%, transparent), 0 4px 12px rgba(42, 33, 27, 0.18) !important;
   overflow: hidden;
 }
 .zukan-grid .rarity-card.zukan-card[data-shiny="1"]::before { display: none; }
@@ -479,7 +489,7 @@
   background: var(--legend-grad) !important;
   background-size: 300% 300% !important;
   color: var(--metal-legend-ink) !important;
-  font-weight: 900;
+  font-weight: 800;
   box-shadow: 0 0 6px rgba(255, 255, 255, 0.95), 0 0 10px color-mix(in srgb, var(--metal-gold) 70%, transparent);
 }
 .zukan-grid .rarity-card.zukan-card[data-shiny="1"] .rarity-card__stars,
@@ -491,27 +501,30 @@
   background-clip: text !important;
   color: transparent !important;
   -webkit-text-fill-color: transparent;
-  font-weight: 900;
+  font-weight: 800;
 }
 /* 名前の文字は読みやすさを優先して虹にせず、濃い紫＋金の光 */
-.zukan-grid .rarity-card.zukan-card[data-shiny="1"] .rarity-card__rname { color: var(--metal-legend-edge) !important; font-weight: 900; text-shadow: 0 0 6px color-mix(in srgb, var(--metal-gold) 90%, transparent); }
+.zukan-grid .rarity-card.zukan-card[data-shiny="1"] .rarity-card__rname { color: var(--metal-legend-edge) !important; font-weight: 800; text-shadow: 0 0 6px color-mix(in srgb, var(--metal-gold) 90%, transparent); }
 .zukan-grid .rarity-card.zukan-card[data-shiny="1"] .zukan-card__name { font-weight: 800; color: var(--metal-legend-ink); }
 .card-preview__shiny-label { position: relative; z-index: 6; margin-top: 0.25rem; font-size: 0.75rem; letter-spacing: 0.08em; }
 
-/* 拡大プレビューの大きなカードは星を大きく */
-.card-preview__card[data-shiny="1"] .shiny-fx__star { font-size: calc(var(--s) * 1.9); }
+/* 拡大プレビューの大きなカードは星を大きく（大きさは段の 14・18・22px だけ。端数を作らない） */
+.card-preview__card[data-shiny="1"] .shiny-fx__star { font-size: 1.125rem; }
+.card-preview__card[data-shiny="1"] .shiny-fx__star:nth-child(even) { font-size: 0.875rem; }
+.card-preview__card[data-shiny="1"] .shiny-fx__star:nth-child(3n) { font-size: 1.375rem; }
 .card-preview__card[data-shiny="1"] .shiny-fx__ring { padding: 3px; }
 
+/*
+ * ずっと動くのは「走る光・星のまたたき・虹色の文字」の3種類だけ（UI/UX 改善 2周目）。
+ * 虹の枠・ホログラムの粒・箔・外側の光は止めた絵で残す（回さない・流さない・明滅させない）。
+ */
+.zukan-grid .rarity-card.zukan-card[data-shiny="1"] .rarity-card__foil,
+.card-preview__card[data-shiny="1"] .rarity-card__foil { animation: none; }
 @media (prefers-reduced-motion: no-preference) {
-  .shiny-fx__ring { animation: shiny-spin 3.6s linear infinite; }
-  .shiny-fx__glitter { animation: shiny-glitter 6s linear infinite; }
   .shiny-fx__shine { animation: shiny-sweep 3s ease-in-out 0.6s infinite; }
   .shiny-fx__star { animation: shiny-twinkle 1.9s ease-in-out var(--d) infinite; }
   .shiny-fx::after { animation: shiny-flash 1.1s ease-out 0.25s 1 both; }
-  .zukan-grid .rarity-card.zukan-card[data-shiny="1"],
-  .card-preview__card[data-shiny="1"] { animation: shiny-glow 2.4s ease-in-out infinite !important; }
-  .zukan-grid .rarity-card.zukan-card[data-shiny="1"] .rarity-card__foil,
-  .card-preview__card[data-shiny="1"] .rarity-card__foil { animation: rz-holo 5s linear infinite; }
+  .card-preview__card[data-shiny="1"] { animation: rz-flip 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) both !important; }
   .zukan-grid .rarity-card.zukan-card[data-shiny="1"] .rarity-card__code,
   .zukan-grid .rarity-card.zukan-card[data-shiny="1"] .rarity-card__stars,
   .card-preview__card[data-shiny="1"] .rarity-card__code,
@@ -519,14 +532,6 @@
   .card-preview__card[data-shiny="1"] .card-preview__shiny-label { animation: rz-rainbow1 4s linear infinite !important; }
 }
 
-@keyframes shiny-spin {
-  to { --shiny-angle: 360deg; }
-}
-@keyframes shiny-glitter {
-  0% { background-position: 0 0, 6px 9px, 3px 4px; opacity: 0.35; }
-  50% { opacity: 0.7; }
-  100% { background-position: 26px 13px, -13px 28px, 12px -5px; opacity: 0.35; }
-}
 @keyframes shiny-sweep {
   0%, 50% { background-position: 160% 0; }
   100% { background-position: -60% 0; }
@@ -540,32 +545,42 @@
   35% { opacity: 1; }
   100% { opacity: 0; transform: scale(1.3); }
 }
-@keyframes shiny-glow {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7), 0 0 12px color-mix(in srgb, var(--metal-legend) 55%, transparent), 0 0 24px color-mix(in srgb, var(--metal-platinum) 40%, transparent), 0 4px 12px rgba(17, 24, 39, 0.18); }
-  50% { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 0 18px color-mix(in srgb, var(--metal-gold) 80%, transparent), 0 0 32px color-mix(in srgb, var(--metal-legend) 60%, transparent), 0 4px 12px rgba(17, 24, 39, 0.18); }
-}
 
 /* 写真の上では箔と粒を控えめにして、場所がわかるようにする（2026-11-09 写真化） */
 .zukan-grid .rarity-card.zukan-card[data-shiny="1"] .zukan-card__art[data-photo] .rarity-card__foil,
 .card-preview__card[data-shiny="1"]:has(.card-preview__photo) .rarity-card__foil { opacity: 0.18; }
 .zukan-grid .rarity-card.zukan-card[data-shiny="1"]:has(.zukan-card__art[data-photo]) .shiny-fx__glitter,
 .card-preview__card[data-shiny="1"]:has(.card-preview__photo) .shiny-fx__glitter { opacity: 0.22; }
-@media (prefers-reduced-motion: no-preference) {
-  .zukan-grid .rarity-card.zukan-card[data-shiny="1"]:has(.zukan-card__art[data-photo]) .shiny-fx__glitter,
-  .card-preview__card[data-shiny="1"]:has(.card-preview__photo) .shiny-fx__glitter { animation-name: shiny-glitter-soft; }
-}
-@keyframes shiny-glitter-soft {
-  0% { background-position: 0 0, 6px 9px, 3px 4px; opacity: 0.12; }
-  50% { opacity: 0.3; }
-  100% { background-position: 26px 13px, -13px 28px, 12px -5px; opacity: 0.12; }
-}
 
 /*
  * ---- ラウンド6: 手持ち枚数は細い1行（2026-11-09「図鑑を開いたらすぐに写真が見えるのが自然」） ----
  * 'レア度の札＋枚数' を横に並べるだけにして、カードの格子をすぐ下に出す。
  */
-.rarity-legend { display: flex; align-items: center; gap: 0.625rem; margin: 0 0 0.25rem !important; font-size: 0.6875rem; color: var(--g4); }
+.rarity-legend { display: flex; align-items: center; gap: 0.5rem; margin: 0 !important; font-size: 0.6875rem; color: var(--g4); }
 .rarity-legend__title { font-weight: 700; }
 .rarity-legend .rarity-legend__item { flex: none; display: inline-flex; align-items: center; gap: 0.25rem; padding: 0; border-radius: 0; background: none; box-shadow: none; }
-.rarity-legend .rarity-legend__chip { min-width: 0; padding: 0 0.3125rem; font-size: 0.625rem; line-height: 1.5; }
-.rarity-legend .rarity-legend__owned { font-size: 0.75rem; font-weight: 800; color: var(--ink); }
+.rarity-legend .rarity-legend__chip { min-width: 0; padding: 0 0.3125rem; font-size: 0.6875rem; line-height: 1rem; }
+.rarity-legend .rarity-legend__owned { font-size: 0.8125rem; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/*
+ * ---- ラウンド7（UI/UX 改善 1周目）: 文字は最小 11px、レア度は札と星だけ、同じ行のカードで写真・星・名前・回数の高さをそろえる ----
+ * 余白と枠はレア度・なじみ度で変えない（★4 の虹の枠は ShinyLayer の重ね描きで、中身の位置は動かさない）。
+ */
+.zukan-grid .zukan-card.rarity-card { padding: 0.3125rem 0.3125rem 0.5rem !important; }
+.zukan-grid .rarity-card__code { font-size: 0.6875rem !important; font-weight: 800 !important; }
+.zukan-grid .zukan-card__visits { height: 1.0625rem; }
+.zukan-grid .zukan-card__visits .zukan-card__count,
+.zukan-grid .zukan-card__visits .zukan-card__ribbon { line-height: 1.0625rem; font-variant-numeric: tabular-nums; }
+.zukan-grid .zukan-card__meta { gap: 0; }
+.shiny-fx__star { font-size: max(var(--s), 0.6875rem); }
+
+/*
+ * ---- ラウンド8（UI/UX 改善 2周目）: 文字の大きさ「大」「特大」でも札が割れない・切れない ----
+ * 回数・なじみの札は1行のまま（折らない・縮めない）。レア度の札は幅を詰めて、左の地区の札に場所を空ける。
+ * 手持ち枚数の行は折らず、見出しの横に入らないときは行ごと下の段へ落ちる（ZukanScreen.css の見出し）。
+ */
+.zukan-grid .rarity-card__code { min-width: 1.375rem; padding: 0 0.25rem; }
+.zukan-grid .zukan-card__visits { white-space: nowrap; }
+.zukan-grid .zukan-card__visits .zukan-card__count,
+.zukan-grid .zukan-card__visits .zukan-card__ribbon { flex: none; white-space: nowrap; }
+.rarity-legend { white-space: nowrap; }

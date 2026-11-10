@@ -8,6 +8,7 @@
  * - 歩行: 足もとに小さな土ぼこり
  * 乱数は演出ごとの種から作る（Math.random は使わない）。動きを減らす設定（prefers-reduced-motion）では紙吹雪・揺れを省く。座標はログに出さない。
  */
+import { easeOutBack, easeOutCubic } from '@/Common/ui/canvas/easing';
 import { createLogger } from '@/Common/logging/logger';
 import { canvasFont } from '@/Common/ui/canvas/drawUtils';
 import type { Point2D } from '@/Common/ui/canvas/geometry';
@@ -71,27 +72,6 @@ export interface MapEffectOptions {
  */
 function reducedMotion(): boolean { // audit-ignore: fnlog-missing 毎フレーム描画から呼ぶ読み取りヘルパー
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-/**
- * 0..1 の進みを、勢いよく出て止まる形にする。
- * @param k 進み
- * @returns なめらかにした進み
- */
-function easeOutCubic(k: number): number { // audit-ignore: fnlog-missing 毎フレーム描画で呼ぶ純粋な算術ヘルパー
-  const c = Math.min(1, Math.max(0, k));
-  return 1 - (1 - c) ** 3;
-}
-
-/**
- * はねる形（少し行き過ぎて戻る）。
- * @param k 進み
- * @returns なめらかにした進み
- */
-function easeOutBack(k: number): number { // audit-ignore: fnlog-missing 毎フレーム描画で呼ぶ純粋な算術ヘルパー
-  const c = Math.min(1, Math.max(0, k));
-  const s = 1.70158;
-  return 1 + (s + 1) * (c - 1) ** 3 + s * (c - 1) ** 2;
 }
 
 /** 地図の上の演出の集まり */
@@ -412,7 +392,7 @@ function drawStamp(ctx: CanvasRenderingContext2D, c: Point2D, elapsed: number, t
   ctx.fillStyle = VERMILION;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = canvasFont(13, 900, textScale);
+  ctx.font = canvasFont(13, 800, textScale);
   // 文字は「上の行|下の行」（既定はチェックイン。購入は「お買い|上げ！」など）
   const [top, bottom] = (text ?? 'チェック|イン！').split('|');
   ctx.fillText(top ?? '', 0, bottom === undefined ? 1 : -7);
@@ -436,7 +416,7 @@ function drawPoints(ctx: CanvasRenderingContext2D, p: Point2D, k: number, text: 
   ctx.globalAlpha = k < 0.7 ? 1 : Math.max(0, 1 - (k - 0.7) / 0.3);
   ctx.translate(p.x + 46, p.y - 104 - easeOutCubic(k) * 26);
   ctx.scale(pop, pop);
-  ctx.font = canvasFont(17, 900, textScale);
+  ctx.font = canvasFont(17, 800, textScale);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineWidth = 5;
@@ -525,7 +505,7 @@ function drawDiscover(ctx: CanvasRenderingContext2D, p: Point2D, k: number, elap
   ctx.globalAlpha = fade;
   ctx.translate(c.x, c.y - 44);
   ctx.scale(pop, pop);
-  ctx.font = canvasFont(13, 900, textScale);
+  ctx.font = canvasFont(13, 800, textScale);
   const w = ctx.measureText('発見！').width + 18;
   ctx.fillStyle = '#ffb400';
   ctx.beginPath();
@@ -583,7 +563,7 @@ function drawLevelUp(ctx: CanvasRenderingContext2D, p: Point2D, k: number, elaps
   ctx.globalAlpha = k < 0.8 ? 1 : (1 - k) / 0.2;
   ctx.translate(p.x, p.y - 34);
   ctx.scale(pop, pop);
-  ctx.font = canvasFont(15, 900, textScale);
+  ctx.font = canvasFont(15, 800, textScale);
   const w = ctx.measureText(text).width + 22;
   ctx.fillStyle = VERMILION;
   ctx.beginPath();

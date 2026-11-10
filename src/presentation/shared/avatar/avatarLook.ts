@@ -21,16 +21,16 @@ export type BottomStyle = 'denim' | 'shorts' | 'skirt' | 'longskirt' | 'cargo' |
 export type ShoeStyle = 'sneaker' | 'loafer' | 'boots' | 'sandal' | 'geta' | 'rain' | 'highcut';
 /** 帽子（beret・straw・crown は旧来の値） */
 export type AvatarHat = 'beret' | 'straw' | 'crown' | 'cap' | 'knit' | 'hachimaki' | 'flower' | 'catEars' | 'bucket' | 'silk' | 'halo' | 'tiara'
-  | 'umeKanzashi' | 'sugegasa' | 'sakuraKanzashi' | 'kitsuneMask' | 'momijiBeret';
+  | 'umeKanzashi' | 'sugegasa' | 'sakuraKanzashi' | 'kitsuneMask' | 'momijiBeret' | 'laurel' | 'nagezukin';
 /** アクセサリー */
-export type AccessoryStyle = 'glasses' | 'sunglasses' | 'scarf' | 'headphones' | 'ribbon' | 'muffler' | 'bandaid' | 'pochette' | 'medal' | 'wings' | 'heartglasses' | 'earmuffs';
+export type AccessoryStyle = 'glasses' | 'sunglasses' | 'scarf' | 'headphones' | 'ribbon' | 'muffler' | 'bandaid' | 'pochette' | 'medal' | 'wings' | 'heartglasses' | 'earmuffs' | 'silverMedal' | 'bronzeMedal' | 'umeTenugui';
 /** 手に持つもの（camera・chochin・nobori・matsu は旧来の値） */
 export type AvatarHeld =
   | 'camera' | 'chochin' | 'nobori' | 'matsu' | 'map' | 'guidebook' | 'softcream' | 'takoyaki'
   | 'balloon' | 'umbrella' | 'bouquet' | 'fishing' | 'uchiwa' | 'croquette' | 'sparkler' | 'wand'
-  | 'omamori' | 'kushikatsu' | 'kamifusen' | 'filmcamera' | 'dango' | 'kingyo' | 'yakiimo' | 'yukidaruma';
+  | 'omamori' | 'kushikatsu' | 'kamifusen' | 'filmcamera' | 'dango' | 'kingyo' | 'yakiimo' | 'yukidaruma' | 'cheerFlag' | 'kiriko' | 'sensu';
 /** 相棒 */
-export type PetStyle = 'cat' | 'shiba' | 'rabbit' | 'hiyoko' | 'tanuki' | 'penguin' | 'pigeon' | 'dragon' | 'fox' | 'unicorn' | 'uso' | 'mejiro' | 'tsukimiUsagi';
+export type PetStyle = 'cat' | 'shiba' | 'rabbit' | 'hiyoko' | 'tanuki' | 'penguin' | 'pigeon' | 'dragon' | 'fox' | 'unicorn' | 'uso' | 'mejiro' | 'tsukimiUsagi' | 'shingyu';
 /** ステージの背景 */
 export type BackgroundStyle = 'plain' | 'room' | 'minamimori' | 'tenma' | 'tenroku' | 'ogimachi' | 'okawa' | 'sunset' | 'night' | 'starry' | 'dreamy' | 'idol'
   | 'aquarium' | 'yozakura' | 'snowlight' | 'candy' | 'beach' | 'castle' | 'cafe' | 'galaxy'
@@ -38,7 +38,7 @@ export type BackgroundStyle = 'plain' | 'room' | 'minamimori' | 'tenma' | 'tenro
 /** ステージに置くもの */
 export type ObjectStyle =
   | 'bench' | 'plant' | 'bicycle' | 'vending' | 'lamp' | 'signboard' | 'stall' | 'torii' | 'sakura'
-  | 'lantern' | 'postbox' | 'maneki' | 'tanuki' | 'fountain' | 'gacha' | 'fireworks' | 'trophy' | 'heartballoon' | 'dresser';
+  | 'lantern' | 'postbox' | 'maneki' | 'tanuki' | 'fountain' | 'gacha' | 'fireworks' | 'trophy' | 'heartballoon' | 'dresser' | 'winnerFlag' | 'gojinto' | 'moyooshiDaiko';
 /**
  * ポーズ。stand〜peace は基本のポーズ、それ以外はエモートの動き（表情も変わる）。
  * love＝両手をほおに当ててうっとり／dance＝左右に揺れて踊る／laugh＝口を開けて笑いながら弾む／surprise＝両手を上げて目を丸くする
@@ -113,6 +113,8 @@ export const DEFAULT_OUTFIT_COLOR = '#6a9bcc';
 export const HAIR_COLORS: Readonly<Record<string, string>> = {
   black: '#2b2b33', brown: '#5b3a29', chestnut: '#8a4b2a', milktea: '#c9a27e', ash: '#8d97a5',
   sakura: '#f4a3c0', mint: '#7fd1b9', fuji: '#9b8ce0', silver: '#d5dae2', kogane: '#f2c14e',
+  // EXP の特典（ランク画面）
+  akane: '#b8352c', ruri: '#2f58a8', hisui: '#2f9a74', yozora: '#3a3487',
 };
 /** 肌の色 */
 export const SKIN_COLORS: Readonly<Record<string, string>> = {
@@ -122,6 +124,8 @@ export const SKIN_COLORS: Readonly<Record<string, string>> = {
 export const TOP_COLORS: Readonly<Record<string, string>> = {
   coral: '#ff7a5c', navy: '#334a7a', white: '#f4f5f7', mustard: '#f2b53a', leaf: '#4cbf8a',
   sky: '#6a9bcc', lilac: '#a78bfa', charcoal: '#3f4552', sakura: '#f7a8c4', gold: '#e9b830',
+  // EXP の特典（ランク画面）
+  ruby: '#b0204a', emerald: '#1d9168', platinum: '#c5ccd8',
 };
 
 /** 部品ID の形（'<枠>.<種類>'） */

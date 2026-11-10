@@ -26,15 +26,12 @@ export const AMENITY_ORDER: readonly Amenity[] = ['kids', 'toilet', 'nursing', '
 /** スポット種別の表示名 */
 export const KIND_LABELS: Readonly<Record<SpotKindDto, string>> = { landmark: '名所', shop: '店舗' };
 
-/** スポットの状態の表示名 */
+/** スポットの状態の表示名（呼び方は CLAUDE.md 11.1。「訪問」「行く」は使わず「達成」で言う） */
 export const STATUS_LABELS: Readonly<Record<SpotStatusDto, string>> = {
   unknown: '未発見',
-  discovered: 'まだ行っていない',
+  discovered: '未達成',
   visited: '達成済み',
 };
-
-/** 成長段階の説明（CLAUDE.md 4.3） */
-export const LEVEL_DESCRIPTIONS: readonly string[] = ['輪郭のみ', '色づく', '建物が増える', '名所に装飾'];
 
 /**
  * 便利情報の値を表示名にする（未知の値は undefined）。
@@ -79,24 +76,24 @@ export function fadeLabel(fade: FadeDto): string | undefined {
 }
 
 /**
- * 最終訪問からの日数の表示。
+ * 最後のクエスト達成からの日数の表示（画面では「訪問」と言わない＝CLAUDE.md 11.1。名詞で止める）。
  * @param fade 色あせ状態
- * @returns '最終訪問 23日前'／'今日訪問'／'まだ訪れていない'
+ * @returns '23日前'／'今日'／'未達成'
  */
 export function lastVisitLabel(fade: FadeDto): string {
   const log = logger.fn('lastVisitLabel', { kind: fade.kind, daysSinceVisit: fade.daysSinceVisit });
-  if (fade.kind === 'never' || fade.daysSinceVisit === undefined) return log.exit('まだ訪れていない');
-  return log.exit(fade.daysSinceVisit === 0 ? '今日訪問' : `最終訪問 ${fade.daysSinceVisit}日前`);
+  if (fade.kind === 'never' || fade.daysSinceVisit === undefined) return log.exit('未達成');
+  return log.exit(fade.daysSinceVisit === 0 ? '今日' : `${fade.daysSinceVisit}日前`);
 }
 
 /**
- * 通った回数の表示（網羅ではなく通いを主役にする）。
+ * 達成した回数の表示（網羅ではなく通いを主役にする。言い回しは全画面共通の「n回達成」）。
  * @param count 訪問回数
- * @returns '通った回数 3回'／'まだ訪れていない'
+ * @returns '3回達成'／'未達成'
  */
 export function visitCountLabel(count: number): string {
   const log = logger.fn('visitCountLabel', { count });
-  return log.exit(count > 0 ? `通った回数 ${count}回` : 'まだ訪れていない');
+  return log.exit(count > 0 ? `${count}回達成` : '未達成');
 }
 
 /**

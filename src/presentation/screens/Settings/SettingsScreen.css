@@ -1,28 +1,39 @@
 /*
  * @file 設定画面のスタイル（presentation/screens/Settings。wireframes/10_settings）
- * 設定アプリ風: 見出し＋白いカード（行の間は内側に寄せた hairline）。デモメニューと同じ並べ方。
- * 文字の大きさの3択は g2 のトラック＋白い選択面（地図の表示範囲の切替と同じ作り）。選択は墨色の文字と太字、朱は使わない。
+ * 設定アプリ風: 見出し＋白いカード（行の間は内側に寄せた hairline）。説明の文は置かない。
+ * 文字の大きさの3択は全画面共通の切替（.seg）。選択は白い面と太字、朱は使わない。
  * サイズはすべて rem（文字拡大に追従する）。タップ領域は最小 44px（--tap）。
  */
 .settings { display: flex; flex-direction: column; gap: 1.5rem; }
 
-/* ---- まとまり（見出し＋カード＋補足） ---- */
-.settings-group__title {
-  margin: 0 0 0.5rem 0.25rem;
-  font-size: var(--fs-s);
-  font-weight: var(--fw-bold);
-  color: var(--g4);
-  letter-spacing: 0.02em;
+/* ---- 先頭の自分のアバター（ランキング・ランクと同じ絵。文字は添えない） ---- */
+/* 高さ 64px。足元にアバター画面と同じ輪（台）を置いて、地面に立たせる */
+.settings-hero { position: relative; display: flex; justify-content: center; align-items: flex-end; height: 64px; padding-bottom: 7px; margin-bottom: -0.5rem; }
+.settings-hero::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 64px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--brand-50);
+  box-shadow: inset 0 0 0 2px var(--brand-200);
+  transform: translateX(-50%);
 }
+.settings-hero .avatar-img { position: relative; display: block; }
+
+/* ---- まとまり（見出し＋カード）。見出しは全画面共通の .section-title（左端は画面端から 16px） ---- */
+.settings-group__title { margin: 0 0 0.5rem; }
 .settings-card {
   padding: 0 1rem;
   border-radius: var(--radius-m);
   background: var(--surface);
   box-shadow: var(--shadow-1);
 }
-/* 3択とプレビューを入れるカードは四辺に余白（子の margin がカードの外へ抜けないように） */
-.settings-card--padded { display: flex; flex-direction: column; gap: 0.875rem; padding: 1rem; }
-.settings-group__note { margin: 0.5rem 0.25rem 0; }
+.settings-card--padded { display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; }
+/* 面を重ねない（切替・プレビュー・ボタンは地の上にそのまま置く） */
+.settings-bare { display: flex; flex-direction: column; gap: 0.75rem; }
 
 /* ---- 見出しと値の1行 ---- */
 .settings-row {
@@ -38,63 +49,19 @@
 .settings-row__label { min-width: 0; color: var(--ink); line-height: 1.45; }
 .settings-row__value { flex: none; max-width: 60%; text-align: right; color: var(--g4); font-size: var(--fs-s); line-height: 1.45; }
 
-/* ---- 文字の大きさ（3択） ---- */
-.text-scale-picker {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.25rem;
-  padding: 0.25rem;
-  border-radius: var(--radius-control);
-  background: var(--g2);
-}
-.text-scale-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.125rem;
-  min-height: 4rem;
-  padding: 0.375rem 0.25rem;
-  border: 0;
-  border-radius: calc(var(--radius-control) - 0.25rem);
-  background: transparent;
-  color: var(--g5);
-  font: inherit;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.text-scale-option__glyph { display: flex; align-items: flex-end; height: 1.75rem; line-height: 1; font-weight: var(--fw-bold); }
-.text-scale-option--normal .text-scale-option__glyph { font-size: 1rem; }
-.text-scale-option--large .text-scale-option__glyph { font-size: 1.25rem; }
-.text-scale-option--xlarge .text-scale-option__glyph { font-size: 1.5rem; }
-.text-scale-option__label { font-size: var(--fs-s); font-weight: var(--fw-medium); }
-.text-scale-option[aria-checked="true"] {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: var(--shadow-1);
-}
-.text-scale-option[aria-checked="true"] .text-scale-option__label { font-weight: var(--fw-bold); }
-.text-scale-option:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* ---- 文字の大きさ（3択）：全画面共通の切替 .seg（components.css）をそのまま使う ---- */
 
-/* ---- プレビュー（地図下シートと同じスポットカード） ---- */
-.settings-preview {
-  padding: 0.625rem 0.625rem 0.75rem;
-  border-radius: var(--radius-control);
-  background: var(--paper);
-}
-.settings-preview__label { display: block; margin: 0 0 0.5rem 0.125rem; font-size: var(--fs-xs); color: var(--g4); }
-.settings-preview .spot-card { box-shadow: var(--shadow-1); }
+/* ---- プレビュー（地図下シートと同じスポットカード。面は重ねない） ---- */
+.settings-preview div.card.spot-card { margin: 0; }
 
-/* ---- データ（書き出し・削除）：説明の文＋幅いっぱいのボタン ---- */
-.settings-action { display: flex; flex-direction: column; gap: 0.625rem; }
-.settings-action + .settings-action { padding-top: 0.875rem; border-top: 1px solid var(--hairline); }
-.settings-action__lead { margin: 0; font-size: var(--fs-s); line-height: 1.6; color: var(--g5); }
-.settings-action > .btn { width: 100%; }
-/* 削除は塗らずに危険の色の文字と枠だけ（主要操作の朱の塗りと区別する） */
-.settings-danger.btn { color: var(--deadline); box-shadow: inset 0 0 0 1px var(--deadline-soft); }
+/* ---- データ（書き出し・読み込み・全削除）：副ボタンを横に並べる（説明の文は置かない。文字が大きくて入らないときは折り返す） ---- */
+.settings-action { display: grid; grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr)); gap: 0.5rem; }
+.settings-action > .btn { width: 100%; padding-inline: 0.5rem; }
+/* 全削除は副ボタンのまま、文字だけ危険の色 */
+.settings-danger.btn { color: var(--danger-ink); }
 
-/* ---- 将来の項目（操作できない切替スイッチ） ---- */
-.settings-row--future .settings-row__label { color: var(--g4); }
+/* ---- 将来の項目（操作できない切替スイッチ）：行ごと薄くする ---- */
+.settings-row--future { opacity: 0.5; }
 .settings-switch {
   position: relative;
   flex: none;
@@ -103,7 +70,6 @@
   border-radius: var(--radius-pill);
   background: var(--g2);
   box-shadow: inset 0 0 0 1px var(--line);
-  opacity: 0.7;
 }
 .settings-switch::after {
   content: "";
@@ -114,5 +80,5 @@
   height: 1.25rem;
   border-radius: 50%;
   background: var(--surface);
-  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.2);
+  box-shadow: 0 1px 2px rgba(42, 33, 27, 0.2);
 }

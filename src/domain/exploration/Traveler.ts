@@ -324,14 +324,14 @@ export class Traveler {
   private visitRejection(input: VisitInput): AppError<VisitErrorCode> | undefined {
     const log = logger.fn('visitRejection', { meters: input.meters, accuracyM: input.accuracyM });
     if (!(Number.isFinite(input.accuracyM) && input.accuracyM >= 0 && input.accuracyM <= MAX_ACCURACY_M)) {
-      return log.exit(AppError.of('LOW_ACCURACY', '現在地の精度が低いため訪問できません。少し待ってからもう一度お試しください', { maxAccuracyM: MAX_ACCURACY_M }));
+      return log.exit(AppError.of('LOW_ACCURACY', '現在地の精度が低いため達成できません。少し待ってからもう一度お試しください', { maxAccuracyM: MAX_ACCURACY_M }));
     }
     if (!isWithinVisitRadius(input.meters)) {
       const meters = Number.isFinite(input.meters) ? roundToInt(input.meters) : undefined;
-      return log.exit(AppError.of('OUT_OF_RANGE', `スポットから${VISIT_RADIUS_M}m以内に近づくと訪問できます`, { meters, radiusM: VISIT_RADIUS_M }));
+      return log.exit(AppError.of('OUT_OF_RANGE', `スポットから${VISIT_RADIUS_M}m以内で達成できます`, { meters, radiusM: VISIT_RADIUS_M }));
     }
     if (this.hasVisitedOn(input.spot.id, input.localDate)) {
-      return log.exit(AppError.of('ALREADY_VISITED_TODAY', '今日はこのスポットを訪問済みです。また別の日に来てください'));
+      return log.exit(AppError.of('ALREADY_VISITED_TODAY', '今日はこのスポットを達成済みです。また別の日に来てください'));
     }
     return log.exit(undefined);
   }

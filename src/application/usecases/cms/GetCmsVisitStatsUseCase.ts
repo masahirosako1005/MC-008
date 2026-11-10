@@ -25,10 +25,10 @@ import type { Spot } from '@/domain/spot/Spot';
 const logger = createLogger('application/usecases/cms/GetCmsVisitStatsUseCase');
 
 /** 曜日ごとの来店の重み（月〜日。週末が多い街歩きの傾向を模したもの） */
-const WEEKDAY_WEIGHTS = [0.8, 0.7, 0.8, 0.9, 1.1, 1.7, 1.6] as const;
+export const WEEKDAY_WEIGHTS = [0.8, 0.7, 0.8, 0.9, 1.1, 1.7, 1.6] as const;
 
 /** 時間帯の名前・範囲（0時からの分、[from, to)）・重み */
-const TIME_BANDS = [
+export const TIME_BANDS = [
   { label: '朝（〜11時）', from: 0, to: 660, weight: 0.6 },
   { label: '昼（11〜14時）', from: 660, to: 840, weight: 1.4 },
   { label: '午後（14〜17時）', from: 840, to: 1020, weight: 1.2 },

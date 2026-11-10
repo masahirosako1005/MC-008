@@ -1,0 +1,47 @@
+/*
+ * @file 部品の土地と季節の札・未入手の手に入れ方（presentation/screens/Avatar）
+ * 色は tokens.css の名前だけで書く（docs/10_color_system.md）。地区の札は [data-district-id] の --district、
+ * 季節の札は線のアイコン（桜・ひまわり・もみじ・雪）で見分ける。
+ * 2026-11-10 にコレクション（ご当地・季節のセット）のタブを削除したとき、AvatarCollection.css から部品の格子で使う分だけ移した。
+ */
+
+/* ---------- 部品の土地・季節の札（絵の器の左下） ---------- */
+.avatar-place {
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: calc(100% - 4px);
+  padding: 0 0.3125rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.avatar-place--region { background: var(--district-ink); color: #ffffff; } /* 白文字が読めるよう濃い側の地区色（2026-11-10） */
+.avatar-place--season { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
+
+/* 鍵の印は絵の左上（右上はレア度の札）、「あと◯回」はその下の中央。左下の土地・季節の札と重ならないようにする */
+.avatar-item__lock { justify-content: flex-start; align-items: flex-start; padding: 0.1875rem 0 0 0.1875rem; }
+
+/* ---------- 未入手の部品の手に入れ方（名前の下に2行まで） ---------- */
+.avatar-item__how {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--g5);
+  text-align: center;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}

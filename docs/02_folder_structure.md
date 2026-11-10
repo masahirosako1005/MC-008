@@ -51,12 +51,11 @@ src/presentation/
 ├── screens/
 │   ├── Map/                           # /map   [01_map_wide, 02_map_near]
 │   │   ├── MapScreen.ts               # 3段階ズーム（広域→地区→近接）は同一画面の状態。別ルートにしない
-│   │   ├── MapCanvas.ts               # 地区色・建物・80m円・足あと・シルエット描画（純粋 draw 関数）
+│   │   ├── town/                      # ドット絵の街の描画（townRenderer・townScene・townArtSimple ほか。docs/08 §6）
 │   │   ├── MapViewModel.ts            # ドメイン→描画用データ変換（色あせは彩度・透明度・アイコンで表現）
 │   │   ├── ZoomState.ts               # wide / district / near
 │   │   ├── AmenityFilterChips.ts      # 便利情報フィルタ（子連れ・トイレ・授乳室・ベビーカー・雨・駐車場）
 │   │   └── Sheet/                     # [03_sheet] 地図下シート（つまみ／半分／全画面）
-│   │       ├── MapSheet.ts            # 3段階の開閉状態
 │   │       ├── NearbySpotList.ts      # 近隣スポットと距離（距離順）
 │   │       ├── RevisitReasonList.ts   # 再訪理由カード（期限＞取り返し＞色あせ＞未訪問＞新着）
 │   │       └── DistrictCardList.ts    # 地区カード一覧（成長Lv・色あせ・地区の主・次の目標・カレンダー追加）
@@ -218,7 +217,7 @@ CLAUDE.md 8 章の共通部品（下部タブ・下シート・再訪理由カ�
 | 層・機能フォルダ | 小文字（presentation 配下の画面フォルダは PascalCase） | `exploration/`, `screens/Map/` |
 | 画面 | `<Name>Screen.ts` | `MapScreen.ts` |
 | コンポーネント | PascalCase 名詞 | `DistrictCard.ts` |
-| Canvas 描画 | `<Name>Canvas.ts` | `MapCanvas.ts` |
+| Canvas 描画 | `<Name>Canvas.ts` | `SpotIllustrationCanvas.ts` |
 | ユースケース | `<動詞><目的語>UseCase.ts` | `VisitSpotUseCase.ts` |
 | エンティティ／値オブジェクト | PascalCase 名詞 | `Traveler.ts`, `GeoPoint.ts` |
 | リポジトリIF | `<集約>Repository.ts` | `TravelerRepository.ts` |

@@ -13,9 +13,6 @@ const logger = createLogger('presentation/screens/Demo/demoModel');
 /** 日付進行の選択肢（docs/08 §4.4） */
 export const ADVANCE_DAYS = [1, 30, 90] as const;
 
-/** 日付進行の日数 */
-export type AdvanceDays = (typeof ADVANCE_DAYS)[number];
-
 /** ライバル行動の既定のライバル（docs/08 §4.4） */
 export const DEFAULT_RIVAL_ID = 'r_taro';
 
@@ -135,7 +132,7 @@ export function districtNameOf(options: readonly RivalDistrictOption[], district
 }
 
 /**
- * 旅人を切り替えたあと、地図の UI 状態を初期化する（広域・足あと無し・パルス無し・シートはつまみ）。
+ * 旅人を切り替えたあと、地図の UI 状態を初期化する（広域・足あと無し・パルス無し・シートはつまみ。切り替えた回数を1つ進める）。
  * @param ui アプリ単位の地図 UI 状態
  * @sideEffect ui を書き換える
  */
@@ -146,5 +143,7 @@ export function resetMapUi(ui: MapUiState): void {
   ui.footprints = [];
   ui.pulseDistrictId = undefined;
   ui.sheetState = 'peek';
+  // 別の旅人の街と比べて「奪われた…／にぎわいが戻った！」が出ないよう、地図に旅人が替わったことを伝える
+  ui.travelerEpoch = (ui.travelerEpoch ?? 0) + 1;
   log.exit(undefined);
 }

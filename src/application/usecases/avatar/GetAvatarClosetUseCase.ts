@@ -123,8 +123,8 @@ export class GetAvatarClosetUseCase implements UseCase<void, AvatarClosetDto> {
     const [ledger, avatar] = await Promise.all([this.deps.ledgers.find(traveler.value.id), this.deps.avatars.load(traveler.value.id)]);
     if (!ledger.ok) return log.fail(ledger);
     if (!avatar.ok) return log.fail(avatar);
-    const wardrobe = wardrobeOf(traveler.value.visits, this.deps.spots);
     const points = Number(ledger.value.balance());
+    const wardrobe = wardrobeOf(traveler.value, this.deps.spots, this.deps.clock, points);
     const dto: AvatarClosetDto = Object.freeze({
       nickname: traveler.value.nickname,
       rankName: rankOf(points).name,

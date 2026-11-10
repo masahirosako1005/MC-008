@@ -19,10 +19,10 @@ describe('visitButtonState', () => {
   it('訪問できるときは有効で「チェックインする（80m以内）」', () => {
     expect(visitButtonState({ canVisit: true, visitedToday: false })).toEqual({ enabled: true, label: VISIT_ENABLED_LABEL });
   });
-  it('離れているときは無効で「あと n m 近づくと訪問できます」', () => {
+  it('離れているときは無効で「あと n m」', () => {
     expect(visitButtonState({ canVisit: false, visitedToday: false, metersToVisit: 79.2, visitBlockedReason: '離れています' })).toEqual({
       enabled: false,
-      label: 'あと 80m 近づくと訪問できます',
+      label: 'あと 80m',
     });
   });
   it('今日は訪問済みなら application の理由文を出す', () => {
@@ -30,7 +30,7 @@ describe('visitButtonState', () => {
   });
   it('距離が分からないときは理由文、無ければ既定文', () => {
     expect(visitButtonState({ canVisit: false, visitedToday: false, visitBlockedReason: '位置情報を取得できません' }).label).toBe('位置情報を取得できません');
-    expect(visitButtonState({ canVisit: false, visitedToday: false }).label).toBe('今は訪問できません');
+    expect(visitButtonState({ canVisit: false, visitedToday: false }).label).toBe('今は達成できません');
   });
 });
 
@@ -68,12 +68,12 @@ describe('カードとトーストの文言', () => {
     expect(nextCardLabel({ rank: 'silver', remainingVisits: 1 })).toBe('あと1回で銀カード');
     expect(nextCardLabel(undefined)).toBeUndefined();
   });
-  it('おかえりボーナスがあれば括弧で添える', () => {
+  it('おかえりボーナスがあれば「・」で添える（括弧書きにしない）', () => {
     expect(visitToastMessage({ points: 15, bonusPoints: 0 })).toBe('クエスト達成！ +15EXP');
-    expect(visitToastMessage({ points: 15, bonusPoints: 7 })).toBe('クエスト達成！ +15EXP（おかえりボーナス +7）');
+    expect(visitToastMessage({ points: 15, bonusPoints: 7 })).toBe('クエスト達成！ +15EXP・おかえり +7');
   });
   it('成長のトーストは地区名と新しい Lv を出す', () => {
-    expect(growthToastMessage('城下地区', 3)).toBe('城下地区が Lv3 に育ちました');
-    expect(growthToastMessage(undefined, undefined)).toBe('地区が育ちました');
+    expect(growthToastMessage('城下地区', 3)).toBe('城下地区 Lv3');
+    expect(growthToastMessage(undefined, undefined)).toBe('地区 レベルアップ');
   });
 });

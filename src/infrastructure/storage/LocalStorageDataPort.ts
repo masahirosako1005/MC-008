@@ -100,4 +100,65 @@ export class LocalStorageDataPort implements DataPort {
     if (failed > 0) return log.fail(fail(AppError.of('STORAGE_FAILED', '一部のデータを削除できませんでした', { removed, failed })));
     return log.exit(ok({ removed }));
   }
+
+  /**
+   * 範囲内のいまの内容を、完全なキーと保存している文字列のまま写し取る（置き換えに失敗したときに戻すため）。
+   * @returns 成功: キーと文字列の組。失敗: STORAGE_FAILED
+   */
+  private snapshotRaw(): Result<Array<readonly [string, string]>> {
+    const log = logger.fn('snapshotRaw');
+    const keys = this.userKeys();
+    if (!keys.ok) return log.fail(keys);
+    const pairs: Array<readonly [string, string]> = [];
+    for (const key of keys.value) {
+      const raw = this.deps.store.get(key);
+      if (!raw.ok) return log.fail(raw);
+      if (raw.value !== undefined) pairs.push([key, raw.value]);
+    }
+    return log.exit(ok(pairs), `count=${pairs.length}`);
+  }
+
+  /**
+   * 範囲内のキーをすべて消してから、渡した組を書く。
+   * @param pairs 完全なキーと保存する文字列
+   * @returns 成功: void。失敗: STORAGE_FAILED（容量超過など。途中まで書かれていることがある）
+   * @sideEffect localStorage を書き換える
+   */
+  private overwrite(pairs: ReadonlyArray<readonly [string, string]>): Result<void> {
+    const log = logger.fn('overwrite', { count: pairs.length });
+    const keys = this.userKeys();
+    if (!keys.ok) return log.fail(keys);
+    for (const key of keys.value) {
+      const removed = this.deps.store.remove(key);
+      if (!removed.ok) return log.fail(removed);
+    }
+    for (const [key, value] of pairs) {
+      const written = this.deps.store.set(key, value);
+      if (!written.ok) return log.fail(written);
+    }
+    return log.exit(ok(undefined));
+  }
+
+  /**
+   * 範囲内のデータを、渡した内容にまるごと置き換える（書き出したファイルからの復元。DI-21）。
+   * 値は readAll の逆に直す：文字列はそのまま（JSON として読めなかった退避データ）、それ以外は JSON 文字列にする。
+   * 書いている途中で失敗したら、置き換える前の内容に戻す（DI-12）。
+   * @param entries キー（接頭辞を除く）と値
+   * @returns 成功: 書いた件数。失敗: INVALID_INPUT（範囲の外のキー・空のキー。何も変えない）／STORAGE_FAILED（details.restored に元へ戻せたか）
+   * @sideEffect localStorage を書き換える
+   */
+  async replaceAll(entries: readonly UserDataEntry[]): Promise<Result<{ readonly written: number }>> {
+    const log = logger.fn('replaceAll', { count: entries.length });
+    const prefix = this.deps.prefix;
+    const outside = entries.filter((entry) => entry.key.length === 0 || !isUserDataKey(`${prefix}${entry.key}`, prefix)).length;
+    if (outside > 0) return log.fail(fail(AppError.of('INVALID_INPUT', '読み込めないキーが含まれています', { rule: 'scope', outside })));
+    const before = this.snapshotRaw();
+    if (!before.ok) return log.fail(before);
+    const next = entries.map((entry) => [`${prefix}${entry.key}`, typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value)] as const);
+    const applied = this.overwrite(next);
+    if (applied.ok) return log.exit(ok({ written: next.length }));
+    const restored = this.overwrite(before.value).ok;
+    log.error('データの置き換えに失敗したため、元の内容に戻しました', { restored });
+    return log.fail(fail(AppError.of('STORAGE_FAILED', 'データを読み込めませんでした', { restored })));
+  }
 }

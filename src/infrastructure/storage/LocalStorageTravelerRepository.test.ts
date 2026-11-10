@@ -97,14 +97,15 @@ describe('LocalStorageTravelerRepository', () => {
     expect(result.ok ? undefined : result.error.code).toBe('CONFLICT');
   });
 
-  it('未知の schemaVersion は読み込まず backup へ退避して STORAGE_FAILED（DI-15）', async () => {
+  it('今より新しい schemaVersion は読み込まず、元のまま残して STORAGE_FAILED。何度読んでも消えない（DI-15）', async () => {
     const raw = JSON.stringify({ schemaVersion: 99, version: 1, data: {} });
     const { repo, store } = setup({ [KEY]: raw });
-    const result = await repo.findById(TRAVELER_ID);
-    expect(result.ok ? undefined : result.error.code).toBe('STORAGE_FAILED');
-    expect(store.snapshot()[BACKUP_KEY]).toBe(raw);
-    expect(store.snapshot()[KEY]).toBeUndefined();
-    expect(must(await repo.findById(TRAVELER_ID))).toBeUndefined();
+    for (const _attempt of [1, 2]) {
+      const result = await repo.findById(TRAVELER_ID);
+      expect(result.ok ? undefined : [result.error.code, result.error.details?.['reason']]).toEqual(['STORAGE_FAILED', 'newerVersion']);
+    }
+    expect(store.snapshot()[KEY]).toBe(raw);
+    expect(store.snapshot()[BACKUP_KEY]).toBeUndefined();
   });
 
   it('壊れた JSON は退避して STORAGE_FAILED', async () => {

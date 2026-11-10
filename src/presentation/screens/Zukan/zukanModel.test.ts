@@ -22,8 +22,8 @@ const unknown: ZukanTileDto = { id: 's_mi01', name: '港の食堂', kind: 'shop'
 describe('zukanModel', () => {
   it('タイルの名前・補足は状態ごとに変わり、未発見も名前を出す（名前が無いときだけ「？？？」）', () => {
     expect([tileName(visited), tileCaption(visited)]).toEqual(['N西城跡', 'あと2回で常連']);
-    expect(tileCaption(regular)).toBe('常連になりました');
-    expect([tileName(discovered), tileCaption(discovered)]).toEqual(['丸岡和菓子店', 'まだ行っていない']);
+    expect(tileCaption(regular)).toBe('');
+    expect([tileName(discovered), tileCaption(discovered)]).toEqual(['丸岡和菓子店', '未達成']);
     expect([tileName(unknown), tileCaption(unknown)]).toEqual(['港の食堂', '未発見']);
     expect(tileName({ kind: 'shop', districtId: 'd_minato', status: 'unknown', visitCount: 0 })).toBe('？？？');
     expect(tileAriaLabel(unknown)).toBe('港の食堂（店舗）未発見。80m以内に近づくと見つかります');
@@ -57,7 +57,7 @@ describe('zukanModel', () => {
 
   it('読み上げ名は色に頼らず、なじみ度・回数・季節を言葉で伝える', () => {
     expect(tileAriaLabel(visited)).toBe('N西城跡（名所）なじみ、通った 3回、訪れた季節 秋・冬、あと2回で常連');
-    expect(tileAriaLabel(discovered)).toBe('丸岡和菓子店（店舗）発見済み、まだ行っていない');
+    expect(tileAriaLabel(discovered)).toBe('丸岡和菓子店（店舗）発見済み、未達成');
   });
 
   it('タイルは名所→店舗の区分に分け、空の区分は出さない', () => {

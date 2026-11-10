@@ -217,9 +217,16 @@ export function isAllowedHost(req: IncomingMessage, allowedHosts: readonly strin
 export function isSameOrigin(req: IncomingMessage): boolean {
   const log = logger.fn('isSameOrigin');
   const origin = req.headers.origin;
+  // ブラウザが付ける Sec-Fetch-Site が「別のサイト・同じサイトの別オリジン」なら、Origin の有無によらず断る（Cookie の SameSite に加えた二重の守り）
+  const site = req.headers['sec-fetch-site'];
+  if (site !== undefined && site !== 'same-origin' && site !== 'none') return log.exit(false, 'crossSite');
   if (origin === undefined) return log.exit(true, 'noOrigin');
   try {
-    return log.exit(new URL(origin).host === req.headers.host);
+    const url = new URL(origin);
+    // 方式も確かめる：TLS で受けた要求は https の画面からだけ（同じ名前の http の画面＝通信に割り込んだ相手を通さない）。平文の待ち受け（自分の PC・中継の後ろ）は http か https
+    const encrypted = (req.socket as { readonly encrypted?: boolean }).encrypted === true;
+    const schemeOk = encrypted ? url.protocol === 'https:' : url.protocol === 'https:' || url.protocol === 'http:';
+    return log.exit(schemeOk && url.host === req.headers.host);
   } catch {
     log.warn('Origin を読めません');
     return log.exit(false);

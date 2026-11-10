@@ -9,5 +9,14 @@ export const CMS_SMALL_COUNT_THRESHOLD = 5;
 /** 来訪データで見せる週の数（今週を含む） */
 export const CMS_STATS_WEEKS = 8;
 
-/** 来訪データの集計期間（日） */
-export const CMS_STATS_WINDOW_DAYS = 30;
+/** アンケートの集計期間（日。仮） */
+export const CMS_SURVEY_WINDOW_DAYS = 30;
+
+/** 曜日・時間帯ごとの満足度の平均を出すのに要る回答の数（仮。少ないと1件で大きく振れる） */
+export const CMS_SURVEY_SLOT_MIN = 3;
+
+/** 満足度の変化（直近14日とその前の14日）を比べる期間（日。仮） */
+export const CMS_SURVEY_TREND_DAYS = 14;
+
+/** アンケートの画面に出すひとことの数（新しい順。仮） */
+export const CMS_SURVEY_COMMENT_LIMIT = 8;

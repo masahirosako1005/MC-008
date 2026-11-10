@@ -91,8 +91,8 @@ function reclaimDto(reason: ReclaimReason, spots: SpotRepository): RevisitReason
 
 /**
  * 色あせの理由を文言にする。
- * soon: title「そろそろ色あせ：{地区名} あと{d}日」、subtitle「最終訪問 {n}日前」、カレンダー追加つき。
- * fading: title「色あせ中：{地区名}」、subtitle「最終訪問 {n}日前・再訪で復活＋おかえりボーナス」。
+ * soon: title「そろそろ色あせ：{地区名} あと{d}日」、subtitle「{n}日前」、カレンダー追加つき。
+ * fading: title「色あせ中：{地区名}」、subtitle「{n}日前・再訪で復活＋おかえりボーナス」。
  * @param reason 色あせの理由
  * @param spots マスタ参照
  * @returns RevisitReasonDto（kind='fade'）
@@ -100,7 +100,7 @@ function reclaimDto(reason: ReclaimReason, spots: SpotRepository): RevisitReason
 function fadeDto(reason: FadeReason, spots: SpotRepository): RevisitReasonDto {
   const log = logger.fn('fadeDto', { districtId: reason.districtId, state: reason.state, daysSinceVisit: reason.daysSinceVisit });
   const districtName = districtNameOf(spots, reason.districtId);
-  const lastVisit = `最終訪問 ${reason.daysSinceVisit}日前`;
+  const lastVisit = `${reason.daysSinceVisit}日前`;
   if (reason.state === 'fading') {
     return log.exit({ kind: 'fade', title: `色あせ中：${districtName}`, subtitle: `${lastVisit}・再訪で復活＋おかえりボーナス`, districtId: reason.districtId });
   }

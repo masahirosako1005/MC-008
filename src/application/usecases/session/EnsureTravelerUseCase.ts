@@ -1,11 +1,12 @@
 /**
  * @file 起動時にアクティブな旅人を用意するユースケース（application 層）
  * 起動時に1回だけ呼ぶ。セッションの旅人が保存済みなら何もしない（デモビルドで、保存済みの「通い慣れた人」が今のシードより古いときだけ作り直す）。無ければ（D14）:
- * - デモビルド: 「通い慣れた人」のシードを作る（旅人切替 regular と同じ＝installDemoSeed）
+ * - デモビルド: 「通い慣れた人」のシードを作る（旅人切替 regular と同じ＝installDemoSeed）。
+ *   VITE_DEMO_START=first でビルドしたとき（空の状態で始めるデモ。scripts/dev/demo-fresh.mjs）は「初回の人」を作る
  * - 本番ビルド: 端末ID（'t_' ＋ UUID の16進）で新しい旅人（profile 'user'）を作り、地区の主の初期状態を計算して保存する
  * どちらもセッションのアクティブな旅人にする（以降のユースケースはセッションから旅人を解決する＝SEC-01）。
  */
-import { isDemoBuild } from '@/Common/constants/env';
+import { DEMO_START_PROFILE, isDemoBuild } from '@/Common/constants/env';
 import { createLogger } from '@/Common/logging/logger';
 import { ok } from '@/Common/result/Result';
 import type { Result } from '@/Common/result/Result';
@@ -78,7 +79,7 @@ export class EnsureTravelerUseCase implements UseCase<void, EnsureTravelerOutput
       log.info('保存済みの「通い慣れた人」が今のシードより古いため作り直す', { travelerId: existing.value.id, visits: existing.value.visits.length });
     }
     const today = this.deps.clock.today();
-    const created = this.demo ? await installDemoSeed(this.deps, { profile: 'regular', today }) : await this.createUser(today);
+    const created = this.demo ? await installDemoSeed(this.deps, { profile: DEMO_START_PROFILE, today }) : await this.createUser(today);
     if (!created.ok) return log.fail(created);
     log.info('旅人を新しく作成', { travelerId: created.value.id, profile: created.value.profile });
     return log.exit(ok(outputOf(created.value, true)));

@@ -20,16 +20,18 @@ import {
   PREVIEW_SPOT,
   TEXT_SCALE_OPTIONS,
   aboutRows,
-  dataNote,
-  locationNote,
   locationUsageText,
   nextScaleForKey,
   saveFailedMessage,
-  textScaleNote,
 } from '@/presentation/screens/Settings/settingsModel';
 import type { SettingsRow } from '@/presentation/screens/Settings/settingsModel';
+import { createAvatarImage } from '@/presentation/shared/avatarImage';
+import { avatarLookOfTown } from '@/presentation/shared/avatarSprite';
 
 const logger = createLogger('presentation/screens/Settings/SettingsScreen');
+
+/** 先頭のアバターの拡大率（1 で高さ約 70px。台を含めて 64px に収める） */
+const HERO_SCALE = 0.8;
 
 /**
  * 設定画面を作る。
@@ -49,10 +51,12 @@ export function createSettingsScreen(ctx: AppContext, params: Readonly<Record<st
 
 /** createGroup のオプション */
 interface GroupOptions {
-  /** カードの下に添える補足 */
-  readonly note?: string;
+  /** 見出しの横の札（「準備中」など。名詞1語） */
+  readonly badge?: string;
   /** 行ではなく部品を並べるカード（四辺に余白を取る） */
   readonly padded?: boolean;
+  /** カードの面を付けず、部品を地の上にそのまま置く */
+  readonly bare?: boolean;
 }
 
 /**
@@ -60,16 +64,15 @@ interface GroupOptions {
  * @param id 見出しの id（aria-labelledby 用）
  * @param title 見出し
  * @param children カードの中身
- * @param opts 補足・余白
+ * @param opts 札・余白・面なし
  * @returns section 要素
  */
 function createGroup(id: string, title: string, children: readonly HTMLElement[], opts: GroupOptions = {}): HTMLElement {
   const log = logger.fn('createGroup', { id });
   return log.exit(
     h('section', { class: 'settings-group', attrs: { 'aria-labelledby': id, 'data-testid': `settings-group-${id}` } }, [
-      h('h2', { class: 'settings-group__title', attrs: { id }, text: title }),
-      h('div', { class: ['settings-card', opts.padded === true && 'settings-card--padded'] }, children),
-      opts.note === undefined ? undefined : h('p', { class: ['hint', 'settings-group__note'], text: opts.note }),
+      h('h2', { class: ['section-title', 'settings-group__title'], attrs: { id } }, [title, opts.badge === undefined ? undefined : h('span', { class: 'tag', text: opts.badge })]),
+      h('div', { class: [opts.bare === true ? 'settings-bare' : 'settings-card', opts.padded === true && 'settings-card--padded'] }, children),
     ]),
   );
 }
@@ -115,12 +118,21 @@ function createPreview(): HTMLElement {
     chips: [PREVIEW_SPOT.chip],
     districtId: PREVIEW_SPOT.districtId,
   });
-  return log.exit(
-    h('div', { class: 'settings-preview', attrs: { 'data-testid': 'settings-preview', 'aria-label': 'プレビュー' } }, [
-      h('span', { class: 'settings-preview__label', attrs: { 'aria-hidden': 'true' }, text: 'プレビュー' }),
-      card,
-    ]),
-  );
+  return log.exit(h('div', { class: 'settings-preview', attrs: { 'data-testid': 'settings-preview', 'aria-label': 'プレビュー' } }, [card]));
+}
+
+/**
+ * 画面の先頭に置く自分のアバター（ランキング・ランクと同じ絵。飾りなので読み上げない）を作る。
+ * @param ctx 画面コンテキスト
+ * @returns div 要素（装いを読めない・Canvas が無いときは undefined）
+ * @sideEffect services.myTown を呼ぶ
+ */
+async function createHero(ctx: AppContext): Promise<HTMLElement | undefined> {
+  const log = logger.fn('createHero');
+  const town = await ctx.services.myTown.execute();
+  if (!town.ok) return log.exit(undefined, town.error.code);
+  const img = createAvatarImage(avatarLookOfTown(town.value), HERO_SCALE);
+  return log.exit(img === undefined ? undefined : h('div', { class: 'settings-hero', attrs: { 'aria-hidden': 'true', 'data-testid': 'settings-hero' } }, [img]));
 }
 
 /** 設定画面の状態と操作を受け持つ */
@@ -160,13 +172,16 @@ class SettingsController {
     } else if (!loaded.ok) {
       log.warn('設定を読み込めないため、今の表示のまま出します', { code: loaded.error.code });
     }
+    const hero = await createHero(this.ctx);
+    if (this.disposed) return log.exit(undefined, '表示前に画面を離れた');
     const topBar = createTopBar({ title: '設定', back: { label: '戻る', testId: 'settings-back', onClick: (): void => this.ctx.router.back() } });
     const body = h('div', { class: 'screen-scroll' }, [
       h('div', { class: 'settings', attrs: { 'data-testid': 'settings' } }, [
+        hero,
         this.buildTextScaleGroup(),
         this.buildNotificationGroup(),
         this.buildLocationGroup(),
-        createGroup('settings-data', 'データ', createDataPanelItems(this.ctx), { note: dataNote(this.ctx.services.isDemo), padded: true }),
+        createGroup('settings-data', 'データ', createDataPanelItems(this.ctx), { bare: true }),
         this.buildAboutGroup(),
       ]),
     ]);
@@ -195,7 +210,7 @@ class SettingsController {
       const button = h(
         'button',
         {
-          class: ['text-scale-option', `text-scale-option--${option.value}`],
+          class: ['seg__item', 'text-scale-option', `text-scale-option--${option.value}`],
           attrs: { type: 'button', role: 'radio', 'aria-checked': 'false', 'aria-label': `${option.label}（${option.description}）`, 'data-testid': `text-scale-${option.value}`, 'data-scale': option.value },
           on: {
             click: (): void => {
@@ -205,13 +220,13 @@ class SettingsController {
             keydown: (event): void => this.onKeyDown(event, option.value),
           },
         },
-        [h('span', { class: 'text-scale-option__glyph', attrs: { 'aria-hidden': 'true' }, text: 'あ' }), h('span', { class: 'text-scale-option__label', text: option.label })],
+        [h('span', { class: 'text-scale-option__label', text: option.label })],
       );
       this.scaleButtons.set(option.value, button);
       return button;
     });
-    const picker = h('div', { class: 'text-scale-picker', attrs: { role: 'radiogroup', 'aria-labelledby': 'settings-text', 'data-testid': 'text-scale-picker' } }, buttons);
-    return log.exit(createGroup('settings-text', '文字の大きさ', [picker, createPreview()], { note: textScaleNote(this.ctx.services.isDemo), padded: true }));
+    const picker = h('div', { class: ['seg', 'text-scale-picker'], attrs: { role: 'radiogroup', 'aria-labelledby': 'settings-text', 'data-testid': 'text-scale-picker' } }, buttons);
+    return log.exit(createGroup('settings-text', '文字の大きさ', [picker, createPreview()], { bare: true }));
   }
 
   /**
@@ -221,7 +236,7 @@ class SettingsController {
   private buildNotificationGroup(): HTMLElement {
     const log = logger.fn('buildNotificationGroup');
     const rows = FUTURE_NOTIFICATIONS.map((label, i) => createFutureSwitchRow(label, i));
-    return log.exit(createGroup('settings-notify', '通知', rows, { note: 'お知らせは今後のアップデートで選べるようになります。' }));
+    return log.exit(createGroup('settings-notify', '通知', rows, { badge: '準備中' }));
   }
 
   /**
@@ -232,7 +247,7 @@ class SettingsController {
     const log = logger.fn('buildLocationGroup');
     const isDemo = this.ctx.services.isDemo;
     const row = createRow({ label: '位置情報の利用', value: locationUsageText(isDemo) });
-    return log.exit(createGroup('settings-location', '位置情報', [row], { note: locationNote(isDemo) }));
+    return log.exit(createGroup('settings-location', '位置情報', [row]));
   }
 
   /**

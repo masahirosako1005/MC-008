@@ -42,9 +42,9 @@ export interface VisitAvailability {
 
 /** 理由ごとの文言（範囲外は距離を含むので別に組み立てる） */
 const BLOCK_MESSAGES: Readonly<Record<Exclude<VisitBlock, 'outOfRange'>, string>> = {
-  visitedToday: '今日はもう訪問しました（1日1回）',
+  visitedToday: '今日は達成済み',
   noPosition: '現在地を取得できません',
-  lowAccuracy: '現在地の精度が低いため訪問できません',
+  lowAccuracy: '現在地の精度が低いため達成できません',
 };
 
 /**
