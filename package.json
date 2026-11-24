@@ -29,7 +29,7 @@
     "demo:fresh": "node scripts/dev/demo-fresh.mjs"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.16",
+    "@electric-sql/pglite": "^0.5.17",
     "@types/node": "^24.19.2",
     "@types/pg": "^8.23.1",
     "playwright-core": "^1.65.0",
